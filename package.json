@@ -2,6 +2,7 @@
   "name": "office2json",
   "version": "0.0.0",
   "description": "A bidirectional TypeScript library for converting Office documents and JSON.",
+  "license": "MIT",
   "keywords": [
     "office",
     "json",
@@ -13,7 +14,8 @@
   "type": "module",
   "sideEffects": false,
   "files": [
-    "dist"
+    "dist",
+    "LICENSE"
   ],
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
@@ -23,6 +25,11 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
       "require": "./dist/index.cjs"
+    },
+    "./pptx": {
+      "types": "./dist/pptx/index.d.ts",
+      "import": "./dist/pptx/index.js",
+      "require": "./dist/pptx/index.cjs"
     }
   },
   "scripts": {
@@ -34,7 +41,7 @@
     "format:check": "prettier --check .",
     "test": "vitest run --passWithNoTests",
     "test:watch": "vitest",
-    "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm build",
+    "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build",
     "prepack": "pnpm build"
   },
   "engines": {
@@ -44,8 +51,14 @@
   "publishConfig": {
     "access": "public"
   },
+  "dependencies": {
+    "jszip": "^3.10.1",
+    "tinycolor2": "^1.6.0",
+    "txml": "^5.1.1"
+  },
   "devDependencies": {
     "@eslint/js": "^9.0.0",
+    "@types/tinycolor2": "^1.4.6",
     "eslint": "^9.0.0",
     "eslint-config-prettier": "^10.0.0",
     "prettier": "^3.0.0",
