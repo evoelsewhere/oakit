@@ -35,6 +35,24 @@ describe('PPTX public API observable contract', () => {
     expect(input).toEqual(snapshot);
   });
 
+  it('applies compressed-input limits to Blob inputs before parsing', async () => {
+    const bytes = await createIndependentPptx();
+    const arrayBuffer = bytes.buffer.slice(
+      bytes.byteOffset,
+      bytes.byteOffset + bytes.byteLength,
+    ) as ArrayBuffer;
+
+    await expect(
+      parsePptx(new Blob([arrayBuffer]), {
+        limits: { maxInputBytes: bytes.byteLength - 1 },
+      }),
+    ).rejects.toMatchObject({
+      diagnostic: {
+        code: 'resource-limit-exceeded',
+      },
+    });
+  });
+
   it('keeps concurrent parses isolated and deterministic', async () => {
     const [firstInput, secondInput] = await Promise.all([
       createIndependentPptx({
