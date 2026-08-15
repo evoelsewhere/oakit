@@ -30,7 +30,7 @@ const config = {
   thresholds: {
     high: 80,
     low: 65,
-    break: 55,
+    break: 60,
   },
 };
 
