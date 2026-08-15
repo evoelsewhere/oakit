@@ -10,30 +10,21 @@ interface Point {
 interface Edge {
   dx: number;
   dy: number;
-  length: number;
+  lengthSquared: number;
 }
 
+type Quadrilateral = readonly [Point, Point, Point, Point];
+
 type PathCommand =
-  | { points: Point[]; type: 'cubicBezTo' | 'lineTo' | 'moveTo' | 'quadBezTo' }
-  | {
-      hR: number;
-      stAng: number;
-      swAng: number;
-      type: 'arcTo';
-      wR: number;
-    }
-  | { type: 'close' };
+  | { points: Point[]; type: 'cubicBezTo' | 'lineTo' | 'moveTo' }
+  | { type: 'arcTo' | 'close' | 'quadBezTo' };
 
 interface PathAnalysis {
   arcCount: number;
-  commands: PathCommand[];
   curveCount: number;
-  hasCurves: boolean;
   isCircular: boolean;
   isClosed: boolean;
   lineCount: number;
-  pathHeight: number;
-  pathWidth: number;
   vertices: Point[];
 }
 
@@ -242,21 +233,12 @@ function extractPathCommands(path: XmlLookupValue): PathCommand[] {
     if (points.length === 3) commands.push({ type: 'cubicBezTo', points });
   }
   for (const quadratic of asArray(nodeAt(path, ['a:quadBezTo']))) {
-    commands.push({
-      type: 'quadBezTo',
-      points: pointsFromNode(nodeAt(quadratic, ['a:pt'])),
-    });
+    const points = pointsFromNode(nodeAt(quadratic, ['a:pt']));
+    if (points.length === 2) commands.push({ type: 'quadBezTo' });
   }
-  for (const arc of asArray(nodeAt(path, ['a:arcTo']))) {
-    const attrs = attributes(arc);
-    commands.push({
-      type: 'arcTo',
-      wR: Number(attrs.wR ?? 0),
-      hR: Number(attrs.hR ?? 0),
-      stAng: Number(attrs.stAng ?? 0),
-      swAng: Number(attrs.swAng ?? 0),
-    });
-  }
+  asArray(nodeAt(path, ['a:arcTo'])).forEach(() => {
+    commands.push({ type: 'arcTo' });
+  });
   if (nodeAt(path, ['a:close'])) commands.push({ type: 'close' });
   return commands;
 }
@@ -272,11 +254,7 @@ function analyzePathCommands(
     arcCount: 0,
     isClosed: false,
     vertices: [],
-    pathWidth,
-    pathHeight,
-    hasCurves: false,
     isCircular: false,
-    commands,
   };
 
   for (const command of commands) {
@@ -291,14 +269,10 @@ function analyzePathCommands(
       case 'cubicBezTo':
       case 'quadBezTo': {
         analysis.curveCount += 1;
-        analysis.hasCurves = true;
-        const point = command.points.at(-1);
-        if (point) analysis.vertices.push(point);
         break;
       }
       case 'arcTo':
         analysis.arcCount += 1;
-        analysis.hasCurves = true;
         break;
       case 'close':
         analysis.isClosed = true;
@@ -326,8 +300,6 @@ function checkIfCircular(
       command.type === 'cubicBezTo' ? command.points[2] : undefined,
     )
     .filter((point): point is Point => point !== undefined);
-  if (endpoints.length !== 4) return false;
-
   const hasTop = endpoints.some((point) => Math.abs(point.y) < height * 0.1);
   const hasBottom = endpoints.some(
     (point) => Math.abs(point.y - height) < height * 0.1,
@@ -336,73 +308,61 @@ function checkIfCircular(
   const hasRight = endpoints.some(
     (point) => Math.abs(point.x - width) < width * 0.1,
   );
-  return (hasTop || hasBottom) && (hasLeft || hasRight);
+  return hasTop && hasBottom && hasLeft && hasRight;
 }
 
 function removeDuplicateVertices(vertices: Point[]): Point[] {
   const unique: Point[] = [];
   for (const vertex of vertices) {
     const duplicate = unique.some(
-      (item) =>
-        Math.abs(item.x - vertex.x) < 100 && Math.abs(item.y - vertex.y) < 100,
+      (item) => item.x === vertex.x && item.y === vertex.y,
     );
     if (!duplicate) unique.push(vertex);
   }
   return unique;
 }
 
-function edgesFromVertices(vertices: Point[]): Edge[] {
-  return vertices.map((point, index) => {
-    const next = vertices[(index + 1) % vertices.length] ?? point;
-    const dx = next.x - point.x;
-    const dy = next.y - point.y;
-    return { dx, dy, length: Math.hypot(dx, dy) };
-  });
+function edgeBetween(first: Point, second: Point): Edge {
+  const dx = second.x - first.x;
+  const dy = second.y - first.y;
+  return { dx, dy, lengthSquared: dx * dx + dy * dy };
 }
 
-function isRectangle(edges: Edge[]): boolean {
-  const [first, second, third, fourth] = edges;
-  if (!first || !second || !third || !fourth) return false;
-  const oppositeEdgesMatch =
-    Math.abs(first.length - third.length) /
-      Math.max(first.length, third.length) <
-      0.1 &&
-    Math.abs(second.length - fourth.length) /
-      Math.max(second.length, fourth.length) <
-      0.1;
-  if (!oppositeEdgesMatch) return false;
-
-  return edges.every((edge, index) => {
-    const next = edges[(index + 1) % edges.length] ?? edge;
-    const cosine =
-      (edge.dx * next.dx + edge.dy * next.dy) / (edge.length * next.length);
-    return Math.abs(cosine) <= 0.1;
-  });
-}
-
-function isRhombus(edges: Edge[]): boolean {
-  const average = edges.reduce((sum, edge) => sum + edge.length, 0) / 4;
-  return edges.every((edge) => Math.abs(edge.length - average) / average < 0.1);
-}
-
-function slope(edge: Edge): number {
-  return edge.dx === 0 ? Number.POSITIVE_INFINITY : edge.dy / edge.dx;
-}
-
-function areParallel(first: Edge, second: Edge): boolean {
-  const firstSlope = slope(first);
-  const secondSlope = slope(second);
+function isRectangle(vertices: Quadrilateral): boolean {
+  const [first, second, third, fourth] = vertices;
   return (
-    Math.abs(firstSlope - secondSlope) < 0.15 ||
-    (Math.abs(firstSlope) > 1000 && Math.abs(secondSlope) > 1000)
+    (first.y === second.y &&
+      second.x === third.x &&
+      third.y === fourth.y &&
+      fourth.x === first.x) ||
+    (first.x === second.x &&
+      second.y === third.y &&
+      third.x === fourth.x &&
+      fourth.y === first.y)
   );
 }
 
-function matchQuadrilateral(vertices: Point[]): string {
-  const edges = edgesFromVertices(vertices);
+type QuadrilateralEdges = readonly [Edge, Edge, Edge, Edge];
+
+function isRhombus(edges: QuadrilateralEdges): boolean {
+  const [first] = edges;
+  return edges.every((edge) => edge.lengthSquared === first.lengthSquared);
+}
+
+function areParallel(first: Edge, second: Edge): boolean {
+  return first.dx * second.dy === first.dy * second.dx;
+}
+
+function matchQuadrilateral(vertices: Quadrilateral): string {
+  const [firstPoint, secondPoint, thirdPoint, fourthPoint] = vertices;
+  const edges: QuadrilateralEdges = [
+    edgeBetween(firstPoint, secondPoint),
+    edgeBetween(secondPoint, thirdPoint),
+    edgeBetween(thirdPoint, fourthPoint),
+    edgeBetween(fourthPoint, firstPoint),
+  ];
   const [first, second, third, fourth] = edges;
-  if (!first || !second || !third || !fourth) return 'custom';
-  if (isRectangle(edges)) return 'roundRect';
+  if (isRectangle(vertices)) return 'rect';
   if (isRhombus(edges)) return 'rhombus';
 
   const parallel02 = areParallel(first, third);
@@ -418,7 +378,7 @@ function matchPolygon(vertices: Point[]): string {
     case 3:
       return 'triangle';
     case 4:
-      return matchQuadrilateral(unique);
+      return matchQuadrilateral(unique as unknown as Quadrilateral);
     case 5:
       return 'pentagon';
     case 6:
@@ -427,8 +387,12 @@ function matchPolygon(vertices: Point[]): string {
       return 'heptagon';
     case 8:
       return 'octagon';
+    case 10:
+      return 'decagon';
+    case 12:
+      return 'dodecagon';
     default:
-      return unique.length > 8 ? 'ellipse' : 'custom';
+      return 'custom';
   }
 }
 
@@ -449,16 +413,9 @@ function matchShape(analysis: PathAnalysis): string {
   if (analysis.isCircular) return 'ellipse';
   if (analysis.arcCount >= 2 && analysis.isClosed && analysis.lineCount === 0)
     return 'ellipse';
-  if (!analysis.hasCurves && analysis.isClosed && analysis.vertices.length >= 3)
+  if (analysis.curveCount === 0 && analysis.arcCount === 0 && analysis.isClosed)
     return matchPolygon(analysis.vertices);
   if (
-    analysis.lineCount === 4 &&
-    analysis.curveCount === 4 &&
-    analysis.isClosed
-  )
-    return 'roundRect';
-  if (
-    analysis.lineCount >= 3 &&
     analysis.curveCount > 0 &&
     analysis.curveCount <= analysis.lineCount &&
     analysis.isClosed
@@ -474,12 +431,7 @@ export function identifyShape(shapeData: XmlLookupValue): string {
   if (!path) return 'custom';
   const attrs = attributes(path);
   const commands = extractPathCommands(path);
-  if (commands.length === 0) return 'custom';
   return matchShape(
-    analyzePathCommands(
-      commands,
-      Number.parseInt(attrs.w ?? '0'),
-      Number.parseInt(attrs.h ?? '0'),
-    ),
+    analyzePathCommands(commands, Number(attrs.w), Number(attrs.h)),
   );
 }
