@@ -1613,7 +1613,7 @@ async function processGraphicFrameNode(
   let result: ElementDraft | null = null;
   switch (graphicTypeUri) {
     case 'http://schemas.openxmlformats.org/drawingml/2006/table':
-      result = await genTable(node, warpObj);
+      result = genTable(node, warpObj);
       break;
     case 'http://schemas.openxmlformats.org/drawingml/2006/chart':
       result = await genChart(node, warpObj);
@@ -1640,10 +1640,10 @@ async function processGraphicFrameNode(
   return result;
 }
 
-async function genTable(
+function genTable(
   node: XmlLookupValue,
   warpObj: PptxParserContext,
-): Promise<Draft<Table>> {
+): Draft<Table> {
   const order = Number(textAt(node, ['attrs', 'order']) ?? 0);
   const tableNode = nodeAt(node, ['a:graphic', 'a:graphicData', 'a:tbl']);
   const xfrmNode = nodeAt(node, ['p:xfrm']);
@@ -1760,7 +1760,7 @@ async function genTable(
       const text = textBody
         ? genTextBody(textBody, cellNode, undefined, undefined, '', warpObj)
         : '';
-      const cell = await getTableCellParams(
+      const cell = getTableCellParams(
         cellNode,
         tableStyle,
         cellSource,
