@@ -1,6 +1,7 @@
 /** @type {import('@stryker-mutator/api/core').PartialStrykerOptions} */
 const config = {
   mutate: [
+    'src/cli/run.ts',
     'src/common/archive/read-entry.ts',
     'src/common/opc/part-uri.ts',
     'src/common/text/css.ts',
