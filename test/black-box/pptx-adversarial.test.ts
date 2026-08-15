@@ -4,6 +4,7 @@ import { parsePptx } from '../../src';
 import {
   createIndependentPptx,
   DRAWING_NS,
+  independentTextSlide,
   OFFICE_REL_NS,
   OFFICE_REL_TYPE,
   PACKAGE_REL_NS,
@@ -67,6 +68,26 @@ describe('PPTX public API adversarial cases', () => {
 
     expect(result.slides).toHaveLength(1);
     expect(result.size).toEqual({ width: 720, height: 405 });
+  });
+
+  it('normalizes equivalent prefixes throughout DrawingML content', async () => {
+    const slide = independentTextSlide('Aliased')
+      .replace('xmlns:p=', 'xmlns:x=')
+      .replace('xmlns:a=', 'xmlns:d=')
+      .replaceAll('<p:', '<x:')
+      .replaceAll('</p:', '</x:')
+      .replaceAll('<a:', '<d:')
+      .replaceAll('</a:', '</d:');
+    const input = await createIndependentPptx({
+      'ppt/slides/slide1.xml': slide,
+    });
+
+    const result = await parsePptx(input);
+
+    const element = result.slides[0]?.elements[0];
+    expect(element?.type).toBe('text');
+    if (element?.type !== 'text') throw new Error('Expected a text element');
+    expect(element.content).toContain('Aliased');
   });
 
   it('rejects mismatched XML closing names in strict mode', async () => {
