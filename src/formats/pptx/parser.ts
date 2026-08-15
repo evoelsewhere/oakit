@@ -118,6 +118,7 @@ export async function parse(
     imageMode: options.imageMode || 'base64',
     videoMode: options.videoMode || 'none',
     audioMode: options.audioMode || 'none',
+    errorMode: options.errorMode || 'tolerant',
   };
 
   const zip = await JSZip.loadAsync(file);

@@ -351,10 +351,26 @@ export interface Slide {
   transition?: SlideTransition | null;
 }
 
+export type PptxErrorMode = 'strict' | 'tolerant';
+
+export type PptxDiagnosticCode =
+  | 'invalid-relationship-target'
+  | 'missing-required-part'
+  | 'xml-parse-failed'
+  | 'xml-read-failed';
+
+export interface PptxDiagnostic {
+  code: PptxDiagnosticCode;
+  message: string;
+  part?: string;
+  severity: 'error' | 'warning';
+}
+
 export interface Options {
   imageMode?: 'base64' | 'blob' | 'both' | 'none';
   videoMode?: 'blob' | 'none';
   audioMode?: 'blob' | 'none';
+  errorMode?: PptxErrorMode;
 }
 
 /** Binary inputs accepted by JSZip in browsers and Node.js. */
@@ -372,4 +388,9 @@ export interface PptxDocument {
     width: number;
     height: number;
   };
+}
+
+export interface PptxParseResult {
+  diagnostics: PptxDiagnostic[];
+  document: PptxDocument;
 }
