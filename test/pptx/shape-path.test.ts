@@ -1976,6 +1976,103 @@ describe('PowerPoint preset shape path safety', () => {
     expect(swoosh('adj2', '100000')).toBe(swoosh('adj2', '70000'));
   });
 
+  it('clamps coupled PowerPoint circular-arrow adjustments', () => {
+    const arrow = (
+      adjustments: ReadonlyArray<readonly [string, string]>,
+    ): string =>
+      getShapePath(
+        'circularArrow',
+        120,
+        80,
+        guides(adjustments.map(([name, value]) => [name, `val ${value}`])),
+      );
+
+    expect(arrow([['adj5', '-10000']])).toBe(arrow([['adj5', '0']]));
+    expect(arrow([['adj5', '100000']])).toBe(arrow([['adj5', '25000']]));
+    expect(
+      arrow([
+        ['adj1', '100000'],
+        ['adj5', '10000'],
+      ]),
+    ).toBe(
+      arrow([
+        ['adj1', '20000'],
+        ['adj5', '10000'],
+      ]),
+    );
+    expect(arrow([['adj3', '-10000']])).toBe(arrow([['adj3', '1']]));
+    expect(arrow([['adj3', '30000000']])).toBe(arrow([['adj3', '21599999']]));
+    expect(arrow([['adj4', '-10000']])).toBe(arrow([['adj4', '0']]));
+    expect(arrow([['adj4', '30000000']])).toBe(arrow([['adj4', '21599999']]));
+    expect(arrow([['adj2', '-10000']])).toBe(arrow([['adj2', '0']]));
+  });
+
+  it.each([
+    [120, 80, '10000', '600000', '5400000', '0', '12500', '6ac77dce'],
+    [80, 120, '20000', '1200000', '10800000', '5400000', '15000', '4ed6b004'],
+    [100, 100, '25000', '1800000', '16200000', '10800000', '20000', 'fb1e4c43'],
+    [200, 40, '1000', '300000', '21000000', '16200000', '5000', 'd2557b25'],
+  ])(
+    'locks circular-arrow branch geometry for a %sx%s box',
+    (width, height, adj1, adj2, adj3, adj4, adj5, expectedHash) => {
+      const path = getShapePath(
+        'circularArrow',
+        width,
+        height,
+        guides([
+          ['adj1', `val ${adj1}`],
+          ['adj2', `val ${adj2}`],
+          ['adj3', `val ${adj3}`],
+          ['adj4', `val ${adj4}`],
+          ['adj5', `val ${adj5}`],
+        ]),
+      );
+
+      expectFinitePath(path);
+      expect(hashPath(path)).toBe(expectedHash);
+    },
+  );
+
+  it('locks a deterministic circular-arrow branch corpus', () => {
+    const dimensions = [
+      [120, 80],
+      [80, 120],
+      [100, 100],
+      [200, 40],
+      [40, 200],
+      [160, 90],
+    ] as const;
+    let state = 0x5eedc0de;
+    const next = (): number => {
+      state = (Math.imul(state, 1664525) + 1013904223) >>> 0;
+      return state;
+    };
+    const paths: string[] = [];
+
+    for (let index = 0; index < 96; index += 1) {
+      const dimension = dimensions[next() % dimensions.length];
+      if (dimension === undefined) throw new Error('Missing corpus dimension');
+      const [width, height] = dimension;
+      paths.push(
+        getShapePath(
+          'circularArrow',
+          width,
+          height,
+          guides([
+            ['adj1', `val ${1 + (next() % 50000)}`],
+            ['adj2', `val ${next() % 21600000}`],
+            ['adj3', `val ${1 + (next() % 21599999)}`],
+            ['adj4', `val ${next() % 21600000}`],
+            ['adj5', `val ${1 + (next() % 25000)}`],
+          ]),
+        ),
+      );
+    }
+
+    for (const path of paths) expectFinitePath(path);
+    expect(hashPath(paths.join('|'))).toBe('a2e6bf98');
+  });
+
   it('keeps common default paths deterministic', () => {
     const rectangle = 'M 0 0 L 120 0 L 120 80 L 0 80 Z';
     expect(getShapePath('rect', 120, 80, xml({}))).toBe(rectangle);
