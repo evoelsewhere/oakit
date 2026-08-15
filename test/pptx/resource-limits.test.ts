@@ -59,4 +59,20 @@ describe('PPTX resource limits', () => {
       parsePptx(input, { limits: { maxEntries: 0 } }),
     ).rejects.toThrow(/positive integer/);
   });
+
+  it('enforces XML complexity limits in tolerant mode', async () => {
+    const input = await createMinimalPptx();
+
+    await expect(
+      parsePptx(input, {
+        errorMode: 'tolerant',
+        limits: { maxXmlDepth: 1 },
+      }),
+    ).rejects.toMatchObject({
+      diagnostic: {
+        code: 'resource-limit-exceeded',
+        message: expect.stringContaining('maxXmlDepth'),
+      },
+    });
+  });
 });

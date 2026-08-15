@@ -156,7 +156,12 @@ export async function parse(
     }
     throw error;
   }
-  const xmlReader = new PptxXmlReader(zip, parseOptions.errorMode, diagnostics);
+  const xmlReader = new PptxXmlReader(
+    zip,
+    parseOptions.errorMode,
+    diagnostics,
+    limits,
+  );
 
   const filesInfo = await getContentTypes(xmlReader);
   const { width, height, defaultTextStyle } = await getSlideInfo(xmlReader);

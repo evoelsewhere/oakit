@@ -1,6 +1,11 @@
 import type JSZip from 'jszip';
 import { parse } from 'txml';
 
+import {
+  readZipEntryBytes,
+  ZipEntrySizeLimitError,
+} from '../archive/read-entry';
+
 export type XmlValue =
   XmlNode | XmlValue[] | string | number | boolean | null | undefined;
 
@@ -11,7 +16,31 @@ export interface XmlNode {
 export type XmlReadResult<T> =
   | { status: 'ok'; value: T }
   | { status: 'missing' }
-  | { status: 'error'; error: unknown; phase: 'parse' | 'read' };
+  | { status: 'error'; error: unknown; phase: 'limit' | 'parse' | 'read' };
+
+export interface XmlReadLimits {
+  maxBytes?: number;
+  maxDepth?: number;
+  maxNodes?: number;
+}
+
+export class XmlComplexityLimitError extends Error {
+  readonly actual: number;
+  readonly limit: number;
+  readonly limitName: 'maxXmlDepth' | 'maxXmlNodes';
+
+  constructor(
+    limitName: 'maxXmlDepth' | 'maxXmlNodes',
+    actual: number,
+    limit: number,
+  ) {
+    super(`XML resource limit ${limitName} exceeded: ${actual} > ${limit}`);
+    this.name = 'XmlComplexityLimitError';
+    this.actual = actual;
+    this.limit = limit;
+    this.limitName = limitName;
+  }
+}
 
 interface TxmlNode {
   attributes?: Record<string, string>;
@@ -94,10 +123,96 @@ export function simplifyLossless(
   });
 }
 
+function markupEnd(xml: string, start: number, declaration: boolean): number {
+  let quote = '';
+  let subsetDepth = 0;
+  for (let index = start; index < xml.length; index++) {
+    const character = xml[index]!;
+    if (quote) {
+      if (character === quote) quote = '';
+      continue;
+    }
+    if (character === '"' || character === "'") {
+      quote = character;
+      continue;
+    }
+    if (declaration) {
+      if (character === '[') subsetDepth++;
+      else if (character === ']' && subsetDepth > 0) subsetDepth--;
+    }
+    if (character === '>' && subsetDepth === 0) return index;
+  }
+  return xml.length - 1;
+}
+
+/** Reject pathological nesting before the recursive XML parser sees it. */
+export function assertXmlComplexity(
+  xml: string,
+  limits: Pick<XmlReadLimits, 'maxDepth' | 'maxNodes'>,
+): void {
+  let depth = 0;
+  let nodes = 0;
+  let index = 0;
+
+  while (index < xml.length) {
+    const opening = xml.indexOf('<', index);
+    if (opening < 0) return;
+
+    if (xml.startsWith('<!--', opening)) {
+      const end = xml.indexOf('-->', opening + 4);
+      index = end < 0 ? xml.length : end + 3;
+      continue;
+    }
+    if (xml.startsWith('<![CDATA[', opening)) {
+      const end = xml.indexOf(']]>', opening + 9);
+      index = end < 0 ? xml.length : end + 3;
+      continue;
+    }
+    if (xml.startsWith('<?', opening)) {
+      const end = xml.indexOf('?>', opening + 2);
+      index = end < 0 ? xml.length : end + 2;
+      continue;
+    }
+    if (xml.startsWith('<!', opening)) {
+      index = markupEnd(xml, opening + 2, true) + 1;
+      continue;
+    }
+
+    const end = markupEnd(xml, opening + 1, false);
+    if (xml.startsWith('</', opening)) {
+      if (depth > 0) depth--;
+    } else {
+      nodes++;
+      if (limits.maxNodes !== undefined && nodes > limits.maxNodes) {
+        throw new XmlComplexityLimitError(
+          'maxXmlNodes',
+          nodes,
+          limits.maxNodes,
+        );
+      }
+      const nodeDepth = depth + 1;
+      if (limits.maxDepth !== undefined && nodeDepth > limits.maxDepth) {
+        throw new XmlComplexityLimitError(
+          'maxXmlDepth',
+          nodeDepth,
+          limits.maxDepth,
+        );
+      }
+      const selfClosing = xml
+        .slice(opening + 1, end)
+        .trimEnd()
+        .endsWith('/');
+      if (!selfClosing) depth = nodeDepth;
+    }
+    index = end + 1;
+  }
+}
+
 /** Read an XML part while preserving missing and failed states for callers. */
 export async function readXmlFileResult<T extends XmlValue = XmlValue>(
   zip: JSZip,
   filename: string,
+  limits: XmlReadLimits = {},
 ): Promise<XmlReadResult<T>> {
   if (!filename) return { status: 'missing' };
   const file = zip.file(filename);
@@ -105,18 +220,32 @@ export async function readXmlFileResult<T extends XmlValue = XmlValue>(
 
   let data: string;
   try {
-    data = await file.async('string');
+    if (limits.maxBytes === undefined) {
+      data = await file.async('string');
+    } else {
+      const bytes = await readZipEntryBytes(file, limits.maxBytes);
+      data = new TextDecoder().decode(bytes);
+    }
   } catch (error) {
-    return { status: 'error', phase: 'read', error };
+    return {
+      status: 'error',
+      phase: error instanceof ZipEntrySizeLimitError ? 'limit' : 'read',
+      error,
+    };
   }
 
   try {
+    assertXmlComplexity(data, limits);
     return {
       status: 'ok',
       value: simplifyLossless(parse(data, { keepWhitespace: true })) as T,
     };
   } catch (error) {
-    return { status: 'error', phase: 'parse', error };
+    return {
+      status: 'error',
+      phase: error instanceof XmlComplexityLimitError ? 'limit' : 'parse',
+      error,
+    };
   }
 }
 

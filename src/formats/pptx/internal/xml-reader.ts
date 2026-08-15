@@ -7,9 +7,17 @@ import {
 } from '../../../common';
 import {
   readXmlFileResult,
+  XmlComplexityLimitError,
   type XmlReadResult,
 } from '../../../common/xml/read-xml';
+import { ZipEntrySizeLimitError } from '../../../common/archive/read-entry';
 import { PptxParseError } from '../errors';
+import {
+  DEFAULT_PPTX_RESOURCE_LIMITS,
+  PptxResourceLimitError,
+  resourceLimitDiagnostic,
+  type ResolvedPptxResourceLimits,
+} from './resource-limits';
 import type {
   PptxDiagnostic,
   PptxErrorMode,
@@ -36,6 +44,7 @@ export class PptxXmlReader {
     private readonly zip: JSZip,
     private readonly errorMode: PptxErrorMode,
     private readonly diagnostics: PptxDiagnostic[],
+    private readonly limits: ResolvedPptxResourceLimits = DEFAULT_PPTX_RESOURCE_LIMITS,
   ) {}
 
   async read(
@@ -49,7 +58,11 @@ export class PptxXmlReader {
 
     let result = this.cache.get(part);
     if (!result) {
-      result = await readXmlFileResult<XmlLookupValue>(this.zip, part);
+      result = await readXmlFileResult<XmlLookupValue>(this.zip, part, {
+        maxBytes: this.limits.maxXmlBytes,
+        maxDepth: this.limits.maxXmlDepth,
+        maxNodes: this.limits.maxXmlNodes,
+      });
       this.cache.set(part, result);
     }
 
@@ -109,6 +122,30 @@ export class PptxXmlReader {
     result: Extract<XmlReadResult<XmlLookupValue>, { status: 'error' }>,
     required: boolean,
   ): void {
+    if (result.phase === 'limit') {
+      if (result.error instanceof ZipEntrySizeLimitError) {
+        this.reportResourceLimit(
+          new PptxResourceLimitError(
+            'maxXmlBytes',
+            result.error.actual,
+            result.error.limit,
+            part,
+          ),
+        );
+      }
+      if (result.error instanceof XmlComplexityLimitError) {
+        this.reportResourceLimit(
+          new PptxResourceLimitError(
+            result.error.limitName,
+            result.error.actual,
+            result.error.limit,
+            part,
+          ),
+        );
+      }
+      throw result.error;
+    }
+
     const code: PptxDiagnosticCode =
       result.phase === 'parse' ? 'xml-parse-failed' : 'xml-read-failed';
     const diagnostic: PptxDiagnostic = {
@@ -120,6 +157,12 @@ export class PptxXmlReader {
       severity: required ? 'error' : 'warning',
     };
     this.report(diagnostic, `${code}:${part}`, result.error);
+  }
+
+  private reportResourceLimit(error: PptxResourceLimitError): never {
+    const diagnostic = resourceLimitDiagnostic(error);
+    this.diagnostics.push(diagnostic);
+    throw new PptxParseError(diagnostic, { cause: error });
   }
 
   private report(

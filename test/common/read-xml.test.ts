@@ -45,4 +45,38 @@ describe('readXmlFile', () => {
       phase: 'parse',
     });
   });
+
+  it('rejects XML parts that exceed their expanded byte limit', async () => {
+    const zip = createXmlArchive();
+
+    await expect(
+      readXmlFileResult(zip, 'document.xml', { maxBytes: 10 }),
+    ).resolves.toMatchObject({ status: 'error', phase: 'limit' });
+  });
+
+  it('rejects excessive XML depth before parsing', async () => {
+    const zip = createXmlArchive();
+    zip.file('deep.xml', '<a><b><c/></b></a>');
+
+    await expect(
+      readXmlFileResult(zip, 'deep.xml', { maxDepth: 2 }),
+    ).resolves.toMatchObject({
+      status: 'error',
+      phase: 'limit',
+      error: expect.objectContaining({ limitName: 'maxXmlDepth' }),
+    });
+  });
+
+  it('rejects excessive XML node counts', async () => {
+    const zip = createXmlArchive();
+    zip.file('wide.xml', '<root><a/><b/><c/></root>');
+
+    await expect(
+      readXmlFileResult(zip, 'wide.xml', { maxNodes: 3 }),
+    ).resolves.toMatchObject({
+      status: 'error',
+      phase: 'limit',
+      error: expect.objectContaining({ limitName: 'maxXmlNodes' }),
+    });
+  });
 });
