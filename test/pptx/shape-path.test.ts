@@ -352,14 +352,43 @@ describe('PowerPoint preset shape path safety', () => {
       'unexpected sign character',
       { attrs: { fmla: 'val x10000', name: 'adj1' } },
     ],
+    ['decimal', { attrs: { fmla: 'val 100.5', name: 'adj1' } }],
+    ['exponent', { attrs: { fmla: 'val 1e4', name: 'adj1' } }],
+    ['hexadecimal', { attrs: { fmla: 'val 0x10', name: 'adj1' } }],
+    ['empty integer', { attrs: { fmla: 'val ', name: 'adj1' } }],
+    ['digit below zero', { attrs: { fmla: 'val /10000', name: 'adj1' } }],
+    ['digit above nine', { attrs: { fmla: 'val :10000', name: 'adj1' } }],
     [
       'unsafe integer',
       { attrs: { fmla: 'val 9007199254740992', name: 'adj1' } },
     ],
   ])('falls back to default geometry for %s', (_name, guide) => {
-    expect(getShapePath('roundRect', 120, 80, rawGuides(guide))).toBe(
-      getShapePath('roundRect', 120, 80, xml({})),
+    expect(getShapePath('triangle', 120, 80, rawGuides(guide))).toBe(
+      getShapePath('triangle', 120, 80, xml({})),
     );
+  });
+
+  it.each([
+    ['explicit plus', 'val +10000', 'val 10000'],
+    ['negative value', 'val -10000', 'val -10000'],
+    ['leading zeros', 'val 0010000', 'val 10000'],
+  ])('accepts %s in an integer guide', (_name, formula, equivalent) => {
+    const path = getShapePath(
+      'triangle',
+      120,
+      80,
+      rawGuides({ attrs: { fmla: formula, name: 'adj1' } }),
+    );
+
+    expect(path).toBe(
+      getShapePath(
+        'triangle',
+        120,
+        80,
+        rawGuides({ attrs: { fmla: equivalent, name: 'adj1' } }),
+      ),
+    );
+    expect(path).not.toBe(getShapePath('triangle', 120, 80, xml({})));
   });
 
   it('rejects a malformed guide when valid guides precede it', () => {

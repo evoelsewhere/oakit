@@ -10,6 +10,23 @@ function asArray(value: XmlLookupValue | undefined): XmlLookupValue[] {
   return Array.isArray(value) ? value : [value];
 }
 
+function isSafeIntegerFormula(formula: string): boolean {
+  if (!formula.startsWith('val ')) return false;
+  const valueText = formula.slice(4);
+  const firstCharacter = valueText[0];
+  const digits =
+    firstCharacter === '+' || firstCharacter === '-'
+      ? valueText.slice(1)
+      : valueText;
+  if (
+    digits.length === 0 ||
+    Array.from(digits).some((character) => !'0123456789'.includes(character))
+  ) {
+    return false;
+  }
+  return Number.isSafeInteger(Number(valueText));
+}
+
 function hasInvalidAdjustmentGuide(node: XmlLookupValue): boolean {
   const guides = asArray(
     getTextByPathList<XmlLookupValue>(node, [
@@ -22,8 +39,7 @@ function hasInvalidAdjustmentGuide(node: XmlLookupValue): boolean {
   return guides.some((guide) => {
     const name = getTextByPathList<string>(guide, ['attrs', 'name']);
     const formula = getTextByPathList<string>(guide, ['attrs', 'fmla']);
-    if (!name || !formula || !/^val [+-]?\d+$/.test(formula)) return true;
-    return !Number.isSafeInteger(Number(formula.slice(4)));
+    return !name || !formula || !isSafeIntegerFormula(formula);
   });
 }
 
