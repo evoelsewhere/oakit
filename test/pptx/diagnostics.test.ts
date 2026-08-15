@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { parsePptxWithDiagnostics } from '../../src';
+import { parsePptx, parsePptxWithDiagnostics } from '../../src';
 import { createMinimalPptx } from './fixture';
 
 describe('parsePptxWithDiagnostics', () => {
@@ -34,5 +34,21 @@ describe('parsePptxWithDiagnostics', () => {
         severity: 'error',
       }),
     );
+  });
+
+  it('rejects invalid XML with a typed error in strict mode', async () => {
+    const input = await createMinimalPptx({
+      'ppt/theme/theme1.xml': '<a:theme><a:themeElements></a:theme>',
+    });
+
+    await expect(
+      parsePptx(input, { errorMode: 'strict' }),
+    ).rejects.toMatchObject({
+      name: 'PptxParseError',
+      diagnostic: {
+        code: 'xml-parse-failed',
+        part: 'ppt/theme/theme1.xml',
+      },
+    });
   });
 });
