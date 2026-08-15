@@ -2,10 +2,10 @@
   <img src="docs/assets/oakit-logo.png" alt="OAKit logo" width="220" />
 </p>
 
-<h1 align="center">OAKit</h1>
+<h1 align="center">Office Agent Kit</h1>
 
 <p align="center">
-  <strong>Office Agent Kit</strong> — document capabilities built for AI agents.
+  <strong> Document capabilities built for AI agents.</strong>
 </p>
 
 OAKit gives agents and automation systems a reliable way to read, understand,
