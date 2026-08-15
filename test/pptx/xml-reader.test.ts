@@ -49,4 +49,23 @@ describe('PptxXmlReader', () => {
       PptxParseError,
     );
   });
+
+  it('reports unsafe relationship targets in tolerant mode', () => {
+    const diagnostics: PptxDiagnostic[] = [];
+    const reader = new PptxXmlReader(createArchive(), 'tolerant', diagnostics);
+
+    expect(
+      reader.resolveRelationshipTarget(
+        'ppt/slides/slide1.xml',
+        '../../../secret.xml',
+      ),
+    ).toBeNull();
+    expect(diagnostics).toMatchObject([
+      {
+        code: 'invalid-relationship-target',
+        part: 'ppt/slides/slide1.xml',
+        severity: 'warning',
+      },
+    ]);
+  });
 });

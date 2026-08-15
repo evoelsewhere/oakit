@@ -1,6 +1,9 @@
 import type JSZip from 'jszip';
 
-import type { XmlLookupValue } from '../../../common';
+import {
+  resolveRelationshipTarget as resolveOpcRelationshipTarget,
+  type XmlLookupValue,
+} from '../../../common';
 import {
   readXmlFileResult,
   type XmlReadResult,
@@ -57,6 +60,31 @@ export class PptxXmlReader {
 
     this.reportReadFailure(part, result, Boolean(options.required));
     return emptyXmlNode();
+  }
+
+  resolveRelationshipTarget(
+    ownerPart: string,
+    target: string,
+    targetMode?: string,
+  ): string | null {
+    try {
+      return resolveOpcRelationshipTarget(ownerPart, target, targetMode);
+    } catch (cause) {
+      const diagnostic: PptxDiagnostic = {
+        code: 'invalid-relationship-target',
+        message: `Invalid relationship target ${target} in ${ownerPart}: ${errorMessage(
+          cause,
+        )}`,
+        part: ownerPart,
+        severity: 'warning',
+      };
+      this.report(
+        diagnostic,
+        `invalid-relationship-target:${ownerPart}:${target}`,
+        cause,
+      );
+      return null;
+    }
   }
 
   private reportMissing(part: string): void {
