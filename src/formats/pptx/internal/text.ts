@@ -126,12 +126,11 @@ function appendParagraphIndent(
 }
 
 function closeOpenLists(openLists: ListType[]): string {
-  let html = '';
-  while (openLists.length > 0) {
-    const listType = openLists.pop();
-    if (listType) html += `</li></${listType}>`;
-  }
-  return html;
+  return openLists
+    .splice(0)
+    .reverse()
+    .map((listType) => `</li></${listType}>`)
+    .join('');
 }
 
 export function genTextBody(
@@ -143,7 +142,6 @@ export function genTextBody(
   warpObj: PptxParserContext,
 ): string {
   const paragraphs = asArray(nodeAt(textBodyNode, ['a:p']));
-  if (paragraphs.length === 0) return '';
 
   const fontReference = nodeAt(shapeNode, ['p:style', 'a:fontRef']);
   const isTableCell = Boolean(nodeAt(shapeNode, ['a:tcPr']));
@@ -189,10 +187,11 @@ export function genTextBody(
 
     if (listType) {
       const targetLevel = Math.min(listLevel, openLists.length);
-      while (openLists.length > targetLevel + 1) {
-        const closedList = openLists.pop();
-        if (closedList) html += `</li></${closedList}>`;
-      }
+      html += openLists
+        .splice(targetLevel + 1)
+        .reverse()
+        .map((closedList) => `</li></${closedList}>`)
+        .join('');
 
       if (openLists.length === targetLevel) {
         html += `<${listType}>`;
@@ -201,7 +200,7 @@ export function genTextBody(
         html += '</li>';
         const currentList = openLists[targetLevel];
         if (currentList !== listType) {
-          if (currentList) html += `</${currentList}>`;
+          html += `</${currentList}>`;
           html += `<${listType}>`;
           openLists[targetLevel] = listType;
         }
@@ -227,16 +226,10 @@ export function genTextBody(
         warpObj,
       );
     } else {
-      let previousStyle: SpanStyleInfo | null = null;
-      let accumulatedText = '';
+      const segments: Array<SpanStyleInfo | null> = [];
       for (const contentNode of contentNodes) {
         if (contentNode.kind === 'break') {
-          if (accumulatedText && previousStyle) {
-            html += renderSpan(previousStyle, accumulatedText);
-          }
-          previousStyle = null;
-          accumulatedText = '';
-          html += '<br>';
+          segments.push(null);
           continue;
         }
         const style = getSpanStyleInfo(
@@ -251,30 +244,21 @@ export function genTextBody(
           defaultTextStyle,
           warpObj,
         );
-        const startsNewSpan =
-          previousStyle === null ||
-          previousStyle.styleText !== style.styleText ||
-          previousStyle.hasLink !== style.hasLink ||
-          style.hasLink;
-        if (startsNewSpan) {
-          if (accumulatedText && previousStyle) {
-            html += renderSpan(previousStyle, accumulatedText);
-          }
-          accumulatedText = '';
-          if (style.hasLink) {
-            html += renderSpan(style, style.text);
-            previousStyle = null;
-          } else {
-            previousStyle = style;
-            accumulatedText = style.text;
-          }
+        const previousStyle = segments.at(-1);
+        if (
+          previousStyle &&
+          !previousStyle.hasLink &&
+          !style.hasLink &&
+          previousStyle.styleText === style.styleText
+        ) {
+          previousStyle.text += style.text;
         } else {
-          accumulatedText += style.text;
+          segments.push(style);
         }
       }
-      if (accumulatedText && previousStyle) {
-        html += renderSpan(previousStyle, accumulatedText);
-      }
+      html += segments
+        .map((style) => (style ? renderSpan(style, style.text) : '<br>'))
+        .join('');
     }
     html += '</p>';
   }
@@ -354,10 +338,7 @@ export function getSpanStyleInfo(
   warpObj: PptxParserContext,
 ): SpanStyleInfo {
   const level = getListLevel(paragraph) + 1;
-  const runText =
-    getTextNodeValue(nodeAt(node, ['a:t'])) ??
-    getTextNodeValue(nodeAt(node, ['a:fld', 'a:t'])) ??
-    '\u00a0';
+  const runText = getTextNodeValue(nodeAt(node, ['a:t'])) ?? '\u00a0';
 
   const fontColor = getFontColor(
     node,
@@ -475,7 +456,7 @@ export function getSpanStyleInfo(
     const gradient = `linear-gradient(${fontColor.rot + 90}deg, ${stops})`;
     styleText += `background: ${gradient}; background-clip: text; color: transparent;`;
   }
-  if (fontSize) styleText += `font-size: ${fontSize};`;
+  styleText += `font-size: ${fontSize};`;
   const fontFamily = fontType ? serializeCssFontFamily(fontType) : null;
   if (fontFamily) styleText += `font-family: ${fontFamily};`;
   if (fontBold) styleText += `font-weight: ${fontBold};`;
