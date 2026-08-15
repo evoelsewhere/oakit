@@ -41,9 +41,8 @@ export function getSchemeColorFromTheme(
         case 'tx2':
         case 'bg1':
         case 'bg2':
-          schemeClr = `a:${slideLayoutClrOvride[schmClrName] ?? ''}`;
-          break;
-        default:
+          if (!slideLayoutClrOvride[schmClrName]) return undefined;
+          schemeClr = `a:${slideLayoutClrOvride[schmClrName]}`;
           break;
       }
     } else {
@@ -59,8 +58,6 @@ export function getSchemeColorFromTheme(
           break;
         case 'bg2':
           schemeClr = 'a:lt2';
-          break;
-        default:
           break;
       }
     }
