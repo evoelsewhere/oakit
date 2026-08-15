@@ -17,6 +17,7 @@ export const mutatedFiles = [
   'src/common/xml/validate.ts',
   'src/formats/pptx/errors.ts',
   'src/formats/pptx/internal/animation.ts',
+  'src/formats/pptx/internal/border.ts',
   'src/formats/pptx/internal/position.ts',
   'src/formats/pptx/internal/resource-limits.ts',
   'src/formats/pptx/internal/scheme-color.ts',
@@ -25,7 +26,6 @@ export const mutatedFiles = [
 ];
 
 export const pendingMutationFiles = [
-  'src/formats/pptx/internal/border.ts',
   'src/formats/pptx/internal/chart.ts',
   'src/formats/pptx/internal/color.ts',
   'src/formats/pptx/internal/diagram.ts',

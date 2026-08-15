@@ -8,73 +8,90 @@ import { getSchemeColorFromTheme } from './scheme-color';
 import { getTextByPathList } from '../../../common';
 import { normalizeHexColor } from '../../../common/text/css';
 
+const DEFAULT_BORDER_COLOR = '#000000';
+const LINE_END_TYPES: ReadonlySet<string | undefined> = new Set([
+  'triangle',
+  'stealth',
+  'diamond',
+  'oval',
+  'arrow',
+]);
+const LINE_END_SIZES: ReadonlySet<string | undefined> = new Set([
+  'sm',
+  'med',
+  'lg',
+]);
+
 function getLineEnd(node?: XmlLookupValue): LineEnd | undefined {
   const attrs = getTextByPathList<Record<string, string>>(node, ['attrs']);
   if (!attrs) return undefined;
 
   const lineEnd: LineEnd = {
-    type: (attrs.type as LineEnd['type'] | undefined) ?? 'none',
+    type: LINE_END_TYPES.has(attrs.type)
+      ? (attrs.type as LineEnd['type'])
+      : 'none',
   };
-  if (attrs.w) lineEnd.width = attrs.w as NonNullable<LineEnd['width']>;
-  if (attrs.len) lineEnd.length = attrs.len as NonNullable<LineEnd['length']>;
+  if (LINE_END_SIZES.has(attrs.w)) {
+    lineEnd.width = attrs.w as NonNullable<LineEnd['width']>;
+  }
+  if (LINE_END_SIZES.has(attrs.len)) {
+    lineEnd.length = attrs.len as NonNullable<LineEnd['length']>;
+  }
   return lineEnd;
+}
+
+function getReferencedLine(
+  node: unknown,
+  warpObj: PptxParserContext,
+): XmlLookupValue | undefined {
+  const lnRefNode = getTextByPathList<XmlLookupValue>(node, [
+    'p:style',
+    'a:lnRef',
+  ]);
+  const lineIndex =
+    Number(getTextByPathList<string>(lnRefNode, ['attrs', 'idx'])) - 1;
+  const themeLines = getTextByPathList<XmlLookupValue | XmlLookupValue[]>(
+    warpObj.themeContent,
+    ['a:theme', 'a:themeElements', 'a:fmtScheme', 'a:lnStyleLst', 'a:ln'],
+  );
+
+  if (Array.isArray(themeLines)) return themeLines[lineIndex];
+  return lineIndex === 0 ? themeLines : undefined;
 }
 
 export function getBorder(
   node: unknown,
-  elType: string | undefined,
+  _elType: string | undefined,
   warpObj: PptxParserContext,
 ): Border & {
   headEnd?: LineEnd;
   strokeDasharray: string;
   tailEnd?: LineEnd;
 } {
-  let lineNode = getTextByPathList<XmlLookupValue>(node, ['p:spPr', 'a:ln']);
-  if (!lineNode) {
-    const lnRefNode = getTextByPathList<XmlLookupValue>(node, [
-      'p:style',
-      'a:lnRef',
-    ]);
-    if (lnRefNode) {
-      const lnIdx = getTextByPathList<string>(lnRefNode, ['attrs', 'idx']);
-      const themeLines = getTextByPathList<XmlLookupValue | XmlLookupValue[]>(
-        warpObj.themeContent,
-        ['a:theme', 'a:themeElements', 'a:fmtScheme', 'a:lnStyleLst', 'a:ln'],
-      );
-      if (themeLines) {
-        const lines = Array.isArray(themeLines) ? themeLines : [themeLines];
-        lineNode = lines[Number(lnIdx) - 1];
-      }
-    }
-  }
-  if (!lineNode && typeof node === 'object' && node !== null) {
-    lineNode = node as XmlLookupValue;
-  }
-  if (!lineNode) {
-    return {
-      borderColor: '#000000',
-      borderWidth: 0,
-      borderType: 'solid',
-      strokeDasharray: '0',
-    };
-  }
+  const lineNode =
+    getTextByPathList<XmlLookupValue>(node, ['p:spPr', 'a:ln']) ??
+    getReferencedLine(node, warpObj) ??
+    (node as XmlLookupValue | undefined);
 
   const isNoFill = getTextByPathList(lineNode, ['a:noFill']);
 
-  let borderWidth = isNoFill
-    ? 0
-    : parseInt(getTextByPathList<string>(lineNode, ['attrs', 'w']) ?? '0') /
-      12700;
-  if (isNaN(borderWidth)) {
-    if (lineNode) borderWidth = 0;
-    else if (elType !== 'obj') borderWidth = 0;
-    else borderWidth = 1;
-  }
+  const widthEmus = Number(
+    getTextByPathList<string>(lineNode, ['attrs', 'w']) ?? 0,
+  );
+  const borderWidth =
+    !isNoFill && Number.isSafeInteger(widthEmus)
+      ? Math.max(widthEmus, 0) / 12_700
+      : 0;
 
   const solidFill = getTextByPathList<XmlLookupValue>(lineNode, [
     'a:solidFill',
   ]);
-  let borderColor = getSolidFill(solidFill, undefined, undefined, warpObj);
+  let borderColor: string | undefined = getSolidFill(
+    solidFill,
+    undefined,
+    undefined,
+    warpObj,
+  );
 
   if (!borderColor) {
     const schemeClrNode = getTextByPathList<XmlLookupValue>(node, [
@@ -82,20 +99,25 @@ export function getBorder(
       'a:lnRef',
       'a:schemeClr',
     ]);
-    const schemeClr = `a:${getTextByPathList<string>(schemeClrNode, ['attrs', 'val']) ?? ''}`;
-    borderColor = getSchemeColorFromTheme(schemeClr, warpObj) ?? '';
+    const schemeName = getTextByPathList<string>(schemeClrNode, [
+      'attrs',
+      'val',
+    ]);
+    const themeColor = getSchemeColorFromTheme(`a:${schemeName}`, warpObj);
+    borderColor = themeColor === undefined ? DEFAULT_BORDER_COLOR : themeColor;
 
-    if (borderColor) {
-      const shadeValue = getTextByPathList<string>(schemeClrNode, [
-        'a:shade',
-        'attrs',
-        'val',
-      ]);
+    const shadeValue = getTextByPathList<string>(schemeClrNode, [
+      'a:shade',
+      'attrs',
+      'val',
+    ]);
 
-      if (shadeValue) {
-        const shade = parseInt(shadeValue) / 100000;
+    const shadeEmus = Number(shadeValue);
+    if (Number.isSafeInteger(shadeEmus)) {
+      if (shadeEmus >= 0) {
+        const shade = Math.min(shadeEmus, 100_000) / 100_000;
 
-        const color = tinycolor('#' + borderColor).toHsl();
+        const color = tinycolor(borderColor).toHsl();
         borderColor = tinycolor({
           h: color.h,
           s: color.s,
@@ -106,7 +128,8 @@ export function getBorder(
     }
   }
 
-  borderColor = normalizeHexColor(borderColor) ?? '#000000';
+  const safeBorderColor =
+    normalizeHexColor(borderColor) ?? DEFAULT_BORDER_COLOR;
 
   const type = getTextByPathList<string>(lineNode, [
     'a:prstDash',
@@ -116,10 +139,6 @@ export function getBorder(
   let borderType: Border['borderType'] = 'solid';
   let strokeDasharray = '0';
   switch (type) {
-    case 'solid':
-      borderType = 'solid';
-      strokeDasharray = '0';
-      break;
     case 'dash':
       borderType = 'dashed';
       strokeDasharray = '5';
@@ -167,7 +186,7 @@ export function getBorder(
   );
 
   return {
-    borderColor,
+    borderColor: safeBorderColor,
     borderWidth,
     borderType,
     strokeDasharray,
