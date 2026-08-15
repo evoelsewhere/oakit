@@ -811,7 +811,7 @@ export function getShapePath(
           shapAdjst_val = parseInt(shapAdjst.substring(4)) * RATIO_EMUs_Points;
         }
 
-        let p1x = w * shapAdjst_val;
+        const p1x = w * shapAdjst_val;
         if (shapType === 'flowChartMerge') {
           pathData = `M ${w - p1x} ${h} L ${w} 0 L 0 0 Z`;
         } else {
