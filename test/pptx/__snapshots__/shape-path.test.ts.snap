@@ -1964,19 +1964,19 @@ exports[`PowerPoint preset shape path safety > keeps the locked geometry contrac
 
 exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for leftArrowCallout 1`] = `
 {
-  "adj": "c13e6e50",
-  "adj1": "ca9ba858",
-  "adj2": "cac8550d",
-  "adj3": "894e5480",
+  "adj": "d90624a8",
+  "adj1": "e9155bd4",
+  "adj2": "29d2aca5",
+  "adj3": "6da48b18",
   "adj4": "22da740e",
-  "adj5": "c13e6e50",
-  "adj6": "c13e6e50",
-  "adj7": "c13e6e50",
-  "adj8": "c13e6e50",
+  "adj5": "d90624a8",
+  "adj6": "d90624a8",
+  "adj7": "d90624a8",
+  "adj8": "d90624a8",
   "authored": "b0a87353",
-  "default": "c13e6e50",
-  "hf": "c13e6e50",
-  "vf": "c13e6e50",
+  "default": "d90624a8",
+  "hf": "d90624a8",
+  "vf": "d90624a8",
 }
 `;
 
@@ -2630,19 +2630,19 @@ exports[`PowerPoint preset shape path safety > keeps the locked geometry contrac
 
 exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for rightArrowCallout 1`] = `
 {
-  "adj": "a8ce5de5",
-  "adj1": "6a3a7c63",
-  "adj2": "66dc9290",
-  "adj3": "330f4163",
+  "adj": "038a4a4b",
+  "adj1": "6768ecc9",
+  "adj2": "b33f0e9a",
+  "adj3": "c0c71021",
   "adj4": "4bd219d1",
-  "adj5": "a8ce5de5",
-  "adj6": "a8ce5de5",
-  "adj7": "a8ce5de5",
-  "adj8": "a8ce5de5",
+  "adj5": "038a4a4b",
+  "adj6": "038a4a4b",
+  "adj7": "038a4a4b",
+  "adj8": "038a4a4b",
   "authored": "445daf54",
-  "default": "a8ce5de5",
-  "hf": "a8ce5de5",
-  "vf": "a8ce5de5",
+  "default": "038a4a4b",
+  "hf": "038a4a4b",
+  "vf": "038a4a4b",
 }
 `;
 
