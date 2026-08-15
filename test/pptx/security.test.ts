@@ -27,6 +27,7 @@ const MALICIOUS_TEXT_SLIDE = `
               <a:r>
                 <a:rPr>
                   <a:latin typeface="Arial; background-image:url(https://attacker.example/pixel)"/>
+                  <a:solidFill><a:srgbClr val="fff; position:fixed"/></a:solidFill>
                   <a:hlinkClick r:id="rIdLink"/>
                 </a:rPr>
                 <a:t><![CDATA[<img src=x onerror=alert(1)> & unsafe]]></a:t>
@@ -63,6 +64,7 @@ describe('PPTX HTML security', () => {
       'font-family: &quot;Arial; background-image:url(https://attacker.example/pixel)&quot;;',
     );
     expect(element.content).not.toContain('font-family: Arial;');
+    expect(element.content).not.toContain('position:fixed');
   });
 
   it('escapes speaker note HTML', async () => {

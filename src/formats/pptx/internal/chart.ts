@@ -9,6 +9,7 @@ import type { PptxParserContext } from './context';
 
 import { getTextByPathList } from '../../../common';
 import { applyTint } from './color';
+import { normalizeHexColor } from '../../../common/text/css';
 
 interface ParsedChartBase {
   barDir?: 'bar' | 'col';
@@ -90,7 +91,7 @@ function extractChartColors(
       ]);
     }
 
-    colors.push(color ? `#${color}` : '');
+    colors.push(color ? (normalizeHexColor(color) ?? '') : '');
   }
 
   return colors;

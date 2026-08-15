@@ -85,6 +85,7 @@ import {
   resolvePptxResourceLimits,
   resourceLimitDiagnostic,
 } from './internal/resource-limits';
+import { normalizeHexColor } from '../../common/text/css';
 
 function nodeAt(
   node: unknown,
@@ -333,8 +334,10 @@ async function getTheme(xmlReader: PptxXmlReader) {
     for (let i = 1; i <= 6; i++) {
       const accent = nodeAt(colorScheme, [`a:accent${i}`]);
       if (!accent) break;
-      const color = textAt(accent, ['a:srgbClr', 'attrs', 'val']);
-      if (color) themeColors.push('#' + color);
+      const color = normalizeHexColor(
+        textAt(accent, ['a:srgbClr', 'attrs', 'val']) ?? '',
+      );
+      if (color) themeColors.push(color);
     }
   }
 

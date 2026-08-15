@@ -22,6 +22,7 @@ import {
   hslToRgb,
 } from './color';
 import { getSchemeColorFromTheme } from './scheme-color';
+import { normalizeHexColor } from '../../../common/text/css';
 
 type MediaCacheKey = 'loadedAudios' | 'loadedImages' | 'loadedVideos';
 type MediaMode = 'base64' | 'blob';
@@ -778,5 +779,5 @@ export function getSolidFill(
     const amount = modifier(colorNode, name);
     if (!Number.isNaN(amount)) color = transform(color, amount, hasAlpha);
   }
-  return color && !color.startsWith('#') ? `#${color}` : color;
+  return normalizeHexColor(color) ?? '';
 }

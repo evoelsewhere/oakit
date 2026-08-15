@@ -6,6 +6,7 @@ import tinycolor from 'tinycolor2';
 import { getSolidFill } from './fill';
 import { getSchemeColorFromTheme } from './scheme-color';
 import { getTextByPathList } from '../../../common';
+import { normalizeHexColor } from '../../../common/text/css';
 
 function getLineEnd(node?: XmlLookupValue): LineEnd | undefined {
   const attrs = getTextByPathList<Record<string, string>>(node, ['attrs']);
@@ -105,8 +106,7 @@ export function getBorder(
     }
   }
 
-  if (!borderColor) borderColor = '#000000';
-  else if (!borderColor.startsWith('#')) borderColor = `#${borderColor}`;
+  borderColor = normalizeHexColor(borderColor) ?? '#000000';
 
   const type = getTextByPathList<string>(lineNode, [
     'a:prstDash',
