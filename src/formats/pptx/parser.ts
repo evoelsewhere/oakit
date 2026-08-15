@@ -152,7 +152,8 @@ export async function parse(
     limits,
   };
 
-  const zip = await JSZip.loadAsync(file);
+  const zipInput = file instanceof Blob ? await file.arrayBuffer() : file;
+  const zip = await JSZip.loadAsync(zipInput);
   try {
     assertPptxArchiveWithinLimits(zip, limits);
   } catch (error) {
