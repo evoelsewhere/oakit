@@ -37,7 +37,7 @@ export function getTextByPathList(
   for (const key of path) {
     if (!isContainer(current)) return undefined;
     current = current[key];
-    if (current === null || current === undefined) return undefined;
+    if (current === null) return undefined;
   }
 
   return current;

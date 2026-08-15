@@ -9,7 +9,8 @@ export function encodeBase64(input: ArrayBuffer | ArrayBufferView): string {
   const mainLength = bytes.byteLength - (bytes.byteLength % 3);
   let base64 = '';
 
-  for (let index = 0; index < mainLength; index += 3) {
+  for (const [index] of bytes.subarray(0, mainLength).entries()) {
+    if (index % 3 !== 0) continue;
     const chunk =
       (bytes[index]! << 16) | (bytes[index + 1]! << 8) | bytes[index + 2]!;
     base64 += encodings[(chunk & 16_515_072) >> 18];
