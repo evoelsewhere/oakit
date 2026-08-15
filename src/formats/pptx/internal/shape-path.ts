@@ -2474,10 +2474,7 @@ export function getShapePath(
           cloudPath += arcPath;
           const lastL = arcPath.lastIndexOf('L');
           const coords = arcPath.substring(lastL + 1).split(' ');
-          lastPoint = [
-            parseFloat(coords[0] ?? '0'),
-            parseFloat(coords[1] ?? '0'),
-          ];
+          lastPoint = [Number(coords[0]), Number(coords[1])];
         }
         cloudPath += ' z';
 
@@ -2491,20 +2488,18 @@ export function getShapePath(
           const refr = RATIO_EMUs_Points;
           let adj1 = -20833 * refr;
           let adj2 = 62500 * refr;
-          if (shapAdjst_ary) {
-            for (const adj of asArray(shapAdjst_ary)) {
-              const sAdj_name = getTextByPathList(adj, ['attrs', 'name']);
-              if (sAdj_name === 'adj1') {
-                adj1 =
-                  parseInt(
-                    getTextByPathList(adj, ['attrs', 'fmla']).substring(4),
-                  ) * refr;
-              } else if (sAdj_name === 'adj2') {
-                adj2 =
-                  parseInt(
-                    getTextByPathList(adj, ['attrs', 'fmla']).substring(4),
-                  ) * refr;
-              }
+          for (const adj of asArray(shapAdjst_ary)) {
+            const sAdj_name = getTextByPathList(adj, ['attrs', 'name']);
+            if (sAdj_name === 'adj1') {
+              adj1 =
+                parseInt(
+                  getTextByPathList(adj, ['attrs', 'fmla']).substring(4),
+                ) * refr;
+            } else if (sAdj_name === 'adj2') {
+              adj2 =
+                parseInt(
+                  getTextByPathList(adj, ['attrs', 'fmla']).substring(4),
+                ) * refr;
             }
           }
           const cnstVal2 = 100000 * refr;
@@ -2515,10 +2510,13 @@ export function getShapePath(
           const dyPos = (h * adj2) / cnstVal2;
           const xPos = wd2 + dxPos;
           const yPos = hd2 + dyPos;
-          const ht = hd2 * Math.cos(Math.atan(dyPos / dxPos));
-          const wt = wd2 * Math.sin(Math.atan(dyPos / dxPos));
-          const g2 = wd2 * Math.cos(Math.atan(wt / ht));
-          const g3 = hd2 * Math.sin(Math.atan(wt / ht));
+          const unsignedDirection = Math.atan2(dyPos, Math.abs(dxPos));
+          const direction = dxPos < 0 ? -unsignedDirection : unsignedDirection;
+          const ht = hd2 * Math.cos(direction);
+          const wt = wd2 * Math.sin(direction);
+          const ellipseDirection = Math.atan(wt / ht);
+          const g2 = wd2 * Math.cos(ellipseDirection);
+          const g3 = hd2 * Math.sin(ellipseDirection);
           const g4 = adj1 >= 0 ? wd2 + g2 : wd2 - g2;
           const g5 = adj1 >= 0 ? hd2 + g3 : hd2 - g3;
           const g6 = g4 - xPos;

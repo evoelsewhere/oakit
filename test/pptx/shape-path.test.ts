@@ -876,6 +876,42 @@ describe('PowerPoint preset shape path safety', () => {
     expectFinitePath(upperBound);
   });
 
+  it('keeps a centered cloud callout finite', () => {
+    const path = getShapePath(
+      'cloudCallout',
+      120,
+      80,
+      guides([
+        ['adj1', 'val 0'],
+        ['adj2', 'val 0'],
+      ]),
+    );
+
+    expectFinitePath(path);
+    expect(hashPath(path)).toBe('9d3cefdb');
+  });
+
+  it.each([
+    [-50000, '3154bbac'],
+    [50000, '64d18688'],
+  ] as const)(
+    'places a vertical cloud callout at adjustment %i',
+    (adjustment, expectedHash) => {
+      const path = getShapePath(
+        'cloudCallout',
+        120,
+        80,
+        guides([
+          ['adj1', 'val 0'],
+          ['adj2', `val ${adjustment}`],
+        ]),
+      );
+
+      expectFinitePath(path);
+      expect(hashPath(path)).toBe(expectedHash);
+    },
+  );
+
   it('keeps common default paths deterministic', () => {
     const rectangle = 'M 0 0 L 120 0 L 120 80 L 0 80 Z';
     expect(getShapePath('rect', 120, 80, xml({}))).toBe(rectangle);
