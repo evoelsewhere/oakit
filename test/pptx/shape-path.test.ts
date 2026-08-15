@@ -1344,6 +1344,17 @@ describe('PowerPoint preset shape path safety', () => {
     );
   });
 
+  it.each(['adj1', 'adj2', 'adj3'])(
+    'clamps PowerPoint bent-up-arrow %s',
+    (name) => {
+      const bentUpArrow = (value: string): string =>
+        getShapePath('bentUpArrow', 120, 80, singleGuide(name, value));
+
+      expect(bentUpArrow('-10000')).toBe(bentUpArrow('0'));
+      expect(bentUpArrow('100000')).toBe(bentUpArrow('50000'));
+    },
+  );
+
   it('keeps common default paths deterministic', () => {
     const rectangle = 'M 0 0 L 120 0 L 120 80 L 0 80 Z';
     expect(getShapePath('rect', 120, 80, xml({}))).toBe(rectangle);

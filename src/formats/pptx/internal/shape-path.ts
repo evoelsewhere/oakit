@@ -3606,31 +3606,26 @@ export function getShapePath(
         const cnstVal1 = 50000 * RATIO_EMUs_Points;
         const cnstVal2 = 100000 * RATIO_EMUs_Points;
         const cnstVal3 = 200000 * RATIO_EMUs_Points;
-        if (shapAdjst_ary) {
-          for (const adj of asArray(shapAdjst_ary)) {
-            const sAdj_name = getTextByPathList(adj, ['attrs', 'name']);
-            if (sAdj_name === 'adj1') {
-              adj1 =
-                parseInt(
-                  getTextByPathList(adj, ['attrs', 'fmla']).substring(4),
-                ) * RATIO_EMUs_Points;
-            } else if (sAdj_name === 'adj2') {
-              adj2 =
-                parseInt(
-                  getTextByPathList(adj, ['attrs', 'fmla']).substring(4),
-                ) * RATIO_EMUs_Points;
-            } else if (sAdj_name === 'adj3') {
-              adj3 =
-                parseInt(
-                  getTextByPathList(adj, ['attrs', 'fmla']).substring(4),
-                ) * RATIO_EMUs_Points;
-            }
+        for (const adj of asArray(shapAdjst_ary)) {
+          const sAdj_name = getTextByPathList(adj, ['attrs', 'name']);
+          if (sAdj_name === 'adj1') {
+            adj1 =
+              parseInt(getTextByPathList(adj, ['attrs', 'fmla']).substring(4)) *
+              RATIO_EMUs_Points;
+          } else if (sAdj_name === 'adj2') {
+            adj2 =
+              parseInt(getTextByPathList(adj, ['attrs', 'fmla']).substring(4)) *
+              RATIO_EMUs_Points;
+          } else if (sAdj_name === 'adj3') {
+            adj3 =
+              parseInt(getTextByPathList(adj, ['attrs', 'fmla']).substring(4)) *
+              RATIO_EMUs_Points;
           }
         }
         const minWH = Math.min(w, h);
-        const a1 = adj1 < 0 ? 0 : adj1 > cnstVal1 ? cnstVal1 : adj1;
-        const a2 = adj2 < 0 ? 0 : adj2 > cnstVal1 ? cnstVal1 : adj2;
-        const a3 = adj3 < 0 ? 0 : adj3 > cnstVal1 ? cnstVal1 : adj3;
+        const a1 = Math.min(Math.max(adj1, 0), cnstVal1);
+        const a2 = Math.min(Math.max(adj2, 0), cnstVal1);
+        const a3 = Math.min(Math.max(adj3, 0), cnstVal1);
         const y1 = (minWH * a3) / cnstVal2;
         const dx1 = (minWH * a2) / cnstVal1;
         const x1 = w - dx1;
