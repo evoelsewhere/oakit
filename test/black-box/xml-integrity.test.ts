@@ -75,6 +75,20 @@ describe('PPTX XML integrity black-box cases', () => {
     );
   });
 
+  it('rejects duplicate expanded attribute names behind namespace aliases', async () => {
+    const presentation = validPresentation()
+      .replace(
+        `xmlns:r="${OFFICE_REL_NS}"`,
+        `xmlns:r="${OFFICE_REL_NS}" xmlns:rel="${OFFICE_REL_NS}"`,
+      )
+      .replace(
+        'r:id="rIdSlide1"',
+        'r:id="rIdSlide1" rel:id="rIdMissing"',
+      );
+
+    await expectStrictXmlFailure(presentation);
+  });
+
   it('rejects an XML declaration inside the document root', async () => {
     await expectStrictXmlFailure(
       validPresentation().replace(
