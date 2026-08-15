@@ -140,6 +140,22 @@ function positiveCoordinate(value: string | undefined): number | null {
   return Number.isSafeInteger(coordinate) ? coordinate : null;
 }
 
+function sanitizeNonFiniteNumbers(value: unknown): boolean {
+  if (!value || typeof value !== 'object') return false;
+
+  let sanitized = false;
+  const record = value as Record<string, unknown>;
+  for (const [key, child] of Object.entries(record)) {
+    if (typeof child === 'number' && !Number.isFinite(child)) {
+      record[key] = 0;
+      sanitized = true;
+    } else if (sanitizeNonFiniteNumbers(child)) {
+      sanitized = true;
+    }
+  }
+  return sanitized;
+}
+
 export async function parse(
   file: PptxInput,
   options: PptxParseOptions = {},
@@ -249,6 +265,18 @@ export async function parse(
       parseOptions,
       diagnostics,
     );
+    if (sanitizeNonFiniteNumbers(singleSlide)) {
+      reportDocumentDiagnostic(
+        {
+          code: 'invalid-document-value',
+          message: `Non-finite numeric values were replaced while parsing ${filename}`,
+          part: filename,
+          severity: 'error',
+        },
+        parseOptions.errorMode,
+        diagnostics,
+      );
+    }
     slides.push(singleSlide);
   }
 
