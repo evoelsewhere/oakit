@@ -11,6 +11,7 @@ export const DEFAULT_PPTX_RESOURCE_LIMITS = {
   maxPartBytes: 64 * MEBIBYTE,
   maxSlides: 1_000,
   maxTotalUncompressedBytes: 256 * MEBIBYTE,
+  maxTotalXmlNodes: 1_000_000,
   maxXmlBytes: 16 * MEBIBYTE,
   maxXmlDepth: 128,
   maxXmlNodes: 250_000,

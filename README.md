@@ -117,17 +117,18 @@ interface PptxParseOptions {
 
 The default resource limits are:
 
-| Limit                     | Default |
-| ------------------------- | ------- |
-| compressed input          | 100 MiB |
-| non-directory ZIP entries | 10,000  |
-| total declared expansion  | 256 MiB |
-| one expanded package part | 64 MiB  |
-| one expanded XML part     | 16 MiB  |
-| XML nesting depth         | 128     |
-| XML elements per part     | 250,000 |
-| one expanded media part   | 64 MiB  |
-| slides                    | 1,000   |
+| Limit                     | Default   |
+| ------------------------- | --------- |
+| compressed input          | 100 MiB   |
+| non-directory ZIP entries | 10,000    |
+| total declared expansion  | 256 MiB   |
+| one expanded package part | 64 MiB    |
+| one expanded XML part     | 16 MiB    |
+| XML nesting depth         | 128       |
+| XML elements per part     | 250,000   |
+| XML elements per package  | 1,000,000 |
+| one expanded media part   | 64 MiB    |
+| slides                    | 1,000     |
 
 Override only the limits appropriate for a trusted workload. Values must be
 positive integers, and XML/media byte limits cannot exceed the package-part

@@ -44,6 +44,7 @@ export class PptxXmlReader {
   private readonly cache = new Map<string, XmlReadResult<XmlLookupValue>>();
   private readonly reportedFailures = new Set<string>();
   private totalExpandedBytes = 0;
+  private totalXmlNodes = 0;
 
   constructor(
     private readonly zip: JSZip,
@@ -65,6 +66,7 @@ export class PptxXmlReader {
     if (!result) {
       result = await readXmlFileResult<XmlLookupValue>(this.zip, part, {
         consumeBytes: (byteLength) => this.consumeExpandedBytes(byteLength),
+        consumeNodes: (nodeCount) => this.consumeXmlNodes(nodeCount),
         maxBytes: this.limits.maxXmlBytes,
         maxDepth: this.limits.maxXmlDepth,
         maxNodes: this.limits.maxXmlNodes,
@@ -228,6 +230,21 @@ export class PptxXmlReader {
       );
     }
     this.totalExpandedBytes = nextTotal;
+  }
+
+  private consumeXmlNodes(nodeCount: number): void {
+    const nextTotal = this.totalXmlNodes + nodeCount;
+    if (
+      !Number.isSafeInteger(nextTotal) ||
+      nextTotal > this.limits.maxTotalXmlNodes
+    ) {
+      throw new XmlComplexityLimitError(
+        'maxTotalXmlNodes',
+        nextTotal,
+        this.limits.maxTotalXmlNodes,
+      );
+    }
+    this.totalXmlNodes = nextTotal;
   }
 
   private report(

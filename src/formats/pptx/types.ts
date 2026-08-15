@@ -382,6 +382,8 @@ export interface PptxResourceLimits {
   maxXmlDepth?: number;
   /** Maximum number of elements in one XML part. */
   maxXmlNodes?: number;
+  /** Maximum number of XML elements parsed across the package. */
+  maxTotalXmlNodes?: number;
   /** Maximum expanded size of an embedded media part. */
   maxMediaBytes?: number;
   /** Maximum number of slides selected by the presentation manifest. */

@@ -94,4 +94,18 @@ describe('PptxXmlReader', () => {
       },
     });
   });
+
+  it('enforces the cumulative XML node budget before parsing', async () => {
+    const reader = new PptxXmlReader(createArchive(), 'tolerant', [], {
+      ...DEFAULT_PPTX_RESOURCE_LIMITS,
+      maxTotalXmlNodes: 1,
+    });
+
+    await expect(reader.read('valid.xml')).rejects.toMatchObject({
+      diagnostic: {
+        code: 'resource-limit-exceeded',
+        message: expect.stringContaining('maxTotalXmlNodes'),
+      },
+    });
+  });
 });

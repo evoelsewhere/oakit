@@ -21,6 +21,7 @@ export type XmlReadResult<T> =
 
 export interface XmlReadLimits {
   consumeBytes?: (byteLength: number) => void;
+  consumeNodes?: (nodeCount: number) => void;
   maxBytes?: number;
   maxDepth?: number;
   maxNodes?: number;
@@ -29,10 +30,10 @@ export interface XmlReadLimits {
 export class XmlComplexityLimitError extends Error {
   readonly actual: number;
   readonly limit: number;
-  readonly limitName: 'maxXmlDepth' | 'maxXmlNodes';
+  readonly limitName: 'maxTotalXmlNodes' | 'maxXmlDepth' | 'maxXmlNodes';
 
   constructor(
-    limitName: 'maxXmlDepth' | 'maxXmlNodes',
+    limitName: 'maxTotalXmlNodes' | 'maxXmlDepth' | 'maxXmlNodes',
     actual: number,
     limit: number,
   ) {
@@ -151,14 +152,14 @@ function markupEnd(xml: string, start: number, declaration: boolean): number {
 export function assertXmlComplexity(
   xml: string,
   limits: Pick<XmlReadLimits, 'maxDepth' | 'maxNodes'>,
-): void {
+): number {
   let depth = 0;
   let nodes = 0;
   let index = 0;
 
   while (index < xml.length) {
     const opening = xml.indexOf('<', index);
-    if (opening < 0) return;
+    if (opening < 0) return nodes;
 
     if (xml.startsWith('<!--', opening)) {
       const end = xml.indexOf('-->', opening + 4);
@@ -208,6 +209,7 @@ export function assertXmlComplexity(
     }
     index = end + 1;
   }
+  return nodes;
 }
 
 /** Read an XML part while preserving missing and failed states for callers. */
@@ -245,7 +247,8 @@ export async function readXmlFileResult<T extends XmlValue = XmlValue>(
   }
 
   try {
-    assertXmlComplexity(data, limits);
+    const nodeCount = assertXmlComplexity(data, limits);
+    limits.consumeNodes?.(nodeCount);
     return {
       status: 'ok',
       value: simplifyLossless(parse(data, { keepWhitespace: true })) as T,

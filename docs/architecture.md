@@ -507,7 +507,8 @@ The parser currently:
 - allows only HTTP, HTTPS, and mailto hyperlinks in generated HTML;
 - quotes untrusted font-family values and validates CSS color values;
 - bounds compressed input, entry count, declared archive expansion, individual
-  parts, XML bytes/depth/node count, embedded media, and slide count;
+  parts, XML bytes/depth/per-part and cumulative node counts, embedded media,
+  and slide count;
 - stops XML and media decompression when an entry crosses its byte limit, even
   when ZIP metadata understated the expanded size;
 - does not provide an in-process wall-clock timeout;
