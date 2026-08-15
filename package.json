@@ -43,7 +43,8 @@
     "test:browser": "vitest run --config vitest.browser.config.ts",
     "test:corpus": "node scripts/corpus/fetch-pptx-corpus.mjs && vitest run --config vitest.corpus.config.ts",
     "test:corpus:large": "node scripts/corpus/fetch-pptx-corpus.mjs --include-large && vitest run --config vitest.corpus.config.ts",
-    "test:mutation": "stryker run",
+    "test:mutation": "stryker run && pnpm test:mutation:audit",
+    "test:mutation:audit": "node scripts/check-mutation-report.mjs",
     "test:watch": "vitest",
     "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build",
     "prepack": "pnpm build"

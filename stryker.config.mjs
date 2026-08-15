@@ -18,7 +18,7 @@ const config = {
   testRunner: 'vitest',
   checkers: ['typescript'],
   coverageAnalysis: 'perTest',
-  ignoreStatic: true,
+  ignoreStatic: false,
   concurrency: 2,
   timeoutMS: 10_000,
   dryRunTimeoutMinutes: 3,
@@ -31,9 +31,9 @@ const config = {
     fileName: 'reports/mutation/mutation.json',
   },
   thresholds: {
-    high: 80,
-    low: 65,
-    break: 60,
+    high: 100,
+    low: 100,
+    break: 100,
   },
 };
 
