@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import { PptxParseError } from '../../src/formats/pptx/errors';
 import { PptxXmlReader } from '../../src/formats/pptx/internal/xml-reader';
+import { DEFAULT_PPTX_RESOURCE_LIMITS } from '../../src/formats/pptx/internal/resource-limits';
 import type { PptxDiagnostic } from '../../src/formats/pptx/types';
 
 function createArchive(): JSZip {
@@ -78,5 +79,19 @@ describe('PptxXmlReader', () => {
         '../media/image&amp;one.png',
       ),
     ).toBe('ppt/media/image&one.png');
+  });
+
+  it('enforces the actual cumulative expansion budget', async () => {
+    const reader = new PptxXmlReader(createArchive(), 'tolerant', [], {
+      ...DEFAULT_PPTX_RESOURCE_LIMITS,
+      maxTotalUncompressedBytes: 10,
+    });
+
+    await expect(reader.read('valid.xml')).rejects.toMatchObject({
+      diagnostic: {
+        code: 'resource-limit-exceeded',
+        message: expect.stringContaining('maxTotalUncompressedBytes'),
+      },
+    });
   });
 });

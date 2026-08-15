@@ -25,6 +25,18 @@ export class ZipEntrySizeLimitError extends Error {
   }
 }
 
+export class ZipExpansionBudgetLimitError extends Error {
+  readonly actual: number;
+  readonly limit: number;
+
+  constructor(actual: number, limit: number) {
+    super(`Expanded ZIP data exceeds the ${limit} byte parse budget`);
+    this.name = 'ZipExpansionBudgetLimitError';
+    this.actual = actual;
+    this.limit = limit;
+  }
+}
+
 function declaredSize(file: JSZip.JSZipObject): number | null {
   const size = (file as StreamableZipObject)._data?.uncompressedSize;
   return Number.isSafeInteger(size) && Number(size) >= 0 ? Number(size) : null;
@@ -34,6 +46,7 @@ function declaredSize(file: JSZip.JSZipObject): number | null {
 export function readZipEntryBytes(
   file: JSZip.JSZipObject,
   maxBytes: number,
+  consumeBytes?: (byteLength: number) => void,
 ): Promise<Uint8Array> {
   const expectedSize = declaredSize(file);
   if (expectedSize !== null && expectedSize > maxBytes) {
@@ -57,7 +70,15 @@ export function readZipEntryBytes(
           reject(new ZipEntrySizeLimitError(byteLength, maxBytes));
           return;
         }
-        chunks.push(chunk);
+        try {
+          consumeBytes?.(chunk.byteLength);
+          chunks.push(chunk);
+        } catch (error) {
+          settled = true;
+          chunks.length = 0;
+          stream.pause();
+          reject(error);
+        }
       })
       .on('error', (error) => {
         if (settled) return;

@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   readZipEntryBytes,
+  ZipExpansionBudgetLimitError,
   ZipEntrySizeLimitError,
 } from '../../src/common/archive/read-entry';
 
@@ -39,5 +40,21 @@ describe('readZipEntryBytes', () => {
     await expect(
       readZipEntryBytes(loaded.file('part.bin')!, 10),
     ).rejects.toMatchObject({ actual: 1_000, limit: 10 });
+  });
+
+  it('stops when a shared expansion budget is exhausted', async () => {
+    const zip = new JSZip();
+    zip.file('part.bin', 'hello world');
+    const file = zip.file('part.bin')!;
+    let expandedBytes = 0;
+
+    await expect(
+      readZipEntryBytes(file, 100, (byteLength) => {
+        expandedBytes += byteLength;
+        if (expandedBytes > 5) {
+          throw new ZipExpansionBudgetLimitError(expandedBytes, 5);
+        }
+      }),
+    ).rejects.toBeInstanceOf(ZipExpansionBudgetLimitError);
   });
 });

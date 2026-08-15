@@ -3,6 +3,7 @@ import { parse } from 'txml';
 
 import {
   readZipEntryBytes,
+  ZipExpansionBudgetLimitError,
   ZipEntrySizeLimitError,
 } from '../archive/read-entry';
 
@@ -19,6 +20,7 @@ export type XmlReadResult<T> =
   | { status: 'error'; error: unknown; phase: 'limit' | 'parse' | 'read' };
 
 export interface XmlReadLimits {
+  consumeBytes?: (byteLength: number) => void;
   maxBytes?: number;
   maxDepth?: number;
   maxNodes?: number;
@@ -223,13 +225,21 @@ export async function readXmlFileResult<T extends XmlValue = XmlValue>(
     if (limits.maxBytes === undefined) {
       data = await file.async('string');
     } else {
-      const bytes = await readZipEntryBytes(file, limits.maxBytes);
+      const bytes = await readZipEntryBytes(
+        file,
+        limits.maxBytes,
+        limits.consumeBytes,
+      );
       data = new TextDecoder().decode(bytes);
     }
   } catch (error) {
     return {
       status: 'error',
-      phase: error instanceof ZipEntrySizeLimitError ? 'limit' : 'read',
+      phase:
+        error instanceof ZipEntrySizeLimitError ||
+        error instanceof ZipExpansionBudgetLimitError
+          ? 'limit'
+          : 'read',
       error,
     };
   }

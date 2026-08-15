@@ -12,6 +12,7 @@ import {
 } from '../../../common/xml/read-xml';
 import {
   readZipEntryBytes,
+  ZipExpansionBudgetLimitError,
   ZipEntrySizeLimitError,
 } from '../../../common/archive/read-entry';
 import { PptxParseError } from '../errors';
@@ -42,6 +43,7 @@ function errorMessage(error: unknown): string {
 export class PptxXmlReader {
   private readonly cache = new Map<string, XmlReadResult<XmlLookupValue>>();
   private readonly reportedFailures = new Set<string>();
+  private totalExpandedBytes = 0;
 
   constructor(
     private readonly zip: JSZip,
@@ -62,6 +64,7 @@ export class PptxXmlReader {
     let result = this.cache.get(part);
     if (!result) {
       result = await readXmlFileResult<XmlLookupValue>(this.zip, part, {
+        consumeBytes: (byteLength) => this.consumeExpandedBytes(byteLength),
         maxBytes: this.limits.maxXmlBytes,
         maxDepth: this.limits.maxXmlDepth,
         maxNodes: this.limits.maxXmlNodes,
@@ -84,12 +87,26 @@ export class PptxXmlReader {
     if (!file) return null;
 
     try {
-      return await readZipEntryBytes(file, this.limits.maxMediaBytes);
+      return await readZipEntryBytes(
+        file,
+        this.limits.maxMediaBytes,
+        (byteLength) => this.consumeExpandedBytes(byteLength),
+      );
     } catch (error) {
       if (error instanceof ZipEntrySizeLimitError) {
         this.reportResourceLimit(
           new PptxResourceLimitError(
             'maxMediaBytes',
+            error.actual,
+            error.limit,
+            part,
+          ),
+        );
+      }
+      if (error instanceof ZipExpansionBudgetLimitError) {
+        this.reportResourceLimit(
+          new PptxResourceLimitError(
+            'maxTotalUncompressedBytes',
             error.actual,
             error.limit,
             part,
@@ -167,6 +184,16 @@ export class PptxXmlReader {
           ),
         );
       }
+      if (result.error instanceof ZipExpansionBudgetLimitError) {
+        this.reportResourceLimit(
+          new PptxResourceLimitError(
+            'maxTotalUncompressedBytes',
+            result.error.actual,
+            result.error.limit,
+            part,
+          ),
+        );
+      }
       throw result.error;
     }
 
@@ -187,6 +214,20 @@ export class PptxXmlReader {
     const diagnostic = resourceLimitDiagnostic(error);
     this.diagnostics.push(diagnostic);
     throw new PptxParseError(diagnostic, { cause: error });
+  }
+
+  private consumeExpandedBytes(byteLength: number): void {
+    const nextTotal = this.totalExpandedBytes + byteLength;
+    if (
+      !Number.isSafeInteger(nextTotal) ||
+      nextTotal > this.limits.maxTotalUncompressedBytes
+    ) {
+      throw new ZipExpansionBudgetLimitError(
+        nextTotal,
+        this.limits.maxTotalUncompressedBytes,
+      );
+    }
+    this.totalExpandedBytes = nextTotal;
   }
 
   private report(
