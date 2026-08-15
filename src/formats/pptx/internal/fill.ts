@@ -7,7 +7,6 @@ import tinycolor from 'tinycolor2';
 import {
   angleToDegrees,
   base64ArrayBuffer,
-  escapeHtml,
   getMimeType,
   getTextByPathList,
   toHex,
@@ -97,7 +96,7 @@ async function loadMedia(
 ): Promise<string> {
   if (!filePath) return '';
 
-  const normalizedPath = escapeHtml(filePath);
+  const normalizedPath = filePath;
   const cache = warpObj[cacheKey];
   const cacheItem = cache[normalizedPath] ?? createImageData(normalizedPath);
   cache[normalizedPath] = cacheItem;

@@ -1237,7 +1237,7 @@ async function processPicNode(
       ? relationships[videoRelationshipId]?.target
       : undefined;
     if (videoFile && isVideoLink(videoFile)) {
-      videoData = { ref: escapeHtml(videoFile), blob: '' };
+      videoData = { ref: videoFile, blob: '' };
     } else if (videoFile) {
       const extension = extractFileExtension(videoFile).toLowerCase();
       if (extension === 'mp4' || extension === 'webm' || extension === 'ogg') {
