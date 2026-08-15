@@ -14,16 +14,18 @@ interface TxmlNode {
   tagName?: string;
 }
 
-let documentOrder = 0;
+interface SimplifyState {
+  documentOrder: number;
+}
 
 function isWhitespaceTextNode(node: TxmlNode | string): boolean {
   return typeof node === 'string' && node.trim() === '';
 }
 
-/** Convert txml's lossless tree into the object shape consumed by format parsers. */
-export function simplifyLossless(
+function simplifyLosslessWithState(
   children: Array<TxmlNode | string>,
-  parentAttributes: Record<string, string> = {},
+  parentAttributes: Record<string, string>,
+  state: SimplifyState,
 ): XmlValue {
   const output: XmlNode = {};
   if (children.length === 0) return output;
@@ -31,7 +33,7 @@ export function simplifyLossless(
   if (children.length === 1 && typeof children[0] === 'string') {
     return Object.keys(parentAttributes).length > 0
       ? {
-          attrs: { order: documentOrder++, ...parentAttributes },
+          attrs: { order: state.documentOrder++, ...parentAttributes },
           value: children[0],
         }
       : children[0];
@@ -49,15 +51,16 @@ export function simplifyLossless(
       : existing
         ? [existing]
         : [];
-    const value = simplifyLossless(
+    const value = simplifyLosslessWithState(
       child.children ?? [],
       child.attributes ?? {},
+      state,
     );
 
     if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
       const attrs = value.attrs;
       value.attrs = {
-        order: documentOrder++,
+        order: state.documentOrder++,
         ...(typeof attrs === 'object' && attrs !== null && !Array.isArray(attrs)
           ? attrs
           : {}),
@@ -74,6 +77,16 @@ export function simplifyLossless(
   }
 
   return output;
+}
+
+/** Convert txml's lossless tree into the object shape consumed by format parsers. */
+export function simplifyLossless(
+  children: Array<TxmlNode | string>,
+  parentAttributes: Record<string, string> = {},
+): XmlValue {
+  return simplifyLosslessWithState(children, parentAttributes, {
+    documentOrder: 0,
+  });
 }
 
 /** Read and simplify an XML part. Missing optional parts return null. */
