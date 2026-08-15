@@ -3242,19 +3242,19 @@ exports[`PowerPoint preset shape path safety > keeps the locked geometry contrac
 
 exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for upDownArrowCallout 1`] = `
 {
-  "adj": "701c4636",
-  "adj1": "701c4636",
-  "adj2": "701c4636",
-  "adj3": "701c4636",
-  "adj4": "701c4636",
-  "adj5": "701c4636",
-  "adj6": "701c4636",
-  "adj7": "701c4636",
-  "adj8": "701c4636",
-  "authored": "701c4636",
-  "default": "701c4636",
-  "hf": "701c4636",
-  "vf": "701c4636",
+  "adj": "e7267fb8",
+  "adj1": "b18a657e",
+  "adj2": "1f655250",
+  "adj3": "542278d6",
+  "adj4": "9a85d72e",
+  "adj5": "e7267fb8",
+  "adj6": "e7267fb8",
+  "adj7": "e7267fb8",
+  "adj8": "e7267fb8",
+  "authored": "eb47e1de",
+  "default": "e7267fb8",
+  "hf": "e7267fb8",
+  "vf": "e7267fb8",
 }
 `;
 

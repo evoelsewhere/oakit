@@ -2232,6 +2232,56 @@ describe('PowerPoint preset shape path safety', () => {
     expect(trapezoid('adj2', '100000')).toBe(trapezoid('adj2', '75000'));
   });
 
+  it('renders and clamps coupled PowerPoint up-down arrow callouts', () => {
+    const callout = (
+      adjustments: ReadonlyArray<readonly [string, string]>,
+    ): string =>
+      getShapePath(
+        'upDownArrowCallout',
+        120,
+        80,
+        guides(adjustments.map(([name, value]) => [name, `val ${value}`])),
+      );
+
+    expect(
+      callout([
+        ['adj1', '20000'],
+        ['adj2', '30000'],
+        ['adj3', '25000'],
+        ['adj4', '25000'],
+      ]),
+    ).toBe(
+      'M 0 30 L 52 30 L 52 20 L 36 20 L 60 0 L 84 20 L 68 20 L 68 30 L 120 30 L 120 50 L 68 50 L 68 60 L 84 60 L 60 80 L 36 60 L 52 60 L 52 50 L 0 50 Z',
+    );
+    expect(callout([['adj2', '-10000']])).toBe(callout([['adj2', '0']]));
+    expect(callout([['adj2', '100000']])).toBe(callout([['adj2', '75000']]));
+    expect(
+      callout([
+        ['adj1', '100000'],
+        ['adj2', '10000'],
+      ]),
+    ).toBe(
+      callout([
+        ['adj1', '20000'],
+        ['adj2', '10000'],
+      ]),
+    );
+    expect(callout([['adj3', '-10000']])).toBe(callout([['adj3', '0']]));
+    expect(callout([['adj3', '100000']])).toBe(callout([['adj3', '50000']]));
+    expect(
+      callout([
+        ['adj3', '25000'],
+        ['adj4', '100000'],
+      ]),
+    ).toBe(
+      callout([
+        ['adj3', '25000'],
+        ['adj4', '50000'],
+      ]),
+    );
+    expect(callout([['adj4', '-10000']])).toBe(callout([['adj4', '0']]));
+  });
+
   it('keeps common default paths deterministic', () => {
     const rectangle = 'M 0 0 L 120 0 L 120 80 L 0 80 Z';
     expect(getShapePath('rect', 120, 80, xml({}))).toBe(rectangle);

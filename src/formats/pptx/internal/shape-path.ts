@@ -5262,10 +5262,55 @@ export function getShapePath(
         pathData = `M 0 ${h} L ${topLeft} 0 L ${topRight} 0 L ${w} ${h} Z`;
       }
       break;
+    case 'upDownArrowCallout':
+      {
+        const adjustmentGuides = getTextByPathList(node, [
+          'p:spPr',
+          'a:prstGeom',
+          'a:avLst',
+          'a:gd',
+        ]);
+        let adj1 = 25000;
+        let adj2 = 25000;
+        let adj3 = 25000;
+        let adj4 = 48123;
+        for (const guide of asArray(adjustmentGuides)) {
+          const name = getTextByPathList(guide, ['attrs', 'name']);
+          const value = parseInt(
+            getTextByPathList(guide, ['attrs', 'fmla']).substring(4),
+          );
+          if (name === 'adj1') adj1 = value;
+          else if (name === 'adj2') adj2 = value;
+          else if (name === 'adj3') adj3 = value;
+          else if (name === 'adj4') adj4 = value;
+        }
+
+        const shortSide = Math.min(w, h);
+        const maxAdj2 = (50000 * w) / shortSide;
+        const a2 = Math.min(Math.max(adj2, 0), maxAdj2);
+        const a1 = Math.min(Math.max(adj1, 0), a2 * 2);
+        const maxAdj3 = (50000 * h) / shortSide;
+        const a3 = Math.min(Math.max(adj3, 0), maxAdj3);
+        const maxAdj4 = 100000 - (a3 * shortSide) / (h / 2);
+        const a4 = Math.min(Math.max(adj4, 0), maxAdj4);
+        const arrowHalfWidth = (shortSide * a2) / 100000;
+        const shaftHalfWidth = (shortSide * a1) / 200000;
+        const arrowHeight = (shortSide * a3) / 100000;
+        const calloutHalfHeight = (h * a4) / 200000;
+        const x1 = w / 2 - arrowHalfWidth;
+        const x2 = w / 2 - shaftHalfWidth;
+        const x3 = w / 2 + shaftHalfWidth;
+        const x4 = w / 2 + arrowHalfWidth;
+        const y1 = arrowHeight;
+        const y2 = h / 2 - calloutHalfHeight;
+        const y3 = h / 2 + calloutHalfHeight;
+        const y4 = h - arrowHeight;
+        pathData = `M 0 ${y2} L ${x2} ${y2} L ${x2} ${y1} L ${x1} ${y1} L ${w / 2} 0 L ${x4} ${y1} L ${x3} ${y1} L ${x3} ${y2} L ${w} ${y2} L ${w} ${y3} L ${x3} ${y3} L ${x3} ${y4} L ${x4} ${y4} L ${w / 2} ${h} L ${x1} ${y4} L ${x2} ${y4} L ${x2} ${y3} L 0 ${y3} Z`;
+      }
+      break;
     case 'leftRightCircularArrow':
     case 'folderCorner':
     case 'funnel':
-    case 'upDownArrowCallout':
       pathData = `M 0 0 L ${w} 0 L ${w} ${h} L 0 ${h} Z`;
       break;
   }
