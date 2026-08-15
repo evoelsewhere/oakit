@@ -59,8 +59,10 @@ import {
   angleToDegrees,
   isVideoLink,
   escapeHtml,
+  getRelationshipPartUri,
   hasValidText,
   numberToFixed,
+  resolveRelationshipTarget,
 } from '../../common';
 import { getShadow } from './internal/shadow';
 import {
@@ -215,21 +217,23 @@ async function getSlideInfo(zip: JSZip) {
 }
 
 async function getTheme(zip: JSZip) {
-  const relationships = await readXml(zip, 'ppt/_rels/presentation.xml.rels');
-  const themeRelationship = asArray(
-    nodeAt(relationships, ['Relationships', 'Relationship']),
+  const presentationPart = 'ppt/presentation.xml';
+  const themeRelationship = (
+    await getRelationships(zip, presentationPart)
   ).find(
     (relationship) =>
       attributes(relationship).Type ===
       'http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme',
   );
   let themeContent: XmlLookupValue | null = null;
-  const themeUri = attributes(themeRelationship).Target;
+  const themeAttributes = attributes(themeRelationship);
+  const themeUri = themeAttributes.Target;
   if (themeUri) {
-    const normalizedUri = themeUri.replace(/\\/g, '/');
-    const themeFilename = normalizedUri.startsWith('/ppt/')
-      ? normalizedUri.slice(1)
-      : `ppt/${normalizedUri}`;
+    const themeFilename = resolveRelationshipTarget(
+      presentationPart,
+      themeUri,
+      themeAttributes.TargetMode,
+    );
     themeContent = await readXml(zip, themeFilename);
   }
 
@@ -269,19 +273,12 @@ async function readXmlFileCached(
 const STANDARD_RELATIONSHIP_PREFIX =
   'http://schemas.openxmlformats.org/officeDocument/2006/relationships/';
 
-function normalizeRelationshipTarget(target: string, basePath: string): string {
-  const normalized = target.replace(/\\/g, '/');
-  if (normalized.startsWith('/ppt/')) return normalized.slice(1);
-  if (normalized.includes('../')) return normalized.replace('../', 'ppt/');
-  return `${basePath}${normalized}`;
-}
-
 async function getRelationships(
   zip: JSZip,
-  filename: string,
+  ownerPart: string,
 ): Promise<XmlLookupValue[]> {
-  if (!filename) return [];
-  const content = await readXml(zip, filename);
+  if (!ownerPart) return [];
+  const content = await readXml(zip, getRelationshipPartUri(ownerPart));
   return asArray(nodeAt(content, ['Relationships', 'Relationship']));
 }
 
@@ -309,9 +306,7 @@ async function processSingleSlide(
   options: Required<PptxParseOptions>,
   xmlCache: Record<string, XmlLookupValue | null>,
 ): Promise<Slide> {
-  const resName =
-    slideFilename.replace('slides/slide', 'slides/_rels/slide') + '.rels';
-  const slideRelationships = await getRelationships(zip, resName);
+  const slideRelationships = await getRelationships(zip, slideFilename);
 
   let noteFilename = '';
   let layoutFilename = '';
@@ -325,10 +320,11 @@ async function processSingleSlide(
   for (const relationship of slideRelationships) {
     const values = attributes(relationship);
     if (!values.Target || !values.Type) continue;
-    const target =
-      values.TargetMode === 'External'
-        ? values.Target
-        : normalizeRelationshipTarget(values.Target, 'ppt/slides/');
+    const target = resolveRelationshipTarget(
+      slideFilename,
+      values.Target,
+      values.TargetMode,
+    );
     if (values.Type === `${STANDARD_RELATIONSHIP_PREFIX}slideLayout`) {
       layoutFilename = target;
     } else if (values.Type === `${STANDARD_RELATIONSHIP_PREFIX}notesSlide`) {
@@ -348,11 +344,9 @@ async function processSingleSlide(
     xmlCache,
   );
   const slideLayoutTables = indexNodes(slideLayoutContent);
-  const slideLayoutResFilename =
-    layoutFilename.replace(
-      'slideLayouts/slideLayout',
-      'slideLayouts/_rels/slideLayout',
-    ) + '.rels';
+  const slideLayoutResFilename = layoutFilename
+    ? getRelationshipPartUri(layoutFilename)
+    : '';
   const slideLayoutResContent = await readXmlFileCached(
     zip,
     slideLayoutResFilename,
@@ -364,9 +358,10 @@ async function processSingleSlide(
   for (const relationship of layoutRelationships) {
     const values = attributes(relationship);
     if (!values.Target || !values.Type) continue;
-    const target = normalizeRelationshipTarget(
+    const target = resolveRelationshipTarget(
+      layoutFilename,
       values.Target,
-      'ppt/slideLayouts/',
+      values.TargetMode,
     );
     if (values.Type === `${STANDARD_RELATIONSHIP_PREFIX}slideMaster`) {
       masterFilename = target;
@@ -385,11 +380,9 @@ async function processSingleSlide(
     'p:txStyles',
   ]);
   const slideMasterTables = indexNodes(slideMasterContent);
-  const slideMasterResFilename =
-    masterFilename.replace(
-      'slideMasters/slideMaster',
-      'slideMasters/_rels/slideMaster',
-    ) + '.rels';
+  const slideMasterResFilename = masterFilename
+    ? getRelationshipPartUri(masterFilename)
+    : '';
   const slideMasterResContent = await readXmlFileCached(
     zip,
     slideMasterResFilename,
@@ -401,9 +394,10 @@ async function processSingleSlide(
   for (const relationship of masterRelationships) {
     const values = attributes(relationship);
     if (!values.Target || !values.Type) continue;
-    const target = normalizeRelationshipTarget(
+    const target = resolveRelationshipTarget(
+      masterFilename,
       values.Target,
-      'ppt/slideMasters/',
+      values.TargetMode,
     );
     if (values.Type === `${STANDARD_RELATIONSHIP_PREFIX}theme`) {
       themeFilename = target;
@@ -419,18 +413,17 @@ async function processSingleSlide(
   if (themeFilename) {
     const themeName = themeFilename.split('/').pop();
     if (themeName) {
-      const themeRelationshipsFilename =
-        themeFilename.replace(themeName, `_rels/${themeName}`) + '.rels';
-      for (const relationship of await getRelationships(
-        zip,
-        themeRelationshipsFilename,
-      )) {
+      for (const relationship of await getRelationships(zip, themeFilename)) {
         const values = attributes(relationship);
         if (!values.Target) continue;
         addRelationship(
           themeResObj,
           relationship,
-          normalizeRelationshipTarget(values.Target, 'ppt/theme/'),
+          resolveRelationshipTarget(
+            themeFilename,
+            values.Target,
+            values.TargetMode,
+          ),
         );
       }
     }
