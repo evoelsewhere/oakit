@@ -13,6 +13,11 @@ interface Size {
   width: number;
 }
 
+function emuToPoints(value: unknown): number {
+  const emus = Number(value ?? 0);
+  return numberToFixed(emus * RATIO_EMUs_Points);
+}
+
 export function getPosition(
   slideSpNode?: XmlLookupValue,
   slideLayoutSpNode?: XmlLookupValue,
@@ -26,8 +31,8 @@ export function getPosition(
   if (!off) return { top: 0, left: 0 };
 
   return {
-    top: numberToFixed(parseInt(off['y'] ?? '0') * RATIO_EMUs_Points),
-    left: numberToFixed(parseInt(off['x'] ?? '0') * RATIO_EMUs_Points),
+    top: emuToPoints(off['y']),
+    left: emuToPoints(off['x']),
   };
 }
 
@@ -44,7 +49,7 @@ export function getSize(
   if (!ext) return { width: 0, height: 0 };
 
   return {
-    width: numberToFixed(parseInt(ext['cx'] ?? '0') * RATIO_EMUs_Points),
-    height: numberToFixed(parseInt(ext['cy'] ?? '0') * RATIO_EMUs_Points),
+    width: emuToPoints(ext['cx']),
+    height: emuToPoints(ext['cy']),
   };
 }
