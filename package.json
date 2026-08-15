@@ -1,7 +1,7 @@
 {
-  "name": "office2json",
+  "name": "oakit",
   "version": "0.0.0",
-  "description": "A bidirectional TypeScript library for converting Office documents and JSON.",
+  "description": "Agent-ready tools for reading, understanding, editing, and generating PowerPoint, Excel, and Word documents.",
   "license": "MIT",
   "keywords": [
     "office",
@@ -17,6 +17,9 @@
     "dist",
     "LICENSE"
   ],
+  "bin": {
+    "oakit": "./dist/cli.js"
+  },
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -45,8 +48,9 @@
     "test:corpus:large": "node scripts/corpus/fetch-pptx-corpus.mjs --include-large && vitest run --config vitest.corpus.config.ts",
     "test:mutation": "stryker run && pnpm test:mutation:audit",
     "test:mutation:audit": "node scripts/check-mutation-report.mjs",
+    "test:package": "node scripts/check-package.mjs",
     "test:watch": "vitest",
-    "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build",
+    "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm test:package",
     "prepack": "pnpm build"
   },
   "engines": {
@@ -56,6 +60,14 @@
   "publishConfig": {
     "access": "public"
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/evoelsewhere/oakit.git"
+  },
+  "bugs": {
+    "url": "https://github.com/evoelsewhere/oakit/issues"
+  },
+  "homepage": "https://github.com/evoelsewhere/oakit#readme",
   "dependencies": {
     "jszip": "^3.10.1",
     "saxes": "^6.0.0",
