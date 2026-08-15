@@ -16,11 +16,16 @@ function child(node: XmlLookupValue, key: string): XmlLookupValue | undefined {
   return getTextByPathList<XmlLookupValue>(node, [key]);
 }
 
-export function findOMath(value: unknown): XmlLookupValue[] {
-  if (typeof value !== 'object' || value === null) return [];
-  if (Array.isArray(value)) return value.flatMap(findOMath);
+function* nestedValues(value: unknown): Generator<unknown> {
+  switch (Object.prototype.toString.call(value)) {
+    case '[object Array]':
+    case '[object Object]':
+      yield* Object.values(Object(value) as Record<string, unknown>);
+  }
+}
 
-  const record = value as Record<string, unknown>;
+export function findOMath(value: unknown): XmlLookupValue[] {
+  const record = Object(value) as Record<string, unknown>;
   const results: XmlLookupValue[] = [];
   const directMath = record['m:oMath'];
   if (directMath) {
@@ -30,8 +35,7 @@ export function findOMath(value: unknown): XmlLookupValue[] {
         : [directMath as XmlLookupValue]),
     );
   }
-  for (const nested of Object.values(record))
-    results.push(...findOMath(nested));
+  for (const nested of nestedValues(value)) results.push(...findOMath(nested));
   return results;
 }
 
