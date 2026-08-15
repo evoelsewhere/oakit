@@ -1,6 +1,7 @@
 import type JSZip from 'jszip';
 
 import {
+  decodeXmlEntities,
   resolveRelationshipTarget as resolveOpcRelationshipTarget,
   type XmlLookupValue,
 } from '../../../common';
@@ -68,7 +69,11 @@ export class PptxXmlReader {
     targetMode?: string,
   ): string | null {
     try {
-      return resolveOpcRelationshipTarget(ownerPart, target, targetMode);
+      return resolveOpcRelationshipTarget(
+        ownerPart,
+        decodeXmlEntities(target),
+        targetMode,
+      );
     } catch (cause) {
       const diagnostic: PptxDiagnostic = {
         code: 'invalid-relationship-target',

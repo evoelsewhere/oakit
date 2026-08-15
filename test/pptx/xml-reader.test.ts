@@ -68,4 +68,15 @@ describe('PptxXmlReader', () => {
       },
     ]);
   });
+
+  it('decodes XML entities in relationship targets', () => {
+    const reader = new PptxXmlReader(createArchive(), 'tolerant', []);
+
+    expect(
+      reader.resolveRelationshipTarget(
+        'ppt/slides/slide1.xml',
+        '../media/image&amp;one.png',
+      ),
+    ).toBe('ppt/media/image&one.png');
+  });
 });
