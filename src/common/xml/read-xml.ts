@@ -300,6 +300,90 @@ function assertValidEntityReferences(value: string): void {
   }
 }
 
+interface StartTagDetails {
+  elementName: string;
+  selfClosing: boolean;
+}
+
+function inspectStartTag(tagContent: string): StartTagDetails {
+  let contentEnd = tagContent.length;
+  while (contentEnd > 0 && /\s/.test(tagContent[contentEnd - 1]!)) {
+    contentEnd--;
+  }
+
+  const selfClosing = tagContent[contentEnd - 1] === '/';
+  if (selfClosing) {
+    contentEnd--;
+    while (contentEnd > 0 && /\s/.test(tagContent[contentEnd - 1]!)) {
+      contentEnd--;
+    }
+  }
+
+  const content = tagContent.slice(0, contentEnd);
+  const elementName = /^[A-Za-z_:][A-Za-z\d_.:-]*/.exec(content)?.[0];
+  if (!elementName) {
+    throw new XmlStructureError('XML opening tag has no valid element name');
+  }
+
+  let cursor = elementName.length;
+  const attributes = new Set<string>();
+  while (cursor < content.length) {
+    if (!/\s/.test(content[cursor]!)) {
+      throw new XmlStructureError(
+        `XML attribute after ${elementName} is not separated by whitespace`,
+      );
+    }
+    while (cursor < content.length && /\s/.test(content[cursor]!)) cursor++;
+    if (cursor >= content.length) break;
+
+    const attributeName = /^[A-Za-z_:][A-Za-z\d_.:-]*/.exec(
+      content.slice(cursor),
+    )?.[0];
+    if (!attributeName) {
+      throw new XmlStructureError(
+        `XML element ${elementName} has an invalid attribute name`,
+      );
+    }
+    if (attributes.has(attributeName)) {
+      throw new XmlStructureError(
+        `XML element ${elementName} has duplicate attribute ${attributeName}`,
+      );
+    }
+    attributes.add(attributeName);
+    cursor += attributeName.length;
+
+    while (cursor < content.length && /\s/.test(content[cursor]!)) cursor++;
+    if (content[cursor] !== '=') {
+      throw new XmlStructureError(
+        `XML attribute ${attributeName} must have a value`,
+      );
+    }
+    cursor++;
+    while (cursor < content.length && /\s/.test(content[cursor]!)) cursor++;
+
+    const quote = content[cursor];
+    if (quote !== '"' && quote !== "'") {
+      throw new XmlStructureError(
+        `XML attribute ${attributeName} must use a quoted value`,
+      );
+    }
+    const valueEnd = content.indexOf(quote, cursor + 1);
+    if (valueEnd < 0) {
+      throw new XmlStructureError(
+        `XML attribute ${attributeName} has an unclosed value`,
+      );
+    }
+    if (content.slice(cursor + 1, valueEnd).includes('<')) {
+      throw new XmlStructureError(
+        `XML attribute ${attributeName} contains an invalid character`,
+      );
+    }
+    cursor = valueEnd + 1;
+  }
+
+  return { elementName, selfClosing };
+}
+
 /** Reject pathological nesting before the recursive XML parser sees it. */
 export function assertXmlComplexity(
   xml: string,
@@ -366,10 +450,7 @@ export function assertXmlComplexity(
     } else {
       const tagContent = xml.slice(opening + 1, end).trimStart();
       assertValidEntityReferences(tagContent);
-      const elementName = /^[^\s/>]+/.exec(tagContent)?.[0];
-      if (!elementName) {
-        throw new XmlStructureError('XML opening tag has no element name');
-      }
+      const { elementName, selfClosing } = inspectStartTag(tagContent);
       nodes++;
       if (limits.maxNodes !== undefined && nodes > limits.maxNodes) {
         throw new XmlComplexityLimitError(
@@ -394,10 +475,6 @@ export function assertXmlComplexity(
           limits.maxDepth,
         );
       }
-      const selfClosing = xml
-        .slice(opening + 1, end)
-        .trimEnd()
-        .endsWith('/');
       if (!selfClosing) {
         depth = nodeDepth;
         openElements.push(elementName);
