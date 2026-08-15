@@ -31,6 +31,15 @@ interface TableCellParams {
   vMerge?: number;
 }
 
+function positiveInteger(value: string | undefined): number | undefined {
+  const parsed = Number(value);
+  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : undefined;
+}
+
+function activeMerge(value: string | undefined): 1 | undefined {
+  return value === '1' ? 1 : undefined;
+}
+
 function getTableTextColor(
   tcTxStyle: XmlLookupValue | undefined,
   warpObj: PptxParserContext,
@@ -95,10 +104,18 @@ export async function getTableCellParams(
   cellSource: string | undefined,
   warpObj: PptxParserContext,
 ): Promise<TableCellParams> {
-  const rowSpan = getTextByPathList<string>(tcNode, ['attrs', 'rowSpan']);
-  const colSpan = getTextByPathList<string>(tcNode, ['attrs', 'gridSpan']);
-  const vMerge = getTextByPathList<string>(tcNode, ['attrs', 'vMerge']);
-  const hMerge = getTextByPathList<string>(tcNode, ['attrs', 'hMerge']);
+  const rowSpan = positiveInteger(
+    getTextByPathList<string>(tcNode, ['attrs', 'rowSpan']),
+  );
+  const colSpan = positiveInteger(
+    getTextByPathList<string>(tcNode, ['attrs', 'gridSpan']),
+  );
+  const vMerge = activeMerge(
+    getTextByPathList<string>(tcNode, ['attrs', 'vMerge']),
+  );
+  const hMerge = activeMerge(
+    getTextByPathList<string>(tcNode, ['attrs', 'hMerge']),
+  );
   const anchor = getTextByPathList<string>(tcNode, [
     'a:tcPr',
     'attrs',
@@ -233,10 +250,10 @@ export async function getTableCellParams(
     ...(fillColor ? { fillColor } : {}),
     ...(fontColor ? { fontColor } : {}),
     ...(fontBold !== undefined ? { fontBold } : {}),
-    ...(rowSpan ? { rowSpan: Number(rowSpan) } : {}),
-    ...(colSpan ? { colSpan: Number(colSpan) } : {}),
-    ...(vMerge ? { vMerge: Number(vMerge) } : {}),
-    ...(hMerge ? { hMerge: Number(hMerge) } : {}),
+    ...(rowSpan !== undefined ? { rowSpan } : {}),
+    ...(colSpan !== undefined ? { colSpan } : {}),
+    ...(vMerge !== undefined ? { vMerge } : {}),
+    ...(hMerge !== undefined ? { hMerge } : {}),
   };
 }
 
