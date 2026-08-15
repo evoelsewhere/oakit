@@ -402,6 +402,11 @@ export function assertXmlComplexity(
     const textEnd = opening < 0 ? xml.length : opening;
     const text = xml.slice(index, textEnd);
     assertValidEntityReferences(text);
+    if (text.includes(']]>')) {
+      throw new XmlStructureError(
+        'XML CDATA terminator appears outside a CDATA section',
+      );
+    }
     if (depth === 0 && text.trim()) {
       throw new XmlStructureError('XML text is not inside the document root');
     }
@@ -410,6 +415,9 @@ export function assertXmlComplexity(
     if (xml.startsWith('<!--', opening)) {
       const end = xml.indexOf('-->', opening + 4);
       if (end < 0) throw new XmlStructureError('Unclosed XML comment');
+      if (xml.slice(opening + 4, end).includes('--')) {
+        throw new XmlStructureError('XML comment contains a double hyphen');
+      }
       index = end < 0 ? xml.length : end + 3;
       continue;
     }
