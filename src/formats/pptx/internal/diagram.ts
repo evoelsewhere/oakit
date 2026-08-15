@@ -10,7 +10,6 @@ import {
   getTextByPathList,
   resolveRelationshipTarget,
 } from '../../../common';
-import { readXmlFile } from '../../../common/xml/read-xml';
 import { getTextNodeValue } from './text';
 
 function asArray(value: XmlLookupValue | undefined): XmlLookupValue[] {
@@ -29,7 +28,7 @@ export async function loadDiagramFile(
   const cached = context.diagramFileCache[cacheKey];
   if (cached) return cached;
 
-  let content = await readXmlFile<XmlLookupValue>(context.zip, filename);
+  let content: XmlLookupValue | null = await context.xmlReader.read(filename);
   if (content && transformDrawing) {
     content = JSON.parse(
       JSON.stringify(content).replace(/dsp:/g, 'p:'),
@@ -116,10 +115,7 @@ export async function getDiagramNodeContext(
     const drawingName = drawingTarget.split('/').pop();
     if (drawingName) {
       const relationshipsFilename = getRelationshipPartUri(drawingTarget);
-      const relationships = await readXmlFile<XmlLookupValue>(
-        context.zip,
-        relationshipsFilename,
-      );
+      const relationships = await context.xmlReader.read(relationshipsFilename);
       const relationshipNodes = getTextByPathList<XmlLookupValue>(
         relationships,
         ['Relationships', 'Relationship'],
