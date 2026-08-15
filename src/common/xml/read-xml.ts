@@ -330,7 +330,9 @@ function inspectStartTag(tagContent: string): StartTagDetails {
   }
 
   const content = tagContent.slice(0, contentEnd);
-  const elementName = /^[A-Za-z_:][A-Za-z\d_.:-]*/.exec(content)?.[0];
+  const elementName = /^(?:[A-Za-z_][A-Za-z\d_.-]*:)?[A-Za-z_][A-Za-z\d_.-]*/.exec(
+    content,
+  )?.[0];
   if (!elementName) {
     throw new XmlStructureError('XML opening tag has no valid element name');
   }
@@ -346,9 +348,10 @@ function inspectStartTag(tagContent: string): StartTagDetails {
     while (cursor < content.length && /\s/.test(content[cursor]!)) cursor++;
     if (cursor >= content.length) break;
 
-    const attributeName = /^[A-Za-z_:][A-Za-z\d_.:-]*/.exec(
-      content.slice(cursor),
-    )?.[0];
+    const attributeName =
+      /^(?:[A-Za-z_][A-Za-z\d_.-]*:)?[A-Za-z_][A-Za-z\d_.-]*/.exec(
+        content.slice(cursor),
+      )?.[0];
     if (!attributeName) {
       throw new XmlStructureError(
         `XML element ${elementName} has an invalid attribute name`,
@@ -425,8 +428,9 @@ export function assertXmlComplexity(
     if (xml.startsWith('<!--', opening)) {
       const end = xml.indexOf('-->', opening + 4);
       if (end < 0) throw new XmlStructureError('Unclosed XML comment');
-      if (xml.slice(opening + 4, end).includes('--')) {
-        throw new XmlStructureError('XML comment contains a double hyphen');
+      const comment = xml.slice(opening + 4, end);
+      if (comment.includes('--') || comment.endsWith('-')) {
+        throw new XmlStructureError('XML comment contains an invalid hyphen');
       }
       index = end < 0 ? xml.length : end + 3;
       continue;
