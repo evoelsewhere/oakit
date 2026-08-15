@@ -127,7 +127,17 @@ function normalizeAttributes(
 ): Record<string, string> {
   const normalized: Record<string, string> = {};
   for (const [name, value] of Object.entries(attributes)) {
-    normalized[normalizeQualifiedName(name, bindings, true)] = value;
+    const normalizedName = normalizeQualifiedName(name, bindings, true);
+    if (
+      name !== 'xmlns' &&
+      !name.startsWith('xmlns:') &&
+      Object.hasOwn(normalized, normalizedName)
+    ) {
+      throw new XmlStructureError(
+        `XML element has duplicate expanded attribute ${normalizedName}`,
+      );
+    }
+    normalized[normalizedName] = value;
   }
   return normalized;
 }
