@@ -5,6 +5,11 @@ export {
   isVideoLink,
 } from './media/media-type';
 export { angleToDegrees, numberToFixed, toHex } from './numbers';
+export {
+  getRelationshipPartUri,
+  resolvePartUri,
+  resolveRelationshipTarget,
+} from './opc/part-uri';
 export { escapeHtml, hasValidText } from './text/html';
 export { eachElement, getTextByPathList } from './xml/tree';
 export type { XmlLookupValue } from './xml/tree';
