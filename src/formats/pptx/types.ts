@@ -354,6 +354,8 @@ export interface Slide {
 export type PptxErrorMode = 'strict' | 'tolerant';
 
 export type PptxDiagnosticCode =
+  | 'invalid-document-structure'
+  | 'invalid-document-value'
   | 'invalid-relationship-target'
   | 'missing-required-part'
   | 'resource-limit-exceeded'

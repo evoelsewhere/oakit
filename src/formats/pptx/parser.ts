@@ -14,6 +14,7 @@ import type {
   Math as MathElement,
   PptxDocument,
   PptxDiagnostic,
+  PptxErrorMode,
   PptxInput,
   PptxParseOptions,
   Shape,
@@ -124,6 +125,21 @@ function throwResourceLimit(
   throw new PptxParseError(diagnostic, { cause: error });
 }
 
+function reportDocumentDiagnostic(
+  diagnostic: PptxDiagnostic,
+  errorMode: PptxErrorMode,
+  diagnostics: PptxDiagnostic[],
+): void {
+  diagnostics.push(diagnostic);
+  if (errorMode === 'strict') throw new PptxParseError(diagnostic);
+}
+
+function positiveCoordinate(value: string | undefined): number | null {
+  if (!value || !/^\+?[1-9]\d*$/.test(value)) return null;
+  const coordinate = Number(value);
+  return Number.isSafeInteger(coordinate) ? coordinate : null;
+}
+
 export async function parse(
   file: PptxInput,
   options: PptxParseOptions = {},
@@ -170,6 +186,22 @@ export async function parse(
   );
 
   const contentTypes = await getContentTypes(xmlReader);
+  const presentationPart = 'ppt/presentation.xml';
+  const presentation = await xmlReader.read(presentationPart, {
+    required: true,
+  });
+  if (!nodeAt(presentation, ['p:presentation'])) {
+    reportDocumentDiagnostic(
+      {
+        code: 'invalid-document-structure',
+        message: `Required OOXML root p:presentation is missing from ${presentationPart}`,
+        part: presentationPart,
+        severity: 'error',
+      },
+      parseOptions.errorMode,
+      diagnostics,
+    );
+  }
   const slideFilenames = await getPresentationSlides(xmlReader, contentTypes);
   if (slideFilenames.length > limits.maxSlides) {
     throwResourceLimit(
@@ -181,7 +213,11 @@ export async function parse(
       diagnostics,
     );
   }
-  const { width, height, defaultTextStyle } = await getSlideInfo(xmlReader);
+  const { width, height, defaultTextStyle } = await getSlideInfo(
+    xmlReader,
+    parseOptions.errorMode,
+    diagnostics,
+  );
   const { themeContent, themeColors } = await getTheme(xmlReader);
   const usedFonts = await getUsedFonts(xmlReader);
 
@@ -294,18 +330,43 @@ async function getUsedFonts(xmlReader: PptxXmlReader): Promise<string[]> {
   return usedFonts;
 }
 
-async function getSlideInfo(xmlReader: PptxXmlReader) {
+async function getSlideInfo(
+  xmlReader: PptxXmlReader,
+  errorMode: PptxErrorMode,
+  diagnostics: PptxDiagnostic[],
+) {
   const content = await xmlReader.read('ppt/presentation.xml', {
     required: true,
   });
-  const sizeAttributes = attributes(
-    nodeAt(content, ['p:presentation', 'p:sldSz']),
-  );
+  const presentation = nodeAt(content, ['p:presentation']);
+  if (!presentation) {
+    return {
+      width: 0,
+      height: 0,
+      defaultTextStyle: emptyXmlNode(),
+    };
+  }
+  const sizeAttributes = attributes(nodeAt(presentation, ['p:sldSz']));
+  const widthCoordinate = positiveCoordinate(sizeAttributes.cx);
+  const heightCoordinate = positiveCoordinate(sizeAttributes.cy);
   const defaultTextStyle =
-    nodeAt(content, ['p:presentation', 'p:defaultTextStyle']) ?? emptyXmlNode();
+    nodeAt(presentation, ['p:defaultTextStyle']) ?? emptyXmlNode();
+  if (widthCoordinate === null || heightCoordinate === null) {
+    reportDocumentDiagnostic(
+      {
+        code: 'invalid-document-value',
+        message: `Presentation size must contain positive integer cx and cy coordinates; received cx=${sizeAttributes.cx ?? '(missing)'}, cy=${sizeAttributes.cy ?? '(missing)'}`,
+        part: 'ppt/presentation.xml',
+        severity: 'error',
+      },
+      errorMode,
+      diagnostics,
+    );
+    return { width: 0, height: 0, defaultTextStyle };
+  }
   return {
-    width: Number(sizeAttributes.cx ?? 0) * RATIO_EMUs_Points,
-    height: Number(sizeAttributes.cy ?? 0) * RATIO_EMUs_Points,
+    width: widthCoordinate * RATIO_EMUs_Points,
+    height: heightCoordinate * RATIO_EMUs_Points,
     defaultTextStyle,
   };
 }
