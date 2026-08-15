@@ -5,6 +5,45 @@ import { getTextByPathList } from '../../../common';
 import { getShadow } from './shadow';
 import { getFillType, getGradientFill, getSolidFill } from './fill';
 
+const UNDERLINE_VALUES = new Set([
+  'dash',
+  'dashHeavy',
+  'dashLong',
+  'dashLongHeavy',
+  'dbl',
+  'dotDash',
+  'dotDashHeavy',
+  'dotDotDash',
+  'dotDotDashHeavy',
+  'dotted',
+  'dottedHeavy',
+  'heavy',
+  'sng',
+  'wavy',
+  'wavyDbl',
+  'wavyHeavy',
+  'words',
+]);
+
+const THEME_FONT_PATHS: Readonly<Record<string, readonly [string, string]>> = {
+  '+mj-cs': ['a:majorFont', 'a:cs'],
+  '+mj-ea': ['a:majorFont', 'a:ea'],
+  '+mj-lt': ['a:majorFont', 'a:latin'],
+  '+mn-cs': ['a:minorFont', 'a:cs'],
+  '+mn-ea': ['a:minorFont', 'a:ea'],
+  '+mn-lt': ['a:minorFont', 'a:latin'],
+};
+
+function parseInteger(value: string): number | undefined {
+  if (!/^[+-]?\d+$/.test(value)) return undefined;
+  const parsed = Number(value);
+  return Number.isSafeInteger(parsed) ? parsed : undefined;
+}
+
+function isDrawingMlTrue(value: string): boolean {
+  return value === '1' || value === 'true';
+}
+
 function pushStyleNode(
   styleNodes: XmlLookupValue[],
   styleNode: XmlLookupValue | undefined,
@@ -181,7 +220,9 @@ function getFontTypeface(styleNodes: XmlLookupValue[]): string {
   for (const styleNode of styleNodes) {
     const typeface =
       getTextByPathList(styleNode, ['a:latin', 'attrs', 'typeface']) ||
-      getTextByPathList(styleNode, ['a:ea', 'attrs', 'typeface']);
+      getTextByPathList(styleNode, ['a:ea', 'attrs', 'typeface']) ||
+      getTextByPathList(styleNode, ['a:cs', 'attrs', 'typeface']) ||
+      getTextByPathList(styleNode, ['a:sym', 'attrs', 'typeface']);
     if (typeface) return typeface;
   }
 
@@ -263,41 +304,15 @@ export function getFontType(
       'a:fontScheme',
     ]);
 
-    if (fontSchemeNode) {
-      if (typeface && typeface.startsWith('+')) {
-        switch (typeface) {
-          case '+mj-lt':
-            return getTextByPathList(fontSchemeNode, [
-              'a:majorFont',
-              'a:latin',
-              'attrs',
-              'typeface',
-            ]);
-          case '+mn-lt':
-            return getTextByPathList(fontSchemeNode, [
-              'a:minorFont',
-              'a:latin',
-              'attrs',
-              'typeface',
-            ]);
-          case '+mj-ea':
-            return getTextByPathList(fontSchemeNode, [
-              'a:majorFont',
-              'a:ea',
-              'attrs',
-              'typeface',
-            ]);
-          case '+mn-ea':
-            return getTextByPathList(fontSchemeNode, [
-              'a:minorFont',
-              'a:ea',
-              'attrs',
-              'typeface',
-            ]);
-          default:
-            return typeface.replace(/^\+/, '');
-        }
-      }
+    if (fontSchemeNode && typeface?.startsWith('+')) {
+      const path = THEME_FONT_PATHS[typeface];
+      if (!path) return typeface.slice(1);
+      return getTextByPathList(fontSchemeNode, [
+        path[0],
+        path[1],
+        'attrs',
+        'typeface',
+      ]);
     }
 
     if (type === 'title' || type === 'subTitle' || type === 'ctrTitle') {
@@ -313,14 +328,33 @@ export function getFontType(
           'a:ea',
           'attrs',
           'typeface',
+        ]) ||
+        getTextByPathList(fontSchemeNode, [
+          'a:majorFont',
+          'a:cs',
+          'attrs',
+          'typeface',
         ]);
     } else {
-      typeface = getTextByPathList(fontSchemeNode, [
-        'a:minorFont',
-        'a:latin',
-        'attrs',
-        'typeface',
-      ]);
+      typeface =
+        getTextByPathList(fontSchemeNode, [
+          'a:minorFont',
+          'a:latin',
+          'attrs',
+          'typeface',
+        ]) ||
+        getTextByPathList(fontSchemeNode, [
+          'a:minorFont',
+          'a:ea',
+          'attrs',
+          'typeface',
+        ]) ||
+        getTextByPathList(fontSchemeNode, [
+          'a:minorFont',
+          'a:cs',
+          'attrs',
+          'typeface',
+        ]);
     }
   }
 
@@ -401,7 +435,11 @@ export function getFontSize(
   );
   appendDefaultTextStyleNodes(styleNodes, lvl, defaultTextStyle);
   const sz = getFontAttr(styleNodes, 'sz');
-  let fontSize = sz ? parseInt(sz) / 100 : undefined;
+  const sizeInHundredths = parseInteger(sz);
+  let fontSize =
+    sizeInHundredths !== undefined && sizeInHundredths > 0
+      ? sizeInHundredths / 100
+      : undefined;
 
   if (
     (!Number.isFinite(fontSize) || !fontSize) &&
@@ -434,7 +472,7 @@ export function getFontBold(
     slideMasterTextStyles,
     lvl,
   );
-  return getFontAttr(styleNodes, 'b') === '1' ? 'bold' : '';
+  return isDrawingMlTrue(getFontAttr(styleNodes, 'b')) ? 'bold' : '';
 }
 
 export function getFontItalic(
@@ -457,7 +495,7 @@ export function getFontItalic(
     slideMasterTextStyles,
     lvl,
   );
-  return getFontAttr(styleNodes, 'i') === '1' ? 'italic' : '';
+  return isDrawingMlTrue(getFontAttr(styleNodes, 'i')) ? 'italic' : '';
 }
 
 export function getFontDecoration(
@@ -480,7 +518,7 @@ export function getFontDecoration(
     slideMasterTextStyles,
     lvl,
   );
-  return getFontAttr(styleNodes, 'u') === 'sng' ? 'underline' : '';
+  return UNDERLINE_VALUES.has(getFontAttr(styleNodes, 'u')) ? 'underline' : '';
 }
 
 export function getFontDecorationLine(
@@ -503,9 +541,8 @@ export function getFontDecorationLine(
     slideMasterTextStyles,
     lvl,
   );
-  return getFontAttr(styleNodes, 'strike') === 'sngStrike'
-    ? 'line-through'
-    : '';
+  const strike = getFontAttr(styleNodes, 'strike');
+  return strike === 'sngStrike' || strike === 'dblStrike' ? 'line-through' : '';
 }
 
 export function getFontSpace(
@@ -529,7 +566,8 @@ export function getFontSpace(
     lvl,
   );
   const spc = getFontAttr(styleNodes, 'spc');
-  return spc && parseInt(spc) !== 0 ? parseInt(spc) / 100 + 'pt' : '';
+  const spacing = parseInteger(spc);
+  return spacing !== undefined && spacing !== 0 ? spacing / 100 + 'pt' : '';
 }
 
 export function getFontSubscript(
@@ -553,8 +591,9 @@ export function getFontSubscript(
     lvl,
   );
   const baseline = getFontAttr(styleNodes, 'baseline');
-  if (!baseline || parseInt(baseline) === 0) return '';
-  return parseInt(baseline) > 0 ? 'super' : 'sub';
+  const offset = parseInteger(baseline);
+  if (offset === undefined || offset === 0) return '';
+  return offset > 0 ? 'super' : 'sub';
 }
 
 export function getFontShadow(
@@ -581,8 +620,11 @@ export function getFontShadow(
   const shadow = getTextShadowFromStyleNodes(styleNodes, warpObj);
   if (shadow) {
     const { h, v, blur, color } = shadow;
-    if (!isNaN(v) && !isNaN(h)) {
-      return h + 'pt ' + v + 'pt ' + (blur ? blur + 'pt' : '') + ' ' + color;
+    if (Number.isFinite(v) && Number.isFinite(h)) {
+      const components = [`${h}pt`, `${v}pt`];
+      if (blur) components.push(`${blur}pt`);
+      if (color) components.push(color);
+      return components.join(' ');
     }
   }
   return '';
