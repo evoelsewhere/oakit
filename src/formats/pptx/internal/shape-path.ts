@@ -28,7 +28,9 @@ function hasInvalidAdjustmentGuide(node: XmlLookupValue): boolean {
 }
 
 function normalizeDimension(value: number): number {
-  return Number.isFinite(value) && value > 0 && value <= Number.MAX_SAFE_INTEGER
+  return Number.isFinite(value) &&
+    value >= Number.MIN_VALUE &&
+    value <= Number.MAX_SAFE_INTEGER
     ? value
     : 0;
 }
