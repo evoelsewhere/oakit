@@ -45,6 +45,13 @@ export class XmlComplexityLimitError extends Error {
   }
 }
 
+export class XmlStructureError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'XmlStructureError';
+  }
+}
+
 interface TxmlNode {
   attributes?: Record<string, string>;
   children?: Array<TxmlNode | string>;
@@ -156,10 +163,11 @@ export function assertXmlComplexity(
   let depth = 0;
   let nodes = 0;
   let index = 0;
+  const openElements: string[] = [];
 
   while (index < xml.length) {
     const opening = xml.indexOf('<', index);
-    if (opening < 0) return nodes;
+    if (opening < 0) break;
 
     if (xml.startsWith('<!--', opening)) {
       const end = xml.indexOf('-->', opening + 4);
@@ -183,8 +191,20 @@ export function assertXmlComplexity(
 
     const end = markupEnd(xml, opening + 1, false);
     if (xml.startsWith('</', opening)) {
-      if (depth > 0) depth--;
+      const closingName = xml.slice(opening + 2, end).trim();
+      const expectedName = openElements.pop();
+      if (!expectedName || closingName !== expectedName) {
+        throw new XmlStructureError(
+          `Unexpected XML closing tag ${closingName || '(empty)'}; expected ${expectedName ?? '(none)'}`,
+        );
+      }
+      depth--;
     } else {
+      const tagContent = xml.slice(opening + 1, end).trimStart();
+      const elementName = /^[^\s/>]+/.exec(tagContent)?.[0];
+      if (!elementName) {
+        throw new XmlStructureError('XML opening tag has no element name');
+      }
       nodes++;
       if (limits.maxNodes !== undefined && nodes > limits.maxNodes) {
         throw new XmlComplexityLimitError(
@@ -205,9 +225,17 @@ export function assertXmlComplexity(
         .slice(opening + 1, end)
         .trimEnd()
         .endsWith('/');
-      if (!selfClosing) depth = nodeDepth;
+      if (!selfClosing) {
+        depth = nodeDepth;
+        openElements.push(elementName);
+      }
     }
     index = end + 1;
+  }
+  if (openElements.length > 0) {
+    throw new XmlStructureError(
+      `Unclosed XML element ${openElements.at(-1) ?? '(unknown)'}`,
+    );
   }
   return nodes;
 }
