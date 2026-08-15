@@ -57,11 +57,6 @@ export class PptxXmlReader {
     part: string,
     options: ReadPartOptions = {},
   ): Promise<XmlLookupValue> {
-    if (!part) {
-      if (options.required) this.reportMissing(part);
-      return emptyXmlNode();
-    }
-
     let result = this.cache.get(part);
     if (!result) {
       result = await readXmlFileResult<XmlLookupValue>(this.zip, part, {
