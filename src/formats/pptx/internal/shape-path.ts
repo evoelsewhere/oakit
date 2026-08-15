@@ -2365,6 +2365,7 @@ export function getShapePath(
       }
       break;
     case 'foldedCorner':
+    case 'folderCorner':
       {
         const shapAdjst = getTextByPathList(node, [
           'p:spPr',
@@ -5367,7 +5368,6 @@ export function getShapePath(
       }
       break;
     case 'leftRightCircularArrow':
-    case 'folderCorner':
       pathData = `M 0 0 L ${w} 0 L ${w} ${h} L 0 ${h} Z`;
       break;
   }

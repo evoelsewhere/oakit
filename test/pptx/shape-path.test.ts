@@ -2107,7 +2107,16 @@ describe('PowerPoint preset shape path safety', () => {
   it.each([
     [120, 80, '10000', '-600000', '5400000', '0', '12500', '1ae5f726'],
     [80, 120, '20000', '-1200000', '10800000', '5400000', '15000', '37a5f4db'],
-    [100, 100, '25000', '-1800000', '16200000', '10800000', '20000', 'e0488d41'],
+    [
+      100,
+      100,
+      '25000',
+      '-1800000',
+      '16200000',
+      '10800000',
+      '20000',
+      'e0488d41',
+    ],
     [200, 40, '1000', '-300000', '21000000', '16200000', '5000', '07bdc554'],
   ])(
     'locks left-circular-arrow branch geometry for a %sx%s box',
@@ -2180,9 +2189,7 @@ describe('PowerPoint preset shape path safety', () => {
     expect(getShapePath('chartX', 120, 80, xml({}))).toBe(
       'M 0 0 L 120 80 M 0 80 L 120 0 M 0 0 L 0 80 L 120 80 L 120 0 Z',
     );
-    expect(getShapePath('lineInv', 120, 80, xml({}))).toBe(
-      'M 0 80 L 120 0',
-    );
+    expect(getShapePath('lineInv', 120, 80, xml({}))).toBe('M 0 80 L 120 0');
   });
 
   it('renders PowerPoint corner tabs from the DrawingML diagonal', () => {
@@ -2205,12 +2212,7 @@ describe('PowerPoint preset shape path safety', () => {
 
   it('clamps independent PowerPoint non-isosceles trapezoid sides', () => {
     const trapezoid = (name: string, value: string): string =>
-      getShapePath(
-        'nonIsoscelesTrapezoid',
-        120,
-        80,
-        singleGuide(name, value),
-      );
+      getShapePath('nonIsoscelesTrapezoid', 120, 80, singleGuide(name, value));
 
     expect(getShapePath('nonIsoscelesTrapezoid', 120, 80, xml({}))).toBe(
       'M 0 80 L 20 0 L 100 0 L 120 80 Z',
@@ -2289,11 +2291,18 @@ describe('PowerPoint preset shape path safety', () => {
     expectFinitePath(wide);
     expectFinitePath(tall);
     expect(wide.match(/\bA\b/g)).toHaveLength(4);
-    expect(wide).toContain(
-      'M 4 20 A 56 16 0 1,0 116 20 A 56 16 0 1,0 4 20 Z',
-    );
+    expect(wide).toContain('M 4 20 A 56 16 0 1,0 116 20 A 56 16 0 1,0 4 20 Z');
     expect(hashPath(wide)).toBe('2af48ba3');
     expect(hashPath(tall)).toBe('502cd627');
+  });
+
+  it('treats the PptxGenJS folder-corner name as a folded-corner alias', () => {
+    expect(getShapePath('folderCorner', 120, 80, xml({}))).toBe(
+      getShapePath('foldedCorner', 120, 80, xml({})),
+    );
+    expect(
+      getShapePath('folderCorner', 120, 80, singleGuide('adj', '40000')),
+    ).toBe(getShapePath('foldedCorner', 120, 80, singleGuide('adj', '40000')));
   });
 
   it('keeps common default paths deterministic', () => {

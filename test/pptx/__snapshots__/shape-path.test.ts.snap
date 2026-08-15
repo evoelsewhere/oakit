@@ -1712,19 +1712,19 @@ exports[`PowerPoint preset shape path safety > keeps the locked geometry contrac
 
 exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for folderCorner 1`] = `
 {
-  "adj": "701c4636",
-  "adj1": "701c4636",
-  "adj2": "701c4636",
-  "adj3": "701c4636",
-  "adj4": "701c4636",
-  "adj5": "701c4636",
-  "adj6": "701c4636",
-  "adj7": "701c4636",
-  "adj8": "701c4636",
-  "authored": "701c4636",
-  "default": "701c4636",
-  "hf": "701c4636",
-  "vf": "701c4636",
+  "adj": "24eaf3ac",
+  "adj1": "dce8ebd8",
+  "adj2": "84907562",
+  "adj3": "f163a10a",
+  "adj4": "5f2bf5d9",
+  "adj5": "950c2ade",
+  "adj6": "6eaaca9e",
+  "adj7": "24b86598",
+  "adj8": "84907562",
+  "authored": "27c1a1a2",
+  "default": "27c1a1a2",
+  "hf": "5cf94c9f",
+  "vf": "5cf94c9f",
 }
 `;
 
