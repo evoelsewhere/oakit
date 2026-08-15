@@ -1071,6 +1071,19 @@ describe('PowerPoint preset shape path safety', () => {
     );
   });
 
+  it.each(['ribbon', 'ribbon2'])(
+    'clamps PowerPoint ribbon adjustments for %s',
+    (shapeType) => {
+      const ribbon = (name: string, value: string): string =>
+        getShapePath(shapeType, 120, 80, singleGuide(name, value));
+
+      expect(ribbon('adj1', '-10000')).toBe(ribbon('adj1', '0'));
+      expect(ribbon('adj1', '100000')).toBe(ribbon('adj1', '33333'));
+      expect(ribbon('adj2', '0')).toBe(ribbon('adj2', '25000'));
+      expect(ribbon('adj2', '100000')).toBe(ribbon('adj2', '75000'));
+    },
+  );
+
   it('keeps common default paths deterministic', () => {
     const rectangle = 'M 0 0 L 120 0 L 120 80 L 0 80 Z';
     expect(getShapePath('rect', 120, 80, xml({}))).toBe(rectangle);

@@ -3000,20 +3000,16 @@ export function getShapePath(
         ]);
         let adj1 = 16667 * RATIO_EMUs_Points;
         let adj2 = 50000 * RATIO_EMUs_Points;
-        if (shapAdjst_ary) {
-          for (const adj of asArray(shapAdjst_ary)) {
-            const sAdj_name = getTextByPathList(adj, ['attrs', 'name']);
-            if (sAdj_name === 'adj1') {
-              adj1 =
-                parseInt(
-                  getTextByPathList(adj, ['attrs', 'fmla']).substring(4),
-                ) * RATIO_EMUs_Points;
-            } else if (sAdj_name === 'adj2') {
-              adj2 =
-                parseInt(
-                  getTextByPathList(adj, ['attrs', 'fmla']).substring(4),
-                ) * RATIO_EMUs_Points;
-            }
+        for (const adj of asArray(shapAdjst_ary)) {
+          const sAdj_name = getTextByPathList(adj, ['attrs', 'name']);
+          if (sAdj_name === 'adj1') {
+            adj1 =
+              parseInt(getTextByPathList(adj, ['attrs', 'fmla']).substring(4)) *
+              RATIO_EMUs_Points;
+          } else if (sAdj_name === 'adj2') {
+            adj2 =
+              parseInt(getTextByPathList(adj, ['attrs', 'fmla']).substring(4)) *
+              RATIO_EMUs_Points;
           }
         }
         const cnstVal1 = 25000 * RATIO_EMUs_Points;
@@ -3029,9 +3025,8 @@ export function getShapePath(
           r = w,
           wd8 = w / 8,
           wd32 = w / 32;
-        const a1 = adj1 < 0 ? 0 : adj1 > cnstVal2 ? cnstVal2 : adj1;
-        const a2 =
-          adj2 < cnstVal1 ? cnstVal1 : adj2 > cnstVal3 ? cnstVal3 : adj2;
+        const a1 = Math.min(Math.max(adj1, 0), cnstVal2);
+        const a2 = Math.min(Math.max(adj2, cnstVal1), cnstVal3);
         const x10 = r - wd8;
         const dx2 = (w * a2) / cnstVal5;
         const x2 = hc - dx2;
@@ -3053,7 +3048,7 @@ export function getShapePath(
           const y6 = b - hR;
           const y7 = y1 - hR;
           pathData = `M ${l},${b} L ${wd8},${y3} L ${l},${y4} L ${x2},${y4} L ${x2},${hR} ${shapeArc(x3, hR, wd32, hR, 180, 270, false).replace('M', 'L')} L ${x8},${t} ${shapeArc(x8, hR, wd32, hR, 270, 360, false).replace('M', 'L')} L ${x9},${y4} L ${r},${y4} L ${x10},${y3} L ${r},${b} L ${x7},${b} ${shapeArc(x7, y6, wd32, hR, 90, 270, false).replace('M', 'L')} L ${x8},${y1} ${shapeArc(x8, y7, wd32, hR, 90, -90, false).replace('M', 'L')} L ${x3},${y2} ${shapeArc(x3, y7, wd32, hR, 270, 90, false).replace('M', 'L')} L ${x4},${y1} ${shapeArc(x4, y6, wd32, hR, 270, 450, false).replace('M', 'L')} z M ${x5},${y2} L ${x5},${y6} M ${x6},${y6} L ${x6},${y2} M ${x2},${y7} L ${x2},${y4} M ${x9},${y4} L ${x9},${y7}`;
-        } else if (shapType === 'ribbon') {
+        } else {
           const y1 = (h * a1) / cnstVal5;
           const y2 = (h * a1) / cnstVal4;
           const y4 = b - y2;
