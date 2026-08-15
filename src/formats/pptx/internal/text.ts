@@ -1,7 +1,12 @@
 import type { XmlLookupValue } from '../../../common';
 import type { PptxParserContext } from './context';
 
-import { getTextByPathList } from '../../../common';
+import {
+  decodeXmlEntities,
+  escapeHtml,
+  getTextByPathList,
+  sanitizeHyperlink,
+} from '../../../common';
 import {
   getFontBold,
   getFontColor,
@@ -50,17 +55,19 @@ function runOrder(node: XmlLookupValue): number {
 }
 
 function textToHtml(value: string): string {
-  return value
+  return escapeHtml(decodeXmlEntities(value))
     .replace(/\t/g, '&nbsp;&nbsp;&nbsp;&nbsp;')
     .replace(/\s/g, '&nbsp;');
 }
 
 function renderSpan(style: SpanStyleInfo, text: string): string {
   const processedText = textToHtml(text);
+  const styleAttribute = escapeHtml(style.styleText);
   if (style.hasLink && style.linkURL) {
-    return `<span style="${style.styleText}"><a href="${style.linkURL}" target="_blank">${processedText}</a></span>`;
+    const href = escapeHtml(style.linkURL);
+    return `<span style="${styleAttribute}"><a href="${href}" target="_blank" rel="noopener noreferrer">${processedText}</a></span>`;
   }
-  return `<span style="${style.styleText}">${processedText}</span>`;
+  return `<span style="${styleAttribute}">${processedText}</span>`;
 }
 
 export function getTextNodeValue(node: unknown): string | undefined {
@@ -174,13 +181,13 @@ export function genTextBody(
         html += `<${listType}>`;
         openLists[listLevel] = listType;
       }
-      html += `<li><p style="${styleText}">`;
+      html += `<li><p style="${escapeHtml(styleText)}">`;
     } else {
       while (openLists.length > 0) {
         const closedList = openLists.pop();
         if (closedList) html += `</${closedList}>`;
       }
-      html += `<p style="${styleText}">`;
+      html += `<p style="${escapeHtml(styleText)}">`;
     }
 
     const runs = getParagraphRuns(paragraph);
@@ -303,7 +310,7 @@ export function getSpanStyleInfo(
   const runText =
     getTextNodeValue(nodeAt(node, ['a:t'])) ??
     getTextNodeValue(nodeAt(node, ['a:fld', 'a:t'])) ??
-    '&nbsp;';
+    '\u00a0';
 
   const fontColor = getFontColor(
     node,
@@ -442,10 +449,11 @@ export function getSpanStyleInfo(
   const relationship = relationshipId
     ? warpObj.slideResObj[relationshipId]
     : undefined;
+  const linkURL = relationship ? sanitizeHyperlink(relationship.target) : null;
   return {
     styleText,
     text: runText,
-    hasLink: relationship !== undefined,
-    linkURL: relationship?.target ?? null,
+    hasLink: linkURL !== null,
+    linkURL,
   };
 }
