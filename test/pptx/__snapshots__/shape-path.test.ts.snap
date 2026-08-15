@@ -2540,19 +2540,19 @@ exports[`PowerPoint preset shape path safety > keeps the locked geometry contrac
 
 exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for quadArrowCallout 1`] = `
 {
-  "adj": "85d760af",
-  "adj1": "a9031f6b",
-  "adj2": "3ad38af7",
-  "adj3": "44eb9771",
-  "adj4": "7e8c0c23",
-  "adj5": "85d760af",
-  "adj6": "85d760af",
-  "adj7": "85d760af",
-  "adj8": "85d760af",
+  "adj": "381298f7",
+  "adj1": "76217f43",
+  "adj2": "1267af37",
+  "adj3": "61b3f275",
+  "adj4": "e9c3d60f",
+  "adj5": "381298f7",
+  "adj6": "381298f7",
+  "adj7": "381298f7",
+  "adj8": "381298f7",
   "authored": "1781738b",
-  "default": "85d760af",
-  "hf": "85d760af",
-  "vf": "85d760af",
+  "default": "381298f7",
+  "hf": "381298f7",
+  "vf": "381298f7",
 }
 `;
 

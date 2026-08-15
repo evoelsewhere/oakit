@@ -1649,6 +1649,82 @@ describe('PowerPoint preset shape path safety', () => {
     );
   });
 
+  it('clamps coupled PowerPoint quad callout adjustments', () => {
+    const callout = (
+      adjustments: ReadonlyArray<readonly [string, string]>,
+    ): string =>
+      getShapePath(
+        'quadArrowCallout',
+        120,
+        80,
+        guides(
+          adjustments.map(([name, value]) => [name, `val ${value}`] as const),
+        ),
+      );
+
+    expect(callout([['adj2', '-10000']])).toBe(callout([['adj2', '0']]));
+    expect(callout([['adj2', '100000']])).toBe(callout([['adj2', '50000']]));
+    expect(
+      callout([
+        ['adj1', '100000'],
+        ['adj2', '30000'],
+      ]),
+    ).toBe(
+      callout([
+        ['adj1', '60000'],
+        ['adj2', '30000'],
+      ]),
+    );
+    expect(
+      callout([
+        ['adj2', '20000'],
+        ['adj3', '-10000'],
+      ]),
+    ).toBe(
+      callout([
+        ['adj2', '20000'],
+        ['adj3', '0'],
+      ]),
+    );
+    expect(
+      callout([
+        ['adj2', '20000'],
+        ['adj3', '100000'],
+      ]),
+    ).toBe(
+      callout([
+        ['adj2', '20000'],
+        ['adj3', '30000'],
+      ]),
+    );
+    expect(
+      callout([
+        ['adj1', '30000'],
+        ['adj2', '30000'],
+        ['adj3', '10000'],
+        ['adj4', '0'],
+      ]),
+    ).toBe(
+      callout([
+        ['adj1', '30000'],
+        ['adj2', '30000'],
+        ['adj3', '10000'],
+        ['adj4', '30000'],
+      ]),
+    );
+    expect(
+      callout([
+        ['adj3', '30000'],
+        ['adj4', '100000'],
+      ]),
+    ).toBe(
+      callout([
+        ['adj3', '30000'],
+        ['adj4', '40000'],
+      ]),
+    );
+  });
+
   it('keeps common default paths deterministic', () => {
     const rectangle = 'M 0 0 L 120 0 L 120 80 L 0 80 Z';
     expect(getShapePath('rect', 120, 80, xml({}))).toBe(rectangle);
