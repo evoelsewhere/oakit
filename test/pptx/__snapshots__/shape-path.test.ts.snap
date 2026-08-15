@@ -470,19 +470,19 @@ exports[`PowerPoint preset shape path safety > keeps the locked geometry contrac
 
 exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for blockArc 1`] = `
 {
-  "adj": "37ba2eb9",
-  "adj1": "6feed2e3",
-  "adj2": "379b36f1",
-  "adj3": "3f890c22",
-  "adj4": "37ba2eb9",
-  "adj5": "37ba2eb9",
-  "adj6": "37ba2eb9",
-  "adj7": "37ba2eb9",
-  "adj8": "37ba2eb9",
-  "authored": "d527e47c",
-  "default": "37ba2eb9",
-  "hf": "37ba2eb9",
-  "vf": "37ba2eb9",
+  "adj": "4acda482",
+  "adj1": "c34b5c15",
+  "adj2": "6fcab654",
+  "adj3": "128c72bb",
+  "adj4": "4acda482",
+  "adj5": "4acda482",
+  "adj6": "4acda482",
+  "adj7": "4acda482",
+  "adj8": "4acda482",
+  "authored": "037ab914",
+  "default": "4acda482",
+  "hf": "4acda482",
+  "vf": "4acda482",
 }
 `;
 

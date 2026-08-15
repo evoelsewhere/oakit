@@ -612,9 +612,70 @@ describe('PowerPoint preset shape path safety', () => {
           ['adj2', 'val 25000'],
         ]),
       ),
-    ).toBe(
-      'M 0,0 L 100,0 L 25,75 L 25,75 L 25,75 L 0,100 z',
+    ).toBe('M 0,0 L 100,0 L 25,75 L 25,75 L 25,75 L 0,100 z');
+  });
+
+  it('clamps block-arc angles and thickness to their authored bounds', () => {
+    const lowerBound = getShapePath(
+      'blockArc',
+      100,
+      100,
+      guides([
+        ['adj1', 'val 0'],
+        ['adj2', 'val 0'],
+        ['adj3', 'val 0'],
+      ]),
     );
+    const upperBound = getShapePath(
+      'blockArc',
+      100,
+      100,
+      guides([
+        ['adj1', 'val 21600000'],
+        ['adj2', 'val 21600000'],
+        ['adj3', 'val 50000'],
+      ]),
+    );
+    expect(
+      getShapePath(
+        'blockArc',
+        100,
+        100,
+        guides([
+          ['adj1', 'val -60000'],
+          ['adj2', 'val -60000'],
+          ['adj3', 'val -10000'],
+        ]),
+      ),
+    ).toBe(lowerBound);
+    expect(
+      getShapePath(
+        'blockArc',
+        100,
+        100,
+        guides([
+          ['adj1', 'val 21660000'],
+          ['adj2', 'val 21660000'],
+          ['adj3', 'val 100000'],
+        ]),
+      ),
+    ).toBe(upperBound);
+    expectFinitePath(lowerBound);
+    expectFinitePath(upperBound);
+  });
+
+  it('renders equal block-arc angles as a full ring sweep', () => {
+    const path = getShapePath(
+      'blockArc',
+      120,
+      80,
+      guides([
+        ['adj1', 'val 5400000'],
+        ['adj2', 'val 5400000'],
+        ['adj3', 'val 25000'],
+      ]),
+    );
+    expect(path.match(/ L/g)?.length).toBeGreaterThan(700);
   });
 
   it('keeps common default paths deterministic', () => {

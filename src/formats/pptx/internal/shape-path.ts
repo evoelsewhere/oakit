@@ -138,6 +138,23 @@ function shapeArc(
   return dData;
 }
 
+function pointOnEllipseRay(
+  centerX: number,
+  centerY: number,
+  radiusX: number,
+  radiusY: number,
+  angleDegrees: number,
+): [number, number] {
+  const radians = (angleDegrees * Math.PI) / 180;
+  const cosine = Math.cos(radians);
+  const sine = Math.sin(radians);
+  const denominator = Math.hypot(radiusY * cosine, radiusX * sine);
+  if (denominator === 0) return [centerX, centerY];
+
+  const scale = (radiusX * radiusY) / denominator;
+  return [centerX + scale * cosine, centerY + scale * sine];
+}
+
 function shapeSnipRoundRect(
   w: number,
   h: number,
@@ -1802,81 +1819,41 @@ export function getShapePath(
         let adj3 = 25000 * RATIO_EMUs_Points;
         const cnstVal1 = 50000 * RATIO_EMUs_Points;
         const cnstVal2 = 100000 * RATIO_EMUs_Points;
-        if (shapAdjst_ary) {
-          for (const adj of asArray(shapAdjst_ary)) {
-            const sAdj_name = getTextByPathList(adj, ['attrs', 'name']);
-            if (sAdj_name === 'adj1') {
-              adj1 =
-                parseInt(
-                  getTextByPathList(adj, ['attrs', 'fmla']).substring(4),
-                ) / 60000;
-            } else if (sAdj_name === 'adj2') {
-              adj2 =
-                parseInt(
-                  getTextByPathList(adj, ['attrs', 'fmla']).substring(4),
-                ) / 60000;
-            } else if (sAdj_name === 'adj3') {
-              adj3 =
-                parseInt(
-                  getTextByPathList(adj, ['attrs', 'fmla']).substring(4),
-                ) * RATIO_EMUs_Points;
-            }
+        for (const adj of asArray(shapAdjst_ary)) {
+          const sAdj_name = getTextByPathList(adj, ['attrs', 'name']);
+          if (sAdj_name === 'adj1') {
+            adj1 =
+              parseInt(getTextByPathList(adj, ['attrs', 'fmla']).substring(4)) /
+              60000;
+          } else if (sAdj_name === 'adj2') {
+            adj2 =
+              parseInt(getTextByPathList(adj, ['attrs', 'fmla']).substring(4)) /
+              60000;
+          } else if (sAdj_name === 'adj3') {
+            adj3 =
+              parseInt(getTextByPathList(adj, ['attrs', 'fmla']).substring(4)) *
+              RATIO_EMUs_Points;
           }
         }
         const cd1 = 360;
-        const stAng = adj1 < 0 ? 0 : adj1 > cd1 ? cd1 : adj1;
-        const istAng = adj2 < 0 ? 0 : adj2 > cd1 ? cd1 : adj2;
-        const a3 = adj3 < 0 ? 0 : adj3 > cnstVal1 ? cnstVal1 : adj3;
+        const stAng = Math.min(Math.max(adj1, 0), cd1);
+        const istAng = Math.min(Math.max(adj2, 0), cd1);
+        const a3 = Math.min(Math.max(adj3, 0), cnstVal1);
         const sw11 = istAng - stAng;
         const sw12 = sw11 + cd1;
         const swAng = sw11 > 0 ? sw11 : sw12;
         const iswAng = -swAng;
         const endAng = stAng + swAng;
         const iendAng = istAng + iswAng;
-        const stRd = (stAng * Math.PI) / 180;
-        const istRd = (istAng * Math.PI) / 180;
         const wd2 = w / 2;
         const hd2 = h / 2;
         const hc = w / 2;
         const vc = h / 2;
-        let x1, y1;
-        if (stAng > 90 && stAng < 270) {
-          const wt1 = wd2 * Math.sin(Math.PI / 2 - stRd);
-          const ht1 = hd2 * Math.cos(Math.PI / 2 - stRd);
-          const dx1 = wd2 * Math.cos(Math.atan(ht1 / wt1));
-          const dy1 = hd2 * Math.sin(Math.atan(ht1 / wt1));
-          x1 = hc - dx1;
-          y1 = vc - dy1;
-        } else {
-          const wt1 = wd2 * Math.sin(stRd);
-          const ht1 = hd2 * Math.cos(stRd);
-          const dx1 = wd2 * Math.cos(Math.atan(wt1 / ht1));
-          const dy1 = hd2 * Math.sin(Math.atan(wt1 / ht1));
-          x1 = hc + dx1;
-          y1 = vc + dy1;
-        }
+        const [x1, y1] = pointOnEllipseRay(hc, vc, wd2, hd2, stAng);
         const dr = (Math.min(w, h) * a3) / cnstVal2;
         const iwd2 = wd2 - dr;
         const ihd2 = hd2 - dr;
-        let x2, y2;
-        if (
-          (endAng <= 450 && endAng > 270) ||
-          (endAng >= 630 && endAng < 720)
-        ) {
-          const wt2 = iwd2 * Math.sin(istRd);
-          const ht2 = ihd2 * Math.cos(istRd);
-          const dx2 = iwd2 * Math.cos(Math.atan(wt2 / ht2));
-          const dy2 = ihd2 * Math.sin(Math.atan(wt2 / ht2));
-          x2 = hc + dx2;
-          y2 = vc + dy2;
-        } else {
-          const wt2 = iwd2 * Math.sin(Math.PI / 2 - istRd);
-          const ht2 = ihd2 * Math.cos(Math.PI / 2 - istRd);
-          const dx2 = iwd2 * Math.cos(Math.atan(ht2 / wt2));
-          const dy2 = ihd2 * Math.sin(Math.atan(ht2 / wt2));
-          x2 = hc - dx2;
-          y2 = vc - dy2;
-        }
+        const [x2, y2] = pointOnEllipseRay(hc, vc, iwd2, ihd2, istAng);
         pathData = `M ${x1},${y1} ${shapeArc(wd2, hd2, wd2, hd2, stAng, endAng, false).replace('M', 'L')} L ${x2},${y2} ${shapeArc(wd2, hd2, iwd2, ihd2, istAng, iendAng, false).replace('M', 'L')} z`;
       }
       break;
