@@ -106,14 +106,17 @@ async function loadMedia(
   const fileExtension = normalizedPath.split('.').pop()?.toLowerCase() ?? '';
   if (fileExtension === 'xml') return '';
 
-  const file = warpObj.zip.file(normalizedPath);
-  if (!file) return '';
+  const bytes = await warpObj.xmlReader.readMedia(normalizedPath);
+  if (!bytes) return '';
 
-  const arrayBuffer = await file.async('arraybuffer');
   const mimeType = getMimeType(fileExtension);
   if (mode === 'base64') {
-    cacheItem.base64 = `data:${mimeType};base64,${base64ArrayBuffer(arrayBuffer)}`;
+    cacheItem.base64 = `data:${mimeType};base64,${base64ArrayBuffer(bytes)}`;
   } else {
+    const arrayBuffer = bytes.buffer.slice(
+      bytes.byteOffset,
+      bytes.byteOffset + bytes.byteLength,
+    ) as ArrayBuffer;
     cacheItem.blob = URL.createObjectURL(
       new Blob([arrayBuffer], mimeType ? { type: mimeType } : undefined),
     );

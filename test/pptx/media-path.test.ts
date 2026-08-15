@@ -49,4 +49,25 @@ describe('PPTX media paths', () => {
     expect(element.ref).toBe('ppt/media/image&one.png');
     expect(element.base64).toBe('data:image/png;base64,iVBORw==');
   });
+
+  it('stops media expansion at the configured byte limit', async () => {
+    const input = await createMinimalPptx({
+      'ppt/slides/slide1.xml': IMAGE_SLIDE,
+      'ppt/slides/_rels/slide1.xml.rels': `
+        <Relationships>
+          <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout1.xml"/>
+          <Relationship Id="rIdImage" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/image.png"/>
+        </Relationships>`,
+      'ppt/media/image.png': new Uint8Array([137, 80, 78, 71]),
+    });
+
+    await expect(
+      parsePptx(input, { limits: { maxMediaBytes: 3 } }),
+    ).rejects.toMatchObject({
+      diagnostic: {
+        code: 'resource-limit-exceeded',
+        part: 'ppt/media/image.png',
+      },
+    });
+  });
 });

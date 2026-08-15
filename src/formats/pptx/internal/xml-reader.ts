@@ -10,7 +10,10 @@ import {
   XmlComplexityLimitError,
   type XmlReadResult,
 } from '../../../common/xml/read-xml';
-import { ZipEntrySizeLimitError } from '../../../common/archive/read-entry';
+import {
+  readZipEntryBytes,
+  ZipEntrySizeLimitError,
+} from '../../../common/archive/read-entry';
 import { PptxParseError } from '../errors';
 import {
   DEFAULT_PPTX_RESOURCE_LIMITS,
@@ -74,6 +77,27 @@ export class PptxXmlReader {
 
     this.reportReadFailure(part, result, Boolean(options.required));
     return emptyXmlNode();
+  }
+
+  async readMedia(part: string): Promise<Uint8Array | null> {
+    const file = this.zip.file(part);
+    if (!file) return null;
+
+    try {
+      return await readZipEntryBytes(file, this.limits.maxMediaBytes);
+    } catch (error) {
+      if (error instanceof ZipEntrySizeLimitError) {
+        this.reportResourceLimit(
+          new PptxResourceLimitError(
+            'maxMediaBytes',
+            error.actual,
+            error.limit,
+            part,
+          ),
+        );
+      }
+      throw error;
+    }
   }
 
   resolveRelationshipTarget(
