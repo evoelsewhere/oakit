@@ -1748,19 +1748,19 @@ exports[`PowerPoint preset shape path safety > keeps the locked geometry contrac
 
 exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for funnel 1`] = `
 {
-  "adj": "701c4636",
-  "adj1": "701c4636",
-  "adj2": "701c4636",
-  "adj3": "701c4636",
-  "adj4": "701c4636",
-  "adj5": "701c4636",
-  "adj6": "701c4636",
-  "adj7": "701c4636",
-  "adj8": "701c4636",
-  "authored": "701c4636",
-  "default": "701c4636",
-  "hf": "701c4636",
-  "vf": "701c4636",
+  "adj": "2af48ba3",
+  "adj1": "2af48ba3",
+  "adj2": "2af48ba3",
+  "adj3": "2af48ba3",
+  "adj4": "2af48ba3",
+  "adj5": "2af48ba3",
+  "adj6": "2af48ba3",
+  "adj7": "2af48ba3",
+  "adj8": "2af48ba3",
+  "authored": "2af48ba3",
+  "default": "2af48ba3",
+  "hf": "2af48ba3",
+  "vf": "2af48ba3",
 }
 `;
 

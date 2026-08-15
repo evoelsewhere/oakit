@@ -5308,9 +5308,66 @@ export function getShapePath(
         pathData = `M 0 ${y2} L ${x2} ${y2} L ${x2} ${y1} L ${x1} ${y1} L ${w / 2} 0 L ${x4} ${y1} L ${x3} ${y1} L ${x3} ${y2} L ${w} ${y2} L ${w} ${y3} L ${x3} ${y3} L ${x3} ${y4} L ${x4} ${y4} L ${w / 2} ${h} L ${x1} ${y4} L ${x2} ${y4} L ${x2} ${y3} L 0 ${y3} Z`;
       }
       break;
+    case 'funnel':
+      {
+        const shortSide = Math.min(w, h);
+        const inset = shortSide / 20;
+        const outerRadiusX = w / 2;
+        const outerRadiusY = h / 4;
+        const innerRadiusX = outerRadiusX - inset;
+        const innerRadiusY = outerRadiusY - inset;
+        const neckRadiusX = outerRadiusX / 4;
+        const neckRadiusY = outerRadiusY / 4;
+        const referenceAngle = (8 * Math.PI) / 180;
+        const guideAngle = Math.atan2(
+          outerRadiusY * Math.sin(referenceAngle),
+          outerRadiusX * Math.cos(referenceAngle),
+        );
+        const outerStartAngle = Math.PI - guideAngle;
+        const outerSweep = Math.PI + guideAngle * 2;
+        const neckSweep = Math.PI - guideAngle * 2;
+        const ellipseRay = (
+          radiusX: number,
+          radiusY: number,
+          angle: number,
+        ): readonly [number, number] => {
+          const cosine = Math.cos(angle);
+          const sine = Math.sin(angle);
+          const scale =
+            (radiusX * radiusY) /
+            Math.hypot(radiusY * cosine, radiusX * sine);
+          return [scale * cosine, scale * sine];
+        };
+        const [outerStartDx, outerStartDy] = ellipseRay(
+          outerRadiusX,
+          outerRadiusY,
+          outerStartAngle,
+        );
+        const [outerEndDx, outerEndDy] = ellipseRay(
+          outerRadiusX,
+          outerRadiusY,
+          outerStartAngle + outerSweep,
+        );
+        const [neckStartDx, neckStartDy] = ellipseRay(
+          neckRadiusX,
+          neckRadiusY,
+          guideAngle,
+        );
+        const [neckEndDx, neckEndDy] = ellipseRay(
+          neckRadiusX,
+          neckRadiusY,
+          guideAngle + neckSweep,
+        );
+        const outerCenterX = w / 2;
+        const outerCenterY = h / 4;
+        const neckCenterY = h - neckRadiusY;
+        const innerLeft = w / 2 - innerRadiusX;
+        const innerRight = w / 2 + innerRadiusX;
+        pathData = `M ${outerCenterX + outerStartDx} ${outerCenterY + outerStartDy} A ${outerRadiusX} ${outerRadiusY} 0 1,1 ${outerCenterX + outerEndDx} ${outerCenterY + outerEndDy} L ${outerCenterX + neckStartDx} ${neckCenterY + neckStartDy} A ${neckRadiusX} ${neckRadiusY} 0 0,1 ${outerCenterX + neckEndDx} ${neckCenterY + neckEndDy} Z M ${innerLeft} ${outerCenterY} A ${innerRadiusX} ${innerRadiusY} 0 1,0 ${innerRight} ${outerCenterY} A ${innerRadiusX} ${innerRadiusY} 0 1,0 ${innerLeft} ${outerCenterY} Z`;
+      }
+      break;
     case 'leftRightCircularArrow':
     case 'folderCorner':
-    case 'funnel':
       pathData = `M 0 0 L ${w} 0 L ${w} ${h} L 0 ${h} Z`;
       break;
   }

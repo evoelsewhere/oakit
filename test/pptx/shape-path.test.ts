@@ -2282,6 +2282,20 @@ describe('PowerPoint preset shape path safety', () => {
     expect(callout([['adj4', '-10000']])).toBe(callout([['adj4', '0']]));
   });
 
+  it('renders the PowerPoint funnel with an inverse inner ellipse', () => {
+    const wide = getShapePath('funnel', 120, 80, xml({}));
+    const tall = getShapePath('funnel', 80, 120, xml({}));
+
+    expectFinitePath(wide);
+    expectFinitePath(tall);
+    expect(wide.match(/\bA\b/g)).toHaveLength(4);
+    expect(wide).toContain(
+      'M 4 20 A 56 16 0 1,0 116 20 A 56 16 0 1,0 4 20 Z',
+    );
+    expect(hashPath(wide)).toBe('2af48ba3');
+    expect(hashPath(tall)).toBe('502cd627');
+  });
+
   it('keeps common default paths deterministic', () => {
     const rectangle = 'M 0 0 L 120 0 L 120 80 L 0 80 Z';
     expect(getShapePath('rect', 120, 80, xml({}))).toBe(rectangle);
