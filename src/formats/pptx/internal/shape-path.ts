@@ -5036,48 +5036,25 @@ export function getShapePath(
           'a:gd',
         ]);
         let adj1 = 12500 * RATIO_EMUs_Points;
-        let adj2 = ((-1142319 / 60000) * Math.PI) / 180;
-        let adj3 = ((1142319 / 60000) * Math.PI) / 180;
-        let adj4 = ((10800000 / 60000) * Math.PI) / 180;
+        let adj2 = -1142319;
+        let adj3 = 1142319;
+        let adj4 = 10800000;
         let adj5 = 12500 * RATIO_EMUs_Points;
-        if (shapAdjst_ary) {
-          for (const adj of asArray(shapAdjst_ary)) {
-            const sAdj_name = getTextByPathList(adj, ['attrs', 'name']);
-            if (sAdj_name === 'adj1') {
-              adj1 =
-                parseInt(
-                  getTextByPathList(adj, ['attrs', 'fmla']).substring(4),
-                ) * RATIO_EMUs_Points;
-            } else if (sAdj_name === 'adj2') {
-              adj2 =
-                ((parseInt(
-                  getTextByPathList(adj, ['attrs', 'fmla']).substring(4),
-                ) /
-                  60000) *
-                  Math.PI) /
-                180;
-            } else if (sAdj_name === 'adj3') {
-              adj3 =
-                ((parseInt(
-                  getTextByPathList(adj, ['attrs', 'fmla']).substring(4),
-                ) /
-                  60000) *
-                  Math.PI) /
-                180;
-            } else if (sAdj_name === 'adj4') {
-              adj4 =
-                ((parseInt(
-                  getTextByPathList(adj, ['attrs', 'fmla']).substring(4),
-                ) /
-                  60000) *
-                  Math.PI) /
-                180;
-            } else if (sAdj_name === 'adj5') {
-              adj5 =
-                parseInt(
-                  getTextByPathList(adj, ['attrs', 'fmla']).substring(4),
-                ) * RATIO_EMUs_Points;
-            }
+        for (const adj of asArray(shapAdjst_ary)) {
+          const name = getTextByPathList(adj, ['attrs', 'name']);
+          const value = parseInt(
+            getTextByPathList(adj, ['attrs', 'fmla']).substring(4),
+          );
+          if (name === 'adj1') {
+            adj1 = value * RATIO_EMUs_Points;
+          } else if (name === 'adj2') {
+            adj2 = value;
+          } else if (name === 'adj3') {
+            adj3 = value;
+          } else if (name === 'adj4') {
+            adj4 = value;
+          } else if (name === 'adj5') {
+            adj5 = value * RATIO_EMUs_Points;
           }
         }
         const hc = w / 2,
@@ -5087,15 +5064,29 @@ export function getShapePath(
         const ss = Math.min(w, h);
         const cnstVal1 = 25000 * RATIO_EMUs_Points;
         const cnstVal2 = 100000 * RATIO_EMUs_Points;
-        const rdAngVal1 = ((1 / 60000) * Math.PI) / 180;
-        const rdAngVal2 = ((21599999 / 60000) * Math.PI) / 180;
+        const minAngle = 1;
+        const maxAngle = 21599999;
         const rdAngVal3 = 2 * Math.PI;
-        const a5 = adj5 < 0 ? 0 : adj5 > cnstVal1 ? cnstVal1 : adj5;
+        const toRadians = (angle: number): number =>
+          ((angle / 60000) * Math.PI) / 180;
+        const selectWhenPositive = (
+          value: number,
+          positive: number,
+          nonPositive: number,
+        ): number => {
+          const index = Math.max(Math.sign(value), 0) as 0 | 1;
+          const choices: readonly [number, number] = [nonPositive, positive];
+          return choices[index];
+        };
+        const normalizeAngle = (angle: number): number =>
+          selectWhenPositive(angle, angle, angle + rdAngVal3);
+        const normalizeNegativeAngle = (angle: number): number =>
+          selectWhenPositive(angle, angle - rdAngVal3, angle);
+        const a5 = Math.min(Math.max(adj5, 0), cnstVal1);
         const maxAdj1 = a5 * 2;
-        const a1 = adj1 < 0 ? 0 : adj1 > maxAdj1 ? maxAdj1 : adj1;
-        const enAng =
-          adj3 < rdAngVal1 ? rdAngVal1 : adj3 > rdAngVal2 ? rdAngVal2 : adj3;
-        const stAng = adj4 < 0 ? 0 : adj4 > rdAngVal2 ? rdAngVal2 : adj4;
+        const a1 = Math.min(Math.max(adj1, 0), maxAdj1);
+        const enAng = toRadians(Math.min(Math.max(adj3, minAngle), maxAngle));
+        const stAng = toRadians(Math.min(Math.max(adj4, 0), maxAngle));
         const th = (ss * a1) / cnstVal2;
         const thh = (ss * a5) / cnstVal2;
         const th2 = th / 2;
@@ -5116,14 +5107,11 @@ export function getShapePath(
             (dxH * dxH * dyH * dyH);
         const u9 = Math.sqrt(u8);
         const u12 = (1 + u9) / ((dxH * dxH - rI * rI) / dxH / dyH);
-        const u15 =
-          Math.atan2(u12, 1) > 0
-            ? Math.atan2(u12, 1)
-            : Math.atan2(u12, 1) + rdAngVal3;
-        const u18 = u15 - enAng > 0 ? u15 - enAng : u15 - enAng + rdAngVal3;
-        const u21 = u18 - Math.PI > 0 ? u18 - rdAngVal3 : u18;
+        const u15 = normalizeAngle(Math.atan2(u12, 1));
+        const u18 = normalizeAngle(u15 - enAng);
+        const u21 = selectWhenPositive(u18 - Math.PI, u18 - rdAngVal3, u18);
         const minAng = -Math.abs(u21);
-        const aAng = adj2 < minAng ? minAng : adj2 > 0 ? 0 : adj2;
+        const aAng = Math.min(Math.max(toRadians(adj2), minAng), 0);
         const ptAng = enAng + aAng;
         const dxA = rw3 * Math.cos(ptAng);
         const dyA = rh3 * Math.sin(ptAng);
@@ -5159,7 +5147,7 @@ export function getShapePath(
         const dO = Math.sqrt(dxO * dxO + dyO * dyO);
         const DO = x1O * y2O - x2O * y1O;
         const sdelO = Math.sqrt(Math.max(0, rO * rO * dO * dO - DO * DO));
-        const sdyO = dyO * -1 > 0 ? -1 : 1;
+        const sdyO = Math.sign(dyO) || 1;
         const dxF1 = (DO * dyO + sdyO * dxO * sdelO) / (dO * dO);
         const dxF2 = (DO * dyO - sdyO * dxO * sdelO) / (dO * dO);
         const dyF1 = (-DO * dxO + Math.abs(dyO) * sdelO) / (dO * dO);
@@ -5167,8 +5155,8 @@ export function getShapePath(
         const q22 =
           Math.sqrt((x2O - dxF2) ** 2 + (y2O - dyF2) ** 2) -
           Math.sqrt((x2O - dxF1) ** 2 + (y2O - dyF1) ** 2);
-        const dxF = q22 > 0 ? dxF1 : dxF2;
-        const dyF = q22 > 0 ? dyF1 : dyF2;
+        const dxF = selectWhenPositive(q22, dxF1, dxF2);
+        const dyF = selectWhenPositive(q22, dyF1, dyF2);
         const xF = hc + (dxF * rw1) / rO;
         const yF = vc + (dyF * rh1) / rO;
         const x1I = (sx1 * rI) / rw2;
@@ -5187,25 +5175,25 @@ export function getShapePath(
         const v22 =
           Math.sqrt((x1I - dxC2) ** 2 + (y1I - dyC2) ** 2) -
           Math.sqrt((x1I - dxC1) ** 2 + (y1I - dyC1) ** 2);
-        const dxC = v22 > 0 ? dxC1 : dxC2;
-        const dyC = v22 > 0 ? dyC1 : dyC2;
+        const dxC = selectWhenPositive(v22, dxC1, dxC2);
+        const dyC = selectWhenPositive(v22, dyC1, dyC2);
         const xC = hc + (dxC * rw2) / rI;
         const yC = vc + (dyC * rh2) / rI;
         const ist0 = Math.atan2((dyC * rh2) / rI, (dxC * rw2) / rI);
-        const istAng0 = ist0 > 0 ? ist0 : ist0 + rdAngVal3;
+        const istAng0 = normalizeAngle(ist0);
         const isw1 = stAng - istAng0;
-        const iswAng0 = isw1 > 0 ? isw1 : isw1 + rdAngVal3;
+        const iswAng0 = normalizeAngle(isw1);
         const istAng = istAng0 + iswAng0;
         const iswAng = -iswAng0;
         const p5 = Math.sqrt((xF - xC) ** 2 + (yF - yC) ** 2) / 2 - thh;
-        const xGp = p5 > 0 ? xF : xG;
-        const yGp = p5 > 0 ? yF : yG;
-        const xBp = p5 > 0 ? xC : xB;
-        const yBp = p5 > 0 ? yC : yB;
+        const xGp = selectWhenPositive(p5, xF, xG);
+        const yGp = selectWhenPositive(p5, yF, yG);
+        const xBp = selectWhenPositive(p5, xC, xB);
+        const yBp = selectWhenPositive(p5, yC, yB);
         const en0 = Math.atan2(yF - vc, xF - hc);
-        const en2 = en0 > 0 ? en0 : en0 + rdAngVal3;
+        const en2 = normalizeAngle(en0);
         const sw0 = en2 - stAng;
-        const swAng = sw0 > 0 ? sw0 - rdAngVal3 : sw0;
+        const swAng = normalizeNegativeAngle(sw0);
         const stAng0 = stAng + swAng;
         const strtAng = (stAng0 * 180) / Math.PI;
         const endAngVal = (stAng * 180) / Math.PI;
