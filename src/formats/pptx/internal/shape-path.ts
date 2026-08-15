@@ -70,58 +70,23 @@ function shapePie(
 
   return d;
 }
-function shapeGear(h: number, points: number) {
-  const innerRadius = h;
-  const outerRadius = 1.5 * innerRadius;
-  const cx = outerRadius;
-  const cy = outerRadius;
-  const notches = points;
-  const radiusO = outerRadius;
-  const radiusI = innerRadius;
-  const taperO = 50;
-  const taperI = 35;
-  const pi2 = 2 * Math.PI;
-  const angle = pi2 / (notches * 2);
-  const taperAI = angle * taperI * 0.005;
-  const taperAO = angle * taperO * 0.005;
+function shapeGear(w: number, h: number, teeth: number): string {
+  const centerX = w / 2;
+  const centerY = h / 2;
+  const outerRadiusX = w / 2;
+  const outerRadiusY = h / 2;
+  const innerRadiusX = outerRadiusX * (2 / 3);
+  const innerRadiusY = outerRadiusY * (2 / 3);
+  const vertexCount = teeth * 4;
+  const vertices = Array.from({ length: vertexCount }, (_, index) => {
+    const usesOuterRadius = index % 4 === 1 || index % 4 === 2;
+    const radiusX = usesOuterRadius ? outerRadiusX : innerRadiusX;
+    const radiusY = usesOuterRadius ? outerRadiusY : innerRadiusY;
+    const angle = -Math.PI / 2 + (index * Math.PI * 2) / vertexCount;
+    return `${centerX + Math.cos(angle) * radiusX},${centerY + Math.sin(angle) * radiusY}`;
+  });
 
-  let a = angle;
-  let toggle = false;
-
-  let d =
-    ' M' +
-    (cx + radiusO * Math.cos(taperAO)) +
-    ' ' +
-    (cy + radiusO * Math.sin(taperAO));
-
-  for (; a <= pi2 + angle; a += angle) {
-    if (toggle) {
-      d +=
-        ' L' +
-        (cx + radiusI * Math.cos(a - taperAI)) +
-        ',' +
-        (cy + radiusI * Math.sin(a - taperAI));
-      d +=
-        ' L' +
-        (cx + radiusO * Math.cos(a + taperAO)) +
-        ',' +
-        (cy + radiusO * Math.sin(a + taperAO));
-    } else {
-      d +=
-        ' L' +
-        (cx + radiusO * Math.cos(a - taperAO)) +
-        ',' +
-        (cy + radiusO * Math.sin(a - taperAO));
-      d +=
-        ' L' +
-        (cx + radiusI * Math.cos(a + taperAI)) +
-        ',' +
-        (cy + radiusI * Math.sin(a + taperAI));
-    }
-    toggle = !toggle;
-  }
-  d += ' ';
-  return d;
+  return `M ${vertices.join(' L ')} z`;
 }
 
 function shapeArc(
@@ -2243,7 +2208,7 @@ export function getShapePath(
       break;
     case 'gear6':
     case 'gear9':
-      pathData = shapeGear(w, h / 3.5);
+      pathData = shapeGear(w, h, shapType === 'gear6' ? 6 : 9);
       break;
     case 'bentConnector3':
       {

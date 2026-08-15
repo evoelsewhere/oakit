@@ -1766,37 +1766,37 @@ exports[`PowerPoint preset shape path safety > keeps the locked geometry contrac
 
 exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for gear6 1`] = `
 {
-  "adj": "953ca34c",
-  "adj1": "953ca34c",
-  "adj2": "953ca34c",
-  "adj3": "953ca34c",
-  "adj4": "953ca34c",
-  "adj5": "953ca34c",
-  "adj6": "953ca34c",
-  "adj7": "953ca34c",
-  "adj8": "953ca34c",
-  "authored": "953ca34c",
-  "default": "953ca34c",
-  "hf": "953ca34c",
-  "vf": "953ca34c",
+  "adj": "ec8429b6",
+  "adj1": "ec8429b6",
+  "adj2": "ec8429b6",
+  "adj3": "ec8429b6",
+  "adj4": "ec8429b6",
+  "adj5": "ec8429b6",
+  "adj6": "ec8429b6",
+  "adj7": "ec8429b6",
+  "adj8": "ec8429b6",
+  "authored": "ec8429b6",
+  "default": "ec8429b6",
+  "hf": "ec8429b6",
+  "vf": "ec8429b6",
 }
 `;
 
 exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for gear9 1`] = `
 {
-  "adj": "953ca34c",
-  "adj1": "953ca34c",
-  "adj2": "953ca34c",
-  "adj3": "953ca34c",
-  "adj4": "953ca34c",
-  "adj5": "953ca34c",
-  "adj6": "953ca34c",
-  "adj7": "953ca34c",
-  "adj8": "953ca34c",
-  "authored": "953ca34c",
-  "default": "953ca34c",
-  "hf": "953ca34c",
-  "vf": "953ca34c",
+  "adj": "2fb5c17f",
+  "adj1": "2fb5c17f",
+  "adj2": "2fb5c17f",
+  "adj3": "2fb5c17f",
+  "adj4": "2fb5c17f",
+  "adj5": "2fb5c17f",
+  "adj6": "2fb5c17f",
+  "adj7": "2fb5c17f",
+  "adj8": "2fb5c17f",
+  "authored": "2fb5c17f",
+  "default": "2fb5c17f",
+  "hf": "2fb5c17f",
+  "vf": "2fb5c17f",
 }
 `;
 
