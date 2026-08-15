@@ -1,0 +1,37 @@
+/** @type {import('@stryker-mutator/api/core').PartialStrykerOptions} */
+const config = {
+  mutate: [
+    'src/common/archive/read-entry.ts',
+    'src/common/opc/part-uri.ts',
+    'src/common/text/css.ts',
+    'src/common/text/html.ts',
+    'src/common/xml/read-xml.ts',
+    'src/formats/pptx/internal/resource-limits.ts',
+  ],
+  plugins: [
+    '@stryker-mutator/typescript-checker',
+    '@stryker-mutator/vitest-runner',
+  ],
+  testRunner: 'vitest',
+  checkers: ['typescript'],
+  coverageAnalysis: 'perTest',
+  ignoreStatic: true,
+  concurrency: 2,
+  timeoutMS: 10_000,
+  dryRunTimeoutMinutes: 3,
+  incremental: true,
+  reporters: ['clear-text', 'progress', 'html', 'json'],
+  htmlReporter: {
+    fileName: 'reports/mutation/mutation.html',
+  },
+  jsonReporter: {
+    fileName: 'reports/mutation/mutation.json',
+  },
+  thresholds: {
+    high: 80,
+    low: 65,
+    break: 55,
+  },
+};
+
+export default config;
