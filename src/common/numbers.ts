@@ -1,8 +1,9 @@
 export function angleToDegrees(
   angle: number | string | null | undefined,
 ): number {
-  if (!angle) return 0;
-  return Math.round(Number(angle) / 60_000);
+  const numericAngle = Number(angle);
+  if (!Number.isFinite(numericAngle)) return 0;
+  return Math.round(numericAngle / 60_000);
 }
 
 export function toHex(value: number): string {

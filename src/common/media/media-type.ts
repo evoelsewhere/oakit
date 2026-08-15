@@ -19,8 +19,10 @@ const MIME_TYPES: Readonly<Record<string, string>> = {
 };
 
 export function extractFileExtension(filename: string): string {
-  const index = filename.lastIndexOf('.');
-  return index < 0 ? '' : filename.slice(index + 1);
+  const suffixIndex = filename.search(/[?#]/);
+  const path = suffixIndex < 0 ? filename : filename.slice(0, suffixIndex);
+  const extensionIndex = path.lastIndexOf('.');
+  return extensionIndex < 0 ? '' : path.slice(extensionIndex + 1);
 }
 
 export function getMimeType(extension: string): string {
