@@ -3708,55 +3708,48 @@ export function getShapePath(
           'a:avLst',
           'a:gd',
         ]);
-        let adj1 = 25000 * RATIO_EMUs_Points;
-        let adj2 = 25000 * RATIO_EMUs_Points;
-        let adj3 = 25000 * RATIO_EMUs_Points;
-        let adj4 = 43750 * RATIO_EMUs_Points;
-        let adj5 = 75000 * RATIO_EMUs_Points;
-        const cnstVal1 = 25000 * RATIO_EMUs_Points;
-        const cnstVal2 = 100000 * RATIO_EMUs_Points;
-        if (shapAdjst_ary) {
-          for (const adj of asArray(shapAdjst_ary)) {
-            const sAdj_name = getTextByPathList(adj, ['attrs', 'name']);
-            if (sAdj_name === 'adj1') {
-              adj1 =
-                parseInt(
-                  getTextByPathList(adj, ['attrs', 'fmla']).substring(4),
-                ) * RATIO_EMUs_Points;
-            } else if (sAdj_name === 'adj2') {
-              adj2 =
-                parseInt(
-                  getTextByPathList(adj, ['attrs', 'fmla']).substring(4),
-                ) * RATIO_EMUs_Points;
-            } else if (sAdj_name === 'adj3') {
-              adj3 =
-                parseInt(
-                  getTextByPathList(adj, ['attrs', 'fmla']).substring(4),
-                ) * RATIO_EMUs_Points;
-            } else if (sAdj_name === 'adj4') {
-              adj4 =
-                parseInt(
-                  getTextByPathList(adj, ['attrs', 'fmla']).substring(4),
-                ) * RATIO_EMUs_Points;
-            } else if (sAdj_name === 'adj5') {
-              adj5 =
-                parseInt(
-                  getTextByPathList(adj, ['attrs', 'fmla']).substring(4),
-                ) * RATIO_EMUs_Points;
-            }
+        let adj1 = 25000;
+        let adj2 = 25000;
+        let adj3 = 25000;
+        let adj4 = 43750;
+        let adj5 = 75000;
+        const cnstVal1 = 25000;
+        const cnstVal2 = 100000;
+        for (const adj of asArray(shapAdjst_ary)) {
+          const sAdj_name = getTextByPathList(adj, ['attrs', 'name']);
+          if (sAdj_name === 'adj1') {
+            adj1 = parseInt(
+              getTextByPathList(adj, ['attrs', 'fmla']).substring(4),
+            );
+          } else if (sAdj_name === 'adj2') {
+            adj2 = parseInt(
+              getTextByPathList(adj, ['attrs', 'fmla']).substring(4),
+            );
+          } else if (sAdj_name === 'adj3') {
+            adj3 = parseInt(
+              getTextByPathList(adj, ['attrs', 'fmla']).substring(4),
+            );
+          } else if (sAdj_name === 'adj4') {
+            adj4 = parseInt(
+              getTextByPathList(adj, ['attrs', 'fmla']).substring(4),
+            );
+          } else if (sAdj_name === 'adj5') {
+            adj5 = parseInt(
+              getTextByPathList(adj, ['attrs', 'fmla']).substring(4),
+            );
           }
         }
         const minWH = Math.min(w, h);
-        const a2 = adj2 < 0 ? 0 : adj2 > cnstVal1 ? cnstVal1 : adj2;
+        const a2 = Math.min(Math.max(adj2, 0), cnstVal1);
         const maxAdj1 = 2 * a2;
-        const a1 = adj1 < 0 ? 0 : adj1 > maxAdj1 ? maxAdj1 : adj1;
+        const a1 = Math.min(Math.max(adj1, 0), maxAdj1);
         const q2 = (a1 * minWH) / h;
         const q3 = cnstVal2 - q2;
         const maxAdj3 = (q3 * h) / minWH;
-        const a3 = adj3 < 0 ? 0 : adj3 > maxAdj3 ? maxAdj3 : adj3;
+        const a3 = Math.min(Math.max(adj3, 0), maxAdj3);
         const q1 = a3 + a1;
         const minAdj5 = (q1 * minWH) / h;
-        const a5 = adj5 < minAdj5 ? minAdj5 : adj5 > cnstVal2 ? cnstVal2 : adj5;
+        const a5 = Math.min(Math.max(adj5, minAdj5), cnstVal2);
         const th = (minWH * a1) / cnstVal2;
         const aw2 = (minWH * a2) / cnstVal2;
         const th2 = th / 2;
@@ -3766,12 +3759,12 @@ export function getShapePath(
         const y4 = y5 - ah;
         const x9 = w - dh2;
         const bw = x9 / 2;
-        const bs = bw < y4 ? bw : y4;
+        const bs = Math.min(bw, y4);
         const maxAdj4 = (cnstVal2 * bs) / minWH;
-        const a4 = adj4 < 0 ? 0 : adj4 > maxAdj4 ? maxAdj4 : adj4;
+        const a4 = Math.min(Math.max(adj4, 0), maxAdj4);
         const bd = (minWH * a4) / cnstVal2;
         const bd3 = bd - th;
-        const bd2 = bd3 > 0 ? bd3 : 0;
+        const bd2 = Math.max(bd3, 0);
         const x3 = th + bd2;
         const x8 = w - aw2;
         const x6 = x8 - aw2;

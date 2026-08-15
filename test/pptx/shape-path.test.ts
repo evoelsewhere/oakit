@@ -1427,9 +1427,105 @@ describe('PowerPoint preset shape path safety', () => {
       ]),
     );
 
+    expect(hashPath(bentArrow(120, 80, [['adj4', '0']]))).toMatchInlineSnapshot(
+      `"1bc9f3c1"`,
+    );
+  });
+
+  it('clamps coupled PowerPoint u-turn-arrow adjustments', () => {
+    const uturnArrow = (
+      adjustments: ReadonlyArray<readonly [string, string]>,
+    ): string =>
+      getShapePath(
+        'uturnArrow',
+        120,
+        80,
+        guides(
+          adjustments.map(([name, value]) => [name, `val ${value}`] as const),
+        ),
+      );
+
+    expect(uturnArrow([['adj2', '-10000']])).toBe(uturnArrow([['adj2', '0']]));
+    expect(uturnArrow([['adj2', '100000']])).toBe(
+      uturnArrow([['adj2', '25000']]),
+    );
     expect(
-      hashPath(bentArrow(120, 80, [['adj4', '0']])),
-    ).toMatchInlineSnapshot(`"1bc9f3c1"`);
+      uturnArrow([
+        ['adj1', '100000'],
+        ['adj2', '25000'],
+      ]),
+    ).toBe(
+      uturnArrow([
+        ['adj1', '50000'],
+        ['adj2', '25000'],
+      ]),
+    );
+    expect(
+      uturnArrow([
+        ['adj1', '50000'],
+        ['adj2', '25000'],
+        ['adj3', '100000'],
+      ]),
+    ).toBe(
+      uturnArrow([
+        ['adj1', '50000'],
+        ['adj2', '25000'],
+        ['adj3', '50000'],
+      ]),
+    );
+    expect(
+      uturnArrow([
+        ['adj1', '20000'],
+        ['adj3', '30000'],
+        ['adj5', '0'],
+      ]),
+    ).toBe(
+      uturnArrow([
+        ['adj1', '20000'],
+        ['adj3', '30000'],
+        ['adj5', '50000'],
+      ]),
+    );
+    expect(uturnArrow([['adj5', '200000']])).toBe(
+      uturnArrow([['adj5', '100000']]),
+    );
+    expect(uturnArrow([['adj4', '-10000']])).toBe(uturnArrow([['adj4', '0']]));
+    expect(
+      uturnArrow([
+        ['adj1', '25000'],
+        ['adj2', '25000'],
+        ['adj3', '0'],
+        ['adj4', '100000'],
+        ['adj5', '100000'],
+      ]),
+    ).toBe(
+      uturnArrow([
+        ['adj1', '25000'],
+        ['adj2', '25000'],
+        ['adj3', '0'],
+        ['adj4', '68750'],
+        ['adj5', '100000'],
+      ]),
+    );
+    expect(
+      uturnArrow([
+        ['adj1', '25000'],
+        ['adj2', '25000'],
+        ['adj3', '0'],
+        ['adj4', '100000'],
+        ['adj5', '50000'],
+      ]),
+    ).toBe(
+      uturnArrow([
+        ['adj1', '25000'],
+        ['adj2', '25000'],
+        ['adj3', '0'],
+        ['adj4', '50000'],
+        ['adj5', '50000'],
+      ]),
+    );
+
+    expect(hashPath(uturnArrow([['adj4', '0']]))).toMatchInlineSnapshot(`"995696c0"`);
   });
 
   it('keeps common default paths deterministic', () => {
