@@ -168,8 +168,19 @@ export async function parse(
     limits,
   };
 
-  const zipInput = file instanceof Blob ? await file.arrayBuffer() : file;
-  const zip = await JSZip.loadAsync(zipInput);
+  let zip: JSZip;
+  try {
+    const zipInput = file instanceof Blob ? await file.arrayBuffer() : file;
+    zip = await JSZip.loadAsync(zipInput);
+  } catch (cause) {
+    const diagnostic: PptxDiagnostic = {
+      code: 'invalid-package',
+      message: `Failed to open OPC package: ${cause instanceof Error ? cause.message : String(cause)}`,
+      severity: 'error',
+    };
+    diagnostics.push(diagnostic);
+    throw new PptxParseError(diagnostic, { cause });
+  }
   try {
     assertPptxArchiveWithinLimits(zip, limits);
   } catch (error) {

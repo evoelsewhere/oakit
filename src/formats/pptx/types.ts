@@ -356,6 +356,7 @@ export type PptxErrorMode = 'strict' | 'tolerant';
 export type PptxDiagnosticCode =
   | 'invalid-document-structure'
   | 'invalid-document-value'
+  | 'invalid-package'
   | 'invalid-relationship-target'
   | 'missing-required-part'
   | 'resource-limit-exceeded'
