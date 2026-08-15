@@ -3873,7 +3873,7 @@ export function getShapePath(
         const vc = h / 2;
         const minWH = Math.min(w, h);
         const maxAdj = (cnstVal1 * w) / minWH;
-        const a = adj < 0 ? 0 : adj > maxAdj ? maxAdj : adj;
+        const a = Math.min(Math.max(adj, 0), maxAdj);
         const dx1 = (minWH * a) / cnstVal1;
         const x1 = w - dx1;
         pathData = `M 0,0 L ${x1},0 L ${w},${vc} L ${x1},${h} L 0,${h} z`;
@@ -3897,7 +3897,7 @@ export function getShapePath(
         const vc = h / 2;
         const minWH = Math.min(w, h);
         const maxAdj = (cnstVal1 * w) / minWH;
-        const a = adj < 0 ? 0 : adj > maxAdj ? maxAdj : adj;
+        const a = Math.min(Math.max(adj, 0), maxAdj);
         const x1 = (minWH * a) / cnstVal1;
         const x2 = w - x1;
         pathData = `M 0,0 L ${x2},0 L ${w},${vc} L ${x2},${h} L 0,${h} L ${x1},${vc} z`;

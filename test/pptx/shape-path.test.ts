@@ -1546,6 +1546,17 @@ describe('PowerPoint preset shape path safety', () => {
     },
   );
 
+  it.each(['homePlate', 'chevron'])(
+    'clamps the aspect-ratio-sensitive PowerPoint adjustment for %s',
+    (shapeType) => {
+      const shape = (value: string): string =>
+        getShapePath(shapeType, 80, 120, singleGuide('adj', value));
+
+      expect(shape('-10000')).toBe(shape('0'));
+      expect(shape('200000')).toBe(shape('100000'));
+    },
+  );
+
   it('keeps common default paths deterministic', () => {
     const rectangle = 'M 0 0 L 120 0 L 120 80 L 0 80 Z';
     expect(getShapePath('rect', 120, 80, xml({}))).toBe(rectangle);
