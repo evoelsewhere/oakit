@@ -19,6 +19,11 @@ interface Edge {
 
 type Quadrilateral = readonly [Point, Point, Point, Point];
 
+interface CustomPathRenderState {
+  currentPoint: Point | undefined;
+  subpathStart: Point | undefined;
+}
+
 type PathCommand =
   | { points: Point[]; type: 'cubicBezTo' | 'lineTo' | 'moveTo' }
   | { type: 'arcTo' | 'close' | 'quadBezTo' };
@@ -98,30 +103,6 @@ function resolvedPointsFromNode(
   return points.some((point) => point === undefined)
     ? undefined
     : (points as Point[]);
-}
-
-export function shapeArc(
-  centerX: number,
-  centerY: number,
-  radiusX: number,
-  radiusY: number,
-  startAngle: number,
-  endAngle: number,
-  close: boolean,
-): string {
-  let path = '';
-  const increment = endAngle >= startAngle ? 1 : -1;
-  for (
-    let angle = startAngle;
-    increment > 0 ? angle <= endAngle : angle > endAngle;
-    angle += increment
-  ) {
-    const radians = angle * (Math.PI / 180);
-    const x = centerX + Math.cos(radians) * radiusX;
-    const y = centerY + Math.sin(radians) * radiusY;
-    path += angle === startAngle ? ` M${x} ${y}` : ` L${x} ${y}`;
-  }
-  return `${path}${close ? ' z' : ''}`;
 }
 
 function commandOrder(node: XmlLookupValue | undefined): number {
@@ -229,39 +210,152 @@ function collectCloseCommands(path: XmlLookupValue): OrderedCustomCommand[] {
   }));
 }
 
+function roundedCoordinate(value: number): number {
+  return Math.round(value * 1_000_000_000_000) / 1_000_000_000_000;
+}
+
+function ellipseRayOffset(
+  radiusX: number,
+  radiusY: number,
+  angleDegrees: number,
+): Point {
+  const normalizedAngle = ((angleDegrees % 360) + 360) % 360;
+  let cosine: number;
+  let sine: number;
+  switch (normalizedAngle) {
+    case 0:
+      cosine = 1;
+      sine = 0;
+      break;
+    case 90:
+      cosine = 0;
+      sine = 1;
+      break;
+    case 180:
+      cosine = -1;
+      sine = 0;
+      break;
+    case 270:
+      cosine = 0;
+      sine = -1;
+      break;
+    default: {
+      const radians = (normalizedAngle * Math.PI) / 180;
+      cosine = Math.cos(radians);
+      sine = Math.sin(radians);
+    }
+  }
+  const denominator = Math.hypot(radiusY * cosine, radiusX * sine);
+  const scale = (radiusX * radiusY) / denominator;
+  return {
+    x: scale * cosine,
+    y: scale * sine,
+  };
+}
+
+function renderCustomArc(
+  command: Extract<OrderedCustomCommand, { type: 'arcTo' }>,
+  currentPoint: Point,
+  scaleX: number,
+  scaleY: number,
+): { data: string; endpoint: Point } | undefined {
+  const radiusX = command.wR * scaleX;
+  const radiusY = command.hR * scaleY;
+  if (
+    Math.abs(radiusX) > Number.MAX_SAFE_INTEGER ||
+    Math.abs(radiusY) > Number.MAX_SAFE_INTEGER ||
+    radiusX <= 0 ||
+    radiusY <= 0
+  ) {
+    return undefined;
+  }
+
+  const startDegrees = command.stAng / 60_000;
+  const requestedSweep = command.swAng / 60_000;
+  const sweepDegrees = Math.max(-360, Math.min(360, requestedSweep));
+  if (sweepDegrees === 0) return undefined;
+
+  const startOffset = ellipseRayOffset(radiusX, radiusY, startDegrees);
+  const center = {
+    x: currentPoint.x - startOffset.x,
+    y: currentPoint.y - startOffset.y,
+  };
+  const segmentSweeps =
+    Math.abs(sweepDegrees) === 360
+      ? [sweepDegrees / 2, sweepDegrees / 2]
+      : [sweepDegrees];
+  const sweepFlag = Math.max(0, Math.sign(sweepDegrees));
+  let traversed = 0;
+  let data = '';
+  let endpoint = currentPoint;
+
+  for (const segmentSweep of segmentSweeps) {
+    traversed += segmentSweep;
+    const endOffset = ellipseRayOffset(
+      radiusX,
+      radiusY,
+      startDegrees + traversed,
+    );
+    endpoint = {
+      x: roundedCoordinate(center.x + endOffset.x),
+      y: roundedCoordinate(center.y + endOffset.y),
+    };
+    const largeArcFlag = Math.abs(segmentSweep) > 180 ? 1 : 0;
+    data += ` A${roundedCoordinate(radiusX)},${roundedCoordinate(radiusY)} 0 ${largeArcFlag},${sweepFlag} ${endpoint.x},${endpoint.y}`;
+  }
+
+  return { data, endpoint };
+}
+
 function renderCustomCommand(
   command: OrderedCustomCommand,
   scaleX: number,
   scaleY: number,
+  state: CustomPathRenderState,
 ): string {
   switch (command.type) {
-    case 'moveTo':
-      return ` M${command.point.x * scaleX},${command.point.y * scaleY}`;
-    case 'lineTo':
-      return ` L${command.point.x * scaleX},${command.point.y * scaleY}`;
+    case 'moveTo': {
+      const point = {
+        x: command.point.x * scaleX,
+        y: command.point.y * scaleY,
+      };
+      state.currentPoint = point;
+      state.subpathStart = point;
+      return ` M${point.x},${point.y}`;
+    }
+    case 'lineTo': {
+      const point = {
+        x: command.point.x * scaleX,
+        y: command.point.y * scaleY,
+      };
+      state.currentPoint = point;
+      return ` L${point.x},${point.y}`;
+    }
     case 'cubicBezTo': {
       const [first, second, third] = command.points;
+      state.currentPoint = {
+        x: third.x * scaleX,
+        y: third.y * scaleY,
+      };
       return ` C${first.x * scaleX},${first.y * scaleY} ${second.x * scaleX},${second.y * scaleY} ${third.x * scaleX},${third.y * scaleY}`;
     }
     case 'quadBezTo': {
       const [first, second] = command.points;
+      state.currentPoint = {
+        x: second.x * scaleX,
+        y: second.y * scaleY,
+      };
       return ` Q${first.x * scaleX},${first.y * scaleY} ${second.x * scaleX},${second.y * scaleY}`;
     }
     case 'arcTo': {
-      const radiusX = command.wR * scaleX;
-      const radiusY = command.hR * scaleY;
-      const start = command.stAng / 60_000;
-      return shapeArc(
-        radiusX,
-        radiusY,
-        radiusX,
-        radiusY,
-        start,
-        start + command.swAng / 60_000,
-        false,
-      );
+      if (!state.currentPoint) return '';
+      const arc = renderCustomArc(command, state.currentPoint, scaleX, scaleY);
+      if (!arc) return '';
+      state.currentPoint = arc.endpoint;
+      return arc.data;
     }
     case 'close':
+      state.currentPoint = state.subpathStart;
       return 'z';
   }
 }
@@ -276,10 +370,16 @@ function renderCustomPath(
   const sourceWidth = Number(pathAttributes.w ?? 0);
   const sourceHeight = Number(pathAttributes.h ?? 0);
   if (
-    !Number.isFinite(sourceWidth) ||
-    !Number.isFinite(sourceHeight) ||
+    !Number.isSafeInteger(sourceWidth) ||
+    !Number.isSafeInteger(sourceHeight) ||
+    !Number.isFinite(width) ||
+    !Number.isFinite(height) ||
+    Math.abs(width) > Number.MAX_SAFE_INTEGER ||
+    Math.abs(height) > Number.MAX_SAFE_INTEGER ||
     sourceWidth <= 0 ||
-    sourceHeight <= 0
+    sourceHeight <= 0 ||
+    width < 0 ||
+    height < 0
   ) {
     return '';
   }
@@ -298,10 +398,14 @@ function renderCustomPath(
     ...collectArcCommands(pathNode, resolve),
     ...collectCloseCommands(pathNode),
   ];
+  const state: CustomPathRenderState = {
+    currentPoint: undefined,
+    subpathStart: undefined,
+  };
 
   return commands
     .sort((left, right) => left.order - right.order)
-    .map((command) => renderCustomCommand(command, scaleX, scaleY))
+    .map((command) => renderCustomCommand(command, scaleX, scaleY, state))
     .join('');
 }
 

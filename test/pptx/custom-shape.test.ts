@@ -724,6 +724,10 @@ describe('PowerPoint custom path collection', () => {
     ['missing height', { w: '100' }],
     ['non-numeric width', { h: '100', w: 'wide' }],
     ['non-numeric height', { h: 'tall', w: '100' }],
+    ['fractional width', { h: '100', w: '1.5' }],
+    ['fractional height', { h: '1.5', w: '100' }],
+    ['unsafe width', { h: '100', w: '9007199254740992' }],
+    ['unsafe height', { h: '9007199254740992', w: '100' }],
   ] as const)('skips a path with %s', (_label, attrs) => {
     const geometry = xml({
       'a:pathLst': {
@@ -975,5 +979,354 @@ describe('PowerPoint custom path collection', () => {
     expect(isStrokeOnlyCustomGeometry(paths(['none', 'none']))).toBe(true);
     expect(isStrokeOnlyCustomGeometry(paths(['none', 'norm']))).toBe(false);
     expect(isStrokeOnlyCustomGeometry(paths([undefined]))).toBe(false);
+  });
+});
+
+describe('PowerPoint custom path arcs', () => {
+  function arcGeometry(
+    arcAttributes:
+      | Readonly<Record<string, string>>
+      | readonly Readonly<Record<string, string>>[],
+    move: Point | null = { x: 100, y: 50 },
+    guides: object = {},
+  ): XmlLookupValue {
+    const arcs: readonly Readonly<Record<string, string>>[] = Array.isArray(
+      arcAttributes,
+    )
+      ? (arcAttributes as readonly Readonly<Record<string, string>>[])
+      : [arcAttributes as Readonly<Record<string, string>>];
+    const path: Record<string, unknown> = {
+      attrs: { h: '100', w: '100' },
+      'a:arcTo': arcs.map((attrs, index) => ({
+        attrs: { ...attrs, order: String(index + 2) },
+      })),
+    };
+    if (move) {
+      path['a:moveTo'] = {
+        attrs: { order: '1' },
+        'a:pt': pointNode(move, 11),
+      };
+    }
+    return xml({
+      ...guides,
+      'a:pathLst': { 'a:path': path },
+    });
+  }
+
+  const QUARTER_ARC = {
+    hR: '25',
+    stAng: '0',
+    swAng: '5400000',
+    wR: '50',
+  } as const;
+
+  it.each([
+    ['clockwise quarter', QUARTER_ARC, ' M100,50 A50,25 0 0,1 50,75'],
+    [
+      'counter-clockwise quarter',
+      { ...QUARTER_ARC, swAng: '-5400000' },
+      ' M100,50 A50,25 0 0,0 50,25',
+    ],
+    [
+      'clockwise half',
+      { ...QUARTER_ARC, swAng: '10800000' },
+      ' M100,50 A50,25 0 0,1 0,50',
+    ],
+    [
+      'clockwise large arc',
+      { ...QUARTER_ARC, swAng: '16200000' },
+      ' M100,50 A50,25 0 1,1 50,25',
+    ],
+  ] as const)('renders a %s from the current point', (_name, arc, expected) => {
+    expect(getCustomShapePath(arcGeometry(arc), 100, 100)).toBe(expected);
+  });
+
+  it('scales horizontal and vertical radii independently', () => {
+    expect(getCustomShapePath(arcGeometry(QUARTER_ARC), 200, 300)).toBe(
+      ' M200,150 A100,75 0 0,1 100,225',
+    );
+  });
+
+  it('splits full and oversized turns into two SVG arcs', () => {
+    expect(
+      getCustomShapePath(
+        arcGeometry({ ...QUARTER_ARC, swAng: '21600000' }),
+        100,
+        100,
+      ),
+    ).toBe(' M100,50 A50,25 0 0,1 0,50 A50,25 0 0,1 100,50');
+    expect(
+      getCustomShapePath(
+        arcGeometry({ ...QUARTER_ARC, swAng: '43200000' }),
+        100,
+        100,
+      ),
+    ).toBe(' M100,50 A50,25 0 0,1 0,50 A50,25 0 0,1 100,50');
+    expect(
+      getCustomShapePath(
+        arcGeometry({ ...QUARTER_ARC, swAng: '-21600000' }),
+        100,
+        100,
+      ),
+    ).toBe(' M100,50 A50,25 0 0,0 0,50 A50,25 0 0,0 100,50');
+  });
+
+  it('uses the large-arc flag immediately above a half turn', () => {
+    expect(
+      getCustomShapePath(
+        arcGeometry({ ...QUARTER_ARC, swAng: '10800001' }),
+        100,
+        100,
+      ),
+    ).toContain(' A50,25 0 1,1 ');
+  });
+
+  it('normalizes a negative-zero arc endpoint', () => {
+    expect(
+      getCustomShapePath(
+        arcGeometry({ ...QUARTER_ARC, swAng: '16200000' }, { x: 50, y: 0 }),
+        100,
+        100,
+      ),
+    ).toBe(' M50,0 A50,25 0 1,1 0,-25');
+  });
+
+  it('uses DrawingML ray angles for an eccentric ellipse', () => {
+    const geometry = arcGeometry(
+      { hR: '50', stAng: 'cd8', swAng: 'cd4', wR: '100' },
+      null,
+      {
+        'a:gdLst': {
+          'a:gd': [
+            { attrs: { fmla: 'cat2 100 50 100', name: 'dx' } },
+            { attrs: { fmla: 'sat2 50 50 100', name: 'dy' } },
+            { attrs: { fmla: '+- 100 dx 0', name: 'sx' } },
+            { attrs: { fmla: '+- 100 dy 0', name: 'sy' } },
+          ],
+        },
+      },
+    );
+    const path = geometry as unknown as Record<string, unknown>;
+    const pathList = path['a:pathLst'] as Record<string, unknown>;
+    const pathNode = pathList['a:path'] as Record<string, unknown>;
+    pathNode.attrs = { h: '200', w: '200' };
+    pathNode['a:moveTo'] = {
+      attrs: { order: '1' },
+      'a:pt': { attrs: { order: '11', x: 'sx', y: 'sy' } },
+    };
+
+    const rendered = getCustomShapePath(geometry, 200, 200);
+    const endpoint = rendered.match(/A100,50 0 0,1 ([^,]+),([^ ]+)$/);
+    expect(endpoint).not.toBeNull();
+    expect(Number(endpoint?.[1])).toBeCloseTo(55.27864045, 9);
+    expect(Number(endpoint?.[2])).toBeCloseTo(144.72135955, 9);
+  });
+
+  it('continues sequential arcs from each previous endpoint', () => {
+    const arcs = [QUARTER_ARC, { ...QUARTER_ARC, stAng: '5400000' }];
+    expect(getCustomShapePath(arcGeometry(arcs), 100, 100)).toBe(
+      ' M100,50 A50,25 0 0,1 50,75 A50,25 0 0,1 0,50',
+    );
+  });
+
+  it.each([
+    [
+      'line',
+      {
+        'a:lnTo': {
+          attrs: { order: '2' },
+          'a:pt': pointNode({ x: 100, y: 50 }, 21),
+        },
+      },
+      ' M0,0 L200,150 A100,75 0 0,1 100,225',
+    ],
+    [
+      'quadratic curve',
+      {
+        'a:quadBezTo': {
+          attrs: { order: '2' },
+          'a:pt': [
+            pointNode({ x: 50, y: 25 }, 21),
+            pointNode({ x: 100, y: 50 }, 22),
+          ],
+        },
+      },
+      ' M0,0 Q100,75 200,150 A100,75 0 0,1 100,225',
+    ],
+    [
+      'cubic curve',
+      {
+        'a:cubicBezTo': {
+          attrs: { order: '2' },
+          'a:pt': [
+            pointNode({ x: 25, y: 10 }, 21),
+            pointNode({ x: 75, y: 40 }, 22),
+            pointNode({ x: 100, y: 50 }, 23),
+          ],
+        },
+      },
+      ' M0,0 C50,30 150,120 200,150 A100,75 0 0,1 100,225',
+    ],
+  ] as const)(
+    'starts an arc after a %s endpoint',
+    (_name, previous, expected) => {
+      const geometry = arcGeometry(QUARTER_ARC, { x: 0, y: 0 });
+      const root = geometry as unknown as Record<string, unknown>;
+      const pathList = root['a:pathLst'] as Record<string, unknown>;
+      const path = pathList['a:path'] as Record<string, unknown>;
+      Object.assign(path, previous);
+      const arc = path['a:arcTo'] as Array<{ attrs: Record<string, string> }>;
+      const firstArc = arc[0];
+      if (!firstArc) throw new Error('Expected an arc command');
+      firstArc.attrs.order = '3';
+
+      expect(getCustomShapePath(geometry, 200, 300)).toBe(expected);
+    },
+  );
+
+  it('restores the subpath start after close before another arc', () => {
+    const geometry = arcGeometry([QUARTER_ARC, QUARTER_ARC]);
+    const root = geometry as unknown as Record<string, unknown>;
+    const pathList = root['a:pathLst'] as Record<string, unknown>;
+    const path = pathList['a:path'] as Record<string, unknown>;
+    path['a:close'] = { attrs: { order: '3' } };
+    const arcs = path['a:arcTo'] as Array<{ attrs: Record<string, string> }>;
+    const secondArc = arcs[1];
+    if (!secondArc) throw new Error('Expected a second arc command');
+    secondArc.attrs.order = '4';
+
+    expect(getCustomShapePath(geometry, 100, 100)).toBe(
+      ' M100,50 A50,25 0 0,1 50,75z A50,25 0 0,1 50,75',
+    );
+  });
+
+  it.each([['hR'], ['wR'], ['stAng'], ['swAng']] as const)(
+    'skips an arc missing %s',
+    (missing) => {
+      const attrs: Record<string, string> = { ...QUARTER_ARC };
+      delete attrs[missing];
+      expect(getCustomShapePath(arcGeometry(attrs), 100, 100)).toBe(' M100,50');
+    },
+  );
+
+  it.each([
+    ['unresolved height radius', { ...QUARTER_ARC, hR: 'missing' }],
+    ['unresolved width radius', { ...QUARTER_ARC, wR: 'missing' }],
+    ['unresolved start angle', { ...QUARTER_ARC, stAng: 'missing' }],
+    ['unresolved sweep angle', { ...QUARTER_ARC, swAng: 'missing' }],
+    ['zero height radius', { ...QUARTER_ARC, hR: '0' }],
+    ['zero width radius', { ...QUARTER_ARC, wR: '0' }],
+    ['negative height radius', { ...QUARTER_ARC, hR: '-1' }],
+    ['negative width radius', { ...QUARTER_ARC, wR: '-1' }],
+    ['zero sweep', { ...QUARTER_ARC, swAng: '0' }],
+  ] as const)('skips an arc with %s', (_name, arc) => {
+    expect(getCustomShapePath(arcGeometry(arc), 100, 100)).toBe(' M100,50');
+  });
+
+  it('skips an arc without a current point', () => {
+    expect(getCustomShapePath(arcGeometry(QUARTER_ARC, null), 100, 100)).toBe(
+      '',
+    );
+  });
+
+  it.each([
+    ['non-finite width', Number.NaN, 100],
+    ['non-finite height', 100, Number.POSITIVE_INFINITY],
+    ['negative width', -1, 100],
+    ['negative height', 100, -1],
+    ['unsafe width', Number.MAX_SAFE_INTEGER + 1, 100],
+    ['unsafe height', 100, Number.MAX_SAFE_INTEGER + 1],
+  ] as const)('rejects a path rendered with %s', (_name, width, height) => {
+    expect(getCustomShapePath(arcGeometry(QUARTER_ARC), width, height)).toBe(
+      '',
+    );
+  });
+
+  it.each([
+    ['zero width', 0, 100, ' M0,50'],
+    ['zero height', 100, 0, ' M100,0'],
+  ] as const)(
+    'accepts a path rendered with %s',
+    (_name, width, height, expected) => {
+      expect(getCustomShapePath(arcGeometry(QUARTER_ARC), width, height)).toBe(
+        expected,
+      );
+    },
+  );
+
+  it('accepts target dimensions at the safe coordinate boundary', () => {
+    const geometry = xml({
+      'a:pathLst': {
+        'a:path': {
+          attrs: { h: '1', w: '1' },
+          'a:moveTo': {
+            attrs: { order: '1' },
+            'a:pt': pointNode({ x: 1, y: 1 }, 2),
+          },
+        },
+      },
+    });
+    const maximum = Number.MAX_SAFE_INTEGER;
+
+    expect(getCustomShapePath(geometry, maximum, 17)).toBe(
+      ` M${String(maximum)},17`,
+    );
+    expect(getCustomShapePath(geometry, 23, maximum)).toBe(
+      ` M23,${String(maximum)}`,
+    );
+  });
+
+  it.each([
+    ['horizontal', { ...QUARTER_ARC, wR: String(Number.MAX_SAFE_INTEGER) }],
+    ['vertical', { ...QUARTER_ARC, hR: String(Number.MAX_SAFE_INTEGER) }],
+  ] as const)(
+    'skips an arc whose scaled %s radius exceeds the safe coordinate range',
+    (_axis, arc) => {
+      expect(getCustomShapePath(arcGeometry(arc), 200, 200)).toBe(' M200,100');
+    },
+  );
+
+  it('accepts a horizontal radius at the safe coordinate boundary', () => {
+    const maximum = String(Number.MAX_SAFE_INTEGER);
+    expect(
+      getCustomShapePath(
+        arcGeometry({ ...QUARTER_ARC, wR: maximum }, {
+          x: Number.MAX_SAFE_INTEGER,
+          y: 50,
+        }),
+        100,
+        100,
+      ),
+    ).toBe(` M${maximum},50 A${maximum},25 0 0,1 0,75`);
+  });
+
+  it('accepts a vertical radius at the safe coordinate boundary', () => {
+    const maximum = String(Number.MAX_SAFE_INTEGER);
+    expect(
+      getCustomShapePath(
+        arcGeometry(
+          {
+            ...QUARTER_ARC,
+            hR: maximum,
+            stAng: '5400000',
+            swAng: '-5400000',
+          },
+          { x: 50, y: Number.MAX_SAFE_INTEGER },
+        ),
+        100,
+        100,
+      ),
+    ).toBe(` M50,${maximum} A50,${maximum} 0 0,0 100,0`);
+
+    expect(
+      getCustomShapePath(
+        arcGeometry(
+          { ...QUARTER_ARC, hR: maximum, swAng: '-5400000' },
+          { x: 50, y: 0 },
+        ),
+        100,
+        100,
+      ),
+    ).toBe(` M50,0 A50,${maximum} 0 0,0 0,-${maximum}`);
   });
 });
