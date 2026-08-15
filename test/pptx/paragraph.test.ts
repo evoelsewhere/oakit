@@ -225,8 +225,24 @@ describe('PowerPoint paragraph alignment', () => {
     expect(horizontal(fixture)).toBe('left');
   });
 
+  it('inherits past a layout node without an authored alignment', () => {
+    expect(
+      horizontal({
+        layout: xml({ 'p:txBody': { 'a:bodyPr': {} } }),
+        master: shapeLevelStyle(paragraphStyle({ algn: 'r' })),
+      }),
+    ).toBe('right');
+  });
+
   it.each([
     ['0', 1, 'center'],
+    ['1', 2, 'center'],
+    ['2', 3, 'center'],
+    ['3', 4, 'center'],
+    ['4', 5, 'center'],
+    ['5', 6, 'center'],
+    ['6', 7, 'center'],
+    ['7', 8, 'center'],
     ['8', 9, 'center'],
     ['0junk', 1, 'center'],
     ['-1', 1, 'center'],
@@ -310,6 +326,15 @@ describe('PowerPoint vertical alignment and autofit', () => {
     });
     expect(getTextAutoFit(xml({}), fit, undefined)).toEqual({ type: 'shape' });
     expect(getTextAutoFit(xml({}), undefined, fit)).toEqual({ type: 'shape' });
+  });
+
+  it('inherits autofit past an empty local body property node', () => {
+    const node = xml({ 'p:txBody': { 'a:bodyPr': {} } });
+    const layout = xml({
+      'p:txBody': { 'a:bodyPr': { 'a:spAutoFit': {} } },
+    });
+
+    expect(getTextAutoFit(node, layout, undefined)).toEqual({ type: 'shape' });
   });
 
   it.each([
@@ -400,6 +425,19 @@ describe('PowerPoint paragraph spacing and indentation', () => {
     });
   });
 
+  it('preserves explicit zero point line spacing and rejects negative points', () => {
+    const zero = paragraphStyle({}, spacingChild('a:lnSpc', 'a:spcPts', '0'));
+    const negative = paragraphStyle(
+      {},
+      spacingChild('a:lnSpc', 'a:spcPts', '-1'),
+    );
+
+    expect(spacing({ paragraph: paragraph(zero) })).toEqual({
+      lineSpacing: '0pt',
+    });
+    expect(spacing({ paragraph: paragraph(negative) })).toBeNull();
+  });
+
   it.each([
     '100000junk',
     'junk100000',
@@ -443,6 +481,36 @@ describe('PowerPoint paragraph spacing and indentation', () => {
     });
   });
 
+  it('does not let lower-priority styles overwrite resolved spacing', () => {
+    const high = paragraphStyle(
+      {},
+      {
+        ...spacingChild('a:lnSpc', 'a:spcPct', '120000'),
+        ...spacingChild('a:spcBef', 'a:spcPts', '600'),
+        ...spacingChild('a:spcAft', 'a:spcPts', '700'),
+      },
+    );
+    const low = paragraphStyle(
+      {},
+      {
+        ...spacingChild('a:lnSpc', 'a:spcPct', '200000'),
+        ...spacingChild('a:spcBef', 'a:spcPts', '1600'),
+        ...spacingChild('a:spcAft', 'a:spcPts', '1700'),
+      },
+    );
+
+    expect(
+      spacing({
+        paragraph: paragraph(high),
+        textBody: levelStyle(low),
+      }),
+    ).toEqual({
+      lineSpacing: 1.2,
+      spaceBefore: '6pt',
+      spaceAfter: '7pt',
+    });
+  });
+
   it.each([
     [
       'layout paragraph',
@@ -472,6 +540,17 @@ describe('PowerPoint paragraph spacing and indentation', () => {
         type: 'title',
       },
       '9pt',
+    ],
+    [
+      'master centered-title text style',
+      {
+        masterTextStyles: masterTextStyle(
+          'p:titleStyle',
+          paragraphStyle({}, spacingChild('a:spcBef', 'a:spcPts', '950')),
+        ),
+        type: 'ctrTitle',
+      },
+      '9.5pt',
     ],
     [
       'master subtitle body fallback',
@@ -532,6 +611,21 @@ describe('PowerPoint paragraph spacing and indentation', () => {
   ] as const)('inherits spacing from %s', (_name, fixture, expected) => {
     expect(spacing(fixture)?.spaceBefore).toBe(expected);
   });
+
+  it.each(['title', 'ctrTitle'])(
+    'does not use body paragraph spacing for %s placeholders',
+    (type) => {
+      expect(
+        spacing({
+          masterTextStyles: masterTextStyle(
+            'p:bodyStyle',
+            paragraphStyle({}, spacingChild('a:spcBef', 'a:spcPts', '900')),
+          ),
+          type,
+        }),
+      ).toBeNull();
+    },
+  );
 
   it('converts authored indentation and preserves zero', () => {
     expect(

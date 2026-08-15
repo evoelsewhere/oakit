@@ -15,7 +15,26 @@ function getParagraphLevel(node: XmlLookupValue) {
   const level = parseInteger(
     getTextByPathList<string>(node, ['a:pPr', 'attrs', 'lvl']),
   );
-  return level !== undefined && level >= 0 && level <= 8 ? level + 1 : 1;
+  switch (level) {
+    case 1:
+      return 2;
+    case 2:
+      return 3;
+    case 3:
+      return 4;
+    case 4:
+      return 5;
+    case 5:
+      return 6;
+    case 6:
+      return 7;
+    case 7:
+      return 8;
+    case 8:
+      return 9;
+    default:
+      return 1;
+  }
 }
 
 interface ParagraphSpacing {
@@ -33,8 +52,6 @@ function getAlignFromTextNode(
   node: XmlLookupValue | undefined,
   levelPath: string,
 ): string {
-  if (!node) return '';
-
   let algn = getTextByPathList<string>(node, [
     'p:txBody',
     'a:lstStyle',
@@ -149,29 +166,25 @@ export function getVerticalAlign(
   slideLayoutSpNode: XmlLookupValue | undefined,
   slideMasterSpNode: XmlLookupValue | undefined,
 ) {
-  let anchor = getTextByPathList<string>(node, [
-    'p:txBody',
-    'a:bodyPr',
-    'attrs',
-    'anchor',
-  ]);
-  if (!anchor) {
-    anchor = getTextByPathList<string>(slideLayoutSpNode, [
+  const anchor =
+    getTextByPathList<string>(node, [
+      'p:txBody',
+      'a:bodyPr',
+      'attrs',
+      'anchor',
+    ]) ||
+    getTextByPathList<string>(slideLayoutSpNode, [
+      'p:txBody',
+      'a:bodyPr',
+      'attrs',
+      'anchor',
+    ]) ||
+    getTextByPathList<string>(slideMasterSpNode, [
       'p:txBody',
       'a:bodyPr',
       'attrs',
       'anchor',
     ]);
-    if (!anchor) {
-      anchor = getTextByPathList<string>(slideMasterSpNode, [
-        'p:txBody',
-        'a:bodyPr',
-        'attrs',
-        'anchor',
-      ]);
-      if (!anchor) anchor = 't';
-    }
-  }
   return anchor === 'ctr' ? 'mid' : anchor === 'b' ? 'down' : 'up';
 }
 
@@ -237,8 +250,6 @@ function appendTextBodyParagraphStyleNodes(
   textBodyNode: XmlLookupValue,
   lvl: number,
 ) {
-  if (!textBodyNode) return;
-
   const lvlPath = `a:lvl${lvl}pPr`;
   pushParagraphStyleNode(
     styleNodes,
@@ -251,8 +262,6 @@ function appendShapeParagraphStyleNodes(
   shapeNode: XmlLookupValue | undefined,
   lvl: number,
 ) {
-  if (!shapeNode) return;
-
   const lvlPath = `a:lvl${lvl}pPr`;
   pushParagraphStyleNode(
     styleNodes,
@@ -270,8 +279,6 @@ function appendMasterTextParagraphStyleNodes(
   lvl: number,
   slideMasterTextStyles: XmlLookupValue | undefined,
 ) {
-  if (!slideMasterTextStyles) return;
-
   const lvlPath = `a:lvl${lvl}pPr`;
 
   if (type === 'title' || type === 'ctrTitle' || type === 'subTitle') {
@@ -303,8 +310,6 @@ function appendDefaultTextParagraphStyleNodes(
   defaultTextStyle: XmlLookupValue | undefined,
   lvl: number,
 ) {
-  if (!defaultTextStyle) return;
-
   const lvlPath = `a:lvl${lvl}pPr`;
   pushParagraphStyleNode(
     styleNodes,
@@ -325,8 +330,6 @@ function getParagraphStyleNodes(
   slideMasterTextStyles: XmlLookupValue | undefined,
   warpObj: PptxParserContext,
 ) {
-  if (!pNode) return null;
-
   const pPrNode = pNode['a:pPr'];
   const lvl = getParagraphLevel(pNode);
   const styleNodes: XmlLookupValue[] = [];
@@ -406,7 +409,6 @@ export function getParagraphSpacing(
     slideMasterTextStyles,
     warpObj,
   );
-  if (!styleNodes) return null;
 
   const spacing: ParagraphSpacing = {};
 
@@ -448,7 +450,6 @@ export function getParagraphIndent(
     slideMasterTextStyles,
     warpObj,
   );
-  if (!styleNodes) return null;
 
   const indent: ParagraphIndent = {};
 
