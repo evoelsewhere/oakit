@@ -24,7 +24,7 @@ interface CompressedEntryData {
 }
 
 interface SizedZipObject extends JSZip.JSZipObject {
-  _data?: CompressedEntryData;
+  _data?: CompressedEntryData | Promise<unknown>;
 }
 
 export class PptxResourceLimitError extends Error {
@@ -102,13 +102,16 @@ export function assertPptxInputWithinLimits(
 }
 
 function declaredUncompressedSize(file: JSZip.JSZipObject): number {
-  const size = (file as SizedZipObject)._data?.uncompressedSize;
-  if (!Number.isSafeInteger(size) || Number(size) < 0) {
+  const data = (file as SizedZipObject)._data;
+  if (data instanceof Promise) return 0;
+  const size = data?.uncompressedSize;
+  const numericSize = Number(size);
+  if (!Number.isSafeInteger(size) || numericSize !== Math.abs(numericSize)) {
     throw new Error(
       `Unable to validate expanded size for ZIP part ${file.name}`,
     );
   }
-  return Number(size);
+  return numericSize;
 }
 
 export function assertPptxArchiveWithinLimits(

@@ -102,12 +102,14 @@ describe('PPTX resource limits', () => {
 
   it('allows archive counts and sizes exactly at every configured limit', async () => {
     const source = new JSZip();
+    source.folder('assets');
+    source.file('empty.bin', '');
     source.file('one.bin', '12');
     source.file('two.bin', '345');
     const archive = await source.generateAsync({ type: 'uint8array' });
     const loaded = await JSZip.loadAsync(archive);
     const limits = resolvePptxResourceLimits({
-      maxEntries: 2,
+      maxEntries: 3,
       maxMediaBytes: 3,
       maxPartBytes: 3,
       maxTotalUncompressedBytes: 5,
@@ -157,6 +159,20 @@ describe('PPTX resource limits', () => {
       code: 'resource-limit-exceeded',
       message: error.message,
       part: 'ppt/media/video.mp4',
+      severity: 'error',
+    });
+
+    const packageError = new PptxResourceLimitError(
+      'maxTotalUncompressedBytes',
+      6,
+      5,
+    );
+    expect(packageError.message).toBe(
+      'PPTX resource limit maxTotalUncompressedBytes exceeded: 6 > 5',
+    );
+    expect(resourceLimitDiagnostic(packageError)).toEqual({
+      code: 'resource-limit-exceeded',
+      message: packageError.message,
       severity: 'error',
     });
   });
