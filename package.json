@@ -57,6 +57,7 @@
   },
   "dependencies": {
     "jszip": "^3.10.1",
+    "saxes": "^6.0.0",
     "tinycolor2": "^1.6.0",
     "txml": "^5.1.1"
   },
