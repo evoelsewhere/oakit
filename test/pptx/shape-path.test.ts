@@ -1525,8 +1525,26 @@ describe('PowerPoint preset shape path safety', () => {
       ]),
     );
 
-    expect(hashPath(uturnArrow([['adj4', '0']]))).toMatchInlineSnapshot(`"995696c0"`);
+    expect(hashPath(uturnArrow([['adj4', '0']]))).toMatchInlineSnapshot(
+      `"995696c0"`,
+    );
   });
+
+  it.each([
+    ['stripedRightArrow', '84375'],
+    ['notchedRightArrow', '100000'],
+  ])(
+    'clamps aspect-ratio-sensitive PowerPoint adjustments for %s',
+    (shapeType, maximum) => {
+      const arrow = (name: string, value: string): string =>
+        getShapePath(shapeType, 80, 120, singleGuide(name, value));
+
+      expect(arrow('adj1', '-10000')).toBe(arrow('adj1', '0'));
+      expect(arrow('adj1', '200000')).toBe(arrow('adj1', '100000'));
+      expect(arrow('adj2', '-10000')).toBe(arrow('adj2', '0'));
+      expect(arrow('adj2', '200000')).toBe(arrow('adj2', maximum));
+    },
+  );
 
   it('keeps common default paths deterministic', () => {
     const rectangle = 'M 0 0 L 120 0 L 120 80 L 0 80 Z';
