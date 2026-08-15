@@ -5,11 +5,17 @@ import type { AutoFit } from '../types';
 import { RATIO_EMUs_Points } from '../../../common/ooxml/units';
 import { getTextByPathList, numberToFixed } from '../../../common';
 
+function parseInteger(value: string | undefined): number | undefined {
+  if (value === undefined || !/^[+-]?\d+$/.test(value)) return undefined;
+  const parsed = Number(value);
+  return Number.isSafeInteger(parsed) ? parsed : undefined;
+}
+
 function getParagraphLevel(node: XmlLookupValue) {
-  let lvlIdx = 1;
-  const lvlNode = getTextByPathList(node, ['a:pPr', 'attrs', 'lvl']);
-  if (lvlNode !== undefined) lvlIdx = parseInt(lvlNode) + 1;
-  return lvlIdx;
+  const level = parseInteger(
+    getTextByPathList<string>(node, ['a:pPr', 'attrs', 'lvl']),
+  );
+  return level !== undefined && level >= 0 && level <= 8 ? level + 1 : 1;
 }
 
 interface ParagraphSpacing {
@@ -126,9 +132,9 @@ export function getHorizontalAlign(
         align = 'center';
         break;
       case 'just':
-        align = 'justify';
-        break;
       case 'dist':
+      case 'justLow':
+      case 'thaiDist':
         align = 'justify';
         break;
       default:
@@ -182,16 +188,17 @@ export function getTextAutoFit(
     if (bodyPr['a:noAutofit']) return { result: null };
     else if (bodyPr['a:spAutoFit']) return { result: { type: 'shape' } };
     else if (bodyPr['a:normAutofit']) {
-      const fontScale = getTextByPathList(bodyPr['a:normAutofit'], [
-        'attrs',
-        'fontScale',
-      ]);
-      if (fontScale) {
-        const scalePercent = parseInt(fontScale) / 1000;
+      const fontScale = parseInteger(
+        getTextByPathList<string>(bodyPr['a:normAutofit'], [
+          'attrs',
+          'fontScale',
+        ]),
+      );
+      if (fontScale !== undefined && fontScale >= 1000 && fontScale <= 100000) {
         return {
           result: {
             type: 'text',
-            fontScale: scalePercent,
+            fontScale: fontScale / 1000,
           },
         };
       }
@@ -344,30 +351,39 @@ function getParagraphStyleNodes(
 }
 
 function getLineSpacingValue(spacingNode: XmlLookupValue | undefined) {
-  const spcPct = getTextByPathList(spacingNode, ['a:spcPct', 'attrs', 'val']);
-  const spcPts = getTextByPathList(spacingNode, ['a:spcPts', 'attrs', 'val']);
+  const spcPct = parseInteger(
+    getTextByPathList<string>(spacingNode, ['a:spcPct', 'attrs', 'val']),
+  );
+  const spcPts = parseInteger(
+    getTextByPathList<string>(spacingNode, ['a:spcPts', 'attrs', 'val']),
+  );
 
-  if (spcPct) return parseInt(spcPct) / 1000 / 100;
-  if (spcPts) return parseInt(spcPts) / 100 + 'pt';
+  if (spcPct !== undefined && spcPct >= 0) return spcPct / 100_000;
+  if (spcPts !== undefined && spcPts >= 0) return spcPts / 100 + 'pt';
 
   return undefined;
 }
 
 function getParagraphSpacingValue(spacingNode: XmlLookupValue | undefined) {
-  const spcPct = getTextByPathList(spacingNode, ['a:spcPct', 'attrs', 'val']);
-  const spcPts = getTextByPathList(spacingNode, ['a:spcPts', 'attrs', 'val']);
+  const spcPct = parseInteger(
+    getTextByPathList<string>(spacingNode, ['a:spcPct', 'attrs', 'val']),
+  );
+  const spcPts = parseInteger(
+    getTextByPathList<string>(spacingNode, ['a:spcPts', 'attrs', 'val']),
+  );
 
-  if (spcPct) return parseInt(spcPct) / 1000 + 'em';
-  if (spcPts) return parseInt(spcPts) / 100 + 'pt';
+  if (spcPct !== undefined && spcPct >= 0) return spcPct / 100_000 + 'em';
+  if (spcPts !== undefined && spcPts >= 0) return spcPts / 100 + 'pt';
 
   return undefined;
 }
 
 function getParagraphIndentValue(styleNode: XmlLookupValue, attrName: string) {
-  const val = getTextByPathList(styleNode, ['attrs', attrName]);
+  const val = parseInteger(
+    getTextByPathList<string>(styleNode, ['attrs', attrName]),
+  );
 
-  if (val !== undefined && val !== '')
-    return numberToFixed(parseInt(val) * RATIO_EMUs_Points) + 'pt';
+  if (val !== undefined) return numberToFixed(val * RATIO_EMUs_Points) + 'pt';
 
   return undefined;
 }
