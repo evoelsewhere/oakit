@@ -14,6 +14,9 @@ describe('OPC part URI helpers', () => {
     expect(getRelationshipPartUri('presentation.xml')).toBe(
       '_rels/presentation.xml.rels',
     );
+    expect(getRelationshipPartUri('ppt\\slides\\slide1.xml')).toBe(
+      'ppt/slides/_rels/slide1.xml.rels',
+    );
   });
 
   it('resolves nested parent segments against the owner directory', () => {
@@ -72,6 +75,9 @@ describe('OPC part URI helpers', () => {
   });
 
   it('rejects an empty owner and trims external targets', () => {
+    expect(() => getRelationshipPartUri('')).toThrow(
+      'OPC owner part must name a file',
+    );
     expect(() => resolvePartUri('', 'slide.xml')).toThrow(
       'OPC owner part must name a file',
     );

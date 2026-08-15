@@ -25,13 +25,10 @@ function normalizedSegments(value: string): string[] {
 
 /** Return the `.rels` part owned by an OPC package part. */
 export function getRelationshipPartUri(ownerPart: string): string {
-  const normalizedOwner = normalizedSegments(ownerPart).join('/');
-  const separatorIndex = normalizedOwner.lastIndexOf('/');
-  const directory =
-    separatorIndex < 0 ? '' : normalizedOwner.slice(0, separatorIndex + 1);
-  const filename = normalizedOwner.slice(separatorIndex + 1);
+  const ownerSegments = normalizedSegments(ownerPart);
+  const filename = ownerSegments.pop();
   if (!filename) throw new TypeError('OPC owner part must name a file');
-  return `${directory}_rels/${filename}.rels`;
+  return [...ownerSegments, '_rels', `${filename}.rels`].join('/');
 }
 
 /** Resolve an internal relationship target relative to its owning OPC part. */
