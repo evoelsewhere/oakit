@@ -1,7 +1,11 @@
 import JSZip from 'jszip';
 import { describe, expect, it } from 'vitest';
 
-import { readXmlFile, readXmlFileResult } from '../../src/common/xml/read-xml';
+import {
+  readXmlFile,
+  readXmlFileResult,
+  XmlComplexityLimitError,
+} from '../../src/common/xml/read-xml';
 
 function createXmlArchive(): JSZip {
   const zip = new JSZip();
@@ -58,25 +62,31 @@ describe('readXmlFile', () => {
     const zip = createXmlArchive();
     zip.file('deep.xml', '<a><b><c/></b></a>');
 
-    await expect(
-      readXmlFileResult(zip, 'deep.xml', { maxDepth: 2 }),
-    ).resolves.toMatchObject({
-      status: 'error',
-      phase: 'limit',
-      error: expect.objectContaining({ limitName: 'maxXmlDepth' }),
-    });
+    const result = await readXmlFileResult(zip, 'deep.xml', { maxDepth: 2 });
+
+    expect(result.status).toBe('error');
+    if (result.status !== 'error') throw new Error('Expected a limit error');
+    expect(result.phase).toBe('limit');
+    expect(result.error).toBeInstanceOf(XmlComplexityLimitError);
+    if (!(result.error instanceof XmlComplexityLimitError)) {
+      throw new Error('Expected an XML complexity error');
+    }
+    expect(result.error.limitName).toBe('maxXmlDepth');
   });
 
   it('rejects excessive XML node counts', async () => {
     const zip = createXmlArchive();
     zip.file('wide.xml', '<root><a/><b/><c/></root>');
 
-    await expect(
-      readXmlFileResult(zip, 'wide.xml', { maxNodes: 3 }),
-    ).resolves.toMatchObject({
-      status: 'error',
-      phase: 'limit',
-      error: expect.objectContaining({ limitName: 'maxXmlNodes' }),
-    });
+    const result = await readXmlFileResult(zip, 'wide.xml', { maxNodes: 3 });
+
+    expect(result.status).toBe('error');
+    if (result.status !== 'error') throw new Error('Expected a limit error');
+    expect(result.phase).toBe('limit');
+    expect(result.error).toBeInstanceOf(XmlComplexityLimitError);
+    if (!(result.error instanceof XmlComplexityLimitError)) {
+      throw new Error('Expected an XML complexity error');
+    }
+    expect(result.error.limitName).toBe('maxXmlNodes');
   });
 });

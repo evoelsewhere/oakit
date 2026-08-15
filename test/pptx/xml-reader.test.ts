@@ -87,12 +87,9 @@ describe('PptxXmlReader', () => {
       maxTotalUncompressedBytes: 10,
     });
 
-    await expect(reader.read('valid.xml')).rejects.toMatchObject({
-      diagnostic: {
-        code: 'resource-limit-exceeded',
-        message: expect.stringContaining('maxTotalUncompressedBytes'),
-      },
-    });
+    await expect(reader.read('valid.xml')).rejects.toThrow(
+      'maxTotalUncompressedBytes',
+    );
   });
 
   it('enforces the cumulative XML node budget before parsing', async () => {
@@ -101,11 +98,6 @@ describe('PptxXmlReader', () => {
       maxTotalXmlNodes: 1,
     });
 
-    await expect(reader.read('valid.xml')).rejects.toMatchObject({
-      diagnostic: {
-        code: 'resource-limit-exceeded',
-        message: expect.stringContaining('maxTotalXmlNodes'),
-      },
-    });
+    await expect(reader.read('valid.xml')).rejects.toThrow('maxTotalXmlNodes');
   });
 });

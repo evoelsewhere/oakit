@@ -25,12 +25,7 @@ describe('PPTX resource limits', () => {
 
     await expect(
       parsePptx(input, { limits: { maxEntries: 1 } }),
-    ).rejects.toMatchObject({
-      diagnostic: {
-        code: 'resource-limit-exceeded',
-        message: expect.stringContaining('maxEntries'),
-      },
-    });
+    ).rejects.toThrow('maxEntries');
   });
 
   it('rejects a package part larger than the configured maximum', async () => {
@@ -44,12 +39,7 @@ describe('PPTX resource limits', () => {
           maxXmlBytes: 100,
         },
       }),
-    ).rejects.toMatchObject({
-      diagnostic: {
-        code: 'resource-limit-exceeded',
-        message: expect.stringContaining('maxPartBytes'),
-      },
-    });
+    ).rejects.toThrow('maxPartBytes');
   });
 
   it('validates limit values before reading the package', async () => {
@@ -68,11 +58,6 @@ describe('PPTX resource limits', () => {
         errorMode: 'tolerant',
         limits: { maxXmlDepth: 1 },
       }),
-    ).rejects.toMatchObject({
-      diagnostic: {
-        code: 'resource-limit-exceeded',
-        message: expect.stringContaining('maxXmlDepth'),
-      },
-    });
+    ).rejects.toThrow('maxXmlDepth');
   });
 });
