@@ -46,8 +46,8 @@ export class XmlComplexityLimitError extends Error {
 }
 
 export class XmlStructureError extends Error {
-  constructor(message: string) {
-    super(message);
+  constructor(message: string, options?: ErrorOptions) {
+    super(message, options);
     this.name = 'XmlStructureError';
   }
 }
@@ -241,6 +241,65 @@ function markupEnd(xml: string, start: number, declaration: boolean): number {
   return xml.length - 1;
 }
 
+function decodeXmlBytes(bytes: Uint8Array): string {
+  let encoding = 'utf-8';
+  if (bytes[0] === 0xff && bytes[1] === 0xfe) encoding = 'utf-16le';
+  else if (bytes[0] === 0xfe && bytes[1] === 0xff) encoding = 'utf-16be';
+
+  try {
+    return new TextDecoder(encoding, { fatal: true }).decode(bytes);
+  } catch (cause) {
+    throw new XmlStructureError(`Invalid ${encoding.toUpperCase()} XML`, {
+      cause,
+    });
+  }
+}
+
+function isValidXmlCodePoint(codePoint: number): boolean {
+  return (
+    codePoint === 0x9 ||
+    codePoint === 0xa ||
+    codePoint === 0xd ||
+    (codePoint >= 0x20 && codePoint <= 0xd7ff) ||
+    (codePoint >= 0xe000 && codePoint <= 0xfffd) ||
+    (codePoint >= 0x10_000 && codePoint <= 0x10_ffff)
+  );
+}
+
+function assertValidXmlCharacters(value: string): void {
+  for (const character of value) {
+    if (!isValidXmlCodePoint(character.codePointAt(0)!)) {
+      throw new XmlStructureError('XML contains an invalid character');
+    }
+  }
+}
+
+function assertValidEntityReferences(value: string): void {
+  let index = value.indexOf('&');
+  while (index >= 0) {
+    const end = value.indexOf(';', index + 1);
+    if (end < 0) {
+      throw new XmlStructureError(
+        'XML entity reference is missing a semicolon',
+      );
+    }
+    const entity = value.slice(index + 1, end);
+    if (!/^(?:amp|apos|gt|lt|quot)$/.test(entity)) {
+      const decimal = /^#(\d+)$/.exec(entity)?.[1];
+      const hexadecimal = /^#x([\da-f]+)$/i.exec(entity)?.[1];
+      const codePoint = decimal
+        ? Number.parseInt(decimal, 10)
+        : hexadecimal
+          ? Number.parseInt(hexadecimal, 16)
+          : Number.NaN;
+      if (!Number.isInteger(codePoint) || !isValidXmlCodePoint(codePoint)) {
+        throw new XmlStructureError(`Invalid XML entity reference &${entity};`);
+      }
+    }
+    index = value.indexOf('&', end + 1);
+  }
+}
+
 /** Reject pathological nesting before the recursive XML parser sees it. */
 export function assertXmlComplexity(
   xml: string,
@@ -249,30 +308,49 @@ export function assertXmlComplexity(
   let depth = 0;
   let nodes = 0;
   let index = 0;
+  let rootElements = 0;
   const openElements: string[] = [];
+
+  assertValidXmlCharacters(xml);
 
   while (index < xml.length) {
     const opening = xml.indexOf('<', index);
+    const textEnd = opening < 0 ? xml.length : opening;
+    const text = xml.slice(index, textEnd);
+    assertValidEntityReferences(text);
+    if (depth === 0 && text.trim()) {
+      throw new XmlStructureError('XML text is not inside the document root');
+    }
     if (opening < 0) break;
 
     if (xml.startsWith('<!--', opening)) {
       const end = xml.indexOf('-->', opening + 4);
+      if (end < 0) throw new XmlStructureError('Unclosed XML comment');
       index = end < 0 ? xml.length : end + 3;
       continue;
     }
     if (xml.startsWith('<![CDATA[', opening)) {
       const end = xml.indexOf(']]>', opening + 9);
+      if (end < 0) throw new XmlStructureError('Unclosed XML CDATA section');
+      const content = xml.slice(opening + 9, end);
+      if (depth === 0 && content.trim()) {
+        throw new XmlStructureError(
+          'XML CDATA is not inside the document root',
+        );
+      }
       index = end < 0 ? xml.length : end + 3;
       continue;
     }
     if (xml.startsWith('<?', opening)) {
       const end = xml.indexOf('?>', opening + 2);
+      if (end < 0) {
+        throw new XmlStructureError('Unclosed XML processing instruction');
+      }
       index = end < 0 ? xml.length : end + 2;
       continue;
     }
     if (xml.startsWith('<!', opening)) {
-      index = markupEnd(xml, opening + 2, true) + 1;
-      continue;
+      throw new XmlStructureError('XML declarations with <! are not allowed');
     }
 
     const end = markupEnd(xml, opening + 1, false);
@@ -287,6 +365,7 @@ export function assertXmlComplexity(
       depth--;
     } else {
       const tagContent = xml.slice(opening + 1, end).trimStart();
+      assertValidEntityReferences(tagContent);
       const elementName = /^[^\s/>]+/.exec(tagContent)?.[0];
       if (!elementName) {
         throw new XmlStructureError('XML opening tag has no element name');
@@ -300,6 +379,14 @@ export function assertXmlComplexity(
         );
       }
       const nodeDepth = depth + 1;
+      if (depth === 0) {
+        rootElements++;
+        if (rootElements > 1) {
+          throw new XmlStructureError(
+            'XML document has multiple root elements',
+          );
+        }
+      }
       if (limits.maxDepth !== undefined && nodeDepth > limits.maxDepth) {
         throw new XmlComplexityLimitError(
           'maxXmlDepth',
@@ -323,6 +410,9 @@ export function assertXmlComplexity(
       `Unclosed XML element ${openElements.at(-1) ?? '(unknown)'}`,
     );
   }
+  if (rootElements !== 1) {
+    throw new XmlStructureError('XML document must contain one root element');
+  }
   return nodes;
 }
 
@@ -336,18 +426,13 @@ export async function readXmlFileResult<T extends XmlValue = XmlValue>(
   const file = zip.file(filename);
   if (!file) return { status: 'missing' };
 
-  let data: string;
+  let bytes: Uint8Array;
   try {
-    if (limits.maxBytes === undefined) {
-      data = await file.async('string');
-    } else {
-      const bytes = await readZipEntryBytes(
-        file,
-        limits.maxBytes,
-        limits.consumeBytes,
-      );
-      data = new TextDecoder().decode(bytes);
-    }
+    bytes = await readZipEntryBytes(
+      file,
+      limits.maxBytes ?? Number.MAX_SAFE_INTEGER,
+      limits.consumeBytes,
+    );
   } catch (error) {
     return {
       status: 'error',
@@ -361,6 +446,7 @@ export async function readXmlFileResult<T extends XmlValue = XmlValue>(
   }
 
   try {
+    const data = decodeXmlBytes(bytes);
     const nodeCount = assertXmlComplexity(data, limits);
     limits.consumeNodes?.(nodeCount);
     return {
