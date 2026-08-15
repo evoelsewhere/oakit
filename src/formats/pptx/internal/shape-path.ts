@@ -169,10 +169,8 @@ function shapeSnipRoundRect(
 
   if (shapeType === 'round') {
     return `M0,${h / 2 + (1 - adjB) * (h / 2)} Q0,${h} ${adjB * (w / 2)},${h} L${w / 2 + (1 - adjC) * (w / 2)},${h} Q${w},${h} ${w},${h / 2 + (h / 2) * (1 - adjC)} L${w},${(h / 2) * adjD} Q${w},0 ${w / 2 + (w / 2) * (1 - adjD)},0 L${(w / 2) * adjA},0 Q0,0 0,${(h / 2) * adjA} z`;
-  } else if (shapeType === 'snip') {
-    return `M0,${adjA * (h / 2)} L0,${h / 2 + (h / 2) * (1 - adjB)} L${adjB * (w / 2)},${h} L${w / 2 + (w / 2) * (1 - adjC)},${h} L${w},${h / 2 + (h / 2) * (1 - adjC)} L${w},${adjD * (h / 2)} L${w / 2 + (w / 2) * (1 - adjD)},0 L${(w / 2) * adjA},0 z`;
   }
-  return '';
+  return `M0,${adjA * (h / 2)} L0,${h / 2 + (h / 2) * (1 - adjB)} L${adjB * (w / 2)},${h} L${w / 2 + (w / 2) * (1 - adjC)},${h} L${w},${h / 2 + (h / 2) * (1 - adjC)} L${w},${adjD * (h / 2)} L${w / 2 + (w / 2) * (1 - adjD)},0 L${(w / 2) * adjA},0 z`;
 }
 
 function getGuideAttribute(
@@ -195,13 +193,9 @@ export function getShapePath(
   }
   if (hasInvalidAdjustmentGuide(node)) node = EMPTY_SHAPE_NODE;
 
-  let pathData = '';
+  let pathData = `M 0 0 L ${w} 0 L ${w} ${h} L 0 ${h} Z`;
 
   switch (shapType) {
-    case 'rect':
-    case 'actionButtonBlank':
-      pathData = `M 0 0 L ${w} 0 L ${w} ${h} L 0 ${h} Z`;
-      break;
     case 'flowChartPredefinedProcess':
       pathData = `M 0 0 L ${w} 0 L ${w} ${h} L 0 ${h} Z M ${w * (1 / 8)} 0 L ${w * (1 / 8)} ${h} M ${w * (7 / 8)} 0 L ${w * (7 / 8)} ${h}`;
       break;
@@ -554,7 +548,7 @@ export function getShapePath(
       {
         const c3d4 = 270,
           cd4 = 90;
-        const x1 = (w * 1) / 6;
+        const x1 = w / 6;
         const y1 = (h * 3) / 6;
         pathData = `M ${x1},0 L ${w},0 ${shapeArc(w, h / 2, x1, y1, c3d4, 90, false).replace('M', 'L')} L ${x1},${h} ${shapeArc(x1, h / 2, x1, y1, cd4, 270, false).replace('M', 'L')} z`;
       }
@@ -5555,8 +5549,6 @@ export function getShapePath(
     case 'upDownArrowCallout':
       pathData = `M 0 0 L ${w} 0 L ${w} ${h} L 0 ${h} Z`;
       break;
-    default:
-      pathData = `M 0 0 L ${w} 0 L ${w} ${h} L 0 ${h} Z`;
   }
 
   return pathData;
