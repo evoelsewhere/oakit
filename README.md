@@ -102,14 +102,16 @@ interface PptxParseOptions {
   imageMode?: 'base64' | 'blob' | 'both' | 'none';
   videoMode?: 'blob' | 'none';
   audioMode?: 'blob' | 'none';
+  errorMode?: 'tolerant' | 'strict';
 }
 ```
 
-| Option      | Default  | Behavior                                                     |
-| ----------- | -------- | ------------------------------------------------------------ |
-| `imageMode` | `base64` | Return images as data URLs, object URLs, both, or neither.   |
-| `videoMode` | `none`   | Create object URLs for supported embedded video when `blob`. |
-| `audioMode` | `none`   | Create object URLs for supported embedded audio when `blob`. |
+| Option      | Default    | Behavior                                                     |
+| ----------- | ---------- | ------------------------------------------------------------ |
+| `imageMode` | `base64`   | Return images as data URLs, object URLs, both, or neither.   |
+| `videoMode` | `none`     | Create object URLs for supported embedded video when `blob`. |
+| `audioMode` | `none`     | Create object URLs for supported embedded audio when `blob`. |
+| `errorMode` | `tolerant` | Recover with diagnostics, or reject on malformed OOXML.      |
 
 Every media element keeps a `ref` to its package part or external target.
 Disabled representations are returned as empty strings. Selecting `blob`
@@ -190,9 +192,10 @@ Elements use a discriminated `type` field:
 | `math`    | Parsed LaTeX plus the fallback image when present.              |
 | `group`   | Nested elements transformed into the group's coordinate space.  |
 
-Text content is an HTML fragment rather than plain text. Treat it as untrusted
-document input: sanitize it before injecting it into an HTML page when files
-come from users you do not trust.
+Text content is an HTML fragment rather than plain text. The parser escapes
+supported text paths and filters hyperlink protocols, but applications should
+still sanitize document HTML before injecting it into a page as defense in
+depth.
 
 All public PowerPoint types are exported from both entry points:
 
@@ -212,6 +215,20 @@ Invalid ZIP input causes `parsePptx` to reject. Missing optional OOXML parts
 are generally treated as absent so that partially supported presentations can
 still be parsed. Unsupported nodes may be skipped instead of producing a
 placeholder element.
+
+Use `parsePptxWithDiagnostics` when partial recovery must be observable:
+
+```ts
+import { parsePptxWithDiagnostics } from 'office2json';
+
+const { document, diagnostics } = await parsePptxWithDiagnostics(input);
+for (const diagnostic of diagnostics) {
+  console.warn(diagnostic.code, diagnostic.part, diagnostic.message);
+}
+```
+
+With `errorMode: 'strict'`, malformed XML, unsafe relationship targets, and
+missing required parts reject with `PptxParseError`.
 
 The parser does not currently enforce archive-size or decompression limits.
 Applications accepting untrusted uploads should apply file-size, timeout, and

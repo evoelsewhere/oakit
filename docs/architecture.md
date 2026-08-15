@@ -223,8 +223,8 @@ by the format parsers:
 5. attributes are stored under `attrs`;
 6. repeated sibling tags become arrays, while a single tag is collapsed to a
    single value;
-7. a monotonically increasing `attrs.order` value records document traversal
-   order.
+7. a per-read, monotonically increasing `attrs.order` value records document
+   traversal order without sharing mutable state across documents.
 
 For example, simplified XML resembles:
 
@@ -247,9 +247,11 @@ is an intersection type retained to type a compatibility port without `any`.
 New schema-aware code should use explicit local result types and runtime guards
 rather than expand that compatibility type.
 
-`readXmlFile` returns `null` when an optional part is absent or cannot be
-parsed. The root ZIP load is different: an invalid archive causes the public
-promise to reject.
+`readXmlFileResult` preserves `ok`, `missing`, and `error` states. The
+PowerPoint XML reader caches those results, converts failures into structured
+diagnostics in tolerant mode, and throws `PptxParseError` in strict mode. The
+compatibility `readXmlFile` helper still returns `null` for missing or invalid
+optional parts. An invalid root ZIP always causes the public promise to reject.
 
 ## Parsing pipeline
 
@@ -281,6 +283,7 @@ flowchart TD
   imageMode: 'base64',
   videoMode: 'none',
   audioMode: 'none',
+  errorMode: 'tolerant',
 }
 ```
 
@@ -461,17 +464,19 @@ video and audio extensions.
 The implementation distinguishes package failure from optional-part failure:
 
 - invalid or unsupported ZIP input rejects `parsePptx`;
-- a missing or unreadable optional XML part resolves to an empty internal node;
+- a missing optional XML part resolves to an empty internal node;
+- unreadable or invalid XML emits a diagnostic in tolerant mode;
+- strict mode throws `PptxParseError` for malformed XML, unsafe relationship
+  targets, and missing required parts;
 - missing relationships generally cause the affected element or feature to be
   skipped;
 - an unsupported slide-tree node is ignored;
 - missing backgrounds fall back to white;
 - missing positions and dimensions fall back to zero.
 
-This recovery strategy maximizes partial results, but it can hide malformed
-optional XML. New diagnostics should be introduced through an explicit public
-option or result channel; internal helpers should not begin logging directly to
-the console.
+`parsePptxWithDiagnostics` returns `{ document, diagnostics }` so recovery is
+observable without logging from internal helpers. Repeated reads of the same
+failed part emit one diagnostic per parse call.
 
 ## Security boundaries
 
@@ -481,10 +486,11 @@ The parser currently:
 
 - does not execute macros or embedded scripts;
 - does not fetch external relationships;
-- does not consistently escape or sanitize text in generated HTML;
+- escapes supported rich-text and speaker-note paths;
+- allows only HTTP, HTTPS, and mailto hyperlinks in generated HTML;
 - does not enforce ZIP entry count, compressed size, expanded size, recursion,
   or parse-time limits;
-- does not make returned HTML safe for direct insertion into a page.
+- still expects consumers to sanitize returned HTML as defense in depth.
 
 An upload service should enforce file-size and time limits before invoking the
 parser. Browser or server consumers should sanitize returned HTML according to
