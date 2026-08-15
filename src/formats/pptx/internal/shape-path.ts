@@ -795,19 +795,11 @@ export function getShapePath(
         }
 
         let p1x = w * shapAdjst_val;
-        let p1y = 0;
-        let p2x = 0;
-        let p2y = h;
-        let p3x = w;
-        let p3y = h;
-
         if (shapType === 'flowChartMerge') {
-          [p1x, p1y] = [w - p1x, h - p1y];
-          [p2x, p2y] = [w - p2x, h - p2y];
-          [p3x, p3y] = [w - p3x, h - p3y];
+          pathData = `M ${w - p1x} ${h} L ${w} 0 L 0 0 Z`;
+        } else {
+          pathData = `M ${p1x} 0 L 0 ${h} L ${w} ${h} Z`;
         }
-
-        pathData = `M ${p1x} ${p1y} L ${p2x} ${p2y} L ${p3x} ${p3y} Z`;
       }
       break;
     case 'diamond':
@@ -837,30 +829,13 @@ export function getShapePath(
           adjst_val = (adjst * 0.5) / max_adj_const;
         }
 
-        let p1x = w * adjst_val,
-          p1y = 0;
-        let p2x = 0,
-          p2y = h;
-        let p3x = w,
-          p3y = h;
-        let p4x = (1 - adjst_val) * w,
-          p4y = 0;
-
         if (shapType === 'flowChartManualInput') {
-          adjst_val = 0;
-          p1y = h / 5;
-          p1x = w * adjst_val;
-          p4x = (1 - adjst_val) * w;
+          pathData = `M 0 ${h / 5} L 0 ${h} L ${w} ${h} L ${w} 0 Z`;
+        } else if (shapType === 'flowChartManualOperation') {
+          pathData = `M ${w - w * adjst_val} ${h} L ${w} 0 L 0 0 L ${w - (1 - adjst_val) * w} ${h} Z`;
+        } else {
+          pathData = `M ${adjst_val * w} 0 L 0 ${h} L ${w} ${h} L ${(1 - adjst_val) * w} 0 Z`;
         }
-
-        if (shapType === 'flowChartManualOperation') {
-          [p1x, p1y] = [w - p1x, h - p1y];
-          [p2x, p2y] = [w - p2x, h - p2y];
-          [p3x, p3y] = [w - p3x, h - p3y];
-          [p4x, p4y] = [w - p4x, h - p4y];
-        }
-
-        pathData = `M ${p1x} ${p1y} L ${p2x} ${p2y} L ${p3x} ${p3y} L ${p4x} ${p4y} Z`;
       }
       break;
     case 'parallelogram':
@@ -876,7 +851,7 @@ export function getShapePath(
         ]);
         let adjst_val = 0.25;
         if (shapAdjst) {
-          const max_adj_const = w > h ? w / h : h / w;
+          const max_adj_const = Math.max(w, h) / Math.min(w, h);
           const adjst = parseInt(shapAdjst.substring(4)) / 100000;
           adjst_val = adjst / max_adj_const;
         }

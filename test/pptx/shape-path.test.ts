@@ -491,6 +491,41 @@ describe('PowerPoint preset shape path safety', () => {
     expectFinitePath(gear9);
   });
 
+  it('preserves flowchart orientation without zero-value mirroring', () => {
+    expect(getShapePath('flowChartMerge', 120, 80, xml({}))).toBe(
+      'M 60 80 L 120 0 L 0 0 Z',
+    );
+    expect(getShapePath('flowChartManualInput', 120, 80, xml({}))).toBe(
+      'M 0 16 L 0 80 L 120 80 L 120 0 Z',
+    );
+    expect(getShapePath('flowChartManualOperation', 120, 80, xml({}))).toBe(
+      'M 96 80 L 120 0 L 0 0 L 24 80 Z',
+    );
+  });
+
+  it.each([
+    ['wide', 120, 80, 'M 20 0 L 0 80 L 100 80 L 120 0 Z'],
+    [
+      'tall',
+      80,
+      120,
+      'M 13.333333333333332 0 L 0 120 L 66.66666666666667 120 L 80 0 Z',
+    ],
+    ['square', 100, 100, 'M 25 0 L 0 100 L 75 100 L 100 0 Z'],
+  ])(
+    'scales an authored parallelogram in a %s box',
+    (_name, width, height, expected) => {
+      expect(
+        getShapePath(
+          'parallelogram',
+          width,
+          height,
+          singleGuide('adj', '25000'),
+        ),
+      ).toBe(expected);
+    },
+  );
+
   it('keeps common default paths deterministic', () => {
     const rectangle = 'M 0 0 L 120 0 L 120 80 L 0 80 Z';
     expect(getShapePath('rect', 120, 80, xml({}))).toBe(rectangle);
