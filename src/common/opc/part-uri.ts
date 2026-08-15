@@ -1,4 +1,6 @@
-const URI_SCHEME = /^[a-z][a-z\d+.-]*:/i;
+function hasUriScheme(value: string): boolean {
+  return /^[a-z][a-z\d+.-]*:/i.test(value);
+}
 
 function stripQueryAndFragment(value: string): string {
   const suffixIndex = value.search(/[?#]/);
@@ -39,7 +41,7 @@ export function resolvePartUri(ownerPart: string, target: string): string {
   );
   if (!normalizedTarget)
     throw new TypeError('OPC relationship target is empty');
-  if (URI_SCHEME.test(normalizedTarget)) {
+  if (hasUriScheme(normalizedTarget)) {
     throw new TypeError('External URI requires TargetMode="External"');
   }
 

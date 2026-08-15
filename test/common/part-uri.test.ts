@@ -63,6 +63,15 @@ describe('OPC part URI helpers', () => {
         'https://example.com/image.png',
       ),
     ).toThrow(/TargetMode/);
+    expect(() => resolvePartUri('ppt/slides/slide1.xml', 'h2:stream')).toThrow(
+      /TargetMode/,
+    );
+  });
+
+  it('does not mistake a colon inside a relative path for a URI scheme', () => {
+    expect(
+      resolvePartUri('ppt/slides/slide1.xml', 'folder/https:resource'),
+    ).toBe('ppt/slides/folder/https:resource');
   });
 
   it('rejects empty internal targets after removing a query or fragment', () => {
