@@ -1,78 +1,111 @@
-# office2json
+<p align="center">
+  <img src="docs/assets/oak-logo.png" alt="OAK logo" width="220" />
+</p>
 
-The typed communication layer between AI applications and Microsoft Office
-documents.
+<h1 align="center">OAK</h1>
 
-`office2json` reads Office Open XML packages and turns document content into a
-renderer-friendly TypeScript model. The current milestone parses PowerPoint
-presentations (`.pptx`); Excel, Word, and reverse conversion are planned as
-separate format milestones.
+<p align="center">
+  <strong>Office Agent Kit</strong> — document capabilities built for AI agents.
+</p>
 
-> **Project status:** early development (`0.0.0`). The PowerPoint parser is
-> usable, but the data model may still change before the first stable release.
+OAK gives agents and automation systems a reliable way to read, understand,
+edit, and eventually generate PowerPoint, Excel, and Word documents through a
+consistent structured model. It owns the difficult OOXML work—ZIP packages,
+relationships, inheritance, units, media, malformed input, and producer
+differences—so agent workflows can operate on meaningful document data instead
+of raw XML.
+
+> **Project status:** pre-stable (`0.0.0`). The implemented public capability is
+> PowerPoint (`.pptx`) reading. Excel, Word, and document writing are product
+> direction, not completed APIs yet.
+
+## Why OAK
+
+Office files are not single documents internally. They are ZIP packages made
+of interconnected XML parts, relationships, themes, layouts, media, charts,
+and vendor-specific extensions. That representation is a poor tool boundary
+for an AI agent.
+
+OAK turns those internals into bounded, deterministic application data that is
+easier to:
+
+- summarize, classify, index, and search;
+- inspect slide structure and extract semantic content;
+- build document-aware tools and agent actions;
+- validate generated changes before writing a file;
+- run consistently in Node.js and modern browsers;
+- process untrusted uploads with explicit diagnostics and resource limits.
+
+OAK is model- and framework-neutral. It does not require a particular LLM,
+agent runtime, tool-calling protocol, or vector database.
 
 ## Format support
 
-| Format     | Office to JSON | JSON to Office | Status                      |
-| ---------- | -------------- | -------------- | --------------------------- |
-| PowerPoint | Yes            | No             | Active fidelity development |
-| Excel      | No             | No             | Planned                     |
-| Word       | No             | No             | Planned                     |
+| Format               | Read | Write | Status                      |
+| -------------------- | ---- | ----- | --------------------------- |
+| PowerPoint (`.pptx`) | Yes  | No    | Active fidelity development |
+| Excel (`.xlsx`)      | No   | No    | Planned                     |
+| Word (`.docx`)       | No   | No    | Planned                     |
 
-The PowerPoint parser currently handles:
+The PowerPoint reader currently handles:
 
-- slide size, backgrounds, layouts, masters, themes, and speaker notes;
-- text boxes, rich-text runs, paragraphs, lists, links, and text fitting;
+- slide order, size, backgrounds, layouts, masters, themes, and notes;
+- rich text, paragraphs, lists, links, fonts, and text fitting;
 - preset and custom shapes, connectors, fills, borders, shadows, and groups;
-- images, image cropping and filters, embedded video, and embedded audio;
+- images, cropping, filters, embedded audio, and embedded video;
 - tables, charts, SmartArt diagrams, and Office Math;
-- slide transitions and document-order metadata.
+- transitions, relationship resolution, diagnostics, and resource limits.
 
-Support is fixture-driven. Real-world OOXML can contain vendor extensions and
-fallback branches that are not covered yet, so consumers should tolerate
-missing optional fields and unsupported elements.
-
-## Requirements
-
-- Node.js 20 or newer, or a modern browser with `Blob` and
-  `URL.createObjectURL` support;
-- ESM or CommonJS;
-- a complete `.pptx` package supplied as `ArrayBuffer`, `Uint8Array`, or
-  `Blob`.
+OOXML has a very large extension surface. Unsupported optional structures may
+be omitted with a diagnostic rather than represented inaccurately.
 
 ## Installation
 
+The target npm package is `@evoelsewhere/oak`:
+
 ```bash
-pnpm add office2json
+pnpm add @evoelsewhere/oak
 ```
 
-Equivalent npm and Yarn commands work as well.
+```bash
+npm install @evoelsewhere/oak
+```
+
+The first public release has not been published yet. Until then, use the
+repository directly for development.
 
 ## Quick start
 
 ### Node.js
 
-Node.js `Buffer` extends `Uint8Array`, so a file read from disk can be passed
-directly to the parser:
-
 ```ts
 import { readFile } from 'node:fs/promises';
-import { parsePptx } from 'office2json';
+import { parsePptxWithDiagnostics } from '@evoelsewhere/oak';
 
-const input = await readFile('./deck.pptx');
-const presentation = await parsePptx(input);
+const input = await readFile('./quarterly-review.pptx');
+const { document, diagnostics } = await parsePptxWithDiagnostics(input, {
+  imageMode: 'none',
+  errorMode: 'tolerant',
+});
 
-console.log(presentation.size);
-console.log(presentation.slides[0]?.elements);
+console.log({
+  slideCount: document.slides.length,
+  size: document.size,
+  fonts: document.usedFonts,
+  diagnostics,
+});
 ```
+
+Node.js `Buffer` extends `Uint8Array`, so bytes returned by `readFile` can be
+passed directly to OAK.
 
 ### Browser
 
 ```ts
-import { parsePptx } from 'office2json/pptx';
+import { parsePptx } from '@evoelsewhere/oak/pptx';
 
-const input = document.querySelector<HTMLInputElement>('#presentation');
-const file = input?.files?.[0];
+const picker = document.querySelector<HTMLInputElement>('#presentation');
+const file = picker?.files?.[0];
 
 if (file) {
   const presentation = await parsePptx(file, {
@@ -85,17 +118,58 @@ if (file) {
 }
 ```
 
-Both package entry points expose the same PowerPoint API:
+### Agent tool boundary
+
+Use the diagnostic API when an agent must distinguish usable partial output
+from a clean parse:
 
 ```ts
-import { parsePptx } from 'office2json';
-import { parsePptx as parsePptxFormat } from 'office2json/pptx';
+import { parsePptxWithDiagnostics } from '@evoelsewhere/oak';
+
+export async function inspectPresentation(bytes: Uint8Array) {
+  const result = await parsePptxWithDiagnostics(bytes, {
+    imageMode: 'none',
+    videoMode: 'none',
+    audioMode: 'none',
+    errorMode: 'tolerant',
+  });
+
+  return {
+    kind: 'presentation' as const,
+    document: result.document,
+    diagnostics: result.diagnostics,
+  };
+}
+```
+
+Document text is untrusted content. An agent host must keep it in the data
+portion of its prompt or tool result and must not treat instructions embedded
+in a document as trusted system or developer instructions.
+
+## Public PowerPoint API
+
+Both entry points expose the same reader:
+
+```ts
+import {
+  parsePptx,
+  parsePptxWithDiagnostics,
+  PptxParseError,
+} from '@evoelsewhere/oak';
+
+import { parsePptx as parsePptxFormat } from '@evoelsewhere/oak/pptx';
 ```
 
 The format-specific entry point is preferred when an application only needs
 PowerPoint support.
 
-## Parser options
+### Input
+
+```ts
+type PptxInput = ArrayBuffer | Uint8Array | Blob;
+```
+
+### Options
 
 ```ts
 interface PptxParseOptions {
@@ -107,54 +181,15 @@ interface PptxParseOptions {
 }
 ```
 
-| Option      | Default       | Behavior                                                     |
-| ----------- | ------------- | ------------------------------------------------------------ |
-| `imageMode` | `base64`      | Return images as data URLs, object URLs, both, or neither.   |
-| `videoMode` | `none`        | Create object URLs for supported embedded video when `blob`. |
-| `audioMode` | `none`        | Create object URLs for supported embedded audio when `blob`. |
-| `errorMode` | `tolerant`    | Recover with diagnostics, or reject on malformed OOXML.      |
-| `limits`    | safe defaults | Bound archive, XML, media, and slide resource usage.         |
+| Option      | Default       | Behavior                                            |
+| ----------- | ------------- | --------------------------------------------------- |
+| `imageMode` | `base64`      | Return data URLs, object URLs, both, or neither.    |
+| `videoMode` | `none`        | Create object URLs for supported embedded video.    |
+| `audioMode` | `none`        | Create object URLs for supported embedded audio.    |
+| `errorMode` | `tolerant`    | Recover with diagnostics or reject malformed OOXML. |
+| `limits`    | Safe defaults | Bound archive, XML, media, and slide processing.    |
 
-The default resource limits are:
-
-| Limit                     | Default   |
-| ------------------------- | --------- |
-| compressed input          | 100 MiB   |
-| non-directory ZIP entries | 10,000    |
-| total declared expansion  | 256 MiB   |
-| one expanded package part | 64 MiB    |
-| one expanded XML part     | 16 MiB    |
-| XML nesting depth         | 128       |
-| XML elements per part     | 250,000   |
-| XML elements per package  | 1,000,000 |
-| one expanded media part   | 64 MiB    |
-| slides                    | 1,000     |
-
-Override only the limits appropriate for a trusted workload. Values must be
-positive integers, and XML/media byte limits cannot exceed the package-part
-limit.
-
-Every media element keeps a `ref` to its package part or external target.
-Disabled representations are returned as empty strings. Selecting `blob`
-causes the parser to call `URL.createObjectURL`; the application owns those
-URLs and must release them when they are no longer needed:
-
-```ts
-for (const slide of presentation.slides) {
-  for (const element of slide.elements) {
-    if ('blob' in element && element.blob) {
-      URL.revokeObjectURL(element.blob);
-    }
-  }
-}
-```
-
-Nested group and diagram elements should also be traversed when an application
-enables blob output for content inside those containers.
-
-## Returned document
-
-`parsePptx` returns a `PptxDocument`:
+### Output
 
 ```ts
 interface PptxDocument {
@@ -168,15 +203,8 @@ interface PptxDocument {
 }
 ```
 
-- `size`, element positions, and element dimensions use **points**. There are
-  72 points per inch.
-- `themeColors` contains the available theme accent colors (`accent1` through
-  `accent6`) as hexadecimal strings.
-- `usedFonts` currently contains font faces declared in PowerPoint's embedded
-  font list. It is not yet a complete scan of every text run.
-- slides are returned in their numeric package order.
-
-Each slide separates authored content from inherited decorative content:
+Positions and dimensions use points. Each slide separates authored elements
+from inherited layout and master content:
 
 ```ts
 interface PptxSlide {
@@ -188,73 +216,91 @@ interface PptxSlide {
 }
 ```
 
-- `elements` contains content authored on the slide;
-- `layoutElements` contains non-placeholder shapes inherited from the layout
-  and master;
-- `note` is an HTML fragment extracted from the body placeholder of the notes
-  slide;
-- `transition` is `null` when the slide, layout, and master define no supported
-  transition.
-
-### Element model
-
 Elements use a discriminated `type` field:
 
-| `type`    | Main payload                                                    |
-| --------- | --------------------------------------------------------------- |
-| `text`    | Positioned rich-text HTML, fill, border, and text layout.       |
-| `shape`   | Shape metadata plus an SVG-compatible path when available.      |
-| `image`   | Package reference, selected binary representation, crop/filter. |
-| `video`   | Embedded or external media reference and optional object URL.   |
-| `audio`   | Embedded media reference and optional object URL.               |
-| `table`   | Cell matrix, merges, row heights, column widths, and borders.   |
-| `chart`   | Normalized chart series, labels, colors, and chart options.     |
-| `diagram` | SmartArt drawing elements and its logical text list.            |
-| `math`    | Parsed LaTeX plus the fallback image when present.              |
-| `group`   | Nested elements transformed into the group's coordinate space.  |
+| `type`    | Content                                                       |
+| --------- | ------------------------------------------------------------- |
+| `text`    | Positioned rich-text HTML and text layout                     |
+| `shape`   | Shape metadata and an SVG-compatible path when available      |
+| `image`   | Package reference, selected representation, crop, and filters |
+| `video`   | Embedded or external reference and optional object URL        |
+| `audio`   | Embedded reference and optional object URL                    |
+| `table`   | Cells, merges, dimensions, fills, and borders                 |
+| `chart`   | Normalized series, labels, colors, and options                |
+| `diagram` | SmartArt drawing elements and logical text                    |
+| `math`    | Parsed LaTeX and an optional fallback image                   |
+| `group`   | Nested elements in the group coordinate space                 |
 
-Text content is an HTML fragment rather than plain text. The parser escapes
-supported text paths and filters hyperlink protocols, but applications should
-still sanitize document HTML before injecting it into a page as defense in
+Text is returned as an escaped HTML fragment. Applications that inject
+document HTML into a page should still apply their own sanitizer as defense in
 depth.
 
-All public PowerPoint types are exported from both entry points:
+## Diagnostics and strict mode
+
+`parsePptx` returns the document directly. `parsePptxWithDiagnostics` returns:
 
 ```ts
-import type {
-  PptxDocument,
-  PptxElement,
-  PptxInput,
-  PptxParseOptions,
-  PptxSlide,
-} from 'office2json/pptx';
-```
-
-## Error behavior
-
-Invalid ZIP input causes `parsePptx` to reject. Missing optional OOXML parts
-are generally treated as absent so that partially supported presentations can
-still be parsed. Unsupported nodes may be skipped instead of producing a
-placeholder element.
-
-Use `parsePptxWithDiagnostics` when partial recovery must be observable:
-
-```ts
-import { parsePptxWithDiagnostics } from 'office2json';
-
-const { document, diagnostics } = await parsePptxWithDiagnostics(input);
-for (const diagnostic of diagnostics) {
-  console.warn(diagnostic.code, diagnostic.part, diagnostic.message);
+interface PptxParseResult {
+  document: PptxDocument;
+  diagnostics: PptxDiagnostic[];
 }
 ```
 
-With `errorMode: 'strict'`, malformed XML, unsafe relationship targets, and
-missing required parts reject with `PptxParseError`.
+Tolerant mode may omit malformed optional content while recording a structured
+diagnostic. Strict mode rejects malformed XML, unsafe relationships, invalid
+values, and missing required parts with `PptxParseError`.
 
-Resource-limit violations always reject with `PptxParseError`, including in
-tolerant mode, because continuing would cross the configured security
-boundary. Applications accepting untrusted uploads should still run parsing in
-an isolated worker or process and enforce an outer timeout.
+Resource-limit violations always reject, including in tolerant mode. They
+represent a security boundary, not a recoverable fidelity problem.
+
+## Security model
+
+OAK treats every uploaded package as untrusted input. The reader:
+
+- rejects unsafe package and relationship paths;
+- rejects malformed XML structures and forbidden declarations;
+- validates numeric values before conversion;
+- does not execute macros, scripts, media, or hyperlinks;
+- does not fetch external relationships;
+- filters supported hyperlink protocols;
+- bounds compressed input, ZIP entries, expanded bytes, XML complexity,
+  embedded media, and slide count.
+
+Default limits:
+
+| Limit                     |   Default |
+| ------------------------- | --------: |
+| Compressed input          |   100 MiB |
+| Non-directory ZIP entries |    10,000 |
+| Total declared expansion  |   256 MiB |
+| One expanded package part |    64 MiB |
+| One expanded XML part     |    16 MiB |
+| XML nesting depth         |       128 |
+| XML elements per part     |   250,000 |
+| XML elements per package  | 1,000,000 |
+| One expanded media part   |    64 MiB |
+| Slides                    |     1,000 |
+
+For public uploads, also isolate parsing in a worker or process and enforce an
+outer timeout and memory limit.
+
+## Media lifecycle
+
+When a blob mode is enabled, OAK calls `URL.createObjectURL`. The caller owns
+the returned URLs and must release them:
+
+```ts
+URL.revokeObjectURL(element.blob);
+```
+
+Remember to traverse nested group and diagram elements when releasing media.
+
+## Runtime support
+
+- Node.js 20, 22, and 24;
+- modern browsers with `Blob` and `URL.createObjectURL` support;
+- ESM and CommonJS;
+- declarations and source maps.
 
 ## Development
 
@@ -263,56 +309,38 @@ pnpm install
 pnpm check
 ```
 
-Useful commands:
+| Command                  | Purpose                                                 |
+| ------------------------ | ------------------------------------------------------- |
+| `pnpm dev`               | Rebuild in watch mode                                   |
+| `pnpm test`              | Run deterministic unit, integration, and property tests |
+| `pnpm test:browser`      | Run the public API suite in Chromium                    |
+| `pnpm test:corpus`       | Verify PowerPoint and LibreOffice documents             |
+| `pnpm test:corpus:large` | Include the large Google Slides corpus                  |
+| `pnpm test:mutation`     | Measure whether tests detect behavioral mutations       |
+| `pnpm typecheck`         | Run strict type checking                                |
+| `pnpm lint`              | Run ESLint                                              |
+| `pnpm format:check`      | Verify formatting                                       |
+| `pnpm build`             | Build ESM, CommonJS, declarations, and source maps      |
+| `pnpm check`             | Run the required pull-request quality gates             |
 
-| Command                  | Purpose                                                  |
-| ------------------------ | -------------------------------------------------------- |
-| `pnpm dev`               | Rebuild the package in watch mode.                       |
-| `pnpm test`              | Run deterministic unit, integration, and property tests. |
-| `pnpm test:browser`      | Run the public API suite in headless Chromium.           |
-| `pnpm test:corpus`       | Verify pinned PowerPoint and LibreOffice documents.      |
-| `pnpm test:corpus:large` | Include the public 400+ slide Google Slides corpus.      |
-| `pnpm test:mutation`     | Measure the core test suite with mutation testing.       |
-| `pnpm test:watch`        | Run tests in watch mode.                                 |
-| `pnpm typecheck`         | Check strict TypeScript types without output.            |
-| `pnpm lint`              | Run type-aware ESLint rules.                             |
-| `pnpm format:check`      | Verify Prettier formatting.                              |
-| `pnpm build`             | Build ESM, CommonJS, source maps, and typings.           |
-| `pnpm check`             | Run every required pull-request quality gate.            |
+The fast CI matrix runs on Node.js 20, 22, and 24 plus Chromium. Producer
+corpus and mutation suites run in the reliability workflow.
 
-The test suite builds a minimal OOXML package in memory. New fidelity work
-should add the smallest fixture that demonstrates the target OOXML structure
-and assert the normalized public result.
+Read [docs/architecture.md](docs/architecture.md) before changing parser
+ownership, public models, resource handling, or format boundaries. Development
+rules for coding agents and contributors live in [AGENTS.md](AGENTS.md).
 
-The fast suite fuzzes ZIP bytes, XML structure, relationship paths, and numeric
-attributes with reproducible seeds. Producer compatibility uses a separate,
-download-on-demand corpus whose source and integrity fingerprints are recorded
-in `test/corpus/pptx-manifest.json`; document binaries are not committed. CI
-runs the fast gate on Node.js 20, 22, and 24 plus Chromium. The large corpus and
-mutation score run on the scheduled reliability workflow and can also be
-started manually.
+## Roadmap
 
-## Architecture
+- stabilize the normalized PowerPoint model;
+- expand real-producer fidelity and adversarial corpus coverage;
+- add a mutation-tested PowerPoint writer;
+- introduce Excel and Word as isolated format domains;
+- expose higher-level document operations suitable for agent tools;
+- keep the core independent of model vendors and agent frameworks.
 
-Read [docs/architecture.md](docs/architecture.md) for the parsing pipeline,
-OOXML relationship resolution, module boundaries, inheritance rules, media
-lifecycle, extension workflow, and design constraints.
-
-## Current limitations and roadmap
-
-- The public model is pre-stable and may receive breaking corrections.
-- PowerPoint output is normalized for consumption; it cannot currently be
-  converted back into an equivalent `.pptx` package.
-- Unsupported OOXML extensions and uncommon chart, SmartArt, animation, and
-  shape variants require additional fixtures.
-- Excel (`.xlsx`), Word (`.docx`), and every JSON-to-Office writer are not yet
-  implemented.
-- JSZip still opens the package in memory; entry expansion is bounded and read
-  incrementally, but a fully streaming document model is not yet available.
-
-The long-term direction is one shared OOXML foundation with isolated format
-adapters and explicit reader/writer capabilities. Fidelity is added one tested
-document structure at a time.
+Capabilities are documented only after their public API, implementation, and
+tests exist.
 
 ## License
 
