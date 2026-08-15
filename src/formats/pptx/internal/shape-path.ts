@@ -2382,7 +2382,7 @@ export function getShapePath(
         const cnstVal1 = 50000 * refr;
         const cnstVal2 = 100000 * refr;
         const ss = Math.min(w, h);
-        const a = adj < 0 ? 0 : adj > cnstVal1 ? cnstVal1 : adj;
+        const a = Math.min(Math.max(adj, 0), cnstVal1);
         const dy2 = (ss * a) / cnstVal2;
         const dy1 = dy2 / 5;
         const x1 = w - dy2;

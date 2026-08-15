@@ -686,6 +686,7 @@ describe('PowerPoint preset shape path safety', () => {
     ['plaque', 50000],
     ['cube', 100000],
     ['bevel', 50000],
+    ['foldedCorner', 50000],
   ] as const)(
     'clamps the fixed authored adjustment range for %s',
     (shapeType, maximum) => {
