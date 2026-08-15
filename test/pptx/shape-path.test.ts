@@ -1355,6 +1355,83 @@ describe('PowerPoint preset shape path safety', () => {
     },
   );
 
+  it('clamps coupled PowerPoint bent-arrow adjustments across aspect ratios', () => {
+    const bentArrow = (
+      width: number,
+      height: number,
+      adjustments: ReadonlyArray<readonly [string, string]>,
+    ): string =>
+      getShapePath(
+        'bentArrow',
+        width,
+        height,
+        guides(
+          adjustments.map(([name, value]) => [name, `val ${value}`] as const),
+        ),
+      );
+
+    expect(bentArrow(120, 80, [['adj2', '-10000']])).toBe(
+      bentArrow(120, 80, [['adj2', '0']]),
+    );
+    expect(bentArrow(120, 80, [['adj2', '100000']])).toBe(
+      bentArrow(120, 80, [['adj2', '50000']]),
+    );
+    expect(
+      bentArrow(120, 80, [
+        ['adj1', '100000'],
+        ['adj2', '30000'],
+      ]),
+    ).toBe(
+      bentArrow(120, 80, [
+        ['adj1', '60000'],
+        ['adj2', '30000'],
+      ]),
+    );
+    expect(bentArrow(120, 80, [['adj3', '-10000']])).toBe(
+      bentArrow(120, 80, [['adj3', '0']]),
+    );
+    expect(bentArrow(120, 80, [['adj3', '100000']])).toBe(
+      bentArrow(120, 80, [['adj3', '50000']]),
+    );
+    expect(bentArrow(120, 80, [['adj4', '-10000']])).toBe(
+      bentArrow(120, 80, [['adj4', '0']]),
+    );
+    expect(
+      bentArrow(120, 80, [
+        ['adj1', '25000'],
+        ['adj2', '25000'],
+        ['adj3', '25000'],
+        ['adj4', '100000'],
+      ]),
+    ).toBe(
+      bentArrow(120, 80, [
+        ['adj1', '25000'],
+        ['adj2', '25000'],
+        ['adj3', '25000'],
+        ['adj4', '87500'],
+      ]),
+    );
+    expect(
+      bentArrow(80, 120, [
+        ['adj1', '0'],
+        ['adj2', '0'],
+        ['adj3', '50000'],
+        ['adj4', '100000'],
+      ]),
+    ).toBe(
+      bentArrow(80, 120, [
+        ['adj1', '0'],
+        ['adj2', '0'],
+        ['adj3', '50000'],
+        ['adj4', '50000'],
+      ]),
+    );
+
+    expect(
+      hashPath(bentArrow(120, 80, [['adj4', '0']])),
+    ).toMatchInlineSnapshot(`"1bc9f3c1"`);
+  });
+
   it('keeps common default paths deterministic', () => {
     const rectangle = 'M 0 0 L 120 0 L 120 80 L 0 80 Z';
     expect(getShapePath('rect', 120, 80, xml({}))).toBe(rectangle);
