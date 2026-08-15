@@ -3,6 +3,36 @@ import type { XmlLookupValue } from '../../../common';
 import { RATIO_EMUs_Points } from '../../../common/ooxml/units';
 import { getTextByPathList } from '../../../common';
 
+const EMPTY_SHAPE_NODE = {} as XmlLookupValue;
+
+function asArray(value: XmlLookupValue | undefined): XmlLookupValue[] {
+  if (!value) return [];
+  return Array.isArray(value) ? value : [value];
+}
+
+function hasInvalidAdjustmentGuide(node: XmlLookupValue): boolean {
+  const guides = asArray(
+    getTextByPathList<XmlLookupValue>(node, [
+      'p:spPr',
+      'a:prstGeom',
+      'a:avLst',
+      'a:gd',
+    ]),
+  );
+  return guides.some((guide) => {
+    const name = getTextByPathList<string>(guide, ['attrs', 'name']);
+    const formula = getTextByPathList<string>(guide, ['attrs', 'fmla']);
+    if (!name || !formula || !/^val [+-]?\d+$/.test(formula)) return true;
+    return !Number.isSafeInteger(Number(formula.slice(4)));
+  });
+}
+
+function normalizeDimension(value: number): number {
+  return Number.isFinite(value) && value > 0 && value <= Number.MAX_SAFE_INTEGER
+    ? value
+    : 0;
+}
+
 function shapePie(
   H: number,
   w: number,
@@ -104,20 +134,25 @@ function shapeArc(
   isClose: boolean,
 ) {
   let dData = '';
-  const increment = endAng >= stAng ? 1 : -1;
-  let angle = stAng;
+  const requestedSweep = endAng - stAng;
+  const sweep = Math.max(-360, Math.min(360, requestedSweep));
+  const increment = sweep >= 0 ? 1 : -1;
+  const normalizedStart = ((stAng % 360) + 360) % 360;
+  const wholeSteps = Math.floor(Math.abs(sweep));
+  const angles = Array.from(
+    { length: wholeSteps + 1 },
+    (_, index) => normalizedStart + index * increment,
+  );
+  if (Math.abs(sweep) > wholeSteps) angles.push(normalizedStart + sweep);
 
-  const condition = (a: number) => (increment > 0 ? a <= endAng : a >= endAng);
-
-  while (condition(angle)) {
+  for (const angle of angles) {
     const radians = angle * (Math.PI / 180);
     const x = cX + Math.cos(radians) * rX;
     const y = cY + Math.sin(radians) * rY;
-    if (angle === stAng) {
+    if (angle === normalizedStart) {
       dData = ` M${x} ${y}`;
     }
     dData += ` L${x} ${y}`;
-    angle += increment;
   }
 
   if (isClose) {
@@ -192,6 +227,13 @@ export function getShapePath(
   h: number,
   node: XmlLookupValue,
 ) {
+  w = normalizeDimension(w);
+  h = normalizeDimension(h);
+  if (w === 0 || h === 0) {
+    return `M 0 0 L ${w} 0 L ${w} ${h} L 0 ${h} Z`;
+  }
+  if (hasInvalidAdjustmentGuide(node)) node = EMPTY_SHAPE_NODE;
+
   let pathData = '';
 
   switch (shapType) {
