@@ -63,6 +63,7 @@ import {
   getRelationshipPartUri,
   hasValidText,
   numberToFixed,
+  sanitizeHyperlink,
 } from '../../common';
 import { getShadow } from './internal/shadow';
 import {
@@ -474,9 +475,7 @@ function getHyperlinkFromCNvPr(
   if (res['type'] !== 'hyperlink') return null;
 
   const target = res['target'];
-  if (!target || !/^https?:\/\//.test(target)) return null;
-
-  return target;
+  return target ? sanitizeHyperlink(target) : null;
 }
 
 function getNote(noteContent: XmlLookupValue): string {

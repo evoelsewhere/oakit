@@ -90,4 +90,25 @@ describe('PPTX HTML security', () => {
     );
     expect(result.slides[0]?.note).not.toContain('<script>');
   });
+
+  it('retains safe links with escaped attributes and isolation metadata', async () => {
+    const input = await createMinimalPptx({
+      'ppt/slides/slide1.xml': MALICIOUS_TEXT_SLIDE,
+      'ppt/slides/_rels/slide1.xml.rels': `
+        <Relationships>
+          <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout1.xml"/>
+          <Relationship Id="rIdLink" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink" Target="https://example.com/?a=1&amp;b=2" TargetMode="External"/>
+        </Relationships>`,
+    });
+
+    const result = await parsePptx(input);
+    const element = result.slides[0]?.elements[0];
+
+    expect(element?.type).toBe('text');
+    if (element?.type !== 'text') throw new Error('Expected a text element');
+    expect(element.content).toContain(
+      'href="https://example.com/?a=1&amp;b=2"',
+    );
+    expect(element.content).toContain('rel="noopener noreferrer"');
+  });
 });

@@ -449,7 +449,10 @@ export function getSpanStyleInfo(
   const relationship = relationshipId
     ? warpObj.slideResObj[relationshipId]
     : undefined;
-  const linkURL = relationship ? sanitizeHyperlink(relationship.target) : null;
+  const linkURL =
+    relationship?.type === 'hyperlink'
+      ? sanitizeHyperlink(relationship.target)
+      : null;
   return {
     styleText,
     text: runText,
