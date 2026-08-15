@@ -1,4 +1,5 @@
 export const mutatedFiles = [
+  'src/cli/node-io.ts',
   'src/cli/run.ts',
   'src/common/archive/read-entry.ts',
   'src/common/binary/base64.ts',
@@ -18,7 +19,6 @@ export const mutatedFiles = [
 
 export const pendingMutationFiles = [
   'src/cli.ts',
-  'src/cli/node-io.ts',
   'src/formats/pptx/errors.ts',
   'src/formats/pptx/index.ts',
   'src/formats/pptx/internal/animation.ts',

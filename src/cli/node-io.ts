@@ -2,10 +2,21 @@ import { readFile, writeFile } from 'node:fs/promises';
 
 import type { OakitCliIo } from './run';
 
-async function readStdin(): Promise<Uint8Array> {
+export interface NodeCliDependencies {
+  readonly stdin: AsyncIterable<unknown>;
+  readonly readFile: (filename: string) => Promise<Uint8Array>;
+  readonly writeFile: (
+    filename: string,
+    value: string,
+    encoding: 'utf8',
+  ) => Promise<void>;
+  readonly writeStderr: (value: string) => void;
+  readonly writeStdout: (value: string) => void;
+}
+
+async function readStdin(stdin: AsyncIterable<unknown>): Promise<Uint8Array> {
   const chunks: Uint8Array[] = [];
   let byteLength = 0;
-  const stdin: AsyncIterable<unknown> = process.stdin;
   for await (const chunk of stdin) {
     const bytes =
       typeof chunk === 'string'
@@ -29,20 +40,32 @@ async function readStdin(): Promise<Uint8Array> {
   return input;
 }
 
-export function createNodeCliIo(): OakitCliIo {
+const nodeCliDependencies: NodeCliDependencies = {
+  readFile,
+  stdin: process.stdin,
+  writeFile,
+  writeStderr: process.stderr.write.bind(process.stderr),
+  writeStdout: process.stdout.write.bind(process.stdout),
+};
+
+export function createNodeCliIo(
+  dependencies: NodeCliDependencies = nodeCliDependencies,
+): OakitCliIo {
   return {
     async readFile(filename) {
-      return readFile(filename);
+      return dependencies.readFile(filename);
     },
-    readStdin,
+    async readStdin() {
+      return readStdin(dependencies.stdin);
+    },
     async writeFile(filename, value) {
-      await writeFile(filename, value, 'utf8');
+      await dependencies.writeFile(filename, value, 'utf8');
     },
     writeStderr(value) {
-      process.stderr.write(value);
+      dependencies.writeStderr(value);
     },
     writeStdout(value) {
-      process.stdout.write(value);
+      dependencies.writeStdout(value);
     },
   };
 }
