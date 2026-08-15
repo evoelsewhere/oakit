@@ -10,29 +10,54 @@ interface SimplifyState {
   documentOrder: number;
 }
 
-const CANONICAL_NAMESPACE_PREFIXES: Readonly<Record<string, string>> = {
-  'http://purl.oclc.org/ooxml/drawingml/chart': 'c',
-  'http://purl.oclc.org/ooxml/drawingml/diagram': 'dgm',
-  'http://purl.oclc.org/ooxml/drawingml/main': 'a',
-  'http://purl.oclc.org/ooxml/officeDocument/math': 'm',
-  'http://purl.oclc.org/ooxml/officeDocument/relationships': 'r',
-  'http://purl.oclc.org/ooxml/presentationml/main': 'p',
-  'http://schemas.microsoft.com/office/drawing/2008/diagram': 'dsp',
-  'http://schemas.microsoft.com/office/drawing/2010/main': 'a14',
-  'http://schemas.openxmlformats.org/drawingml/2006/chart': 'c',
-  'http://schemas.openxmlformats.org/drawingml/2006/diagram': 'dgm',
-  'http://schemas.openxmlformats.org/drawingml/2006/main': 'a',
-  'http://schemas.openxmlformats.org/markup-compatibility/2006': 'mc',
-  'http://schemas.openxmlformats.org/officeDocument/2006/math': 'm',
-  'http://schemas.openxmlformats.org/officeDocument/2006/relationships': 'r',
-  'http://schemas.openxmlformats.org/package/2006/content-types': '',
-  'http://schemas.openxmlformats.org/package/2006/relationships': '',
-  'http://schemas.openxmlformats.org/presentationml/2006/main': 'p',
-};
+function canonicalNamespacePrefix(namespace: string): string | undefined {
+  switch (namespace) {
+    case 'http://purl.oclc.org/ooxml/drawingml/chart':
+    case 'http://schemas.openxmlformats.org/drawingml/2006/chart':
+      return 'c';
+    case 'http://purl.oclc.org/ooxml/drawingml/diagram':
+    case 'http://schemas.openxmlformats.org/drawingml/2006/diagram':
+      return 'dgm';
+    case 'http://purl.oclc.org/ooxml/drawingml/main':
+    case 'http://schemas.openxmlformats.org/drawingml/2006/main':
+      return 'a';
+    case 'http://purl.oclc.org/ooxml/officeDocument/math':
+    case 'http://schemas.openxmlformats.org/officeDocument/2006/math':
+      return 'm';
+    case 'http://purl.oclc.org/ooxml/officeDocument/relationships':
+    case 'http://schemas.openxmlformats.org/officeDocument/2006/relationships':
+      return 'r';
+    case 'http://purl.oclc.org/ooxml/presentationml/main':
+    case 'http://schemas.openxmlformats.org/presentationml/2006/main':
+      return 'p';
+    case 'http://schemas.microsoft.com/office/drawing/2008/diagram':
+      return 'dsp';
+    case 'http://schemas.microsoft.com/office/drawing/2010/main':
+      return 'a14';
+    case 'http://schemas.openxmlformats.org/markup-compatibility/2006':
+      return 'mc';
+    case 'http://schemas.openxmlformats.org/package/2006/content-types':
+    case 'http://schemas.openxmlformats.org/package/2006/relationships':
+      return '';
+  }
+}
 
-const RESERVED_CANONICAL_PREFIXES = new Set(
-  Object.values(CANONICAL_NAMESPACE_PREFIXES).filter(Boolean),
-);
+function isReservedCanonicalPrefix(prefix: string): boolean {
+  switch (prefix) {
+    case 'a':
+    case 'a14':
+    case 'c':
+    case 'dgm':
+    case 'dsp':
+    case 'm':
+    case 'mc':
+    case 'p':
+    case 'r':
+      return true;
+    default:
+      return false;
+  }
+}
 
 function extendNamespaceBindings(
   parent: ReadonlyMap<string, string>,
@@ -59,9 +84,9 @@ function normalizeQualifiedName(
 
   const namespace = bindings.get(sourcePrefix);
   if (!namespace) return name;
-  const canonicalPrefix = CANONICAL_NAMESPACE_PREFIXES[namespace];
+  const canonicalPrefix = canonicalNamespacePrefix(namespace);
   if (canonicalPrefix === undefined) {
-    return RESERVED_CANONICAL_PREFIXES.has(sourcePrefix)
+    return isReservedCanonicalPrefix(sourcePrefix)
       ? `ns_${sourcePrefix}:${localName}`
       : name;
   }

@@ -12,6 +12,26 @@ import {
 const DRAWING_NAMESPACE =
   'http://schemas.openxmlformats.org/drawingml/2006/main';
 
+const CANONICAL_NAMESPACES = [
+  ['http://purl.oclc.org/ooxml/drawingml/chart', 'c'],
+  ['http://purl.oclc.org/ooxml/drawingml/diagram', 'dgm'],
+  ['http://purl.oclc.org/ooxml/drawingml/main', 'a'],
+  ['http://purl.oclc.org/ooxml/officeDocument/math', 'm'],
+  ['http://purl.oclc.org/ooxml/officeDocument/relationships', 'r'],
+  ['http://purl.oclc.org/ooxml/presentationml/main', 'p'],
+  ['http://schemas.microsoft.com/office/drawing/2008/diagram', 'dsp'],
+  ['http://schemas.microsoft.com/office/drawing/2010/main', 'a14'],
+  ['http://schemas.openxmlformats.org/drawingml/2006/chart', 'c'],
+  ['http://schemas.openxmlformats.org/drawingml/2006/diagram', 'dgm'],
+  ['http://schemas.openxmlformats.org/drawingml/2006/main', 'a'],
+  ['http://schemas.openxmlformats.org/markup-compatibility/2006', 'mc'],
+  ['http://schemas.openxmlformats.org/officeDocument/2006/math', 'm'],
+  ['http://schemas.openxmlformats.org/officeDocument/2006/relationships', 'r'],
+  ['http://schemas.openxmlformats.org/package/2006/content-types', ''],
+  ['http://schemas.openxmlformats.org/package/2006/relationships', ''],
+  ['http://schemas.openxmlformats.org/presentationml/2006/main', 'p'],
+] as const;
+
 async function readMalformedBytes(
   bytes: Uint8Array,
 ): Promise<XmlStructureError> {
@@ -51,7 +71,44 @@ describe('XML error contracts', () => {
 });
 
 describe('lossless XML normalization boundaries', () => {
+  it.each(CANONICAL_NAMESPACES)(
+    'normalizes namespace %s to prefix %s',
+    (namespace, prefix) => {
+      const tagName = prefix ? `${prefix}:node` : 'node';
+
+      expect(
+        simplifyLossless([
+          {
+            attributes: { 'xmlns:source': namespace },
+            children: [],
+            tagName: 'source:node',
+          },
+        ]),
+      ).toEqual({
+        [tagName]: {
+          attrs: { order: 0, 'xmlns:source': namespace },
+        },
+      });
+    },
+  );
+
+  it.each(['a', 'a14', 'c', 'dgm', 'dsp', 'm', 'mc', 'p', 'r'])(
+    'protects the reserved prefix %s from an unknown namespace',
+    (prefix) => {
+      expect(
+        simplifyLossless([
+          {
+            attributes: { [`xmlns:${prefix}`]: 'urn:unknown' },
+            children: [],
+            tagName: `${prefix}:node`,
+          },
+        ]),
+      ).toHaveProperty(`ns_${prefix}:node`);
+    },
+  );
+
   it('preserves text values together with parent attributes and order', () => {
+    expect(simplifyLossless(['content'])).toBe('content');
     expect(simplifyLossless(['content'], { lang: 'en-US' })).toEqual({
       attrs: { lang: 'en-US', order: 0 },
       value: 'content',
@@ -101,6 +158,12 @@ describe('lossless XML normalization boundaries', () => {
     expect(
       simplifyLossless(['visible', { children: [], tagName: 'child' }]),
     ).toBeUndefined();
+  });
+
+  it('ignores formatting whitespace around child elements', () => {
+    expect(
+      simplifyLossless([' \n\t ', { children: [], tagName: 'child' }]),
+    ).toEqual({ child: { attrs: { order: 0 } } });
   });
 
   it('applies a canonical default namespace only to element names', () => {
