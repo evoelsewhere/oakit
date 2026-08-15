@@ -51,4 +51,23 @@ describe('parsePptxWithDiagnostics', () => {
       },
     });
   });
+
+  it('skips unsafe relationship targets in tolerant mode', async () => {
+    const input = await createMinimalPptx({
+      'ppt/slides/_rels/slide1.xml.rels': `
+        <Relationships>
+          <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../../../secret.xml"/>
+        </Relationships>`,
+    });
+
+    const result = await parsePptxWithDiagnostics(input);
+
+    expect(result.document.slides).toHaveLength(1);
+    expect(result.diagnostics).toContainEqual(
+      expect.objectContaining({
+        code: 'invalid-relationship-target',
+        part: 'ppt/slides/slide1.xml',
+      }),
+    );
+  });
 });

@@ -62,7 +62,6 @@ import {
   getRelationshipPartUri,
   hasValidText,
   numberToFixed,
-  resolveRelationshipTarget,
 } from '../../common';
 import { getShadow } from './internal/shadow';
 import {
@@ -234,12 +233,12 @@ async function getTheme(xmlReader: PptxXmlReader) {
   const themeAttributes = attributes(themeRelationship);
   const themeUri = themeAttributes.Target;
   if (themeUri) {
-    const themeFilename = resolveRelationshipTarget(
+    const themeFilename = xmlReader.resolveRelationshipTarget(
       presentationPart,
       themeUri,
       themeAttributes.TargetMode,
     );
-    themeContent = await xmlReader.read(themeFilename);
+    if (themeFilename) themeContent = await xmlReader.read(themeFilename);
   }
 
   const themeColors: string[] = [];
@@ -310,11 +309,12 @@ async function processSingleSlide(
   for (const relationship of slideRelationships) {
     const values = attributes(relationship);
     if (!values.Target || !values.Type) continue;
-    const target = resolveRelationshipTarget(
+    const target = xmlReader.resolveRelationshipTarget(
       slideFilename,
       values.Target,
       values.TargetMode,
     );
+    if (!target) continue;
     if (values.Type === `${STANDARD_RELATIONSHIP_PREFIX}slideLayout`) {
       layoutFilename = target;
     } else if (values.Type === `${STANDARD_RELATIONSHIP_PREFIX}notesSlide`) {
@@ -340,11 +340,12 @@ async function processSingleSlide(
   for (const relationship of layoutRelationships) {
     const values = attributes(relationship);
     if (!values.Target || !values.Type) continue;
-    const target = resolveRelationshipTarget(
+    const target = xmlReader.resolveRelationshipTarget(
       layoutFilename,
       values.Target,
       values.TargetMode,
     );
+    if (!target) continue;
     if (values.Type === `${STANDARD_RELATIONSHIP_PREFIX}slideMaster`) {
       masterFilename = target;
     } else {
@@ -368,11 +369,12 @@ async function processSingleSlide(
   for (const relationship of masterRelationships) {
     const values = attributes(relationship);
     if (!values.Target || !values.Type) continue;
-    const target = resolveRelationshipTarget(
+    const target = xmlReader.resolveRelationshipTarget(
       masterFilename,
       values.Target,
       values.TargetMode,
     );
+    if (!target) continue;
     if (values.Type === `${STANDARD_RELATIONSHIP_PREFIX}theme`) {
       themeFilename = target;
     } else {
@@ -393,15 +395,13 @@ async function processSingleSlide(
       )) {
         const values = attributes(relationship);
         if (!values.Target) continue;
-        addRelationship(
-          themeResObj,
-          relationship,
-          resolveRelationshipTarget(
-            themeFilename,
-            values.Target,
-            values.TargetMode,
-          ),
+        const target = xmlReader.resolveRelationshipTarget(
+          themeFilename,
+          values.Target,
+          values.TargetMode,
         );
+        if (!target) continue;
+        addRelationship(themeResObj, relationship, target);
       }
     }
   }

@@ -5,11 +5,7 @@ import type {
   PptxRelationshipMap,
 } from './context';
 
-import {
-  getRelationshipPartUri,
-  getTextByPathList,
-  resolveRelationshipTarget,
-} from '../../../common';
+import { getRelationshipPartUri, getTextByPathList } from '../../../common';
 import { getTextNodeValue } from './text';
 
 function asArray(value: XmlLookupValue | undefined): XmlLookupValue[] {
@@ -128,17 +124,19 @@ export async function getDiagramNodeContext(
         const id = attributes.Id;
         const target = attributes.Target;
         if (!id || !target) continue;
+        const resolvedTarget = context.xmlReader.resolveRelationshipTarget(
+          drawingTarget,
+          target,
+          attributes.TargetMode,
+        );
+        if (!resolvedTarget) continue;
 
         diagramResObj[id] = {
           type: (attributes.Type ?? '').replace(
             'http://schemas.openxmlformats.org/officeDocument/2006/relationships/',
             '',
           ),
-          target: resolveRelationshipTarget(
-            drawingTarget,
-            target,
-            attributes.TargetMode,
-          ),
+          target: resolvedTarget,
         };
       }
     }
