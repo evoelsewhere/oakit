@@ -265,20 +265,32 @@ pnpm check
 
 Useful commands:
 
-| Command             | Purpose                                        |
-| ------------------- | ---------------------------------------------- |
-| `pnpm dev`          | Rebuild the package in watch mode.             |
-| `pnpm test`         | Run the Vitest suite once.                     |
-| `pnpm test:watch`   | Run tests in watch mode.                       |
-| `pnpm typecheck`    | Check strict TypeScript types without output.  |
-| `pnpm lint`         | Run type-aware ESLint rules.                   |
-| `pnpm format:check` | Verify Prettier formatting.                    |
-| `pnpm build`        | Build ESM, CommonJS, source maps, and typings. |
-| `pnpm check`        | Run every required quality gate.               |
+| Command                  | Purpose                                                  |
+| ------------------------ | -------------------------------------------------------- |
+| `pnpm dev`               | Rebuild the package in watch mode.                       |
+| `pnpm test`              | Run deterministic unit, integration, and property tests. |
+| `pnpm test:browser`      | Run the public API suite in headless Chromium.           |
+| `pnpm test:corpus`       | Verify pinned PowerPoint and LibreOffice documents.      |
+| `pnpm test:corpus:large` | Include the public 400+ slide Google Slides corpus.      |
+| `pnpm test:mutation`     | Measure the core test suite with mutation testing.       |
+| `pnpm test:watch`        | Run tests in watch mode.                                 |
+| `pnpm typecheck`         | Check strict TypeScript types without output.            |
+| `pnpm lint`              | Run type-aware ESLint rules.                             |
+| `pnpm format:check`      | Verify Prettier formatting.                              |
+| `pnpm build`             | Build ESM, CommonJS, source maps, and typings.           |
+| `pnpm check`             | Run every required pull-request quality gate.            |
 
 The test suite builds a minimal OOXML package in memory. New fidelity work
 should add the smallest fixture that demonstrates the target OOXML structure
 and assert the normalized public result.
+
+The fast suite fuzzes ZIP bytes, XML structure, relationship paths, and numeric
+attributes with reproducible seeds. Producer compatibility uses a separate,
+download-on-demand corpus whose source and integrity fingerprints are recorded
+in `test/corpus/pptx-manifest.json`; document binaries are not committed. CI
+runs the fast gate on Node.js 20, 22, and 24 plus Chromium. The large corpus and
+mutation score run on the scheduled reliability workflow and can also be
+started manually.
 
 ## Architecture
 

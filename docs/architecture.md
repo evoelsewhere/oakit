@@ -110,8 +110,11 @@ Tests live outside `src`:
 
 ```text
 test/
-└── pptx/
-    └── parse-pptx.test.ts           In-memory package integration fixture
+├── black-box/                       Independent public-API fixtures and fuzzing
+├── browser/                         Real Chromium boundary tests
+├── common/                          Shared OOXML primitive tests
+├── corpus/                          Producer manifest and semantic assertions
+└── pptx/                            Parser integration tests
 ```
 
 ## Layering and dependency rules
@@ -582,6 +585,26 @@ Add a binary fixture only when the behavior cannot be represented reliably as
 a small package or when compatibility with a real producer is itself the test.
 Keep binary fixtures minimal and document their origin and expected feature.
 
+Reliability is split into four gates with different cost and purpose:
+
+| Gate             | Detects                                                           |
+| ---------------- | ----------------------------------------------------------------- |
+| Fast Vitest      | Regressions and seeded ZIP/XML/path/number properties             |
+| Browser Vitest   | Browser `Blob`, object-URL, bundling, and runtime incompatibility |
+| Producer corpus  | PowerPoint, LibreOffice, and Google Slides compatibility          |
+| Mutation testing | Assertions that execute code but fail to distinguish bad logic    |
+
+The producer corpus is downloaded into an ignored cache. Stable files are
+pinned by whole-file SHA-256. Google Slides reconstructs exported ZIP/media
+parts on every request, so its entry pins an ordered slide-text SHA-256 and a
+maximum download size. The corpus asserts both structural invariants and
+minimum semantic element counts; merely returning an empty document cannot
+pass it.
+
+The mutation gate targets shared archive, XML, relationship, text-sanitization,
+and resource-limit boundaries. Its report is retained as a CI artifact so
+surviving mutants can be converted into focused public-contract tests.
+
 Every change must pass:
 
 ```bash
@@ -589,7 +612,9 @@ pnpm check
 ```
 
 That command checks formatting, type-aware linting, strict TypeScript, Vitest,
-and both package builds.
+and both package builds on Node.js 20, 22, and 24. Chromium, producer-corpus,
+and mutation gates have dedicated commands because they require external
+runtimes or are intentionally slower.
 
 ## Adding PowerPoint fidelity
 
