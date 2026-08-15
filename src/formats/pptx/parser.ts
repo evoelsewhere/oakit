@@ -196,7 +196,11 @@ export async function parse(
     limits,
   );
 
-  const contentTypes = await getContentTypes(xmlReader);
+  const contentTypes = await getContentTypes(
+    xmlReader,
+    parseOptions.errorMode,
+    diagnostics,
+  );
   const presentationPart = 'ppt/presentation.xml';
   const presentation = await xmlReader.read(presentationPart, {
     required: true,
@@ -243,6 +247,7 @@ export async function parse(
       loadedVideos,
       loadedAudios,
       parseOptions,
+      diagnostics,
     );
     slides.push(singleSlide);
   }
@@ -258,12 +263,31 @@ export async function parse(
   };
 }
 
-async function getContentTypes(xmlReader: PptxXmlReader): Promise<Set<string>> {
+async function getContentTypes(
+  xmlReader: PptxXmlReader,
+  errorMode: PptxErrorMode,
+  diagnostics: PptxDiagnostic[],
+): Promise<Set<string>> {
   const contentTypes = await xmlReader.read('[Content_Types].xml', {
     required: true,
   });
-  const overrides = asArray(nodeAt(contentTypes, ['Types', 'Override']));
   const slides = new Set<string>();
+  const root = nodeAt(contentTypes, ['Types']);
+  if (!root) {
+    reportDocumentDiagnostic(
+      {
+        code: 'invalid-document-structure',
+        message:
+          'Required OOXML root Types is missing from [Content_Types].xml',
+        part: '[Content_Types].xml',
+        severity: 'error',
+      },
+      errorMode,
+      diagnostics,
+    );
+    return slides;
+  }
+  const overrides = asArray(nodeAt(root, ['Override']));
 
   for (const item of overrides) {
     const itemAttributes = attributes(item);
@@ -473,6 +497,7 @@ async function processSingleSlide(
   loadedVideos: Record<string, PptxMediaData>,
   loadedAudios: Record<string, PptxMediaData>,
   options: Required<PptxParseOptions>,
+  diagnostics: PptxDiagnostic[],
 ): Promise<Slide> {
   const slideRelationships = await getRelationships(xmlReader, slideFilename);
 
@@ -588,6 +613,18 @@ async function processSingleSlide(
   const tableStyles = await xmlReader.read('ppt/tableStyles.xml');
 
   const slideContent = await xmlReader.read(slideFilename, { required: true });
+  if (!nodeAt(slideContent, ['p:sld'])) {
+    reportDocumentDiagnostic(
+      {
+        code: 'invalid-document-structure',
+        message: `Required OOXML root p:sld is missing from ${slideFilename}`,
+        part: slideFilename,
+        severity: 'error',
+      },
+      options.errorMode,
+      diagnostics,
+    );
+  }
   const nodes = nodeAt(slideContent, ['p:sld', 'p:cSld', 'p:spTree']);
   const warpObj: PptxParserContext = {
     zip,
