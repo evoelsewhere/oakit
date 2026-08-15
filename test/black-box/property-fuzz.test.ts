@@ -1,7 +1,7 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 
-import { parsePptx } from '../../src';
+import { parsePptx, PptxParseError } from '../../src';
 import {
   createIndependentPptx,
   OFFICE_REL_NS,
@@ -129,13 +129,11 @@ describe('PPTX seeded public-boundary properties', () => {
             const result = await parsePptx(mutated, { errorMode: 'strict' });
             expectOnlyFiniteNumbers(result);
           } catch (error) {
-            expect(error).toMatchObject({
-              name: 'PptxParseError',
-              diagnostic: expect.objectContaining({
-                code: expect.any(String),
-                severity: expect.stringMatching(/^(?:error|warning)$/),
-              }),
-            });
+            expect(error).toBeInstanceOf(PptxParseError);
+            if (!(error instanceof PptxParseError)) throw error;
+            expect(error.name).toBe('PptxParseError');
+            expect(typeof error.diagnostic.code).toBe('string');
+            expect(error.diagnostic.severity).toMatch(/^(?:error|warning)$/);
           }
         },
       ),
