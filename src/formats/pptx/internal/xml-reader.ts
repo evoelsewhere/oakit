@@ -17,7 +17,7 @@ import {
 } from '../../../common/archive/read-entry';
 import { PptxParseError } from '../errors';
 import {
-  DEFAULT_PPTX_RESOURCE_LIMITS,
+  defaultPptxResourceLimits,
   PptxResourceLimitError,
   resourceLimitDiagnostic,
   type ResolvedPptxResourceLimits,
@@ -50,7 +50,7 @@ export class PptxXmlReader {
     private readonly zip: JSZip,
     private readonly errorMode: PptxErrorMode,
     private readonly diagnostics: PptxDiagnostic[],
-    private readonly limits: ResolvedPptxResourceLimits = DEFAULT_PPTX_RESOURCE_LIMITS,
+    private readonly limits: ResolvedPptxResourceLimits = defaultPptxResourceLimits(),
   ) {}
 
   async read(

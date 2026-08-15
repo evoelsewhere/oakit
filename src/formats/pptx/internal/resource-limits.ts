@@ -2,22 +2,23 @@ import type JSZip from 'jszip';
 
 import type { PptxDiagnostic, PptxInput, PptxResourceLimits } from '../types';
 
-const MEBIBYTE = 1024 * 1024;
-
-export const DEFAULT_PPTX_RESOURCE_LIMITS = {
-  maxEntries: 10_000,
-  maxInputBytes: 100 * MEBIBYTE,
-  maxMediaBytes: 64 * MEBIBYTE,
-  maxPartBytes: 64 * MEBIBYTE,
-  maxSlides: 1_000,
-  maxTotalUncompressedBytes: 256 * MEBIBYTE,
-  maxTotalXmlNodes: 1_000_000,
-  maxXmlBytes: 16 * MEBIBYTE,
-  maxXmlDepth: 128,
-  maxXmlNodes: 250_000,
-} as const satisfies Required<PptxResourceLimits>;
-
 export type ResolvedPptxResourceLimits = Required<PptxResourceLimits>;
+
+export function defaultPptxResourceLimits(): ResolvedPptxResourceLimits {
+  const mebibyte = 1024 * 1024;
+  return {
+    maxEntries: 10_000,
+    maxInputBytes: 100 * mebibyte,
+    maxMediaBytes: 64 * mebibyte,
+    maxPartBytes: 64 * mebibyte,
+    maxSlides: 1_000,
+    maxTotalUncompressedBytes: 256 * mebibyte,
+    maxTotalXmlNodes: 1_000_000,
+    maxXmlBytes: 16 * mebibyte,
+    maxXmlDepth: 128,
+    maxXmlNodes: 250_000,
+  };
+}
 
 interface CompressedEntryData {
   uncompressedSize?: unknown;
@@ -66,7 +67,7 @@ export function resolvePptxResourceLimits(
   limits: PptxResourceLimits = {},
 ): ResolvedPptxResourceLimits {
   const resolved: ResolvedPptxResourceLimits = {
-    ...DEFAULT_PPTX_RESOURCE_LIMITS,
+    ...defaultPptxResourceLimits(),
     ...limits,
   };
   for (const [name, value] of Object.entries(resolved)) {

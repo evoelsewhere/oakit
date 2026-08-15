@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import { PptxParseError } from '../../src/formats/pptx/errors';
 import { PptxXmlReader } from '../../src/formats/pptx/internal/xml-reader';
-import { DEFAULT_PPTX_RESOURCE_LIMITS } from '../../src/formats/pptx/internal/resource-limits';
+import { defaultPptxResourceLimits } from '../../src/formats/pptx/internal/resource-limits';
 import type { PptxDiagnostic } from '../../src/formats/pptx/types';
 
 function createArchive(): JSZip {
@@ -83,7 +83,7 @@ describe('PptxXmlReader', () => {
 
   it('enforces the actual cumulative expansion budget', async () => {
     const reader = new PptxXmlReader(createArchive(), 'tolerant', [], {
-      ...DEFAULT_PPTX_RESOURCE_LIMITS,
+      ...defaultPptxResourceLimits(),
       maxTotalUncompressedBytes: 10,
     });
 
@@ -94,7 +94,7 @@ describe('PptxXmlReader', () => {
 
   it('enforces the cumulative XML node budget before parsing', async () => {
     const reader = new PptxXmlReader(createArchive(), 'tolerant', [], {
-      ...DEFAULT_PPTX_RESOURCE_LIMITS,
+      ...defaultPptxResourceLimits(),
       maxTotalXmlNodes: 1,
     });
 
