@@ -163,12 +163,23 @@ export async function parse(
     limits,
   );
 
-  const filesInfo = await getContentTypes(xmlReader);
+  const contentTypes = await getContentTypes(xmlReader);
+  const slideFilenames = await getPresentationSlides(xmlReader, contentTypes);
+  if (slideFilenames.length > limits.maxSlides) {
+    throwResourceLimit(
+      new PptxResourceLimitError(
+        'maxSlides',
+        slideFilenames.length,
+        limits.maxSlides,
+      ),
+      diagnostics,
+    );
+  }
   const { width, height, defaultTextStyle } = await getSlideInfo(xmlReader);
   const { themeContent, themeColors } = await getTheme(xmlReader);
   const usedFonts = await getUsedFonts(xmlReader);
 
-  for (const filename of filesInfo.slides) {
+  for (const filename of slideFilenames) {
     const singleSlide = await processSingleSlide(
       zip,
       xmlReader,
@@ -194,13 +205,12 @@ export async function parse(
   };
 }
 
-async function getContentTypes(xmlReader: PptxXmlReader) {
+async function getContentTypes(xmlReader: PptxXmlReader): Promise<Set<string>> {
   const contentTypes = await xmlReader.read('[Content_Types].xml', {
     required: true,
   });
   const overrides = asArray(nodeAt(contentTypes, ['Types', 'Override']));
-  const slides: string[] = [];
-  const slideLayouts: string[] = [];
+  const slides = new Set<string>();
 
   for (const item of overrides) {
     const itemAttributes = attributes(item);
@@ -208,27 +218,58 @@ async function getContentTypes(xmlReader: PptxXmlReader) {
     if (!partName) continue;
     switch (itemAttributes.ContentType) {
       case 'application/vnd.openxmlformats-officedocument.presentationml.slide+xml':
-        slides.push(partName);
-        break;
-      case 'application/vnd.openxmlformats-officedocument.presentationml.slideLayout+xml':
-        slideLayouts.push(partName);
+        slides.add(partName);
         break;
       default:
     }
   }
 
-  const slideNumber = (filename: string): number => {
-    const match = /(\d+)\.xml$/.exec(filename);
-    return Number(match?.[1] ?? Number.MAX_SAFE_INTEGER);
-  };
-  return {
-    slides: slides.sort(
-      (left, right) => slideNumber(left) - slideNumber(right),
-    ),
-    slideLayouts: slideLayouts.sort(
-      (left, right) => slideNumber(left) - slideNumber(right),
-    ),
-  };
+  return slides;
+}
+
+async function getPresentationSlides(
+  xmlReader: PptxXmlReader,
+  declaredSlides: ReadonlySet<string>,
+): Promise<string[]> {
+  const presentationPart = 'ppt/presentation.xml';
+  const presentation = await xmlReader.read(presentationPart, {
+    required: true,
+  });
+  const slideTargets = new Map<string, string>();
+
+  for (const relationship of await getRelationships(
+    xmlReader,
+    presentationPart,
+  )) {
+    const values = attributes(relationship);
+    if (
+      !values.Id ||
+      !values.Target ||
+      !isRelationshipType(values.Type, 'slide') ||
+      values.TargetMode?.toLowerCase() === 'external'
+    ) {
+      continue;
+    }
+    const target = xmlReader.resolveRelationshipTarget(
+      presentationPart,
+      values.Target,
+      values.TargetMode,
+    );
+    if (target && declaredSlides.has(target)) {
+      slideTargets.set(values.Id, target);
+    }
+  }
+
+  const slides: string[] = [];
+  const slideIds = asArray(
+    nodeAt(presentation, ['p:presentation', 'p:sldIdLst', 'p:sldId']),
+  );
+  for (const slideId of slideIds) {
+    const relationshipId = textAt(slideId, ['attrs', 'r:id']);
+    const target = relationshipId ? slideTargets.get(relationshipId) : null;
+    if (target) slides.push(target);
+  }
+  return slides;
 }
 
 async function getUsedFonts(xmlReader: PptxXmlReader): Promise<string[]> {
@@ -267,10 +308,8 @@ async function getTheme(xmlReader: PptxXmlReader) {
   const presentationPart = 'ppt/presentation.xml';
   const themeRelationship = (
     await getRelationships(xmlReader, presentationPart)
-  ).find(
-    (relationship) =>
-      attributes(relationship).Type ===
-      'http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme',
+  ).find((relationship) =>
+    isRelationshipType(attributes(relationship).Type, 'theme'),
   );
   let themeContent: XmlLookupValue | null = null;
   const themeAttributes = attributes(themeRelationship);
@@ -304,6 +343,23 @@ async function getTheme(xmlReader: PptxXmlReader) {
 
 const STANDARD_RELATIONSHIP_PREFIX =
   'http://schemas.openxmlformats.org/officeDocument/2006/relationships/';
+const STRICT_RELATIONSHIP_PREFIX =
+  'http://purl.oclc.org/ooxml/officeDocument/relationships/';
+
+function relationshipTypeName(type: string | undefined): string {
+  if (!type) return '';
+  if (type.startsWith(STANDARD_RELATIONSHIP_PREFIX)) {
+    return type.slice(STANDARD_RELATIONSHIP_PREFIX.length);
+  }
+  if (type.startsWith(STRICT_RELATIONSHIP_PREFIX)) {
+    return type.slice(STRICT_RELATIONSHIP_PREFIX.length);
+  }
+  return type;
+}
+
+function isRelationshipType(type: string | undefined, name: string): boolean {
+  return relationshipTypeName(type) === name;
+}
 
 async function getRelationships(
   xmlReader: PptxXmlReader,
@@ -322,7 +378,7 @@ function addRelationship(
   const values = attributes(relationship);
   if (!values.Id || !values.Type) return;
   relationships[values.Id] = {
-    type: values.Type.replace(STANDARD_RELATIONSHIP_PREFIX, ''),
+    type: relationshipTypeName(values.Type),
     target,
   };
 }
@@ -358,9 +414,9 @@ async function processSingleSlide(
       values.TargetMode,
     );
     if (!target) continue;
-    if (values.Type === `${STANDARD_RELATIONSHIP_PREFIX}slideLayout`) {
+    if (isRelationshipType(values.Type, 'slideLayout')) {
       layoutFilename = target;
-    } else if (values.Type === `${STANDARD_RELATIONSHIP_PREFIX}notesSlide`) {
+    } else if (isRelationshipType(values.Type, 'notesSlide')) {
       noteFilename = target;
     }
     addRelationship(slideResObj, relationship, target);
@@ -389,7 +445,7 @@ async function processSingleSlide(
       values.TargetMode,
     );
     if (!target) continue;
-    if (values.Type === `${STANDARD_RELATIONSHIP_PREFIX}slideMaster`) {
+    if (isRelationshipType(values.Type, 'slideMaster')) {
       masterFilename = target;
     } else {
       addRelationship(layoutResObj, relationship, target);
@@ -418,7 +474,7 @@ async function processSingleSlide(
       values.TargetMode,
     );
     if (!target) continue;
-    if (values.Type === `${STANDARD_RELATIONSHIP_PREFIX}theme`) {
+    if (isRelationshipType(values.Type, 'theme')) {
       themeFilename = target;
     } else {
       addRelationship(masterResObj, relationship, target);
