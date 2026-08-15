@@ -1,4 +1,5 @@
 export const mutatedFiles = [
+  'src/cli/launch.ts',
   'src/cli/node-io.ts',
   'src/cli/run.ts',
   'src/common/archive/read-entry.ts',
@@ -18,7 +19,6 @@ export const mutatedFiles = [
 ];
 
 export const pendingMutationFiles = [
-  'src/cli.ts',
   'src/formats/pptx/errors.ts',
   'src/formats/pptx/index.ts',
   'src/formats/pptx/internal/animation.ts',
@@ -44,6 +44,11 @@ export const pendingMutationFiles = [
 ];
 
 export const excludedMutationFiles = [
+  {
+    file: 'src/cli.ts',
+    reason:
+      'Executable composition root that only binds process state to mutation-tested launch behavior.',
+  },
   {
     file: 'src/common/index.ts',
     reason: 'Pure re-export barrel with no runtime decisions or values.',
