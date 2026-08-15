@@ -1,26 +1,51 @@
-const HTML_ENTITIES: Readonly<Record<string, string>> = {
-  '&': '&amp;',
-  '<': '&lt;',
-  '>': '&gt;',
-  '"': '&quot;',
-  "'": '&#039;',
-};
+function decodeNamedXmlEntity(name: string): string | undefined {
+  switch (name) {
+    case 'amp':
+      return '&';
+    case 'apos':
+      return "'";
+    case 'gt':
+      return '>';
+    case 'lt':
+      return '<';
+    case 'quot':
+      return '"';
+  }
+}
 
-const SAFE_HYPERLINK_PROTOCOLS = new Set(['http:', 'https:', 'mailto:']);
+function escapeHtmlCharacter(character: string): string {
+  switch (character) {
+    case '&':
+      return '&amp;';
+    case '<':
+      return '&lt;';
+    case '>':
+      return '&gt;';
+    case '"':
+      return '&quot;';
+    case "'":
+      return '&#039;';
+    default:
+      return character;
+  }
+}
 
-const XML_ENTITIES: Readonly<Record<string, string>> = {
-  amp: '&',
-  apos: "'",
-  gt: '>',
-  lt: '<',
-  quot: '"',
-};
+function isSafeHyperlinkProtocol(protocol: string): boolean {
+  switch (protocol) {
+    case 'http:':
+    case 'https:':
+    case 'mailto:':
+      return true;
+    default:
+      return false;
+  }
+}
 
 export function decodeXmlEntities(text: string): string {
   return text.replace(
     /&(?:#(\d+)|#x([\da-f]+)|(amp|apos|gt|lt|quot));/gi,
     (entity, decimal: string, hexadecimal: string, named: string) => {
-      if (named) return XML_ENTITIES[named.toLowerCase()] ?? entity;
+      if (named) return decodeNamedXmlEntity(named.toLowerCase()) ?? entity;
       const codePoint = Number.parseInt(
         decimal || hexadecimal,
         decimal ? 10 : 16,
@@ -34,7 +59,7 @@ export function decodeXmlEntities(text: string): string {
 }
 
 export function escapeHtml(text: string): string {
-  return text.replace(/[&<>"']/g, (character) => HTML_ENTITIES[character]!);
+  return text.replace(/[&<>"']/g, escapeHtmlCharacter);
 }
 
 export function sanitizeHyperlink(value: string): string | null {
@@ -42,7 +67,7 @@ export function sanitizeHyperlink(value: string): string | null {
 
   try {
     const url = new URL(candidate);
-    return SAFE_HYPERLINK_PROTOCOLS.has(url.protocol.toLowerCase())
+    return isSafeHyperlinkProtocol(url.protocol.toLowerCase())
       ? candidate
       : null;
   } catch {
