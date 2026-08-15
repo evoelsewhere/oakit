@@ -330,9 +330,8 @@ function inspectStartTag(tagContent: string): StartTagDetails {
   }
 
   const content = tagContent.slice(0, contentEnd);
-  const elementName = /^(?:[A-Za-z_][A-Za-z\d_.-]*:)?[A-Za-z_][A-Za-z\d_.-]*/.exec(
-    content,
-  )?.[0];
+  const elementName =
+    /^(?:[A-Za-z_][A-Za-z\d_.-]*:)?[A-Za-z_][A-Za-z\d_.-]*/.exec(content)?.[0];
   if (!elementName) {
     throw new XmlStructureError('XML opening tag has no valid element name');
   }
