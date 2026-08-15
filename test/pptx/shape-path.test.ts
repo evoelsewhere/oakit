@@ -740,6 +740,141 @@ describe('PowerPoint preset shape path safety', () => {
     expectFinitePath(upperBound);
   });
 
+  it.each([
+    ['leftBrace', '739518f4'],
+    ['rightBrace', 'fe8631e9'],
+  ] as const)(
+    'clamps coupled authored adjustments for %s',
+    (shapeType, coupledUpperBoundHash) => {
+      const lowerBound = getShapePath(
+        shapeType,
+        100,
+        100,
+        guides([
+          ['adj1', 'val 0'],
+          ['adj2', 'val 0'],
+        ]),
+      );
+      const upperSecondAdjustment = getShapePath(
+        shapeType,
+        100,
+        100,
+        guides([
+          ['adj1', 'val 0'],
+          ['adj2', 'val 100000'],
+        ]),
+      );
+      expect(
+        getShapePath(
+          shapeType,
+          100,
+          100,
+          guides([
+            ['adj1', 'val -10000'],
+            ['adj2', 'val -10000'],
+          ]),
+        ),
+      ).toBe(lowerBound);
+      expect(
+        getShapePath(
+          shapeType,
+          100,
+          100,
+          guides([
+            ['adj1', 'val 0'],
+            ['adj2', 'val 200000'],
+          ]),
+        ),
+      ).toBe(upperSecondAdjustment);
+      const coupledUpperBound = getShapePath(
+        shapeType,
+        100,
+        100,
+        guides([
+          ['adj1', 'val 100000'],
+          ['adj2', 'val 75000'],
+        ]),
+      );
+      expect(hashPath(coupledUpperBound)).toBe(coupledUpperBoundHash);
+      expectFinitePath(lowerBound);
+      expectFinitePath(upperSecondAdjustment);
+    },
+  );
+
+  it.each([
+    ['leftBracket', 100000],
+    ['rightBracket', 150000],
+  ] as const)(
+    'clamps a tall authored %s to its geometry limit',
+    (shapeType, effectiveMaximum) => {
+      const lowerBound = getShapePath(
+        shapeType,
+        40,
+        120,
+        singleGuide('adj', '0'),
+      );
+      const upperBound = getShapePath(
+        shapeType,
+        40,
+        120,
+        singleGuide('adj', String(effectiveMaximum)),
+      );
+      expect(
+        getShapePath(shapeType, 40, 120, singleGuide('adj', '-10000')),
+      ).toBe(lowerBound);
+      expect(
+        getShapePath(shapeType, 40, 120, singleGuide('adj', '200000')),
+      ).toBe(upperBound);
+      expectFinitePath(lowerBound);
+      expectFinitePath(upperBound);
+    },
+  );
+
+  it('clamps corner adjustments independently for a wide box', () => {
+    const lowerBound = getShapePath(
+      'corner',
+      120,
+      80,
+      guides([
+        ['adj1', 'val 0'],
+        ['adj2', 'val 0'],
+      ]),
+    );
+    const upperBound = getShapePath(
+      'corner',
+      120,
+      80,
+      guides([
+        ['adj1', 'val 100000'],
+        ['adj2', 'val 150000'],
+      ]),
+    );
+    expect(
+      getShapePath(
+        'corner',
+        120,
+        80,
+        guides([
+          ['adj1', 'val -10000'],
+          ['adj2', 'val -10000'],
+        ]),
+      ),
+    ).toBe(lowerBound);
+    expect(
+      getShapePath(
+        'corner',
+        120,
+        80,
+        guides([
+          ['adj1', 'val 200000'],
+          ['adj2', 'val 200000'],
+        ]),
+      ),
+    ).toBe(upperBound);
+    expectFinitePath(lowerBound);
+    expectFinitePath(upperBound);
+  });
+
   it('keeps common default paths deterministic', () => {
     const rectangle = 'M 0 0 L 120 0 L 120 80 L 0 80 Z';
     expect(getShapePath('rect', 120, 80, xml({}))).toBe(rectangle);
