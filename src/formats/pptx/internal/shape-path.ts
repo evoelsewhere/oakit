@@ -3271,24 +3271,19 @@ export function getShapePath(
         ]);
         let sAdj1_val = 0.25;
         let sAdj2_val = 0.5;
-        if (shapAdjst_ary) {
-          const max_sAdj2_const = w / h;
-          for (const adj of asArray(shapAdjst_ary)) {
-            const sAdj_name = getTextByPathList(adj, ['attrs', 'name']);
-            if (sAdj_name === 'adj1') {
-              sAdj1_val =
-                0.5 -
-                parseInt(
-                  getTextByPathList(adj, ['attrs', 'fmla']).substring(4),
-                ) /
-                  200000;
-            } else if (sAdj_name === 'adj2') {
-              const sAdj2_val2 =
-                parseInt(
-                  getTextByPathList(adj, ['attrs', 'fmla']).substring(4),
-                ) / 100000;
-              sAdj2_val = 1 - sAdj2_val2 / max_sAdj2_const;
-            }
+        const max_sAdj2_const = w / h;
+        for (const adj of asArray(shapAdjst_ary)) {
+          const sAdj_name = getTextByPathList(adj, ['attrs', 'name']);
+          if (sAdj_name === 'adj1') {
+            sAdj1_val =
+              0.5 -
+              parseInt(getTextByPathList(adj, ['attrs', 'fmla']).substring(4)) /
+                200000;
+          } else if (sAdj_name === 'adj2') {
+            const sAdj2_val2 =
+              parseInt(getTextByPathList(adj, ['attrs', 'fmla']).substring(4)) /
+              100000;
+            sAdj2_val = 1 - sAdj2_val2 / max_sAdj2_const;
           }
         }
         pathData = `M ${w} ${h / 2} L ${sAdj2_val * w} 0 L ${sAdj2_val * w} ${sAdj1_val * h} L 0 ${sAdj1_val * h} L 0 ${(1 - sAdj1_val) * h} L ${sAdj2_val * w} ${(1 - sAdj1_val) * h} L ${sAdj2_val * w} ${h} Z`;
@@ -3304,24 +3299,19 @@ export function getShapePath(
         ]);
         let sAdj1_val = 0.25;
         let sAdj2_val = 0.5;
-        if (shapAdjst_ary) {
-          const max_sAdj2_const = w / h;
-          for (const adj of asArray(shapAdjst_ary)) {
-            const sAdj_name = getTextByPathList(adj, ['attrs', 'name']);
-            if (sAdj_name === 'adj1') {
-              sAdj1_val =
-                0.5 -
-                parseInt(
-                  getTextByPathList(adj, ['attrs', 'fmla']).substring(4),
-                ) /
-                  200000;
-            } else if (sAdj_name === 'adj2') {
-              const sAdj2_val2 =
-                parseInt(
-                  getTextByPathList(adj, ['attrs', 'fmla']).substring(4),
-                ) / 100000;
-              sAdj2_val = sAdj2_val2 / max_sAdj2_const;
-            }
+        const max_sAdj2_const = w / h;
+        for (const adj of asArray(shapAdjst_ary)) {
+          const sAdj_name = getTextByPathList(adj, ['attrs', 'name']);
+          if (sAdj_name === 'adj1') {
+            sAdj1_val =
+              0.5 -
+              parseInt(getTextByPathList(adj, ['attrs', 'fmla']).substring(4)) /
+                200000;
+          } else if (sAdj_name === 'adj2') {
+            const sAdj2_val2 =
+              parseInt(getTextByPathList(adj, ['attrs', 'fmla']).substring(4)) /
+              100000;
+            sAdj2_val = sAdj2_val2 / max_sAdj2_const;
           }
         }
         pathData = `M 0 ${h / 2} L ${sAdj2_val * w} ${h} L ${sAdj2_val * w} ${(1 - sAdj1_val) * h} L ${w} ${(1 - sAdj1_val) * h} L ${w} ${sAdj1_val * h} L ${sAdj2_val * w} ${sAdj1_val * h} L ${sAdj2_val * w} 0 Z`;
@@ -3338,22 +3328,18 @@ export function getShapePath(
         ]);
         let sAdj1_val = 0.25;
         let sAdj2_val = 0.5;
-        if (shapAdjst_ary) {
-          const max_sAdj2_const = h / w;
-          for (const adj of asArray(shapAdjst_ary)) {
-            const sAdj_name = getTextByPathList(adj, ['attrs', 'name']);
-            if (sAdj_name === 'adj1') {
-              sAdj1_val =
-                parseInt(
-                  getTextByPathList(adj, ['attrs', 'fmla']).substring(4),
-                ) / 200000;
-            } else if (sAdj_name === 'adj2') {
-              const sAdj2_val2 =
-                parseInt(
-                  getTextByPathList(adj, ['attrs', 'fmla']).substring(4),
-                ) / 100000;
-              sAdj2_val = sAdj2_val2 / max_sAdj2_const;
-            }
+        const max_sAdj2_const = h / w;
+        for (const adj of asArray(shapAdjst_ary)) {
+          const sAdj_name = getTextByPathList(adj, ['attrs', 'name']);
+          if (sAdj_name === 'adj1') {
+            sAdj1_val =
+              parseInt(getTextByPathList(adj, ['attrs', 'fmla']).substring(4)) /
+              200000;
+          } else if (sAdj_name === 'adj2') {
+            const sAdj2_val2 =
+              parseInt(getTextByPathList(adj, ['attrs', 'fmla']).substring(4)) /
+              100000;
+            sAdj2_val = sAdj2_val2 / max_sAdj2_const;
           }
         }
         if (shapType === 'flowChartOffpageConnector') {
@@ -3373,22 +3359,18 @@ export function getShapePath(
         ]);
         let sAdj1_val = 0.25;
         let sAdj2_val = 0.5;
-        if (shapAdjst_ary) {
-          const max_sAdj2_const = h / w;
-          for (const adj of asArray(shapAdjst_ary)) {
-            const sAdj_name = getTextByPathList(adj, ['attrs', 'name']);
-            if (sAdj_name === 'adj1') {
-              sAdj1_val =
-                parseInt(
-                  getTextByPathList(adj, ['attrs', 'fmla']).substring(4),
-                ) / 200000;
-            } else if (sAdj_name === 'adj2') {
-              const sAdj2_val2 =
-                parseInt(
-                  getTextByPathList(adj, ['attrs', 'fmla']).substring(4),
-                ) / 100000;
-              sAdj2_val = sAdj2_val2 / max_sAdj2_const;
-            }
+        const max_sAdj2_const = h / w;
+        for (const adj of asArray(shapAdjst_ary)) {
+          const sAdj_name = getTextByPathList(adj, ['attrs', 'name']);
+          if (sAdj_name === 'adj1') {
+            sAdj1_val =
+              parseInt(getTextByPathList(adj, ['attrs', 'fmla']).substring(4)) /
+              200000;
+          } else if (sAdj_name === 'adj2') {
+            const sAdj2_val2 =
+              parseInt(getTextByPathList(adj, ['attrs', 'fmla']).substring(4)) /
+              100000;
+            sAdj2_val = sAdj2_val2 / max_sAdj2_const;
           }
         }
         pathData = `M ${w / 2} 0 L 0 ${sAdj2_val * h} L ${(0.5 - sAdj1_val) * w} ${sAdj2_val * h} L ${(0.5 - sAdj1_val) * w} ${h} L ${(0.5 + sAdj1_val) * w} ${h} L ${(0.5 + sAdj1_val) * w} ${sAdj2_val * h} L ${w} ${sAdj2_val * h} Z`;
@@ -3404,24 +3386,19 @@ export function getShapePath(
         ]);
         let sAdj1_val = 0.25;
         let sAdj2_val = 0.25;
-        if (shapAdjst_ary) {
-          const max_sAdj2_const = w / h;
-          for (const adj of asArray(shapAdjst_ary)) {
-            const sAdj_name = getTextByPathList(adj, ['attrs', 'name']);
-            if (sAdj_name === 'adj1') {
-              sAdj1_val =
-                0.5 -
-                parseInt(
-                  getTextByPathList(adj, ['attrs', 'fmla']).substring(4),
-                ) /
-                  200000;
-            } else if (sAdj_name === 'adj2') {
-              const sAdj2_val2 =
-                parseInt(
-                  getTextByPathList(adj, ['attrs', 'fmla']).substring(4),
-                ) / 100000;
-              sAdj2_val = sAdj2_val2 / max_sAdj2_const;
-            }
+        const max_sAdj2_const = w / h;
+        for (const adj of asArray(shapAdjst_ary)) {
+          const sAdj_name = getTextByPathList(adj, ['attrs', 'name']);
+          if (sAdj_name === 'adj1') {
+            sAdj1_val =
+              0.5 -
+              parseInt(getTextByPathList(adj, ['attrs', 'fmla']).substring(4)) /
+                200000;
+          } else if (sAdj_name === 'adj2') {
+            const sAdj2_val2 =
+              parseInt(getTextByPathList(adj, ['attrs', 'fmla']).substring(4)) /
+              100000;
+            sAdj2_val = sAdj2_val2 / max_sAdj2_const;
           }
         }
         pathData = `M 0 ${h / 2} L ${sAdj2_val * w} ${h} L ${sAdj2_val * w} ${(1 - sAdj1_val) * h} L ${(1 - sAdj2_val) * w} ${(1 - sAdj1_val) * h} L ${(1 - sAdj2_val) * w} ${h} L ${w} ${h / 2} L ${(1 - sAdj2_val) * w} 0 L ${(1 - sAdj2_val) * w} ${sAdj1_val * h} L ${sAdj2_val * w} ${sAdj1_val * h} L ${sAdj2_val * w} 0 Z`;
@@ -3437,24 +3414,19 @@ export function getShapePath(
         ]);
         let sAdj1_val = 0.25;
         let sAdj2_val = 0.25;
-        if (shapAdjst_ary) {
-          const max_sAdj2_const = h / w;
-          for (const adj of asArray(shapAdjst_ary)) {
-            const sAdj_name = getTextByPathList(adj, ['attrs', 'name']);
-            if (sAdj_name === 'adj1') {
-              sAdj1_val =
-                0.5 -
-                parseInt(
-                  getTextByPathList(adj, ['attrs', 'fmla']).substring(4),
-                ) /
-                  200000;
-            } else if (sAdj_name === 'adj2') {
-              const sAdj2_val2 =
-                parseInt(
-                  getTextByPathList(adj, ['attrs', 'fmla']).substring(4),
-                ) / 100000;
-              sAdj2_val = sAdj2_val2 / max_sAdj2_const;
-            }
+        const max_sAdj2_const = h / w;
+        for (const adj of asArray(shapAdjst_ary)) {
+          const sAdj_name = getTextByPathList(adj, ['attrs', 'name']);
+          if (sAdj_name === 'adj1') {
+            sAdj1_val =
+              0.5 -
+              parseInt(getTextByPathList(adj, ['attrs', 'fmla']).substring(4)) /
+                200000;
+          } else if (sAdj_name === 'adj2') {
+            const sAdj2_val2 =
+              parseInt(getTextByPathList(adj, ['attrs', 'fmla']).substring(4)) /
+              100000;
+            sAdj2_val = sAdj2_val2 / max_sAdj2_const;
           }
         }
         pathData = `M ${w / 2} 0 L 0 ${sAdj2_val * h} L ${sAdj1_val * w} ${sAdj2_val * h} L ${sAdj1_val * w} ${(1 - sAdj2_val) * h} L 0 ${(1 - sAdj2_val) * h} L ${w / 2} ${h} L ${w} ${(1 - sAdj2_val) * h} L ${(1 - sAdj1_val) * w} ${(1 - sAdj2_val) * h} L ${(1 - sAdj1_val) * w} ${sAdj2_val * h} L ${w} ${sAdj2_val * h} Z`;
