@@ -1235,6 +1235,66 @@ describe('PowerPoint preset shape path safety', () => {
     );
   });
 
+  it('clamps coupled PowerPoint left-right-up-arrow adjustments', () => {
+    const leftRightUpArrow = (
+      adjustments: ReadonlyArray<readonly [string, string]>,
+    ): string =>
+      getShapePath(
+        'leftRightUpArrow',
+        120,
+        80,
+        guides(
+          adjustments.map(([name, value]) => [name, `val ${value}`] as const),
+        ),
+      );
+
+    expect(leftRightUpArrow([['adj2', '-10000']])).toBe(
+      leftRightUpArrow([['adj2', '0']]),
+    );
+    expect(leftRightUpArrow([['adj2', '100000']])).toBe(
+      leftRightUpArrow([['adj2', '50000']]),
+    );
+    expect(leftRightUpArrow([['adj1', '-10000']])).toBe(
+      leftRightUpArrow([['adj1', '0']]),
+    );
+    expect(
+      leftRightUpArrow([
+        ['adj1', '100000'],
+        ['adj2', '30000'],
+      ]),
+    ).toBe(
+      leftRightUpArrow([
+        ['adj1', '60000'],
+        ['adj2', '30000'],
+      ]),
+    );
+    expect(leftRightUpArrow([['adj3', '-10000']])).toBe(
+      leftRightUpArrow([['adj3', '0']]),
+    );
+    expect(
+      leftRightUpArrow([
+        ['adj2', '30000'],
+        ['adj3', '100000'],
+      ]),
+    ).toBe(
+      leftRightUpArrow([
+        ['adj2', '30000'],
+        ['adj3', '20000'],
+      ]),
+    );
+    expect(
+      leftRightUpArrow([
+        ['adj2', '30000'],
+        ['adj3', '10000'],
+      ]),
+    ).not.toBe(
+      leftRightUpArrow([
+        ['adj2', '30000'],
+        ['adj3', '20000'],
+      ]),
+    );
+  });
+
   it('keeps common default paths deterministic', () => {
     const rectangle = 'M 0 0 L 120 0 L 120 80 L 0 80 Z';
     expect(getShapePath('rect', 120, 80, xml({}))).toBe(rectangle);
