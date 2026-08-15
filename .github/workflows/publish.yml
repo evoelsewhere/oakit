@@ -1,0 +1,81 @@
+name: Publish to npm
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: npm-publish-${{ github.event.release.tag_name }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Publish ${{ github.event.release.tag_name }}
+    runs-on: ubuntu-latest
+    environment: npm
+    timeout-minutes: 20
+    steps:
+      - name: Check out the released revision
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+
+      - name: Verify release metadata
+        id: release
+        env:
+          RELEASE_PRERELEASE: ${{ github.event.release.prerelease }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          package_version="$(node -p "JSON.parse(require('node:fs').readFileSync('package.json', 'utf8')).version")"
+          expected_tag="v${package_version}"
+
+          if [[ "$RELEASE_TAG" != "$expected_tag" ]]; then
+            echo "Release tag $RELEASE_TAG must match package version $expected_tag" >&2
+            exit 1
+          fi
+
+          if [[ "$package_version" == *-* ]]; then
+            npm_tag="next"
+            expected_prerelease="true"
+          else
+            npm_tag="latest"
+            expected_prerelease="false"
+          fi
+
+          if [[ "$RELEASE_PRERELEASE" != "$expected_prerelease" ]]; then
+            echo "GitHub prerelease state does not match package version $package_version" >&2
+            exit 1
+          fi
+
+          echo "npm_tag=$npm_tag" >> "$GITHUB_OUTPUT"
+          echo "Publishing oakit@$package_version with npm dist-tag $npm_tag"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run package quality gates
+        run: pnpm check
+
+      - name: Publish package with provenance
+        env:
+          NPM_TAG: ${{ steps.release.outputs.npm_tag }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --access public --provenance --tag "$NPM_TAG"
