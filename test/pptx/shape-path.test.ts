@@ -1118,6 +1118,69 @@ describe('PowerPoint preset shape path safety', () => {
     `);
   });
 
+  it.each(['ellipseRibbon', 'ellipseRibbon2'])(
+    'clamps coupled PowerPoint ellipse ribbon adjustments for %s',
+    (shapeType) => {
+      const ellipseRibbon = (
+        adjustments: ReadonlyArray<readonly [string, string]>,
+      ): string =>
+        getShapePath(
+          shapeType,
+          120,
+          80,
+          guides(
+            adjustments.map(([name, value]) => [name, `val ${value}`] as const),
+          ),
+        );
+
+      expect(ellipseRibbon([['adj1', '-10000']])).toBe(
+        ellipseRibbon([['adj1', '0']]),
+      );
+      expect(ellipseRibbon([['adj1', '200000']])).toBe(
+        ellipseRibbon([['adj1', '100000']]),
+      );
+      expect(ellipseRibbon([['adj2', '0']])).toBe(
+        ellipseRibbon([['adj2', '25000']]),
+      );
+      expect(ellipseRibbon([['adj2', '100000']])).toBe(
+        ellipseRibbon([['adj2', '75000']]),
+      );
+      expect(
+        ellipseRibbon([
+          ['adj1', '25000'],
+          ['adj3', '-10000'],
+        ]),
+      ).toBe(
+        ellipseRibbon([
+          ['adj1', '25000'],
+          ['adj3', '0'],
+        ]),
+      );
+      expect(
+        ellipseRibbon([
+          ['adj1', '80000'],
+          ['adj3', '0'],
+        ]),
+      ).toBe(
+        ellipseRibbon([
+          ['adj1', '80000'],
+          ['adj3', '70000'],
+        ]),
+      );
+      expect(
+        ellipseRibbon([
+          ['adj1', '80000'],
+          ['adj3', '100000'],
+        ]),
+      ).toBe(
+        ellipseRibbon([
+          ['adj1', '80000'],
+          ['adj3', '80000'],
+        ]),
+      );
+    },
+  );
+
   it('keeps common default paths deterministic', () => {
     const rectangle = 'M 0 0 L 120 0 L 120 80 L 0 80 Z';
     expect(getShapePath('rect', 120, 80, xml({}))).toBe(rectangle);

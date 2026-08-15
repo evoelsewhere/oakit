@@ -3158,46 +3158,40 @@ export function getShapePath(
           'a:avLst',
           'a:gd',
         ]);
-        let adj1 = 25000 * RATIO_EMUs_Points;
-        let adj2 = 50000 * RATIO_EMUs_Points;
-        let adj3 = 12500 * RATIO_EMUs_Points;
-        if (shapAdjst_ary) {
-          for (const adj of asArray(shapAdjst_ary)) {
-            const sAdj_name = getTextByPathList(adj, ['attrs', 'name']);
-            if (sAdj_name === 'adj1') {
-              adj1 =
-                parseInt(
-                  getTextByPathList(adj, ['attrs', 'fmla']).substring(4),
-                ) * RATIO_EMUs_Points;
-            } else if (sAdj_name === 'adj2') {
-              adj2 =
-                parseInt(
-                  getTextByPathList(adj, ['attrs', 'fmla']).substring(4),
-                ) * RATIO_EMUs_Points;
-            } else if (sAdj_name === 'adj3') {
-              adj3 =
-                parseInt(
-                  getTextByPathList(adj, ['attrs', 'fmla']).substring(4),
-                ) * RATIO_EMUs_Points;
-            }
+        let adj1 = 25000;
+        let adj2 = 50000;
+        let adj3 = 12500;
+        for (const adj of asArray(shapAdjst_ary)) {
+          const sAdj_name = getTextByPathList(adj, ['attrs', 'name']);
+          if (sAdj_name === 'adj1') {
+            adj1 = parseInt(
+              getTextByPathList(adj, ['attrs', 'fmla']).substring(4),
+            );
+          } else if (sAdj_name === 'adj2') {
+            adj2 = parseInt(
+              getTextByPathList(adj, ['attrs', 'fmla']).substring(4),
+            );
+          } else if (sAdj_name === 'adj3') {
+            adj3 = parseInt(
+              getTextByPathList(adj, ['attrs', 'fmla']).substring(4),
+            );
           }
         }
-        const cnstVal1 = 25000 * RATIO_EMUs_Points;
-        const cnstVal3 = 75000 * RATIO_EMUs_Points;
-        const cnstVal4 = 100000 * RATIO_EMUs_Points;
-        const cnstVal5 = 200000 * RATIO_EMUs_Points;
+        const cnstVal1 = 25000;
+        const cnstVal3 = 75000;
+        const cnstVal4 = 100000;
+        const cnstVal5 = 200000;
         const hc = w / 2,
           t = 0,
           l = 0,
           b = h,
           r = w,
           wd8 = w / 8;
-        const a1 = adj1 < 0 ? 0 : adj1 > cnstVal4 ? cnstVal4 : adj1;
-        const a2 =
-          adj2 < cnstVal1 ? cnstVal1 : adj2 > cnstVal3 ? cnstVal3 : adj2;
+        const a1 = Math.min(Math.max(adj1, 0), cnstVal4);
+        const a2 = Math.min(Math.max(adj2, cnstVal1), cnstVal3);
         const q10 = cnstVal4 - a1;
-        const minAdj3 = a1 - q10 / 2 > 0 ? a1 - q10 / 2 : 0;
-        const a3 = adj3 < minAdj3 ? minAdj3 : adj3 > a1 ? a1 : adj3;
+        const minAdj3 = Math.max(a1 - q10 / 2, 0);
+        const a3 = Math.min(Math.max(adj3, minAdj3), a1);
         const dx2 = (w * a2) / cnstVal5;
         const x2 = hc - dx2;
         const x3 = x2 + wd8;
@@ -3231,7 +3225,7 @@ export function getShapePath(
           const cy6 = cy3 + rh;
           const y7 = y1 + dy3;
           pathData = `M ${l},${t} Q ${cx1},${cy1} ${x3},${y1} L ${x2},${y3} Q ${hc},${cy3} ${x5},${y3} L ${x4},${y1} Q ${cx2},${cy1} ${r},${t} L ${x6},${y2} L ${r},${rh} Q ${cx5},${cy4} ${x5},${y5} L ${x5},${y6} Q ${hc},${cy6} ${x2},${y6} L ${x2},${y5} Q ${cx4},${cy4} ${l},${rh} L ${wd8},${y2} z M ${x2},${y5} L ${x2},${y3} M ${x5},${y3} L ${x5},${y5} M ${x3},${y1} L ${x3},${y7} M ${x4},${y7} L ${x4},${y1}`;
-        } else if (shapType === 'ellipseRibbon2') {
+        } else {
           const u1 = f1 * q2;
           const y1 = b - u1;
           const cu1 = f1 * cx1;
