@@ -111,6 +111,10 @@ function emptyXmlNode(): XmlLookupValue {
   return {} as unknown as XmlLookupValue;
 }
 
+function sortElementsByOrder<T extends { order: number }>(elements: T[]): T[] {
+  return elements.sort((left, right) => left.order - right.order);
+}
+
 function throwResourceLimit(
   error: PptxResourceLimitError,
   diagnostics: PptxDiagnostic[],
@@ -555,7 +559,7 @@ async function processSingleSlide(
 
   return {
     fill,
-    elements,
+    elements: sortElementsByOrder(elements),
     layoutElements,
     note,
     transition,
@@ -687,6 +691,7 @@ async function getLayoutElements(
     tree: XmlLookupValue | undefined,
     source: string,
   ): Promise<void> {
+    const treeElements: Element[] = [];
     for (const nodeKey of Object.keys(tree ?? {})) {
       for (const node of asArray(nodeAt(tree, [nodeKey]))) {
         if (nodeAt(node, ['p:nvSpPr', 'p:nvPr', 'p:ph'])) continue;
@@ -696,9 +701,10 @@ async function getLayoutElements(
           warpObj,
           source,
         );
-        if (element) elements.push(element);
+        if (element) treeElements.push(element);
       }
     }
+    elements.push(...sortElementsByOrder(treeElements));
   }
 
   await appendTree(layoutTree, 'slideLayoutBg');
@@ -951,7 +957,7 @@ async function processGroupSpNode(
     };
   };
 
-  const processedElements = elements.map((element) => {
+  const processedElements = sortElementsByOrder(elements).map((element) => {
     const transformed = transformGroupedElement(element, childX, childY);
     return transformed.type === 'group'
       ? {
