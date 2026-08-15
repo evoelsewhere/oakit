@@ -678,6 +678,68 @@ describe('PowerPoint preset shape path safety', () => {
     expect(path.match(/ L/g)?.length).toBeGreaterThan(700);
   });
 
+  it.each([
+    ['bracePair', 25000],
+    ['bracketPair', 50000],
+    ['diagStripe', 100000],
+    ['teardrop', 200000],
+    ['plaque', 50000],
+    ['cube', 100000],
+    ['bevel', 50000],
+  ] as const)(
+    'clamps the fixed authored adjustment range for %s',
+    (shapeType, maximum) => {
+      const lowerBound = getShapePath(
+        shapeType,
+        100,
+        100,
+        singleGuide('adj', '0'),
+      );
+      const upperBound = getShapePath(
+        shapeType,
+        100,
+        100,
+        singleGuide('adj', String(maximum)),
+      );
+      expect(
+        getShapePath(shapeType, 100, 100, singleGuide('adj', '-10000')),
+      ).toBe(lowerBound);
+      expect(
+        getShapePath(
+          shapeType,
+          100,
+          100,
+          singleGuide('adj', String(maximum * 2)),
+        ),
+      ).toBe(upperBound);
+      expectFinitePath(lowerBound);
+      expectFinitePath(upperBound);
+    },
+  );
+
+  it('clamps the authored sun adjustment to its asymmetric range', () => {
+    const lowerBound = getShapePath(
+      'sun',
+      100,
+      100,
+      singleGuide('adj', '12500'),
+    );
+    const upperBound = getShapePath(
+      'sun',
+      100,
+      100,
+      singleGuide('adj', '46875'),
+    );
+    expect(getShapePath('sun', 100, 100, singleGuide('adj', '0'))).toBe(
+      lowerBound,
+    );
+    expect(getShapePath('sun', 100, 100, singleGuide('adj', '100000'))).toBe(
+      upperBound,
+    );
+    expectFinitePath(lowerBound);
+    expectFinitePath(upperBound);
+  });
+
   it('keeps common default paths deterministic', () => {
     const rectangle = 'M 0 0 L 120 0 L 120 80 L 0 80 Z';
     expect(getShapePath('rect', 120, 80, xml({}))).toBe(rectangle);

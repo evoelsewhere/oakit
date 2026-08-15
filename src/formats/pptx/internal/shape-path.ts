@@ -1878,7 +1878,7 @@ export function getShapePath(
           cd2 = 180,
           cd4 = 90,
           c3d4 = 270;
-        const a = adj < 0 ? 0 : adj > cnstVal1 ? cnstVal1 : adj;
+        const a = Math.min(Math.max(adj, 0), cnstVal1);
         const minWH = Math.min(w, h);
         const x1 = (minWH * a) / cnstVal3;
         const x2 = (minWH * a) / cnstVal2;
@@ -1998,7 +1998,7 @@ export function getShapePath(
         const cd2 = 180,
           cd4 = 90,
           c3d4 = 270;
-        const a = adj < 0 ? 0 : adj > cnstVal1 ? cnstVal1 : adj;
+        const a = Math.min(Math.max(adj, 0), cnstVal1);
         const x1 = (Math.min(w, h) * a) / cnstVal2;
         const x2 = w - x1;
         const y2 = h - x1;
@@ -2135,7 +2135,7 @@ export function getShapePath(
         if (shapAdjst) {
           sAdj1_val = parseInt(shapAdjst.substring(4)) * RATIO_EMUs_Points;
         }
-        const a1 = sAdj1_val < 0 ? 0 : sAdj1_val > cnsVal ? cnsVal : sAdj1_val;
+        const a1 = Math.min(Math.max(sAdj1_val, 0), cnsVal);
         const x2 = (w * a1) / cnsVal;
         const y2 = (h * a1) / cnsVal;
         pathData = `M 0,${y2} L ${x2},0 L ${w},0 L 0,${h} z`;
@@ -2196,7 +2196,7 @@ export function getShapePath(
         if (shapAdjst) {
           adj1 = parseInt(shapAdjst.substring(4)) * RATIO_EMUs_Points;
         }
-        const a1 = adj1 < 0 ? 0 : adj1 > cnsVal2 ? cnsVal2 : adj1;
+        const a1 = Math.min(Math.max(adj1, 0), cnsVal2);
         const r2 = Math.sqrt(2);
         const tw = r2 * (w / 2);
         const th = r2 * (h / 2);
@@ -2228,7 +2228,7 @@ export function getShapePath(
         if (shapAdjst) {
           adj1 = parseInt(shapAdjst.substring(4)) * RATIO_EMUs_Points;
         }
-        const a1 = adj1 < 0 ? 0 : adj1 > cnsVal1 ? cnsVal1 : adj1;
+        const a1 = Math.min(Math.max(adj1, 0), cnsVal1);
         const x1 = (a1 * Math.min(w, h)) / cnsVal2;
         const x2 = w - x1;
         const y2 = h - x1;
@@ -2252,8 +2252,7 @@ export function getShapePath(
         if (shapAdjst) {
           adj1 = parseInt(shapAdjst.substring(4)) * refr;
         }
-        const a1 =
-          adj1 < cnstVal1 ? cnstVal1 : adj1 > cnstVal2 ? cnstVal2 : adj1;
+        const a1 = Math.min(Math.max(adj1, cnstVal1), cnstVal2);
         const cnstVa3 = 50000 * refr;
         const cnstVa4 = 100000 * refr;
         const g0 = cnstVa3 - a1;
@@ -2348,7 +2347,7 @@ export function getShapePath(
         }
         const cnstVal2 = 100000 * refr;
         const ss = Math.min(w, h);
-        const a = adj < 0 ? 0 : adj > cnstVal2 ? cnstVal2 : adj;
+        const a = Math.min(Math.max(adj, 0), cnstVal2);
         const y1 = (ss * a) / cnstVal2;
         const y4 = h - y1;
         const x4 = w - y1;
@@ -2373,7 +2372,7 @@ export function getShapePath(
         const cnstVal1 = 50000 * refr;
         const cnstVal2 = 100000 * refr;
         const ss = Math.min(w, h);
-        const a = adj < 0 ? 0 : adj > cnstVal1 ? cnstVal1 : adj;
+        const a = Math.min(Math.max(adj, 0), cnstVal1);
         const x1 = (ss * a) / cnstVal2;
         const x2 = w - x1;
         const y2 = h - x1;
