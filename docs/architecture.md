@@ -66,9 +66,12 @@ src/
 │   └── txml.d.ts                    Local declaration for the XML dependency
 ├── common/
 │   ├── index.ts                     Shared internal barrel
+│   ├── archive/read-entry.ts        Size-bounded ZIP entry expansion
 │   ├── binary/base64.ts             Runtime-neutral base64 encoder
 │   ├── media/media-type.ts          Extension and MIME helpers
 │   ├── ooxml/units.ts               OOXML unit constants
+│   ├── opc/part-uri.ts              Relationship target normalization
+│   ├── text/css.ts                  Safe CSS value serialization
 │   ├── text/html.ts                 HTML escaping and content checks
 │   ├── numbers.ts                   Numeric normalization helpers
 │   └── xml/
@@ -79,6 +82,7 @@ src/
         ├── index.ts                 Public PowerPoint entry point
         ├── types.ts                 Public PowerPoint document model
         ├── parser.ts                Package and slide orchestration
+        ├── errors.ts                Typed public parse failures
         └── internal/
             ├── context.ts           Per-slide parser state and caches
             ├── animation.ts         Slide transition parsing
@@ -91,13 +95,15 @@ src/
             ├── math.ts              Office Math to LaTeX conversion
             ├── paragraph.ts         Paragraph and autofit resolution
             ├── position.ts          EMU geometry conversion
+            ├── resource-limits.ts   Resource defaults and archive checks
             ├── scheme-color.ts      Theme color lookup
             ├── shadow.ts            Outer-shadow normalization
             ├── shape.ts             Custom geometry and shape selection
             ├── shape-path.ts        Preset geometry to SVG path generation
             ├── table.ts             Table style and cell resolution
             ├── text-insets.ts       Text-box inset inheritance
-            └── text.ts              Rich-text HTML generation
+            ├── text.ts              Rich-text HTML generation
+            └── xml-reader.ts        Cached, diagnostic-aware part reader
 ```
 
 Tests live outside `src`:
@@ -200,10 +206,10 @@ flowchart LR
     MasterRels --> Assets
 ```
 
-The parser reads `[Content_Types].xml` to discover slide parts, sorts their
-filenames numerically, and processes them in that order. It does not currently
-use the presentation's slide-ID list to reconstruct arbitrary custom package
-ordering; that is a known fidelity boundary.
+`[Content_Types].xml` declares which package parts are slides. The visible slide
+sequence comes from `p:presentation/p:sldIdLst`; each `r:id` is resolved through
+`ppt/_rels/presentation.xml.rels`. This preserves authored reorder operations
+and excludes orphan slide parts left in the archive.
 
 Relationship targets are normalized into ZIP-relative `ppt/...` paths.
 External relationships retain their URL targets. Relationship IDs are then
@@ -216,14 +222,16 @@ resolved against the wrong owner.
 `common/xml/read-xml.ts` converts an XML part into the compatibility tree used
 by the format parsers:
 
-1. JSZip reads the part as a string.
-2. `txml` parses with whitespace retention enabled.
-3. whitespace-only text nodes and the XML declaration are discarded;
-4. qualified tag names such as `p:sp` and `a:xfrm` remain unchanged;
-5. attributes are stored under `attrs`;
-6. repeated sibling tags become arrays, while a single tag is collapsed to a
+1. the ZIP entry is expanded incrementally with a byte limit;
+2. a linear scan enforces XML depth and element-count limits before recursive
+   parsing;
+3. `txml` parses with whitespace retention enabled;
+4. whitespace-only text nodes and the XML declaration are discarded;
+5. qualified tag names such as `p:sp` and `a:xfrm` remain unchanged;
+6. attributes are stored under `attrs`;
+7. repeated sibling tags become arrays, while a single tag is collapsed to a
    single value;
-7. a per-read, monotonically increasing `attrs.order` value records document
+8. a per-read, monotonically increasing `attrs.order` value records document
    traversal order without sharing mutable state across documents.
 
 For example, simplified XML resembles:
@@ -259,7 +267,8 @@ optional parts. An invalid root ZIP always causes the public promise to reject.
 flowchart TD
     Input["Binary PptxInput"]
     Load["JSZip.loadAsync"]
-    Manifest["Discover and sort slide parts"]
+    Limits["Validate archive limits"]
+    Manifest["Resolve presentation slide order"]
     Globals["Read size, default text style, theme, embedded fonts"]
     SlideLoop["Process slides sequentially"]
     Relationships["Resolve notes, layout, master, theme, assets"]
@@ -269,7 +278,7 @@ flowchart TD
     Normalize["Normalize elements into public types"]
     Output["PptxDocument"]
 
-    Input --> Load --> Manifest --> Globals --> SlideLoop
+    Input --> Load --> Limits --> Manifest --> Globals --> SlideLoop
     SlideLoop --> Relationships --> Context --> Inheritance --> Dispatch
     Dispatch --> Normalize --> Output
 ```
@@ -284,17 +293,21 @@ flowchart TD
   videoMode: 'none',
   audioMode: 'none',
   errorMode: 'tolerant',
+  limits: { /* bounded defaults */ },
 }
 ```
 
 Package-wide media caches and an XML-part cache are initialized once per parse
-call. JSZip then opens the complete package in memory.
+call. Input size is checked before JSZip opens the package. Entry count,
+declared per-entry expansion, and declared total expansion are checked before
+any part is parsed.
 
 ### 2. Read presentation-level metadata
 
 The orchestrator reads:
 
-- slide part names from `[Content_Types].xml`;
+- slide declarations from `[Content_Types].xml`;
+- authored slide order from `p:sldIdLst` and presentation relationships;
 - slide width, height, and the default text style from
   `ppt/presentation.xml`;
 - the presentation theme through `ppt/_rels/presentation.xml.rels`;
@@ -401,6 +414,8 @@ values:
 - colors become hexadecimal strings after supported tint, shade, luminance,
   hue, and saturation transforms;
 - rich text becomes HTML with run and paragraph styling;
+- font families are serialized as quoted CSS strings and DrawingML colors are
+  accepted only as RGB/RGBA hexadecimal values;
 - preset and custom geometry becomes SVG-compatible path data and view boxes;
 - Office Math becomes LaTeX, with the fallback image retained when present;
 - table styles become cell-level fills, fonts, borders, merges, and dimensions;
@@ -468,6 +483,8 @@ The implementation distinguishes package failure from optional-part failure:
 - unreadable or invalid XML emits a diagnostic in tolerant mode;
 - strict mode throws `PptxParseError` for malformed XML, unsafe relationship
   targets, and missing required parts;
+- resource-limit violations throw `PptxParseError` in both tolerant and strict
+  modes;
 - missing relationships generally cause the affected element or feature to be
   skipped;
 - an unsupported slide-tree node is ignored;
@@ -488,20 +505,25 @@ The parser currently:
 - does not fetch external relationships;
 - escapes supported rich-text and speaker-note paths;
 - allows only HTTP, HTTPS, and mailto hyperlinks in generated HTML;
-- does not enforce ZIP entry count, compressed size, expanded size, recursion,
-  or parse-time limits;
+- quotes untrusted font-family values and validates CSS color values;
+- bounds compressed input, entry count, declared archive expansion, individual
+  parts, XML bytes/depth/node count, embedded media, and slide count;
+- stops XML and media decompression when an entry crosses its byte limit, even
+  when ZIP metadata understated the expanded size;
+- does not provide an in-process wall-clock timeout;
 - still expects consumers to sanitize returned HTML as defense in depth.
 
-An upload service should enforce file-size and time limits before invoking the
-parser. Browser or server consumers should sanitize returned HTML according to
-their rendering context. Resource-limit and diagnostic policies belong at the
-public boundary, not in individual domain parsers.
+An upload service should still enforce a wall-clock timeout around an isolated
+worker or process. Browser or server consumers should sanitize returned HTML
+according to their rendering context. Callers can tighten resource limits for
+their deployment without changing domain parsers.
 
 ## Performance characteristics
 
 Current behavior favors simple, deterministic parsing:
 
-- JSZip loads the archive in memory;
+- JSZip opens the archive in memory, while XML and media entries are expanded
+  through bounded readers;
 - slides are processed sequentially;
 - shared XML parts are cached by filename;
 - media encoding and object-URL creation are cached by package path;

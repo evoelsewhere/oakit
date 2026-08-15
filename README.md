@@ -103,15 +103,35 @@ interface PptxParseOptions {
   videoMode?: 'blob' | 'none';
   audioMode?: 'blob' | 'none';
   errorMode?: 'tolerant' | 'strict';
+  limits?: PptxResourceLimits;
 }
 ```
 
-| Option      | Default    | Behavior                                                     |
-| ----------- | ---------- | ------------------------------------------------------------ |
-| `imageMode` | `base64`   | Return images as data URLs, object URLs, both, or neither.   |
-| `videoMode` | `none`     | Create object URLs for supported embedded video when `blob`. |
-| `audioMode` | `none`     | Create object URLs for supported embedded audio when `blob`. |
-| `errorMode` | `tolerant` | Recover with diagnostics, or reject on malformed OOXML.      |
+| Option      | Default       | Behavior                                                     |
+| ----------- | ------------- | ------------------------------------------------------------ |
+| `imageMode` | `base64`      | Return images as data URLs, object URLs, both, or neither.   |
+| `videoMode` | `none`        | Create object URLs for supported embedded video when `blob`. |
+| `audioMode` | `none`        | Create object URLs for supported embedded audio when `blob`. |
+| `errorMode` | `tolerant`    | Recover with diagnostics, or reject on malformed OOXML.      |
+| `limits`    | safe defaults | Bound archive, XML, media, and slide resource usage.         |
+
+The default resource limits are:
+
+| Limit                     | Default |
+| ------------------------- | ------- |
+| compressed input          | 100 MiB |
+| non-directory ZIP entries | 10,000  |
+| total declared expansion  | 256 MiB |
+| one expanded package part | 64 MiB  |
+| one expanded XML part     | 16 MiB  |
+| XML nesting depth         | 128     |
+| XML elements per part     | 250,000 |
+| one expanded media part   | 64 MiB  |
+| slides                    | 1,000   |
+
+Override only the limits appropriate for a trusted workload. Values must be
+positive integers, and XML/media byte limits cannot exceed the package-part
+limit.
 
 Every media element keeps a `ref` to its package part or external target.
 Disabled representations are returned as empty strings. Selecting `blob`
@@ -230,9 +250,10 @@ for (const diagnostic of diagnostics) {
 With `errorMode: 'strict'`, malformed XML, unsafe relationship targets, and
 missing required parts reject with `PptxParseError`.
 
-The parser does not currently enforce archive-size or decompression limits.
-Applications accepting untrusted uploads should apply file-size, timeout, and
-resource limits before parsing.
+Resource-limit violations always reject with `PptxParseError`, including in
+tolerant mode, because continuing would cross the configured security
+boundary. Applications accepting untrusted uploads should still run parsing in
+an isolated worker or process and enforce an outer timeout.
 
 ## Development
 
@@ -273,8 +294,8 @@ lifecycle, extension workflow, and design constraints.
   shape variants require additional fixtures.
 - Excel (`.xlsx`), Word (`.docx`), and every JSON-to-Office writer are not yet
   implemented.
-- Large packages are loaded into memory by JSZip; streaming parsing is not yet
-  available.
+- JSZip still opens the package in memory; entry expansion is bounded and read
+  incrementally, but a fully streaming document model is not yet available.
 
 The long-term direction is one shared OOXML foundation with isolated format
 adapters and explicit reader/writer capabilities. Fidelity is added one tested
