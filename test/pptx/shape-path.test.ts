@@ -1181,6 +1181,60 @@ describe('PowerPoint preset shape path safety', () => {
     },
   );
 
+  it('clamps coupled PowerPoint quad-arrow adjustments', () => {
+    const quadArrow = (
+      adjustments: ReadonlyArray<readonly [string, string]>,
+    ): string =>
+      getShapePath(
+        'quadArrow',
+        120,
+        80,
+        guides(
+          adjustments.map(([name, value]) => [name, `val ${value}`] as const),
+        ),
+      );
+
+    expect(quadArrow([['adj2', '-10000']])).toBe(quadArrow([['adj2', '0']]));
+    expect(quadArrow([['adj2', '100000']])).toBe(
+      quadArrow([['adj2', '50000']]),
+    );
+    expect(quadArrow([['adj1', '-10000']])).toBe(quadArrow([['adj1', '0']]));
+    expect(
+      quadArrow([
+        ['adj1', '100000'],
+        ['adj2', '30000'],
+      ]),
+    ).toBe(
+      quadArrow([
+        ['adj1', '60000'],
+        ['adj2', '30000'],
+      ]),
+    );
+    expect(quadArrow([['adj3', '-10000']])).toBe(quadArrow([['adj3', '0']]));
+    expect(
+      quadArrow([
+        ['adj2', '30000'],
+        ['adj3', '100000'],
+      ]),
+    ).toBe(
+      quadArrow([
+        ['adj2', '30000'],
+        ['adj3', '20000'],
+      ]),
+    );
+    expect(
+      quadArrow([
+        ['adj2', '30000'],
+        ['adj3', '10000'],
+      ]),
+    ).not.toBe(
+      quadArrow([
+        ['adj2', '30000'],
+        ['adj3', '20000'],
+      ]),
+    );
+  });
+
   it('keeps common default paths deterministic', () => {
     const rectangle = 'M 0 0 L 120 0 L 120 80 L 0 80 Z';
     expect(getShapePath('rect', 120, 80, xml({}))).toBe(rectangle);
