@@ -21,6 +21,7 @@ export const mutatedFiles = [
   'src/formats/pptx/internal/position.ts',
   'src/formats/pptx/internal/resource-limits.ts',
   'src/formats/pptx/internal/scheme-color.ts',
+  'src/formats/pptx/internal/shadow.ts',
   'src/formats/pptx/internal/text-insets.ts',
   'src/formats/pptx/internal/xml-reader.ts',
 ];
@@ -33,7 +34,6 @@ export const pendingMutationFiles = [
   'src/formats/pptx/internal/font-style.ts',
   'src/formats/pptx/internal/math.ts',
   'src/formats/pptx/internal/paragraph.ts',
-  'src/formats/pptx/internal/shadow.ts',
   'src/formats/pptx/internal/shape-path.ts',
   'src/formats/pptx/internal/shape.ts',
   'src/formats/pptx/internal/table.ts',

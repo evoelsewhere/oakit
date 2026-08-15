@@ -6,6 +6,11 @@ import { getSolidFill } from './fill';
 import { RATIO_EMUs_Points } from '../../../common/ooxml/units';
 import { getTextByPathList } from '../../../common';
 
+function nonNegativeInteger(value: string | undefined): number {
+  const parsed = Number(value);
+  return Number.isSafeInteger(parsed) ? Math.max(parsed, 0) : 0;
+}
+
 export function getShadow(
   node: XmlLookupValue,
   warpObj: PptxParserContext,
@@ -13,15 +18,10 @@ export function getShadow(
   const chdwClrNode = getSolidFill(node, undefined, undefined, warpObj);
   const outerShdwAttrs =
     getTextByPathList<Record<string, string>>(node, ['attrs']) ?? {};
-  const dir = outerShdwAttrs['dir']
-    ? parseInt(outerShdwAttrs['dir']) / 60000
-    : 0;
-  const dist = outerShdwAttrs['dist']
-    ? parseInt(outerShdwAttrs['dist']) * RATIO_EMUs_Points
-    : 0;
-  const blurRad = outerShdwAttrs['blurRad']
-    ? parseInt(outerShdwAttrs['blurRad']) * RATIO_EMUs_Points
-    : 0;
+  const dir = nonNegativeInteger(outerShdwAttrs['dir']) / 60_000;
+  const dist = nonNegativeInteger(outerShdwAttrs['dist']) * RATIO_EMUs_Points;
+  const blurRad =
+    nonNegativeInteger(outerShdwAttrs['blurRad']) * RATIO_EMUs_Points;
   const vx = dist * Math.sin((dir * Math.PI) / 180);
   const hx = dist * Math.cos((dir * Math.PI) / 180);
 
