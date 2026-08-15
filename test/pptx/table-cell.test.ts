@@ -18,8 +18,8 @@ function context(): PptxParserContext {
 }
 
 describe('PPTX table cell structural attributes', () => {
-  it('parses positive spans, active merge flags, and vertical alignment', async () => {
-    await expect(
+  it('parses positive spans, active merge flags, and vertical alignment', () => {
+    expect(
       getTableCellParams(
         xml({
           attrs: { gridSpan: '2', hMerge: '1', rowSpan: '3', vMerge: '1' },
@@ -29,7 +29,7 @@ describe('PPTX table cell structural attributes', () => {
         undefined,
         context(),
       ),
-    ).resolves.toMatchObject({
+    ).toMatchObject({
       borders: {},
       colSpan: 2,
       hMerge: 1,
@@ -45,8 +45,8 @@ describe('PPTX table cell structural attributes', () => {
     ['t', 'up'],
     [undefined, 'up'],
     ['unsupported', 'up'],
-  ] as const)('maps vertical anchor %j to %s', async (anchor, expected) => {
-    const cell = await getTableCellParams(
+  ] as const)('maps vertical anchor %j to %s', (anchor, expected) => {
+    const cell = getTableCellParams(
       xml({ 'a:tcPr': { attrs: { ...(anchor ? { anchor } : {}) } } }),
       undefined,
       undefined,
@@ -58,8 +58,8 @@ describe('PPTX table cell structural attributes', () => {
 
   it.each(['2x', '-1', '0', '1.5', 'Infinity', 'not-a-number'])(
     'omits invalid row span %j',
-    async (rowSpan) => {
-      const cell = await getTableCellParams(
+    (rowSpan) => {
+      const cell = getTableCellParams(
         xml({ attrs: { rowSpan } }),
         undefined,
         undefined,
@@ -76,8 +76,8 @@ describe('PPTX table cell structural attributes', () => {
 
   it.each(['2x', '-1', '0', '1.5', 'Infinity', 'not-a-number'])(
     'omits invalid column span %j',
-    async (gridSpan) => {
-      const cell = await getTableCellParams(
+    (gridSpan) => {
+      const cell = getTableCellParams(
         xml({ attrs: { gridSpan } }),
         undefined,
         undefined,
@@ -90,8 +90,8 @@ describe('PPTX table cell structural attributes', () => {
 
   it.each(['0', '2', '-1', '1.5', 'Infinity', 'not-a-number'])(
     'omits inactive or malformed merge flag %j',
-    async (merge) => {
-      const cell = await getTableCellParams(
+    (merge) => {
+      const cell = getTableCellParams(
         xml({ attrs: { hMerge: merge, vMerge: merge } }),
         undefined,
         undefined,

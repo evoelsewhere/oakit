@@ -1,7 +1,7 @@
 import type { XmlLookupValue } from '../../../common';
 import type { PptxParserContext } from './context';
 
-import { getShapeFill, getSolidFill } from './fill';
+import { getSolidFill } from './fill';
 import { getTextByPathList } from '../../../common';
 import { getBorder } from './border';
 
@@ -9,6 +9,40 @@ type ParsedBorder = ReturnType<typeof getBorder>;
 type TableBorders = Partial<
   Record<'bottom' | 'left' | 'right' | 'top', ParsedBorder>
 >;
+
+type TableBorderDirection = keyof TableBorders;
+type TableStyleSection =
+  'a:band1H' | 'a:band2H' | 'a:firstRow' | 'a:lastRow' | 'a:wholeTbl';
+
+interface TableBorderDescriptor {
+  cellKey: 'a:lnB' | 'a:lnL' | 'a:lnR' | 'a:lnT';
+  direction: TableBorderDirection;
+  styleKey: 'a:bottom' | 'a:left' | 'a:right' | 'a:top';
+}
+
+interface TableStyleParams {
+  fillColor: string;
+  fontBold: boolean | undefined;
+  fontColor: string;
+}
+
+const TABLE_BORDER_DESCRIPTORS: readonly TableBorderDescriptor[] = [
+  { cellKey: 'a:lnB', direction: 'bottom', styleKey: 'a:bottom' },
+  { cellKey: 'a:lnL', direction: 'left', styleKey: 'a:left' },
+  { cellKey: 'a:lnR', direction: 'right', styleKey: 'a:right' },
+  { cellKey: 'a:lnT', direction: 'top', styleKey: 'a:top' },
+];
+
+const TRUE_VALUES: ReadonlySet<string | undefined> = new Set([
+  '1',
+  'on',
+  'true',
+]);
+const FALSE_VALUES: ReadonlySet<string | undefined> = new Set([
+  '0',
+  'off',
+  'false',
+]);
 
 interface TableStyleAttributes {
   isBandColAttr: number;
@@ -43,14 +77,77 @@ function activeMerge(value: string | undefined): 1 | undefined {
 function getTableTextColor(
   tcTxStyle: XmlLookupValue | undefined,
   warpObj: PptxParserContext,
-): string | undefined {
-  if (!tcTxStyle) return undefined;
-
+): string {
   return getSolidFill(
-    tcTxStyle['a:solidFill'] || tcTxStyle,
+    tcTxStyle?.['a:solidFill'] ?? tcTxStyle,
     undefined,
     undefined,
     warpObj,
+  );
+}
+
+function getOnOff(value: string | undefined): boolean | undefined {
+  if (TRUE_VALUES.has(value)) return true;
+  if (FALSE_VALUES.has(value)) return false;
+  return undefined;
+}
+
+function getTableStyleParams(
+  tableStyle: XmlLookupValue | undefined,
+  sectionName: string,
+  warpObj: PptxParserContext,
+): TableStyleParams {
+  const section = tableStyle?.[sectionName];
+  const textStyle = getTextByPathList<XmlLookupValue>(section, ['a:tcTxStyle']);
+
+  return {
+    fillColor: getSolidFill(
+      getTextByPathList<XmlLookupValue>(section, [
+        'a:tcStyle',
+        'a:fill',
+        'a:solidFill',
+      ]),
+      undefined,
+      undefined,
+      warpObj,
+    ),
+    fontBold: getOnOff(getTextByPathList<string>(textStyle, ['attrs', 'b'])),
+    fontColor: getTableTextColor(textStyle, warpObj),
+  };
+}
+
+function mergeTableStyleParams(
+  base: TableStyleParams,
+  override: TableStyleParams,
+): TableStyleParams {
+  return {
+    fillColor: override.fillColor || base.fillColor,
+    fontBold: override.fontBold ?? base.fontBold,
+    fontColor: override.fontColor || base.fontColor,
+  };
+}
+
+function getCellBorderLine(
+  tcNode: XmlLookupValue,
+  tableStyle: XmlLookupValue | undefined,
+  sourceStyle: XmlLookupValue | undefined,
+  descriptor: TableBorderDescriptor,
+): XmlLookupValue | undefined {
+  return (
+    getTextByPathList<XmlLookupValue>(tcNode, ['a:tcPr', descriptor.cellKey]) ??
+    getTextByPathList<XmlLookupValue>(sourceStyle, [
+      'a:tcStyle',
+      'a:tcBdr',
+      descriptor.styleKey,
+      'a:ln',
+    ]) ??
+    getTextByPathList<XmlLookupValue>(tableStyle, [
+      'a:wholeTbl',
+      'a:tcStyle',
+      'a:tcBdr',
+      descriptor.styleKey,
+      'a:ln',
+    ])
   );
 }
 
@@ -59,51 +156,25 @@ export function getTableBorders(
   warpObj: PptxParserContext,
 ): TableBorders {
   const borders: TableBorders = {};
-  if (node['a:bottom']) {
-    const obj = {
-      'p:spPr': {
-        'a:ln': node['a:bottom']['a:ln'],
-      },
-    };
-    const border = getBorder(obj, undefined, warpObj);
-    borders.bottom = border;
-  }
-  if (node['a:top']) {
-    const obj = {
-      'p:spPr': {
-        'a:ln': node['a:top']['a:ln'],
-      },
-    };
-    const border = getBorder(obj, undefined, warpObj);
-    borders.top = border;
-  }
-  if (node['a:right']) {
-    const obj = {
-      'p:spPr': {
-        'a:ln': node['a:right']['a:ln'],
-      },
-    };
-    const border = getBorder(obj, undefined, warpObj);
-    borders.right = border;
-  }
-  if (node['a:left']) {
-    const obj = {
-      'p:spPr': {
-        'a:ln': node['a:left']['a:ln'],
-      },
-    };
-    const border = getBorder(obj, undefined, warpObj);
-    borders.left = border;
+  for (const descriptor of TABLE_BORDER_DESCRIPTORS) {
+    const styledBorder = node[descriptor.styleKey];
+    if (styledBorder) {
+      borders[descriptor.direction] = getBorder(
+        { 'p:spPr': { 'a:ln': styledBorder['a:ln'] } },
+        undefined,
+        warpObj,
+      );
+    }
   }
   return borders;
 }
 
-export async function getTableCellParams(
+export function getTableCellParams(
   tcNode: XmlLookupValue,
   thisTblStyle: XmlLookupValue | undefined,
   cellSource: string | undefined,
   warpObj: PptxParserContext,
-): Promise<TableCellParams> {
+): TableCellParams {
   const rowSpan = positiveInteger(
     getTextByPathList<string>(tcNode, ['attrs', 'rowSpan']),
   );
@@ -121,135 +192,41 @@ export async function getTableCellParams(
     'attrs',
     'anchor',
   ]);
-  let fillColor: string | undefined;
-  let fontColor: string | undefined;
-  let fontBold: boolean | undefined;
-
-  const getCelFill = getTextByPathList<XmlLookupValue>(tcNode, ['a:tcPr']);
-  if (getCelFill) {
-    const cellObj = { 'p:spPr': getCelFill };
-    const fill = await getShapeFill(
-      cellObj as unknown as XmlLookupValue,
-      warpObj,
-      'slide',
-    );
-
-    if (fill?.type === 'color' && typeof fill.value === 'string') {
-      fillColor = fill.value;
-    }
-  }
-  if (!fillColor) {
-    let bgFillschemeClr: XmlLookupValue | undefined;
-    if (cellSource)
-      bgFillschemeClr = getTextByPathList<XmlLookupValue>(thisTblStyle, [
-        cellSource,
-        'a:tcStyle',
-        'a:fill',
-        'a:solidFill',
-      ]);
-    if (bgFillschemeClr) {
-      fillColor = getSolidFill(bgFillschemeClr, undefined, undefined, warpObj);
-    }
-  }
-
-  let rowTxtStyl: XmlLookupValue | undefined;
-  if (cellSource)
-    rowTxtStyl = getTextByPathList<XmlLookupValue>(thisTblStyle, [
-      cellSource,
-      'a:tcTxStyle',
-    ]);
-  if (rowTxtStyl) {
-    fontColor = getTableTextColor(rowTxtStyl, warpObj);
-    if (getTextByPathList(rowTxtStyl, ['attrs', 'b']) === 'on') fontBold = true;
-  }
-
-  let lin_bottm = getTextByPathList<XmlLookupValue>(tcNode, [
-    'a:tcPr',
-    'a:lnB',
-  ]);
-  if (!lin_bottm) {
-    if (cellSource)
-      lin_bottm = getTextByPathList<XmlLookupValue>(
-        thisTblStyle?.[cellSource],
-        ['a:tcStyle', 'a:tcBdr', 'a:bottom', 'a:ln'],
-      );
-    if (!lin_bottm)
-      lin_bottm = getTextByPathList<XmlLookupValue>(thisTblStyle, [
-        'a:wholeTbl',
-        'a:tcStyle',
-        'a:tcBdr',
-        'a:bottom',
-        'a:ln',
-      ]);
-  }
-  let lin_top = getTextByPathList<XmlLookupValue>(tcNode, ['a:tcPr', 'a:lnT']);
-  if (!lin_top) {
-    if (cellSource)
-      lin_top = getTextByPathList<XmlLookupValue>(thisTblStyle?.[cellSource], [
-        'a:tcStyle',
-        'a:tcBdr',
-        'a:top',
-        'a:ln',
-      ]);
-    if (!lin_top)
-      lin_top = getTextByPathList<XmlLookupValue>(thisTblStyle, [
-        'a:wholeTbl',
-        'a:tcStyle',
-        'a:tcBdr',
-        'a:top',
-        'a:ln',
-      ]);
-  }
-  let lin_left = getTextByPathList<XmlLookupValue>(tcNode, ['a:tcPr', 'a:lnL']);
-  if (!lin_left) {
-    if (cellSource)
-      lin_left = getTextByPathList<XmlLookupValue>(thisTblStyle?.[cellSource], [
-        'a:tcStyle',
-        'a:tcBdr',
-        'a:left',
-        'a:ln',
-      ]);
-    if (!lin_left)
-      lin_left = getTextByPathList<XmlLookupValue>(thisTblStyle, [
-        'a:wholeTbl',
-        'a:tcStyle',
-        'a:tcBdr',
-        'a:left',
-        'a:ln',
-      ]);
-  }
-  let lin_right = getTextByPathList<XmlLookupValue>(tcNode, [
-    'a:tcPr',
-    'a:lnR',
-  ]);
-  if (!lin_right) {
-    if (cellSource)
-      lin_right = getTextByPathList<XmlLookupValue>(
-        thisTblStyle?.[cellSource],
-        ['a:tcStyle', 'a:tcBdr', 'a:right', 'a:ln'],
-      );
-    if (!lin_right)
-      lin_right = getTextByPathList<XmlLookupValue>(thisTblStyle, [
-        'a:wholeTbl',
-        'a:tcStyle',
-        'a:tcBdr',
-        'a:right',
-        'a:ln',
-      ]);
-  }
+  const sourceStyle = thisTblStyle?.[cellSource as string];
+  const sourceParams = getTableStyleParams(
+    thisTblStyle,
+    cellSource as string,
+    warpObj,
+  );
+  const directFillColor = getSolidFill(
+    getTextByPathList<XmlLookupValue>(tcNode, ['a:tcPr', 'a:solidFill']),
+    undefined,
+    undefined,
+    warpObj,
+  );
+  const fillColor = directFillColor || sourceParams.fillColor;
 
   const borders: TableBorders = {};
-  if (lin_bottm) borders.bottom = getBorder(lin_bottm, undefined, warpObj);
-  if (lin_top) borders.top = getBorder(lin_top, undefined, warpObj);
-  if (lin_left) borders.left = getBorder(lin_left, undefined, warpObj);
-  if (lin_right) borders.right = getBorder(lin_right, undefined, warpObj);
+  for (const descriptor of TABLE_BORDER_DESCRIPTORS) {
+    const line = getCellBorderLine(
+      tcNode,
+      thisTblStyle,
+      sourceStyle,
+      descriptor,
+    );
+    if (line) {
+      borders[descriptor.direction] = getBorder(line, undefined, warpObj);
+    }
+  }
 
   return {
     borders,
     vAlign: anchor === 'ctr' ? 'mid' : anchor === 'b' ? 'down' : 'up',
     ...(fillColor ? { fillColor } : {}),
-    ...(fontColor ? { fontColor } : {}),
-    ...(fontBold !== undefined ? { fontBold } : {}),
+    ...(sourceParams.fontColor ? { fontColor: sourceParams.fontColor } : {}),
+    ...(sourceParams.fontBold !== undefined
+      ? { fontBold: sourceParams.fontBold }
+      : {}),
     ...(rowSpan !== undefined ? { rowSpan } : {}),
     ...(colSpan !== undefined ? { colSpan } : {}),
     ...(vMerge !== undefined ? { vMerge } : {}),
@@ -264,157 +241,32 @@ export function getTableRowParams(
   thisTblStyle: XmlLookupValue | undefined,
   warpObj: PptxParserContext,
 ): { fillColor?: string; fontBold?: boolean; fontColor?: string } {
-  let fillColor: string | undefined;
-  let fontColor: string | undefined;
-  let fontBold: boolean | undefined;
+  let params = getTableStyleParams(thisTblStyle, 'a:wholeTbl', warpObj);
 
-  if (thisTblStyle && thisTblStyle['a:wholeTbl']) {
-    const bgFillschemeClr = getTextByPathList(thisTblStyle, [
-      'a:wholeTbl',
-      'a:tcStyle',
-      'a:fill',
-      'a:solidFill',
-    ]);
-    if (bgFillschemeClr) {
-      const local_fillColor = getSolidFill(
-        bgFillschemeClr,
-        undefined,
-        undefined,
-        warpObj,
-      );
-      if (local_fillColor) fillColor = local_fillColor;
-    }
-    const rowTxtStyl = getTextByPathList(thisTblStyle, [
-      'a:wholeTbl',
-      'a:tcTxStyle',
-    ]);
-    if (rowTxtStyl) {
-      const local_fontColor = getTableTextColor(rowTxtStyl, warpObj);
-      if (local_fontColor) fontColor = local_fontColor;
-      if (getTextByPathList(rowTxtStyl, ['attrs', 'b']) === 'on')
-        fontBold = true;
-    }
+  if (i > 0 && tblStylAttrObj.isBandRowAttr === 1) {
+    const bandSection: TableStyleSection =
+      i % 2 === 0 ? 'a:band2H' : 'a:band1H';
+    params = mergeTableStyleParams(
+      params,
+      getTableStyleParams(thisTblStyle, bandSection, warpObj),
+    );
   }
-  if (i === 0 && tblStylAttrObj['isFrstRowAttr'] === 1 && thisTblStyle) {
-    const bgFillschemeClr = getTextByPathList(thisTblStyle, [
-      'a:firstRow',
-      'a:tcStyle',
-      'a:fill',
-      'a:solidFill',
-    ]);
-    if (bgFillschemeClr) {
-      const local_fillColor = getSolidFill(
-        bgFillschemeClr,
-        undefined,
-        undefined,
-        warpObj,
-      );
-      if (local_fillColor) fillColor = local_fillColor;
-    }
-    const rowTxtStyl = getTextByPathList(thisTblStyle, [
-      'a:firstRow',
-      'a:tcTxStyle',
-    ]);
-    if (rowTxtStyl) {
-      const local_fontColor = getTableTextColor(rowTxtStyl, warpObj);
-      if (local_fontColor) fontColor = local_fontColor;
-      if (getTextByPathList(rowTxtStyl, ['attrs', 'b']) === 'on')
-        fontBold = true;
-    }
-  } else if (i > 0 && tblStylAttrObj['isBandRowAttr'] === 1 && thisTblStyle) {
-    fillColor = '';
-    if (i % 2 === 0 && thisTblStyle['a:band2H']) {
-      const bgFillschemeClr = getTextByPathList(thisTblStyle, [
-        'a:band2H',
-        'a:tcStyle',
-        'a:fill',
-        'a:solidFill',
-      ]);
-      if (bgFillschemeClr) {
-        const local_fillColor = getSolidFill(
-          bgFillschemeClr,
-          undefined,
-          undefined,
-          warpObj,
-        );
-        if (local_fillColor) fillColor = local_fillColor;
-      }
-      const rowTxtStyl = getTextByPathList(thisTblStyle, [
-        'a:band2H',
-        'a:tcTxStyle',
-      ]);
-      if (rowTxtStyl) {
-        const local_fontColor = getTableTextColor(rowTxtStyl, warpObj);
-        if (local_fontColor) fontColor = local_fontColor;
-      }
-      if (getTextByPathList(rowTxtStyl, ['attrs', 'b']) === 'on')
-        fontBold = true;
-    }
-    if (i % 2 !== 0 && thisTblStyle['a:band1H']) {
-      const bgFillschemeClr = getTextByPathList(thisTblStyle, [
-        'a:band1H',
-        'a:tcStyle',
-        'a:fill',
-        'a:solidFill',
-      ]);
-      if (bgFillschemeClr) {
-        const local_fillColor = getSolidFill(
-          bgFillschemeClr,
-          undefined,
-          undefined,
-          warpObj,
-        );
-        if (local_fillColor) fillColor = local_fillColor;
-      }
-      const rowTxtStyl = getTextByPathList(thisTblStyle, [
-        'a:band1H',
-        'a:tcTxStyle',
-      ]);
-      if (rowTxtStyl) {
-        const local_fontColor = getTableTextColor(rowTxtStyl, warpObj);
-        if (local_fontColor) fontColor = local_fontColor;
-        if (getTextByPathList(rowTxtStyl, ['attrs', 'b']) === 'on')
-          fontBold = true;
-      }
-    }
+  if (i === 0 && tblStylAttrObj.isFrstRowAttr === 1) {
+    params = mergeTableStyleParams(
+      params,
+      getTableStyleParams(thisTblStyle, 'a:firstRow', warpObj),
+    );
   }
-  if (
-    i === trNodes.length - 1 &&
-    tblStylAttrObj['isLstRowAttr'] === 1 &&
-    thisTblStyle
-  ) {
-    const bgFillschemeClr = getTextByPathList(thisTblStyle, [
-      'a:lastRow',
-      'a:tcStyle',
-      'a:fill',
-      'a:solidFill',
-    ]);
-    if (bgFillschemeClr) {
-      const local_fillColor = getSolidFill(
-        bgFillschemeClr,
-        undefined,
-        undefined,
-        warpObj,
-      );
-      if (local_fillColor) {
-        fillColor = local_fillColor;
-      }
-    }
-    const rowTxtStyl = getTextByPathList(thisTblStyle, [
-      'a:lastRow',
-      'a:tcTxStyle',
-    ]);
-    if (rowTxtStyl) {
-      const local_fontColor = getTableTextColor(rowTxtStyl, warpObj);
-      if (local_fontColor) fontColor = local_fontColor;
-      if (getTextByPathList(rowTxtStyl, ['attrs', 'b']) === 'on')
-        fontBold = true;
-    }
+  if (i === trNodes.length - 1 && tblStylAttrObj.isLstRowAttr === 1) {
+    params = mergeTableStyleParams(
+      params,
+      getTableStyleParams(thisTblStyle, 'a:lastRow', warpObj),
+    );
   }
 
   return {
-    ...(fillColor !== undefined ? { fillColor } : {}),
-    ...(fontColor !== undefined ? { fontColor } : {}),
-    ...(fontBold !== undefined ? { fontBold } : {}),
+    ...(params.fillColor ? { fillColor: params.fillColor } : {}),
+    ...(params.fontColor ? { fontColor: params.fontColor } : {}),
+    ...(params.fontBold !== undefined ? { fontBold: params.fontBold } : {}),
   };
 }
