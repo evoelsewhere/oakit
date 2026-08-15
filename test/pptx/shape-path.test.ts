@@ -580,6 +580,43 @@ describe('PowerPoint preset shape path safety', () => {
     },
   );
 
+  it('clamps half-frame adjustments to its aspect-ratio limits', () => {
+    expect(
+      getShapePath(
+        'halfFrame',
+        120,
+        80,
+        guides([
+          ['adj1', 'val 0'],
+          ['adj2', 'val 200000'],
+        ]),
+      ),
+    ).toBe(
+      getShapePath(
+        'halfFrame',
+        120,
+        80,
+        guides([
+          ['adj1', 'val 0'],
+          ['adj2', 'val 150000'],
+        ]),
+      ),
+    );
+    expect(
+      getShapePath(
+        'halfFrame',
+        100,
+        100,
+        guides([
+          ['adj1', 'val 100000'],
+          ['adj2', 'val 25000'],
+        ]),
+      ),
+    ).toBe(
+      'M 0,0 L 100,0 L 25,75 L 25,75 L 25,75 L 0,100 z',
+    );
+  });
+
   it('keeps common default paths deterministic', () => {
     const rectangle = 'M 0 0 L 120 0 L 120 80 L 0 80 Z';
     expect(getShapePath('rect', 120, 80, xml({}))).toBe(rectangle);
