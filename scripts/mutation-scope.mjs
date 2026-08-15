@@ -20,6 +20,7 @@ export const mutatedFiles = [
   'src/formats/pptx/internal/border.ts',
   'src/formats/pptx/internal/chart.ts',
   'src/formats/pptx/internal/color.ts',
+  'src/formats/pptx/internal/custom-geometry-guide.ts',
   'src/formats/pptx/internal/diagram.ts',
   'src/formats/pptx/internal/fill.ts',
   'src/formats/pptx/internal/font-style.ts',
