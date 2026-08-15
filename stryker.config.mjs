@@ -5,7 +5,10 @@ const config = {
     'src/common/opc/part-uri.ts',
     'src/common/text/css.ts',
     'src/common/text/html.ts',
+    'src/common/xml/normalize.ts',
     'src/common/xml/read-xml.ts',
+    'src/common/xml/types.ts',
+    'src/common/xml/validate.ts',
     'src/formats/pptx/internal/resource-limits.ts',
   ],
   plugins: [
