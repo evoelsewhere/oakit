@@ -35,6 +35,11 @@ interface SpanStyleInfo {
   text: string;
 }
 
+interface ParagraphContentNode {
+  kind: 'break' | 'text';
+  node: XmlLookupValue;
+}
+
 function nodeAt(
   node: unknown,
   path: readonly string[],
@@ -52,7 +57,10 @@ function asArray(value: XmlLookupValue | undefined): XmlLookupValue[] {
 }
 
 function runOrder(node: XmlLookupValue): number {
-  return Number(textAt(node, ['attrs', 'order']) ?? Number.MAX_SAFE_INTEGER);
+  const order = Number(
+    textAt(node, ['attrs', 'order']) ?? Number.MAX_SAFE_INTEGER,
+  );
+  return Number.isFinite(order) ? order : Number.MAX_SAFE_INTEGER;
 }
 
 function textToHtml(value: string): string {
@@ -76,16 +84,17 @@ export function getTextNodeValue(node: unknown): string | undefined {
   return textAt(node, ['value']);
 }
 
-function getParagraphRuns(paragraph: XmlLookupValue): XmlLookupValue[] {
+function getParagraphContent(
+  paragraph: XmlLookupValue,
+): ParagraphContentNode[] {
   const runs = asArray(nodeAt(paragraph, ['a:r']));
-  if (runs.length === 0) return [];
-
   const fields = asArray(nodeAt(paragraph, ['a:fld']));
   const breaks = asArray(nodeAt(paragraph, ['a:br']));
-  if (breaks.length > 1) breaks.shift();
-  return [...runs, ...fields, ...breaks].sort(
-    (left, right) => runOrder(left) - runOrder(right),
-  );
+  return [
+    ...runs.map((node): ParagraphContentNode => ({ kind: 'text', node })),
+    ...fields.map((node): ParagraphContentNode => ({ kind: 'text', node })),
+    ...breaks.map((node): ParagraphContentNode => ({ kind: 'break', node })),
+  ].sort((left, right) => runOrder(left.node) - runOrder(right.node));
 }
 
 function appendParagraphSpacing(
@@ -116,6 +125,15 @@ function appendParagraphIndent(
   return styleText;
 }
 
+function closeOpenLists(openLists: ListType[]): string {
+  let html = '';
+  while (openLists.length > 0) {
+    const listType = openLists.pop();
+    if (listType) html += `</li></${listType}>`;
+  }
+  return html;
+}
+
 export function genTextBody(
   textBodyNode: XmlLookupValue,
   shapeNode: XmlLookupValue,
@@ -135,7 +153,7 @@ export function genTextBody(
   const defaultTextStyle = isTableCell ? warpObj.defaultTextStyle : undefined;
 
   let html = '';
-  const openLists: (ListType | undefined)[] = [];
+  const openLists: ListType[] = [];
   for (const paragraph of paragraphs) {
     const align = getHorizontalAlign(
       paragraph,
@@ -170,29 +188,32 @@ export function genTextBody(
     styleText = appendParagraphIndent(styleText, indent, listType);
 
     if (listType) {
-      while (openLists.length > listLevel + 1) {
+      const targetLevel = Math.min(listLevel, openLists.length);
+      while (openLists.length > targetLevel + 1) {
         const closedList = openLists.pop();
-        if (closedList) html += `</${closedList}>`;
+        if (closedList) html += `</li></${closedList}>`;
       }
-      if (openLists[listLevel] === undefined) {
+
+      if (openLists.length === targetLevel) {
         html += `<${listType}>`;
-        openLists[listLevel] = listType;
-      } else if (openLists[listLevel] !== listType) {
-        html += `</${openLists[listLevel]}>`;
-        html += `<${listType}>`;
-        openLists[listLevel] = listType;
+        openLists.push(listType);
+      } else {
+        html += '</li>';
+        const currentList = openLists[targetLevel];
+        if (currentList !== listType) {
+          if (currentList) html += `</${currentList}>`;
+          html += `<${listType}>`;
+          openLists[targetLevel] = listType;
+        }
       }
       html += `<li><p style="${escapeHtml(styleText)}">`;
     } else {
-      while (openLists.length > 0) {
-        const closedList = openLists.pop();
-        if (closedList) html += `</${closedList}>`;
-      }
+      html += closeOpenLists(openLists);
       html += `<p style="${escapeHtml(styleText)}">`;
     }
 
-    const runs = getParagraphRuns(paragraph);
-    if (runs.length === 0) {
+    const contentNodes = getParagraphContent(paragraph);
+    if (contentNodes.length === 0) {
       html += genSpanElement(
         paragraph,
         paragraph,
@@ -208,9 +229,18 @@ export function genTextBody(
     } else {
       let previousStyle: SpanStyleInfo | null = null;
       let accumulatedText = '';
-      for (const run of runs) {
+      for (const contentNode of contentNodes) {
+        if (contentNode.kind === 'break') {
+          if (accumulatedText && previousStyle) {
+            html += renderSpan(previousStyle, accumulatedText);
+          }
+          previousStyle = null;
+          accumulatedText = '';
+          html += '<br>';
+          continue;
+        }
         const style = getSpanStyleInfo(
-          run,
+          contentNode.node,
           paragraph,
           textBodyNode,
           fontReference,
@@ -246,13 +276,10 @@ export function genTextBody(
         html += renderSpan(previousStyle, accumulatedText);
       }
     }
-    html += listType ? '</p></li>' : '</p>';
+    html += '</p>';
   }
 
-  while (openLists.length > 0) {
-    const closedList = openLists.pop();
-    if (closedList) html += `</${closedList}>`;
-  }
+  html += closeOpenLists(openLists);
   return html;
 }
 
@@ -265,7 +292,26 @@ export function getListType(node: XmlLookupValue): ListType | '' {
 
 export function getListLevel(node: XmlLookupValue): number {
   const level = textAt(node, ['a:pPr', 'attrs', 'lvl']);
-  return level === undefined ? 0 : Number.parseInt(level);
+  switch (level) {
+    case '1':
+      return 1;
+    case '2':
+      return 2;
+    case '3':
+      return 3;
+    case '4':
+      return 4;
+    case '5':
+      return 5;
+    case '6':
+      return 6;
+    case '7':
+      return 7;
+    case '8':
+      return 8;
+    default:
+      return 0;
+  }
 }
 
 export function genSpanElement(
@@ -307,7 +353,7 @@ export function getSpanStyleInfo(
   defaultTextStyle: XmlLookupValue | undefined,
   warpObj: PptxParserContext,
 ): SpanStyleInfo {
-  const level = Number(textAt(paragraph, ['a:pPr', 'attrs', 'lvl']) ?? -1) + 1;
+  const level = getListLevel(paragraph) + 1;
   const runText =
     getTextNodeValue(nodeAt(node, ['a:t'])) ??
     getTextNodeValue(nodeAt(node, ['a:fld', 'a:t'])) ??
