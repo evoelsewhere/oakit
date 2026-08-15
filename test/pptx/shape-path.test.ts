@@ -687,6 +687,8 @@ describe('PowerPoint preset shape path safety', () => {
     ['cube', 100000],
     ['bevel', 50000],
     ['foldedCorner', 50000],
+    ['verticalScroll', 25000],
+    ['horizontalScroll', 25000],
   ] as const)(
     'clamps the fixed authored adjustment range for %s',
     (shapeType, maximum) => {
@@ -911,6 +913,48 @@ describe('PowerPoint preset shape path safety', () => {
       expect(hashPath(path)).toBe(expectedHash);
     },
   );
+
+  it.each([
+    [-4653, 'aa437488'],
+    [0, '641e263f'],
+    [1000, '96b0b84b'],
+    [4653, '8507aae9'],
+  ] as const)(
+    'renders the smiley expression at adjustment %i',
+    (adjustment, expectedHash) => {
+      const path = getShapePath(
+        'smileyFace',
+        120,
+        80,
+        singleGuide('adj', String(adjustment)),
+      );
+
+      expectFinitePath(path);
+      expect(hashPath(path)).toBe(expectedHash);
+    },
+  );
+
+  it('clamps the smiley expression to its authored bounds', () => {
+    const lowerBound = getShapePath(
+      'smileyFace',
+      120,
+      80,
+      singleGuide('adj', '-4653'),
+    );
+    const upperBound = getShapePath(
+      'smileyFace',
+      120,
+      80,
+      singleGuide('adj', '4653'),
+    );
+
+    expect(
+      getShapePath('smileyFace', 120, 80, singleGuide('adj', '-10000')),
+    ).toBe(lowerBound);
+    expect(
+      getShapePath('smileyFace', 120, 80, singleGuide('adj', '10000')),
+    ).toBe(upperBound);
+  });
 
   it('keeps common default paths deterministic', () => {
     const rectangle = 'M 0 0 L 120 0 L 120 80 L 0 80 Z';

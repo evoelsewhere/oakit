@@ -2555,16 +2555,16 @@ export function getShapePath(
           'fmla',
         ]);
         const refr = RATIO_EMUs_Points;
-        let adj = 4653 * refr;
+        const maxAdjustment = 4653 * refr;
+        let adj = maxAdjustment;
         if (shapAdjst) {
           adj = parseInt(shapAdjst.substring(4)) * refr;
         }
         const cnstVal1 = 50000 * refr;
         const cnstVal2 = 100000 * refr;
-        const cnstVal3 = 4653 * refr;
         const wd2 = w / 2,
           hd2 = h / 2;
-        const a = adj < -cnstVal3 ? -cnstVal3 : adj > cnstVal3 ? cnstVal3 : adj;
+        const a = Math.min(Math.max(adj, -maxAdjustment), maxAdjustment);
         const x2 = (w * 6215) / 21600;
         const x3 = (w * 13135) / 21600;
         const x4 = (w * 16640) / 21600;
@@ -2607,7 +2607,7 @@ export function getShapePath(
           l = 0,
           b = h,
           r = w;
-        const a = adj < 0 ? 0 : adj > cnstVal1 ? cnstVal1 : adj;
+        const a = Math.min(Math.max(adj, 0), cnstVal1);
         const ch = (ss * a) / cnstVal2;
         const ch2 = ch / 2;
         const ch4 = ch / 4;
@@ -2620,7 +2620,7 @@ export function getShapePath(
           const y3 = b - ch;
           const y4 = b - ch2;
           pathData = `M ${ch},${y3} L ${ch},${ch2} ${shapeArc(x3, ch2, ch2, ch2, 180, 270, false).replace('M', 'L')} L ${x7},${t} ${shapeArc(x7, ch2, ch2, ch2, 270, 450, false).replace('M', 'L')} L ${x6},${ch} L ${x6},${y4} ${shapeArc(x5, y4, ch2, ch2, 0, 90, false).replace('M', 'L')} L ${ch2},${b} ${shapeArc(ch2, y4, ch2, ch2, 90, 270, false).replace('M', 'L')} z M ${x3},${t} ${shapeArc(x3, ch2, ch2, ch2, 270, 450, false).replace('M', 'L')} ${shapeArc(x3, x3 / 2, ch4, ch4, 90, 270, false).replace('M', 'L')} L ${x4},${ch2} M ${x6},${ch} L ${x3},${ch} M ${ch},${y4} ${shapeArc(ch2, y4, ch2, ch2, 0, 270, false).replace('M', 'L')} ${shapeArc(ch2, (y4 + y3) / 2, ch4, ch4, 270, 450, false).replace('M', 'L')} z M ${ch},${y4} L ${ch},${y3}`;
-        } else if (shapType === 'horizontalScroll') {
+        } else {
           const y3 = ch + ch2;
           const y4 = ch + ch;
           const y6 = b - ch;
