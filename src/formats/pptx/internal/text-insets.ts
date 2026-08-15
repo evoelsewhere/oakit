@@ -16,35 +16,21 @@ function getInsetAttr(
   masterNode: XmlLookupValue | undefined,
   attrName: string,
 ): string | number | undefined {
-  let v = getTextByPathList<string | number>(slideNode, [
-    'p:txBody',
-    'a:bodyPr',
-    'attrs',
-    attrName,
-  ]);
-  if (v !== undefined && v !== null && v !== '') return v;
-
-  v = getTextByPathList<string | number>(layoutNode, [
-    'p:txBody',
-    'a:bodyPr',
-    'attrs',
-    attrName,
-  ]);
-  if (v !== undefined && v !== null && v !== '') return v;
-
-  return getTextByPathList<string | number>(masterNode, [
-    'p:txBody',
-    'a:bodyPr',
-    'attrs',
-    attrName,
-  ]);
+  for (const candidate of [slideNode, layoutNode, masterNode]) {
+    const value = getTextByPathList<string | number>(candidate, [
+      'p:txBody',
+      'a:bodyPr',
+      'attrs',
+      attrName,
+    ]);
+    if (value !== undefined && value !== '') return value;
+  }
+  return undefined;
 }
 
-function emuToPt(emuStr: string | number | null | undefined): number | null {
-  if (emuStr === undefined || emuStr === null || emuStr === '') return null;
-  const v = parseInt(String(emuStr), 10);
-  if (!Number.isFinite(v)) return null;
-  return numberToFixed(v * RATIO_EMUs_Points);
+function emuToPt(value: string | number): number {
+  const emus = Number(value);
+  return Number.isFinite(emus) ? numberToFixed(emus * RATIO_EMUs_Points) : 0;
 }
 
 export function getTextInsets(
@@ -62,35 +48,24 @@ export function getTextInsets(
     'a:bodyPr',
   ]);
 
-  if (!nodeBodyPr) {
-    if (!layoutBodyPr) {
-      if (!masterBodyPr) return null;
-    }
-  }
+  if (!nodeBodyPr && !layoutBodyPr && !masterBodyPr) return null;
 
-  let li = getInsetAttr(node, slideLayoutSpNode, slideMasterSpNode, 'lIns');
-  if (li === undefined || li === null || li === '') li = DEFAULT_INSET_EMU.lIns;
+  const l = emuToPt(
+    getInsetAttr(node, slideLayoutSpNode, slideMasterSpNode, 'lIns') ??
+      DEFAULT_INSET_EMU.lIns,
+  );
+  const t = emuToPt(
+    getInsetAttr(node, slideLayoutSpNode, slideMasterSpNode, 'tIns') ??
+      DEFAULT_INSET_EMU.tIns,
+  );
+  const r = emuToPt(
+    getInsetAttr(node, slideLayoutSpNode, slideMasterSpNode, 'rIns') ??
+      DEFAULT_INSET_EMU.rIns,
+  );
+  const b = emuToPt(
+    getInsetAttr(node, slideLayoutSpNode, slideMasterSpNode, 'bIns') ??
+      DEFAULT_INSET_EMU.bIns,
+  );
 
-  let ti = getInsetAttr(node, slideLayoutSpNode, slideMasterSpNode, 'tIns');
-  if (ti === undefined || ti === null || ti === '') ti = DEFAULT_INSET_EMU.tIns;
-
-  let ri = getInsetAttr(node, slideLayoutSpNode, slideMasterSpNode, 'rIns');
-  if (ri === undefined || ri === null || ri === '') ri = DEFAULT_INSET_EMU.rIns;
-
-  let bi = getInsetAttr(node, slideLayoutSpNode, slideMasterSpNode, 'bIns');
-  if (bi === undefined || bi === null || bi === '') bi = DEFAULT_INSET_EMU.bIns;
-
-  let l = emuToPt(li);
-  if (l === null) l = 0;
-
-  let t = emuToPt(ti);
-  if (t === null) t = 0;
-
-  let r = emuToPt(ri);
-  if (r === null) r = 0;
-
-  let b = emuToPt(bi);
-  if (b === null) b = 0;
-
-  return { l, t, r, b };
+  return { b, l, r, t };
 }
