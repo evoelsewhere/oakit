@@ -355,6 +355,7 @@ describe('PowerPoint preset shape path safety', () => {
     ['decimal', { attrs: { fmla: 'val 100.5', name: 'adj1' } }],
     ['exponent', { attrs: { fmla: 'val 1e4', name: 'adj1' } }],
     ['hexadecimal', { attrs: { fmla: 'val 0x10', name: 'adj1' } }],
+    ['wrong operator', { attrs: { fmla: 'foo 10000', name: 'adj1' } }],
     ['empty integer', { attrs: { fmla: 'val ', name: 'adj1' } }],
     ['digit below zero', { attrs: { fmla: 'val /10000', name: 'adj1' } }],
     ['digit above nine', { attrs: { fmla: 'val :10000', name: 'adj1' } }],
