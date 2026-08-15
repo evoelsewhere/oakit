@@ -8,6 +8,11 @@ export interface XmlNode {
   [key: string]: XmlValue;
 }
 
+export type XmlReadResult<T> =
+  | { status: 'ok'; value: T }
+  | { status: 'missing' }
+  | { status: 'error'; error: unknown; phase: 'parse' | 'read' };
+
 interface TxmlNode {
   attributes?: Record<string, string>;
   children?: Array<TxmlNode | string>;
@@ -89,21 +94,39 @@ export function simplifyLossless(
   });
 }
 
-/** Read and simplify an XML part. Missing optional parts return null. */
+/** Read an XML part while preserving missing and failed states for callers. */
+export async function readXmlFileResult<T extends XmlValue = XmlValue>(
+  zip: JSZip,
+  filename: string,
+): Promise<XmlReadResult<T>> {
+  if (!filename) return { status: 'missing' };
+  const file = zip.file(filename);
+  if (!file) return { status: 'missing' };
+
+  let data: string;
+  try {
+    data = await file.async('string');
+  } catch (error) {
+    return { status: 'error', phase: 'read', error };
+  }
+
+  try {
+    return {
+      status: 'ok',
+      value: simplifyLossless(parse(data, { keepWhitespace: true })) as T,
+    };
+  } catch (error) {
+    return { status: 'error', phase: 'parse', error };
+  }
+}
+
+/** Read and simplify an XML part. Missing or invalid optional parts return null. */
 export async function readXmlFile<T extends XmlValue = XmlValue>(
   zip: JSZip,
   filename: string,
 ): Promise<T | null> {
-  if (!filename) return null;
-  try {
-    const file = zip.file(filename);
-    if (!file) return null;
-
-    const data = await file.async('string');
-    return simplifyLossless(parse(data, { keepWhitespace: true })) as T;
-  } catch {
-    return null;
-  }
+  const result = await readXmlFileResult<T>(zip, filename);
+  return result.status === 'ok' ? result.value : null;
 }
 
 /** @deprecated Upstream misspelling retained for compatibility. */

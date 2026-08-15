@@ -1,7 +1,7 @@
 import JSZip from 'jszip';
 import { describe, expect, it } from 'vitest';
 
-import { readXmlFile } from '../../src/common/xml/read-xml';
+import { readXmlFile, readXmlFileResult } from '../../src/common/xml/read-xml';
 
 function createXmlArchive(): JSZip {
   const zip = new JSZip();
@@ -31,5 +31,18 @@ describe('readXmlFile', () => {
     ]);
 
     expect(second).toEqual(first);
+  });
+
+  it('distinguishes missing parts from invalid XML', async () => {
+    const zip = createXmlArchive();
+    zip.file('invalid.xml', '<root><child></root>');
+
+    await expect(readXmlFileResult(zip, 'missing.xml')).resolves.toEqual({
+      status: 'missing',
+    });
+    await expect(readXmlFileResult(zip, 'invalid.xml')).resolves.toMatchObject({
+      status: 'error',
+      phase: 'parse',
+    });
   });
 });
