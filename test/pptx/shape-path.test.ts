@@ -1028,6 +1028,49 @@ describe('PowerPoint preset shape path safety', () => {
     );
   });
 
+  it('clamps left-right ribbon adjustments to their coupled bounds', () => {
+    const ribbon = (
+      width: number,
+      height: number,
+      adjustments: ReadonlyArray<readonly [string, string]>,
+    ): string =>
+      getShapePath(
+        'leftRightRibbon',
+        width,
+        height,
+        guides(
+          adjustments.map(([name, value]) => [name, `val ${value}`] as const),
+        ),
+      );
+
+    expect(ribbon(120, 80, [['adj3', '-10000']])).toBe(
+      ribbon(120, 80, [['adj3', '0']]),
+    );
+    expect(ribbon(120, 80, [['adj3', '100000']])).toBe(
+      ribbon(120, 80, [['adj3', '33333']]),
+    );
+    expect(ribbon(120, 80, [['adj1', '-10000']])).toBe(
+      ribbon(120, 80, [['adj1', '0']]),
+    );
+    expect(
+      ribbon(120, 80, [
+        ['adj1', '100000'],
+        ['adj3', '30000'],
+      ]),
+    ).toBe(
+      ribbon(120, 80, [
+        ['adj1', '70000'],
+        ['adj3', '30000'],
+      ]),
+    );
+    expect(ribbon(80, 120, [['adj2', '-10000']])).toBe(
+      ribbon(80, 120, [['adj2', '0']]),
+    );
+    expect(ribbon(80, 120, [['adj2', '100000']])).toBe(
+      ribbon(80, 120, [['adj2', '46875']]),
+    );
+  });
+
   it('keeps common default paths deterministic', () => {
     const rectangle = 'M 0 0 L 120 0 L 120 80 L 0 80 Z';
     expect(getShapePath('rect', 120, 80, xml({}))).toBe(rectangle);
