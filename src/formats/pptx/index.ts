@@ -1,5 +1,10 @@
 import { parse } from './parser';
-import type { PptxDocument, PptxInput, PptxParseOptions } from './types';
+import type {
+  PptxDocument,
+  PptxInput,
+  PptxParseOptions,
+  PptxParseResult,
+} from './types';
 
 export { PptxParseError } from './errors';
 
@@ -9,6 +14,16 @@ export async function parsePptx(
   options: PptxParseOptions = {},
 ): Promise<PptxDocument> {
   return parse(input, options);
+}
+
+/** Parse a PowerPoint package and return recoverable diagnostics. */
+export async function parsePptxWithDiagnostics(
+  input: PptxInput,
+  options: PptxParseOptions = {},
+): Promise<PptxParseResult> {
+  const diagnostics: PptxParseResult['diagnostics'] = [];
+  const document = await parse(input, options, diagnostics);
+  return { document, diagnostics };
 }
 
 export type * from './types';

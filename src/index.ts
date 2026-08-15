@@ -1,4 +1,8 @@
-export { parsePptx, PptxParseError } from './formats/pptx/index';
+export {
+  parsePptx,
+  parsePptxWithDiagnostics,
+  PptxParseError,
+} from './formats/pptx/index';
 export type {
   PptxDocument,
   PptxDiagnostic,
