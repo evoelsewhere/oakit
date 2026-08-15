@@ -2179,6 +2179,140 @@ describe('PowerPoint preset shape path safety', () => {
     expect(hashPath(paths.join('|'))).toBe('8fdd2816');
   });
 
+  it('matches Apache POI reference points for the bidirectional circular arrow', () => {
+    const path = getShapePath('leftRightCircularArrow', 120, 80, xml({}));
+    const coordinates =
+      path.match(/-?(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?/gi)?.map(Number) ?? [];
+    const expected = [
+      10, 40, 6.657255293206, 25.043184387664, 10.274932680734, 25.043184387664,
+      55, 35, 0, 0, 1, 109.725067319266, 25.043184387664, 113.342744706794,
+      25.043184387664, 110, 40, 93.342744706794, 25.043184387664,
+      96.05816800994, 25.043184387664, 45, 25, 0, 0, 0, 23.94183199006,
+      25.043184387664, 26.657255293206, 25.043184387664,
+    ];
+
+    expect(coordinates).toHaveLength(expected.length);
+    for (const [index, value] of coordinates.entries()) {
+      expect(value).toBeCloseTo(expected[index] ?? Number.NaN, 9);
+    }
+  });
+
+  it('clamps coupled PowerPoint bidirectional circular-arrow adjustments', () => {
+    const arrow = (
+      adjustments: ReadonlyArray<readonly [string, string]>,
+    ): string =>
+      getShapePath(
+        'leftRightCircularArrow',
+        120,
+        80,
+        guides(adjustments.map(([name, value]) => [name, `val ${value}`])),
+      );
+
+    const boundedPaths = [
+      arrow([['adj5', '0']]),
+      arrow([['adj5', '25000']]),
+      arrow([
+        ['adj1', '20000'],
+        ['adj5', '10000'],
+      ]),
+      arrow([['adj3', '1']]),
+      arrow([['adj3', '21599999']]),
+      arrow([['adj4', '0']]),
+      arrow([['adj4', '21599999']]),
+      arrow([['adj2', '0']]),
+      arrow([
+        ['adj1', '50000'],
+        ['adj5', '25000'],
+      ]),
+    ];
+    for (const path of boundedPaths) expectFinitePath(path);
+
+    expect(arrow([['adj5', '-10000']])).toBe(arrow([['adj5', '0']]));
+    expect(arrow([['adj5', '100000']])).toBe(arrow([['adj5', '25000']]));
+    expect(
+      arrow([
+        ['adj1', '100000'],
+        ['adj5', '10000'],
+      ]),
+    ).toBe(
+      arrow([
+        ['adj1', '20000'],
+        ['adj5', '10000'],
+      ]),
+    );
+    expect(arrow([['adj3', '-10000']])).toBe(arrow([['adj3', '1']]));
+    expect(arrow([['adj3', '30000000']])).toBe(arrow([['adj3', '21599999']]));
+    expect(arrow([['adj4', '-10000']])).toBe(arrow([['adj4', '0']]));
+    expect(arrow([['adj4', '30000000']])).toBe(arrow([['adj4', '21599999']]));
+    expect(arrow([['adj2', '-10000']])).toBe(arrow([['adj2', '0']]));
+  });
+
+  it.each([
+    [120, 80, '10000', '600000', '5400000', '0', '12500', '05ea6fd9'],
+    [80, 120, '20000', '1200000', '10800000', '5400000', '15000', '23c2331f'],
+    [100, 100, '25000', '1800000', '16200000', '10800000', '20000', '8d308329'],
+    [200, 40, '1000', '300000', '21000000', '16200000', '5000', 'dd989763'],
+  ])(
+    'locks bidirectional circular-arrow geometry for a %sx%s box',
+    (width, height, adj1, adj2, adj3, adj4, adj5, expectedHash) => {
+      const path = getShapePath(
+        'leftRightCircularArrow',
+        width,
+        height,
+        guides([
+          ['adj1', `val ${adj1}`],
+          ['adj2', `val ${adj2}`],
+          ['adj3', `val ${adj3}`],
+          ['adj4', `val ${adj4}`],
+          ['adj5', `val ${adj5}`],
+        ]),
+      );
+
+      expectFinitePath(path);
+      expect(hashPath(path)).toBe(expectedHash);
+    },
+  );
+
+  it('locks a deterministic bidirectional circular-arrow corpus', () => {
+    const dimensions = [
+      [120, 80],
+      [80, 120],
+      [100, 100],
+      [200, 40],
+      [40, 200],
+      [160, 90],
+    ] as const;
+    let state = 0xb1d1c7a5;
+    const next = (): number => {
+      state = (Math.imul(state, 1664525) + 1013904223) >>> 0;
+      return state;
+    };
+    const paths: string[] = [];
+
+    for (let index = 0; index < 96; index += 1) {
+      const dimension = dimensions[next() % dimensions.length];
+      if (dimension === undefined) throw new Error('Missing corpus dimension');
+      const [width, height] = dimension;
+      paths.push(
+        getShapePath(
+          'leftRightCircularArrow',
+          width,
+          height,
+          guides([
+            ['adj1', `val ${1 + (next() % 50000)}`],
+            ['adj2', `val ${next() % 21600000}`],
+            ['adj3', `val ${1 + (next() % 21599999)}`],
+            ['adj4', `val ${next() % 21600000}`],
+            ['adj5', `val ${1 + (next() % 25000)}`],
+          ]),
+        ),
+      );
+    }
+
+    for (const path of paths) expectFinitePath(path);
+    expect(hashPath(paths.join('|'))).toBe('bc4693bd');
+  });
+
   it('renders chart markers and the inverted line from preset coordinates', () => {
     expect(getShapePath('chartPlus', 120, 80, xml({}))).toBe(
       'M 60 0 L 60 80 M 0 40 L 120 40 M 0 0 L 0 80 L 120 80 L 120 0 Z',

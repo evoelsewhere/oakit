@@ -5335,8 +5335,7 @@ export function getShapePath(
           const cosine = Math.cos(angle);
           const sine = Math.sin(angle);
           const scale =
-            (radiusX * radiusY) /
-            Math.hypot(radiusY * cosine, radiusX * sine);
+            (radiusX * radiusY) / Math.hypot(radiusY * cosine, radiusX * sine);
           return [scale * cosine, scale * sine];
         };
         const [outerStartDx, outerStartDy] = ellipseRay(
@@ -5368,7 +5367,331 @@ export function getShapePath(
       }
       break;
     case 'leftRightCircularArrow':
-      pathData = `M 0 0 L ${w} 0 L ${w} ${h} L 0 ${h} Z`;
+      {
+        const adjustmentGuides = getTextByPathList(node, [
+          'p:spPr',
+          'a:prstGeom',
+          'a:avLst',
+          'a:gd',
+        ]);
+        let adj1 = 12500;
+        let adj2 = 1142319;
+        let adj3 = 20457681;
+        let adj4 = 11942319;
+        let adj5 = 12500;
+        for (const guide of asArray(adjustmentGuides)) {
+          const name = getTextByPathList(guide, ['attrs', 'name']);
+          const value = parseInt(
+            getTextByPathList(guide, ['attrs', 'fmla']).substring(4),
+          );
+          if (name === 'adj1') adj1 = value;
+          else if (name === 'adj2') adj2 = value;
+          else if (name === 'adj3') adj3 = value;
+          else if (name === 'adj4') adj4 = value;
+          else if (name === 'adj5') adj5 = value;
+        }
+
+        const fullTurn = Math.PI * 2;
+        const toRadians = (angle: number): number =>
+          (angle * Math.PI) / (180 * 60000);
+        const selectWhenPositive = (
+          value: number,
+          positive: number,
+          nonPositive: number,
+        ): number => {
+          const index = Math.max(Math.sign(value), 0) as 0 | 1;
+          const choices: readonly [number, number] = [nonPositive, positive];
+          return choices[index];
+        };
+        const normalizeAngle = (angle: number): number =>
+          selectWhenPositive(angle, angle, angle + fullTurn);
+        const normalizeNegativeAngle = (angle: number): number =>
+          selectWhenPositive(angle, angle - fullTurn, angle);
+        const safeDivide = (numerator: number, denominator: number): number =>
+          denominator === 0 ? 0 : numerator / denominator;
+        const ellipsePoint = (
+          radiusX: number,
+          radiusY: number,
+          angle: number,
+        ): readonly [number, number] => {
+          const weightedSin = radiusX * Math.sin(angle);
+          const weightedCos = radiusY * Math.cos(angle);
+          const direction = Math.hypot(weightedCos, weightedSin);
+          return [
+            safeDivide(radiusX * weightedCos, direction),
+            safeDivide(radiusY * weightedSin, direction),
+          ];
+        };
+        const circleIntersection = (
+          x1: number,
+          y1: number,
+          x2: number,
+          y2: number,
+          radius: number,
+          sign: number,
+          targetX: number,
+          targetY: number,
+        ): readonly [number, number] => {
+          const dx = x2 - x1;
+          const dy = y2 - y1;
+          const distanceSquared = dx * dx + dy * dy;
+          if (distanceSquared === 0) return [targetX, targetY];
+          const determinant = x1 * y2 - x2 * y1;
+          const discriminant = Math.sqrt(
+            Math.max(
+              0,
+              radius * radius * distanceSquared - determinant * determinant,
+            ),
+          );
+          const firstX =
+            (determinant * dy + sign * dx * discriminant) / distanceSquared;
+          const secondX =
+            (determinant * dy - sign * dx * discriminant) / distanceSquared;
+          const firstY =
+            (-determinant * dx + Math.abs(dy) * discriminant) / distanceSquared;
+          const secondY =
+            (-determinant * dx - Math.abs(dy) * discriminant) / distanceSquared;
+          const distanceDifference =
+            Math.hypot(targetX - secondX, targetY - secondY) -
+            Math.hypot(targetX - firstX, targetY - firstY);
+          return [
+            selectWhenPositive(distanceDifference, firstX, secondX),
+            selectWhenPositive(distanceDifference, firstY, secondY),
+          ];
+        };
+
+        const shortSide = Math.min(w, h);
+        const a5 = Math.min(Math.max(adj5, 0), 25000);
+        const a1 = Math.min(Math.max(adj1, 0), a5 * 2);
+        const endAngle = toRadians(Math.min(Math.max(adj3, 1), 21599999));
+        const startAngle = toRadians(Math.min(Math.max(adj4, 0), 21599999));
+        const thickness = (shortSide * a1) / 100000;
+        const headThickness = (shortSide * a5) / 100000;
+        const halfThickness = thickness / 2;
+        const outerRadiusX = w / 2 + halfThickness - headThickness;
+        const outerRadiusY = h / 2 + halfThickness - headThickness;
+        const innerRadiusX = outerRadiusX - thickness;
+        const innerRadiusY = outerRadiusY - thickness;
+        const middleRadiusX = innerRadiusX + halfThickness;
+        const middleRadiusY = innerRadiusY + halfThickness;
+        const [headDx, headDy] = ellipsePoint(
+          middleRadiusX,
+          middleRadiusY,
+          endAngle,
+        );
+        const headX = w / 2 + headDx;
+        const headY = h / 2 + headDy;
+        const innerCircleRadius = Math.min(innerRadiusX, innerRadiusY);
+        const headDxSquared = headDx * headDx;
+        const headDySquared = headDy * headDy;
+        const innerCircleSquared = innerCircleRadius * innerCircleRadius;
+        const u6 = safeDivide(
+          (headDxSquared - innerCircleSquared) *
+            (headDySquared - innerCircleSquared),
+          headDxSquared,
+        );
+        const u8 = 1 - safeDivide(u6, headDySquared);
+        const u10 = safeDivide(headDxSquared - innerCircleSquared, headDx);
+        const u11 = safeDivide(u10, headDy);
+        const u12 = safeDivide(1 + Math.sqrt(u8), u11);
+        const u15 = normalizeAngle(Math.atan2(u12, 1));
+        const u18 = normalizeAngle(u15 - endAngle);
+        const u21 = selectWhenPositive(u18 - Math.PI, u18 - fullTurn, u18);
+        const arrowAngle = Math.min(
+          Math.max(toRadians(adj2), 0),
+          Math.abs(u21),
+        );
+        const rightPointAngle = endAngle + arrowAngle;
+        const [rightPointDx, rightPointDy] = ellipsePoint(
+          middleRadiusX,
+          middleRadiusY,
+          rightPointAngle,
+        );
+        const rightPointX = w / 2 + rightPointDx;
+        const rightPointY = h / 2 + rightPointDy;
+        const headOffsetX = headThickness * Math.cos(rightPointAngle);
+        const headOffsetY = headThickness * Math.sin(rightPointAngle);
+        const rightOuterX = headX + headOffsetX;
+        const rightOuterY = headY + headOffsetY;
+        const rightInnerX = headX - headOffsetX;
+        const rightInnerY = headY - headOffsetY;
+        const rightOuterScaledX = rightOuterX - w / 2;
+        const rightOuterScaledY = rightOuterY - h / 2;
+        const rightInnerScaledX = rightInnerX - w / 2;
+        const rightInnerScaledY = rightInnerY - h / 2;
+        const outerCircleRadius = Math.min(outerRadiusX, outerRadiusY);
+        const outerX1 = safeDivide(
+          rightInnerScaledX * outerCircleRadius,
+          outerRadiusX,
+        );
+        const outerY1 = safeDivide(
+          rightInnerScaledY * outerCircleRadius,
+          outerRadiusY,
+        );
+        const outerX2 = safeDivide(
+          rightOuterScaledX * outerCircleRadius,
+          outerRadiusX,
+        );
+        const outerY2 = safeDivide(
+          rightOuterScaledY * outerCircleRadius,
+          outerRadiusY,
+        );
+        const intersectionSign = Math.sign(outerY2 - outerY1) || 1;
+        const [outerIntersectionX, outerIntersectionY] = circleIntersection(
+          outerX1,
+          outerY1,
+          outerX2,
+          outerY2,
+          outerCircleRadius,
+          intersectionSign,
+          outerX2,
+          outerY2,
+        );
+        const rightArcEndX =
+          w / 2 +
+          safeDivide(outerIntersectionX * outerRadiusX, outerCircleRadius);
+        const rightArcEndY =
+          h / 2 +
+          safeDivide(outerIntersectionY * outerRadiusY, outerCircleRadius);
+        const innerX1 = safeDivide(
+          rightInnerScaledX * innerCircleRadius,
+          innerRadiusX,
+        );
+        const innerY1 = safeDivide(
+          rightInnerScaledY * innerCircleRadius,
+          innerRadiusY,
+        );
+        const innerX2 = safeDivide(
+          rightOuterScaledX * innerCircleRadius,
+          innerRadiusX,
+        );
+        const innerY2 = safeDivide(
+          rightOuterScaledY * innerCircleRadius,
+          innerRadiusY,
+        );
+        const [innerIntersectionX, innerIntersectionY] = circleIntersection(
+          innerX1,
+          innerY1,
+          innerX2,
+          innerY2,
+          innerCircleRadius,
+          intersectionSign,
+          innerX1,
+          innerY1,
+        );
+        const rightInnerArcX =
+          w / 2 +
+          safeDivide(innerIntersectionX * innerRadiusX, innerCircleRadius);
+        const rightInnerArcY =
+          h / 2 +
+          safeDivide(innerIntersectionY * innerRadiusY, innerCircleRadius);
+        const [leftHeadDx, leftHeadDy] = ellipsePoint(
+          middleRadiusX,
+          middleRadiusY,
+          startAngle,
+        );
+        const leftHeadX = w / 2 + leftHeadDx;
+        const leftHeadY = h / 2 + leftHeadDy;
+        const leftPointAngle = startAngle - arrowAngle;
+        const [leftPointDx, leftPointDy] = ellipsePoint(
+          middleRadiusX,
+          middleRadiusY,
+          leftPointAngle,
+        );
+        const leftPointX = w / 2 + leftPointDx;
+        const leftPointY = h / 2 + leftPointDy;
+        const leftOffsetX = headThickness * Math.cos(leftPointAngle);
+        const leftOffsetY = headThickness * Math.sin(leftPointAngle);
+        const leftOuterX = leftHeadX + leftOffsetX;
+        const leftOuterY = leftHeadY + leftOffsetY;
+        const leftInnerX = leftHeadX - leftOffsetX;
+        const leftInnerY = leftHeadY - leftOffsetY;
+        const headsDoNotOverlap =
+          Math.hypot(
+            rightArcEndX - rightInnerArcX,
+            rightArcEndY - rightInnerArcY,
+          ) /
+            2 -
+          headThickness;
+        const rightOuterPointX = selectWhenPositive(
+          headsDoNotOverlap,
+          rightArcEndX,
+          rightOuterX,
+        );
+        const rightOuterPointY = selectWhenPositive(
+          headsDoNotOverlap,
+          rightArcEndY,
+          rightOuterY,
+        );
+        const rightInnerPointX = selectWhenPositive(
+          headsDoNotOverlap,
+          rightInnerArcX,
+          rightInnerX,
+        );
+        const rightInnerPointY = selectWhenPositive(
+          headsDoNotOverlap,
+          rightInnerArcY,
+          rightInnerY,
+        );
+        const rightOuterAngle = normalizeAngle(
+          Math.atan2(rightArcEndY - h / 2, rightArcEndX - w / 2),
+        );
+        const outerOffset = normalizeAngle(rightOuterAngle - endAngle);
+        const outerStartAngle = normalizeAngle(startAngle - outerOffset);
+        const outerSweep = normalizeAngle(rightOuterAngle - outerStartAngle);
+        const rightInnerAngle = normalizeAngle(
+          Math.atan2(rightInnerArcY - h / 2, rightInnerArcX - w / 2),
+        );
+        const innerOffset = normalizeNegativeAngle(rightInnerAngle - endAngle);
+        const innerEndCandidate = startAngle - innerOffset;
+        const innerEndAngle = selectWhenPositive(
+          innerEndCandidate - fullTurn,
+          innerEndCandidate - fullTurn,
+          innerEndCandidate,
+        );
+        const innerSweep = normalizeNegativeAngle(
+          innerEndAngle - rightInnerAngle,
+        );
+        const [outerStartDx, outerStartDy] = ellipsePoint(
+          outerRadiusX,
+          outerRadiusY,
+          outerStartAngle,
+        );
+        const leftOuterArcX = w / 2 + outerStartDx;
+        const leftOuterArcY = h / 2 + outerStartDy;
+        const [innerEndDx, innerEndDy] = ellipsePoint(
+          innerRadiusX,
+          innerRadiusY,
+          innerEndAngle,
+        );
+        const leftInnerArcX = w / 2 + innerEndDx;
+        const leftInnerArcY = h / 2 + innerEndDy;
+        const leftOuterPointX = selectWhenPositive(
+          headsDoNotOverlap,
+          leftOuterArcX,
+          leftOuterX,
+        );
+        const leftOuterPointY = selectWhenPositive(
+          headsDoNotOverlap,
+          leftOuterArcY,
+          leftOuterY,
+        );
+        const leftInnerPointX = selectWhenPositive(
+          headsDoNotOverlap,
+          leftInnerArcX,
+          leftInnerX,
+        );
+        const leftInnerPointY = selectWhenPositive(
+          headsDoNotOverlap,
+          leftInnerArcY,
+          leftInnerY,
+        );
+        const largeArcFlag = (sweep: number): number =>
+          Math.min(Math.trunc(Math.abs(sweep) / Math.PI), 1);
+        const outerLargeArc = largeArcFlag(outerSweep);
+        const innerLargeArc = largeArcFlag(innerSweep);
+        pathData = `M ${leftPointX} ${leftPointY} L ${leftOuterPointX} ${leftOuterPointY} L ${leftOuterArcX} ${leftOuterArcY} A ${outerRadiusX} ${outerRadiusY} 0 ${outerLargeArc},1 ${rightArcEndX} ${rightArcEndY} L ${rightOuterPointX} ${rightOuterPointY} L ${rightPointX} ${rightPointY} L ${rightInnerPointX} ${rightInnerPointY} L ${rightInnerArcX} ${rightInnerArcY} A ${innerRadiusX} ${innerRadiusY} 0 ${innerLargeArc},0 ${leftInnerArcX} ${leftInnerArcY} L ${leftInnerPointX} ${leftInnerPointY} Z`;
+      }
       break;
   }
 

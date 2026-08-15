@@ -2072,19 +2072,19 @@ exports[`PowerPoint preset shape path safety > keeps the locked geometry contrac
 
 exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for leftRightCircularArrow 1`] = `
 {
-  "adj": "701c4636",
-  "adj1": "701c4636",
-  "adj2": "701c4636",
-  "adj3": "701c4636",
-  "adj4": "701c4636",
-  "adj5": "701c4636",
-  "adj6": "701c4636",
-  "adj7": "701c4636",
-  "adj8": "701c4636",
-  "authored": "701c4636",
-  "default": "701c4636",
-  "hf": "701c4636",
-  "vf": "701c4636",
+  "adj": "6aea87bf",
+  "adj1": "eb661ccc",
+  "adj2": "c29b8a7c",
+  "adj3": "05544b7a",
+  "adj4": "131d137c",
+  "adj5": "6aea87bf",
+  "adj6": "6aea87bf",
+  "adj7": "6aea87bf",
+  "adj8": "6aea87bf",
+  "authored": "fdc4fc63",
+  "default": "6aea87bf",
+  "hf": "6aea87bf",
+  "vf": "6aea87bf",
 }
 `;
 
