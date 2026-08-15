@@ -1,0 +1,3367 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for accentBorderCallout1 1`] = `
+{
+  "adj": "8184b4e6",
+  "adj1": "89b85032",
+  "adj2": "448a22e0",
+  "adj3": "dbb2bffa",
+  "adj4": "01b9591e",
+  "adj5": "8184b4e6",
+  "adj6": "8184b4e6",
+  "adj7": "8184b4e6",
+  "adj8": "8184b4e6",
+  "authored": "4c059f48",
+  "default": "57fc935c",
+  "hf": "8184b4e6",
+  "vf": "8184b4e6",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for accentBorderCallout2 1`] = `
+{
+  "adj": "257ee6fa",
+  "adj1": "455560a6",
+  "adj2": "8232368c",
+  "adj3": "8713a58e",
+  "adj4": "1d058532",
+  "adj5": "07c7f069",
+  "adj6": "6d440d9f",
+  "adj7": "257ee6fa",
+  "adj8": "257ee6fa",
+  "authored": "9a14a912",
+  "default": "be132a64",
+  "hf": "257ee6fa",
+  "vf": "257ee6fa",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for accentBorderCallout3 1`] = `
+{
+  "adj": "0f7a2195",
+  "adj1": "b6374139",
+  "adj2": "d5ad5f43",
+  "adj3": "27d8be31",
+  "adj4": "5a7ffc9d",
+  "adj5": "fbda273c",
+  "adj6": "f8fc4262",
+  "adj7": "e84b2ce9",
+  "adj8": "5d6d5c33",
+  "authored": "7e049c13",
+  "default": "0f7a2195",
+  "hf": "0f7a2195",
+  "vf": "0f7a2195",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for accentCallout1 1`] = `
+{
+  "adj": "8184b4e6",
+  "adj1": "89b85032",
+  "adj2": "448a22e0",
+  "adj3": "dbb2bffa",
+  "adj4": "01b9591e",
+  "adj5": "8184b4e6",
+  "adj6": "8184b4e6",
+  "adj7": "8184b4e6",
+  "adj8": "8184b4e6",
+  "authored": "4c059f48",
+  "default": "57fc935c",
+  "hf": "8184b4e6",
+  "vf": "8184b4e6",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for accentCallout2 1`] = `
+{
+  "adj": "257ee6fa",
+  "adj1": "455560a6",
+  "adj2": "8232368c",
+  "adj3": "8713a58e",
+  "adj4": "1d058532",
+  "adj5": "07c7f069",
+  "adj6": "6d440d9f",
+  "adj7": "257ee6fa",
+  "adj8": "257ee6fa",
+  "authored": "9a14a912",
+  "default": "be132a64",
+  "hf": "257ee6fa",
+  "vf": "257ee6fa",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for accentCallout3 1`] = `
+{
+  "adj": "0f7a2195",
+  "adj1": "b6374139",
+  "adj2": "d5ad5f43",
+  "adj3": "27d8be31",
+  "adj4": "5a7ffc9d",
+  "adj5": "fbda273c",
+  "adj6": "f8fc4262",
+  "adj7": "e84b2ce9",
+  "adj8": "5d6d5c33",
+  "authored": "7e049c13",
+  "default": "0f7a2195",
+  "hf": "0f7a2195",
+  "vf": "0f7a2195",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for actionButtonBackPrevious 1`] = `
+{
+  "adj": "90d600d0",
+  "adj1": "90d600d0",
+  "adj2": "90d600d0",
+  "adj3": "90d600d0",
+  "adj4": "90d600d0",
+  "adj5": "90d600d0",
+  "adj6": "90d600d0",
+  "adj7": "90d600d0",
+  "adj8": "90d600d0",
+  "authored": "90d600d0",
+  "default": "90d600d0",
+  "hf": "90d600d0",
+  "vf": "90d600d0",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for actionButtonBeginning 1`] = `
+{
+  "adj": "d5344645",
+  "adj1": "d5344645",
+  "adj2": "d5344645",
+  "adj3": "d5344645",
+  "adj4": "d5344645",
+  "adj5": "d5344645",
+  "adj6": "d5344645",
+  "adj7": "d5344645",
+  "adj8": "d5344645",
+  "authored": "d5344645",
+  "default": "d5344645",
+  "hf": "d5344645",
+  "vf": "d5344645",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for actionButtonBlank 1`] = `
+{
+  "adj": "701c4636",
+  "adj1": "701c4636",
+  "adj2": "701c4636",
+  "adj3": "701c4636",
+  "adj4": "701c4636",
+  "adj5": "701c4636",
+  "adj6": "701c4636",
+  "adj7": "701c4636",
+  "adj8": "701c4636",
+  "authored": "701c4636",
+  "default": "701c4636",
+  "hf": "701c4636",
+  "vf": "701c4636",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for actionButtonDocument 1`] = `
+{
+  "adj": "b1a62c1d",
+  "adj1": "b1a62c1d",
+  "adj2": "b1a62c1d",
+  "adj3": "b1a62c1d",
+  "adj4": "b1a62c1d",
+  "adj5": "b1a62c1d",
+  "adj6": "b1a62c1d",
+  "adj7": "b1a62c1d",
+  "adj8": "b1a62c1d",
+  "authored": "b1a62c1d",
+  "default": "b1a62c1d",
+  "hf": "b1a62c1d",
+  "vf": "b1a62c1d",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for actionButtonEnd 1`] = `
+{
+  "adj": "2a6471d2",
+  "adj1": "2a6471d2",
+  "adj2": "2a6471d2",
+  "adj3": "2a6471d2",
+  "adj4": "2a6471d2",
+  "adj5": "2a6471d2",
+  "adj6": "2a6471d2",
+  "adj7": "2a6471d2",
+  "adj8": "2a6471d2",
+  "authored": "2a6471d2",
+  "default": "2a6471d2",
+  "hf": "2a6471d2",
+  "vf": "2a6471d2",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for actionButtonForwardNext 1`] = `
+{
+  "adj": "36d2a5dc",
+  "adj1": "36d2a5dc",
+  "adj2": "36d2a5dc",
+  "adj3": "36d2a5dc",
+  "adj4": "36d2a5dc",
+  "adj5": "36d2a5dc",
+  "adj6": "36d2a5dc",
+  "adj7": "36d2a5dc",
+  "adj8": "36d2a5dc",
+  "authored": "36d2a5dc",
+  "default": "36d2a5dc",
+  "hf": "36d2a5dc",
+  "vf": "36d2a5dc",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for actionButtonHelp 1`] = `
+{
+  "adj": "1c7545b9",
+  "adj1": "1c7545b9",
+  "adj2": "1c7545b9",
+  "adj3": "1c7545b9",
+  "adj4": "1c7545b9",
+  "adj5": "1c7545b9",
+  "adj6": "1c7545b9",
+  "adj7": "1c7545b9",
+  "adj8": "1c7545b9",
+  "authored": "1c7545b9",
+  "default": "1c7545b9",
+  "hf": "1c7545b9",
+  "vf": "1c7545b9",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for actionButtonHome 1`] = `
+{
+  "adj": "6063523b",
+  "adj1": "6063523b",
+  "adj2": "6063523b",
+  "adj3": "6063523b",
+  "adj4": "6063523b",
+  "adj5": "6063523b",
+  "adj6": "6063523b",
+  "adj7": "6063523b",
+  "adj8": "6063523b",
+  "authored": "6063523b",
+  "default": "6063523b",
+  "hf": "6063523b",
+  "vf": "6063523b",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for actionButtonInformation 1`] = `
+{
+  "adj": "a365b83b",
+  "adj1": "a365b83b",
+  "adj2": "a365b83b",
+  "adj3": "a365b83b",
+  "adj4": "a365b83b",
+  "adj5": "a365b83b",
+  "adj6": "a365b83b",
+  "adj7": "a365b83b",
+  "adj8": "a365b83b",
+  "authored": "a365b83b",
+  "default": "a365b83b",
+  "hf": "a365b83b",
+  "vf": "a365b83b",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for actionButtonMovie 1`] = `
+{
+  "adj": "31d2258e",
+  "adj1": "31d2258e",
+  "adj2": "31d2258e",
+  "adj3": "31d2258e",
+  "adj4": "31d2258e",
+  "adj5": "31d2258e",
+  "adj6": "31d2258e",
+  "adj7": "31d2258e",
+  "adj8": "31d2258e",
+  "authored": "31d2258e",
+  "default": "31d2258e",
+  "hf": "31d2258e",
+  "vf": "31d2258e",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for actionButtonReturn 1`] = `
+{
+  "adj": "0e00492b",
+  "adj1": "0e00492b",
+  "adj2": "0e00492b",
+  "adj3": "0e00492b",
+  "adj4": "0e00492b",
+  "adj5": "0e00492b",
+  "adj6": "0e00492b",
+  "adj7": "0e00492b",
+  "adj8": "0e00492b",
+  "authored": "0e00492b",
+  "default": "0e00492b",
+  "hf": "0e00492b",
+  "vf": "0e00492b",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for actionButtonSound 1`] = `
+{
+  "adj": "7f4285de",
+  "adj1": "7f4285de",
+  "adj2": "7f4285de",
+  "adj3": "7f4285de",
+  "adj4": "7f4285de",
+  "adj5": "7f4285de",
+  "adj6": "7f4285de",
+  "adj7": "7f4285de",
+  "adj8": "7f4285de",
+  "authored": "7f4285de",
+  "default": "7f4285de",
+  "hf": "7f4285de",
+  "vf": "7f4285de",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for arc 1`] = `
+{
+  "adj": "f08eb36e",
+  "adj1": "26064c3e",
+  "adj2": "adc79e54",
+  "adj3": "f08eb36e",
+  "adj4": "f08eb36e",
+  "adj5": "f08eb36e",
+  "adj6": "f08eb36e",
+  "adj7": "f08eb36e",
+  "adj8": "f08eb36e",
+  "authored": "713b9455",
+  "default": "f08eb36e",
+  "hf": "f08eb36e",
+  "vf": "f08eb36e",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for bentArrow 1`] = `
+{
+  "adj": "ab6f9fe2",
+  "adj1": "169afef8",
+  "adj2": "d05cf800",
+  "adj3": "db643244",
+  "adj4": "16b3d097",
+  "adj5": "ab6f9fe2",
+  "adj6": "ab6f9fe2",
+  "adj7": "ab6f9fe2",
+  "adj8": "ab6f9fe2",
+  "authored": "73b9bf60",
+  "default": "ab6f9fe2",
+  "hf": "ab6f9fe2",
+  "vf": "ab6f9fe2",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for bentConnector2 1`] = `
+{
+  "adj": "6a1891b4",
+  "adj1": "6a1891b4",
+  "adj2": "6a1891b4",
+  "adj3": "6a1891b4",
+  "adj4": "6a1891b4",
+  "adj5": "6a1891b4",
+  "adj6": "6a1891b4",
+  "adj7": "6a1891b4",
+  "adj8": "6a1891b4",
+  "authored": "6a1891b4",
+  "default": "6a1891b4",
+  "hf": "6a1891b4",
+  "vf": "6a1891b4",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for bentConnector3 1`] = `
+{
+  "adj": "334712dd",
+  "adj1": "204d4941",
+  "adj2": "1456f47b",
+  "adj3": "123ebb81",
+  "adj4": "e89b96c7",
+  "adj5": "39ba07ff",
+  "adj6": "4b25fc25",
+  "adj7": "6b90f6b5",
+  "adj8": "1456f47b",
+  "authored": "a83f4c53",
+  "default": "a83f4c53",
+  "hf": "62189efb",
+  "vf": "62189efb",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for bentConnector4 1`] = `
+{
+  "adj": "175d0e9f",
+  "adj1": "175d0e9f",
+  "adj2": "175d0e9f",
+  "adj3": "175d0e9f",
+  "adj4": "175d0e9f",
+  "adj5": "175d0e9f",
+  "adj6": "175d0e9f",
+  "adj7": "175d0e9f",
+  "adj8": "175d0e9f",
+  "authored": "175d0e9f",
+  "default": "175d0e9f",
+  "hf": "175d0e9f",
+  "vf": "175d0e9f",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for bentConnector5 1`] = `
+{
+  "adj": "175d0e9f",
+  "adj1": "175d0e9f",
+  "adj2": "175d0e9f",
+  "adj3": "175d0e9f",
+  "adj4": "175d0e9f",
+  "adj5": "175d0e9f",
+  "adj6": "175d0e9f",
+  "adj7": "175d0e9f",
+  "adj8": "175d0e9f",
+  "authored": "175d0e9f",
+  "default": "175d0e9f",
+  "hf": "175d0e9f",
+  "vf": "175d0e9f",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for bentUpArrow 1`] = `
+{
+  "adj": "9d971c94",
+  "adj1": "456d95ce",
+  "adj2": "ec730f88",
+  "adj3": "5631d01c",
+  "adj4": "9d971c94",
+  "adj5": "9d971c94",
+  "adj6": "9d971c94",
+  "adj7": "9d971c94",
+  "adj8": "9d971c94",
+  "authored": "0af97ee2",
+  "default": "9d971c94",
+  "hf": "9d971c94",
+  "vf": "9d971c94",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for bevel 1`] = `
+{
+  "adj": "32ec395d",
+  "adj1": "b2f82d29",
+  "adj2": "f0938981",
+  "adj3": "0941bc33",
+  "adj4": "5e074caf",
+  "adj5": "166c2761",
+  "adj6": "87950291",
+  "adj7": "9672a709",
+  "adj8": "f0938981",
+  "authored": "166c2761",
+  "default": "166c2761",
+  "hf": "9134290b",
+  "vf": "9134290b",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for blockArc 1`] = `
+{
+  "adj": "37ba2eb9",
+  "adj1": "6feed2e3",
+  "adj2": "379b36f1",
+  "adj3": "3f890c22",
+  "adj4": "37ba2eb9",
+  "adj5": "37ba2eb9",
+  "adj6": "37ba2eb9",
+  "adj7": "37ba2eb9",
+  "adj8": "37ba2eb9",
+  "authored": "d527e47c",
+  "default": "37ba2eb9",
+  "hf": "37ba2eb9",
+  "vf": "37ba2eb9",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for borderCallout1 1`] = `
+{
+  "adj": "b5f42505",
+  "adj1": "856e5bc9",
+  "adj2": "14eec657",
+  "adj3": "c6f20131",
+  "adj4": "d2e7fa1d",
+  "adj5": "b5f42505",
+  "adj6": "b5f42505",
+  "adj7": "b5f42505",
+  "adj8": "b5f42505",
+  "authored": "b1e97a9f",
+  "default": "e268aa9f",
+  "hf": "b5f42505",
+  "vf": "b5f42505",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for borderCallout2 1`] = `
+{
+  "adj": "e949a631",
+  "adj1": "1fec9145",
+  "adj2": "d8ffeabb",
+  "adj3": "831fcf0d",
+  "adj4": "0fab8ac9",
+  "adj5": "5332f3c0",
+  "adj6": "8d67de92",
+  "adj7": "e949a631",
+  "adj8": "e949a631",
+  "authored": "4a9d1efd",
+  "default": "782cd4e7",
+  "hf": "e949a631",
+  "vf": "e949a631",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for borderCallout3 1`] = `
+{
+  "adj": "54b8f454",
+  "adj1": "82474990",
+  "adj2": "c25e48d6",
+  "adj3": "ee1b79c8",
+  "adj4": "b292f9bc",
+  "adj5": "1c2c69ff",
+  "adj6": "091797f9",
+  "adj7": "1c7c1140",
+  "adj8": "903f6e5e",
+  "authored": "ce2a68a6",
+  "default": "54b8f454",
+  "hf": "54b8f454",
+  "vf": "54b8f454",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for bracePair 1`] = `
+{
+  "adj": "a5fe39d4",
+  "adj1": "908d0763",
+  "adj2": "10bfffd8",
+  "adj3": "a5fe39d4",
+  "adj4": "a5fe39d4",
+  "adj5": "780cd6c6",
+  "adj6": "98e9d34c",
+  "adj7": "33b90c11",
+  "adj8": "10bfffd8",
+  "authored": "bc023b16",
+  "default": "bc023b16",
+  "hf": "a5fe39d4",
+  "vf": "a5fe39d4",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for bracketPair 1`] = `
+{
+  "adj": "eadb492d",
+  "adj1": "1c93234a",
+  "adj2": "ce21a452",
+  "adj3": "48a63479",
+  "adj4": "8d735afe",
+  "adj5": "2c85f85d",
+  "adj6": "dfef8bdb",
+  "adj7": "c349044c",
+  "adj8": "ce21a452",
+  "authored": "dc8a0f73",
+  "default": "dc8a0f73",
+  "hf": "47ee420a",
+  "vf": "47ee420a",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for callout1 1`] = `
+{
+  "adj": "b5f42505",
+  "adj1": "856e5bc9",
+  "adj2": "14eec657",
+  "adj3": "c6f20131",
+  "adj4": "d2e7fa1d",
+  "adj5": "b5f42505",
+  "adj6": "b5f42505",
+  "adj7": "b5f42505",
+  "adj8": "b5f42505",
+  "authored": "b1e97a9f",
+  "default": "e268aa9f",
+  "hf": "b5f42505",
+  "vf": "b5f42505",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for callout2 1`] = `
+{
+  "adj": "e949a631",
+  "adj1": "1fec9145",
+  "adj2": "d8ffeabb",
+  "adj3": "831fcf0d",
+  "adj4": "0fab8ac9",
+  "adj5": "5332f3c0",
+  "adj6": "8d67de92",
+  "adj7": "e949a631",
+  "adj8": "e949a631",
+  "authored": "4a9d1efd",
+  "default": "782cd4e7",
+  "hf": "e949a631",
+  "vf": "e949a631",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for callout3 1`] = `
+{
+  "adj": "54b8f454",
+  "adj1": "82474990",
+  "adj2": "c25e48d6",
+  "adj3": "ee1b79c8",
+  "adj4": "b292f9bc",
+  "adj5": "1c2c69ff",
+  "adj6": "091797f9",
+  "adj7": "1c7c1140",
+  "adj8": "903f6e5e",
+  "authored": "ce2a68a6",
+  "default": "54b8f454",
+  "hf": "54b8f454",
+  "vf": "54b8f454",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for can 1`] = `
+{
+  "adj": "a7b1e92e",
+  "adj1": "5e18b494",
+  "adj2": "b43ab068",
+  "adj3": "ce730aef",
+  "adj4": "85bc5422",
+  "adj5": "8aa0e9bc",
+  "adj6": "674634e6",
+  "adj7": "62d8d7c9",
+  "adj8": "b43ab068",
+  "authored": "a7b1e92e",
+  "default": "a7b1e92e",
+  "hf": "3f6af06c",
+  "vf": "3f6af06c",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for chartPlus 1`] = `
+{
+  "adj": "701c4636",
+  "adj1": "701c4636",
+  "adj2": "701c4636",
+  "adj3": "701c4636",
+  "adj4": "701c4636",
+  "adj5": "701c4636",
+  "adj6": "701c4636",
+  "adj7": "701c4636",
+  "adj8": "701c4636",
+  "authored": "701c4636",
+  "default": "701c4636",
+  "hf": "701c4636",
+  "vf": "701c4636",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for chartStar 1`] = `
+{
+  "adj": "701c4636",
+  "adj1": "701c4636",
+  "adj2": "701c4636",
+  "adj3": "701c4636",
+  "adj4": "701c4636",
+  "adj5": "701c4636",
+  "adj6": "701c4636",
+  "adj7": "701c4636",
+  "adj8": "701c4636",
+  "authored": "701c4636",
+  "default": "701c4636",
+  "hf": "701c4636",
+  "vf": "701c4636",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for chartX 1`] = `
+{
+  "adj": "701c4636",
+  "adj1": "701c4636",
+  "adj2": "701c4636",
+  "adj3": "701c4636",
+  "adj4": "701c4636",
+  "adj5": "701c4636",
+  "adj6": "701c4636",
+  "adj7": "701c4636",
+  "adj8": "701c4636",
+  "authored": "701c4636",
+  "default": "701c4636",
+  "hf": "701c4636",
+  "vf": "701c4636",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for chevron 1`] = `
+{
+  "adj": "460b13fd",
+  "adj1": "da2ad913",
+  "adj2": "4af8d502",
+  "adj3": "1fc63c69",
+  "adj4": "cc9e5a38",
+  "adj5": "37bab6ea",
+  "adj6": "d2e23db6",
+  "adj7": "066ce984",
+  "adj8": "4af8d502",
+  "authored": "90aa0263",
+  "default": "90aa0263",
+  "hf": "8408bf87",
+  "vf": "8408bf87",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for chord 1`] = `
+{
+  "adj": "bb547b2f",
+  "adj1": "ffadcfab",
+  "adj2": "36c8922d",
+  "adj3": "bb547b2f",
+  "adj4": "bb547b2f",
+  "adj5": "bb547b2f",
+  "adj6": "bb547b2f",
+  "adj7": "bb547b2f",
+  "adj8": "bb547b2f",
+  "authored": "dc1b21dd",
+  "default": "bb547b2f",
+  "hf": "bb547b2f",
+  "vf": "bb547b2f",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for circularArrow 1`] = `
+{
+  "adj": "ed8a8bbd",
+  "adj1": "4ace26ff",
+  "adj2": "9088255e",
+  "adj3": "8a37b47b",
+  "adj4": "5c5c791f",
+  "adj5": "ed8a8bbd",
+  "adj6": "ed8a8bbd",
+  "adj7": "ed8a8bbd",
+  "adj8": "ed8a8bbd",
+  "authored": "1b8f739c",
+  "default": "ed8a8bbd",
+  "hf": "ed8a8bbd",
+  "vf": "ed8a8bbd",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for cloud 1`] = `
+{
+  "adj": "ec59b0f5",
+  "adj1": "ec59b0f5",
+  "adj2": "ec59b0f5",
+  "adj3": "ec59b0f5",
+  "adj4": "ec59b0f5",
+  "adj5": "ec59b0f5",
+  "adj6": "ec59b0f5",
+  "adj7": "ec59b0f5",
+  "adj8": "ec59b0f5",
+  "authored": "ec59b0f5",
+  "default": "ec59b0f5",
+  "hf": "ec59b0f5",
+  "vf": "ec59b0f5",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for cloudCallout 1`] = `
+{
+  "adj": "c9fd6397",
+  "adj1": "4435d6d0",
+  "adj2": "0ac0784b",
+  "adj3": "c9fd6397",
+  "adj4": "c9fd6397",
+  "adj5": "c9fd6397",
+  "adj6": "c9fd6397",
+  "adj7": "c9fd6397",
+  "adj8": "c9fd6397",
+  "authored": "a891e886",
+  "default": "c9fd6397",
+  "hf": "c9fd6397",
+  "vf": "c9fd6397",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for corner 1`] = `
+{
+  "adj": "e99d36f8",
+  "adj1": "b0ad8e92",
+  "adj2": "65664d7a",
+  "adj3": "e99d36f8",
+  "adj4": "e99d36f8",
+  "adj5": "e99d36f8",
+  "adj6": "e99d36f8",
+  "adj7": "e99d36f8",
+  "adj8": "e99d36f8",
+  "authored": "07dcfe04",
+  "default": "e99d36f8",
+  "hf": "e99d36f8",
+  "vf": "e99d36f8",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for cornerTabs 1`] = `
+{
+  "adj": "701c4636",
+  "adj1": "701c4636",
+  "adj2": "701c4636",
+  "adj3": "701c4636",
+  "adj4": "701c4636",
+  "adj5": "701c4636",
+  "adj6": "701c4636",
+  "adj7": "701c4636",
+  "adj8": "701c4636",
+  "authored": "701c4636",
+  "default": "701c4636",
+  "hf": "701c4636",
+  "vf": "701c4636",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for cube 1`] = `
+{
+  "adj": "db02712b",
+  "adj1": "11ee7b13",
+  "adj2": "754d2f45",
+  "adj3": "15d5b864",
+  "adj4": "fefc06c4",
+  "adj5": "473df729",
+  "adj6": "b2ed37bd",
+  "adj7": "9da8dbad",
+  "adj8": "754d2f45",
+  "authored": "db02712b",
+  "default": "db02712b",
+  "hf": "bb47a702",
+  "vf": "bb47a702",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for curvedConnector2 1`] = `
+{
+  "adj": "175d0e9f",
+  "adj1": "175d0e9f",
+  "adj2": "175d0e9f",
+  "adj3": "175d0e9f",
+  "adj4": "175d0e9f",
+  "adj5": "175d0e9f",
+  "adj6": "175d0e9f",
+  "adj7": "175d0e9f",
+  "adj8": "175d0e9f",
+  "authored": "175d0e9f",
+  "default": "175d0e9f",
+  "hf": "175d0e9f",
+  "vf": "175d0e9f",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for curvedConnector3 1`] = `
+{
+  "adj": "175d0e9f",
+  "adj1": "175d0e9f",
+  "adj2": "175d0e9f",
+  "adj3": "175d0e9f",
+  "adj4": "175d0e9f",
+  "adj5": "175d0e9f",
+  "adj6": "175d0e9f",
+  "adj7": "175d0e9f",
+  "adj8": "175d0e9f",
+  "authored": "175d0e9f",
+  "default": "175d0e9f",
+  "hf": "175d0e9f",
+  "vf": "175d0e9f",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for curvedConnector4 1`] = `
+{
+  "adj": "175d0e9f",
+  "adj1": "175d0e9f",
+  "adj2": "175d0e9f",
+  "adj3": "175d0e9f",
+  "adj4": "175d0e9f",
+  "adj5": "175d0e9f",
+  "adj6": "175d0e9f",
+  "adj7": "175d0e9f",
+  "adj8": "175d0e9f",
+  "authored": "175d0e9f",
+  "default": "175d0e9f",
+  "hf": "175d0e9f",
+  "vf": "175d0e9f",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for curvedConnector5 1`] = `
+{
+  "adj": "175d0e9f",
+  "adj1": "175d0e9f",
+  "adj2": "175d0e9f",
+  "adj3": "175d0e9f",
+  "adj4": "175d0e9f",
+  "adj5": "175d0e9f",
+  "adj6": "175d0e9f",
+  "adj7": "175d0e9f",
+  "adj8": "175d0e9f",
+  "authored": "175d0e9f",
+  "default": "175d0e9f",
+  "hf": "175d0e9f",
+  "vf": "175d0e9f",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for curvedDownArrow 1`] = `
+{
+  "adj": "23b03725",
+  "adj1": "b07de8d7",
+  "adj2": "b774c57e",
+  "adj3": "44160584",
+  "adj4": "23b03725",
+  "adj5": "23b03725",
+  "adj6": "23b03725",
+  "adj7": "23b03725",
+  "adj8": "23b03725",
+  "authored": "c5b29b23",
+  "default": "23b03725",
+  "hf": "23b03725",
+  "vf": "23b03725",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for curvedLeftArrow 1`] = `
+{
+  "adj": "243600eb",
+  "adj1": "bb0a3f5f",
+  "adj2": "79dd911e",
+  "adj3": "04ecd316",
+  "adj4": "243600eb",
+  "adj5": "243600eb",
+  "adj6": "243600eb",
+  "adj7": "243600eb",
+  "adj8": "243600eb",
+  "authored": "0f86daa8",
+  "default": "243600eb",
+  "hf": "243600eb",
+  "vf": "243600eb",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for curvedRightArrow 1`] = `
+{
+  "adj": "93af1376",
+  "adj1": "c8ad82ca",
+  "adj2": "948f4fae",
+  "adj3": "55602355",
+  "adj4": "93af1376",
+  "adj5": "93af1376",
+  "adj6": "93af1376",
+  "adj7": "93af1376",
+  "adj8": "93af1376",
+  "authored": "8cf29b65",
+  "default": "93af1376",
+  "hf": "93af1376",
+  "vf": "93af1376",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for curvedUpArrow 1`] = `
+{
+  "adj": "4881ac2c",
+  "adj1": "9915b179",
+  "adj2": "a772f994",
+  "adj3": "a0a72cfc",
+  "adj4": "4881ac2c",
+  "adj5": "4881ac2c",
+  "adj6": "4881ac2c",
+  "adj7": "4881ac2c",
+  "adj8": "4881ac2c",
+  "authored": "022271ae",
+  "default": "4881ac2c",
+  "hf": "4881ac2c",
+  "vf": "4881ac2c",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for decagon 1`] = `
+{
+  "adj": "f26e2413",
+  "adj1": "f26e2413",
+  "adj2": "f26e2413",
+  "adj3": "f26e2413",
+  "adj4": "f26e2413",
+  "adj5": "f26e2413",
+  "adj6": "f26e2413",
+  "adj7": "f26e2413",
+  "adj8": "f26e2413",
+  "authored": "f26e2413",
+  "default": "f26e2413",
+  "hf": "f26e2413",
+  "vf": "f26e2413",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for diagStripe 1`] = `
+{
+  "adj": "e250dbea",
+  "adj1": "7c94296c",
+  "adj2": "389be19c",
+  "adj3": "fd562510",
+  "adj4": "9aa93628",
+  "adj5": "79b04a0e",
+  "adj6": "7b898f8d",
+  "adj7": "2226b5c1",
+  "adj8": "389be19c",
+  "authored": "5e418043",
+  "default": "5e418043",
+  "hf": "1f92bb26",
+  "vf": "1f92bb26",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for diamond 1`] = `
+{
+  "adj": "de5edda5",
+  "adj1": "de5edda5",
+  "adj2": "de5edda5",
+  "adj3": "de5edda5",
+  "adj4": "de5edda5",
+  "adj5": "de5edda5",
+  "adj6": "de5edda5",
+  "adj7": "de5edda5",
+  "adj8": "de5edda5",
+  "authored": "de5edda5",
+  "default": "de5edda5",
+  "hf": "de5edda5",
+  "vf": "de5edda5",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for dodecagon 1`] = `
+{
+  "adj": "c77ad700",
+  "adj1": "c77ad700",
+  "adj2": "c77ad700",
+  "adj3": "c77ad700",
+  "adj4": "c77ad700",
+  "adj5": "c77ad700",
+  "adj6": "c77ad700",
+  "adj7": "c77ad700",
+  "adj8": "c77ad700",
+  "authored": "c77ad700",
+  "default": "c77ad700",
+  "hf": "c77ad700",
+  "vf": "c77ad700",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for donut 1`] = `
+{
+  "adj": "68672cda",
+  "adj1": "1b89ff9a",
+  "adj2": "375a07ab",
+  "adj3": "81ebe128",
+  "adj4": "fd0befab",
+  "adj5": "669b84f3",
+  "adj6": "8570af17",
+  "adj7": "dfff5e29",
+  "adj8": "375a07ab",
+  "authored": "68672cda",
+  "default": "68672cda",
+  "hf": "1fce8036",
+  "vf": "1fce8036",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for doubleWave 1`] = `
+{
+  "adj": "8c8a0e23",
+  "adj1": "31ddc2af",
+  "adj2": "508cae18",
+  "adj3": "8c8a0e23",
+  "adj4": "8c8a0e23",
+  "adj5": "8c8a0e23",
+  "adj6": "8c8a0e23",
+  "adj7": "8c8a0e23",
+  "adj8": "8c8a0e23",
+  "authored": "fdd0c934",
+  "default": "8c8a0e23",
+  "hf": "8c8a0e23",
+  "vf": "8c8a0e23",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for downArrow 1`] = `
+{
+  "adj": "12d51eeb",
+  "adj1": "311e172b",
+  "adj2": "778e2c05",
+  "adj3": "12d51eeb",
+  "adj4": "12d51eeb",
+  "adj5": "12d51eeb",
+  "adj6": "12d51eeb",
+  "adj7": "12d51eeb",
+  "adj8": "12d51eeb",
+  "authored": "b45b9a85",
+  "default": "12d51eeb",
+  "hf": "12d51eeb",
+  "vf": "12d51eeb",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for downArrowCallout 1`] = `
+{
+  "adj": "acdee07e",
+  "adj1": "68e54910",
+  "adj2": "cbc259f3",
+  "adj3": "f5f80e3e",
+  "adj4": "f38b9112",
+  "adj5": "acdee07e",
+  "adj6": "acdee07e",
+  "adj7": "acdee07e",
+  "adj8": "acdee07e",
+  "authored": "a93eefa3",
+  "default": "acdee07e",
+  "hf": "acdee07e",
+  "vf": "acdee07e",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for ellipse 1`] = `
+{
+  "adj": "c89ce113",
+  "adj1": "c89ce113",
+  "adj2": "c89ce113",
+  "adj3": "c89ce113",
+  "adj4": "c89ce113",
+  "adj5": "c89ce113",
+  "adj6": "c89ce113",
+  "adj7": "c89ce113",
+  "adj8": "c89ce113",
+  "authored": "c89ce113",
+  "default": "c89ce113",
+  "hf": "c89ce113",
+  "vf": "c89ce113",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for ellipseRibbon 1`] = `
+{
+  "adj": "664bd56d",
+  "adj1": "67af6a20",
+  "adj2": "c8c363dd",
+  "adj3": "1d0db329",
+  "adj4": "664bd56d",
+  "adj5": "664bd56d",
+  "adj6": "664bd56d",
+  "adj7": "664bd56d",
+  "adj8": "664bd56d",
+  "authored": "fbada04f",
+  "default": "664bd56d",
+  "hf": "664bd56d",
+  "vf": "664bd56d",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for ellipseRibbon2 1`] = `
+{
+  "adj": "1c4cd380",
+  "adj1": "34b140a7",
+  "adj2": "e820c5a0",
+  "adj3": "94be459d",
+  "adj4": "1c4cd380",
+  "adj5": "1c4cd380",
+  "adj6": "1c4cd380",
+  "adj7": "1c4cd380",
+  "adj8": "1c4cd380",
+  "authored": "50fb7ece",
+  "default": "1c4cd380",
+  "hf": "1c4cd380",
+  "vf": "1c4cd380",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for flowChartAlternateProcess 1`] = `
+{
+  "adj": "b7ca18d4",
+  "adj1": "98cf8556",
+  "adj2": "e46eb2ce",
+  "adj3": "48d6d074",
+  "adj4": "61e944a6",
+  "adj5": "90b3397a",
+  "adj6": "628ac804",
+  "adj7": "0d52e998",
+  "adj8": "e46eb2ce",
+  "authored": "98cf8556",
+  "default": "973e1838",
+  "hf": "e0c35d74",
+  "vf": "e0c35d74",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for flowChartCollate 1`] = `
+{
+  "adj": "10fc1a1c",
+  "adj1": "10fc1a1c",
+  "adj2": "10fc1a1c",
+  "adj3": "10fc1a1c",
+  "adj4": "10fc1a1c",
+  "adj5": "10fc1a1c",
+  "adj6": "10fc1a1c",
+  "adj7": "10fc1a1c",
+  "adj8": "10fc1a1c",
+  "authored": "10fc1a1c",
+  "default": "10fc1a1c",
+  "hf": "10fc1a1c",
+  "vf": "10fc1a1c",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for flowChartConnector 1`] = `
+{
+  "adj": "c89ce113",
+  "adj1": "c89ce113",
+  "adj2": "c89ce113",
+  "adj3": "c89ce113",
+  "adj4": "c89ce113",
+  "adj5": "c89ce113",
+  "adj6": "c89ce113",
+  "adj7": "c89ce113",
+  "adj8": "c89ce113",
+  "authored": "c89ce113",
+  "default": "c89ce113",
+  "hf": "c89ce113",
+  "vf": "c89ce113",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for flowChartDecision 1`] = `
+{
+  "adj": "de5edda5",
+  "adj1": "de5edda5",
+  "adj2": "de5edda5",
+  "adj3": "de5edda5",
+  "adj4": "de5edda5",
+  "adj5": "de5edda5",
+  "adj6": "de5edda5",
+  "adj7": "de5edda5",
+  "adj8": "de5edda5",
+  "authored": "de5edda5",
+  "default": "de5edda5",
+  "hf": "de5edda5",
+  "vf": "de5edda5",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for flowChartDelay 1`] = `
+{
+  "adj": "35c9ba2b",
+  "adj1": "35c9ba2b",
+  "adj2": "35c9ba2b",
+  "adj3": "35c9ba2b",
+  "adj4": "35c9ba2b",
+  "adj5": "35c9ba2b",
+  "adj6": "35c9ba2b",
+  "adj7": "35c9ba2b",
+  "adj8": "35c9ba2b",
+  "authored": "35c9ba2b",
+  "default": "35c9ba2b",
+  "hf": "35c9ba2b",
+  "vf": "35c9ba2b",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for flowChartDisplay 1`] = `
+{
+  "adj": "eaa09427",
+  "adj1": "eaa09427",
+  "adj2": "eaa09427",
+  "adj3": "eaa09427",
+  "adj4": "eaa09427",
+  "adj5": "eaa09427",
+  "adj6": "eaa09427",
+  "adj7": "eaa09427",
+  "adj8": "eaa09427",
+  "authored": "eaa09427",
+  "default": "eaa09427",
+  "hf": "eaa09427",
+  "vf": "eaa09427",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for flowChartDocument 1`] = `
+{
+  "adj": "2539225a",
+  "adj1": "2539225a",
+  "adj2": "2539225a",
+  "adj3": "2539225a",
+  "adj4": "2539225a",
+  "adj5": "2539225a",
+  "adj6": "2539225a",
+  "adj7": "2539225a",
+  "adj8": "2539225a",
+  "authored": "2539225a",
+  "default": "2539225a",
+  "hf": "2539225a",
+  "vf": "2539225a",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for flowChartExtract 1`] = `
+{
+  "adj": "ccf4d212",
+  "adj1": "334aed4f",
+  "adj2": "4c1dd7a4",
+  "adj3": "fce9f49e",
+  "adj4": "419be071",
+  "adj5": "fa21edc8",
+  "adj6": "e59067b2",
+  "adj7": "9572bef1",
+  "adj8": "4c1dd7a4",
+  "authored": "91a5d4a7",
+  "default": "91a5d4a7",
+  "hf": "aa806407",
+  "vf": "aa806407",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for flowChartInputOutput 1`] = `
+{
+  "adj": "4a6e64a8",
+  "adj1": "c15e7f83",
+  "adj2": "541a9891",
+  "adj3": "22168619",
+  "adj4": "f7b04e28",
+  "adj5": "812cfe80",
+  "adj6": "461e4784",
+  "adj7": "758251d0",
+  "adj8": "541a9891",
+  "authored": "78e3cb75",
+  "default": "78e3cb75",
+  "hf": "b94342d8",
+  "vf": "b94342d8",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for flowChartInternalStorage 1`] = `
+{
+  "adj": "cc17724d",
+  "adj1": "cc17724d",
+  "adj2": "cc17724d",
+  "adj3": "cc17724d",
+  "adj4": "cc17724d",
+  "adj5": "cc17724d",
+  "adj6": "cc17724d",
+  "adj7": "cc17724d",
+  "adj8": "cc17724d",
+  "authored": "cc17724d",
+  "default": "cc17724d",
+  "hf": "cc17724d",
+  "vf": "cc17724d",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for flowChartMagneticDisk 1`] = `
+{
+  "adj": "3f6af06c",
+  "adj1": "3f6af06c",
+  "adj2": "3f6af06c",
+  "adj3": "3f6af06c",
+  "adj4": "3f6af06c",
+  "adj5": "3f6af06c",
+  "adj6": "3f6af06c",
+  "adj7": "3f6af06c",
+  "adj8": "3f6af06c",
+  "authored": "3f6af06c",
+  "default": "3f6af06c",
+  "hf": "3f6af06c",
+  "vf": "3f6af06c",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for flowChartMagneticDrum 1`] = `
+{
+  "adj": "2bb91966",
+  "adj1": "2bb91966",
+  "adj2": "2bb91966",
+  "adj3": "2bb91966",
+  "adj4": "2bb91966",
+  "adj5": "2bb91966",
+  "adj6": "2bb91966",
+  "adj7": "2bb91966",
+  "adj8": "2bb91966",
+  "authored": "2bb91966",
+  "default": "2bb91966",
+  "hf": "2bb91966",
+  "vf": "2bb91966",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for flowChartMagneticTape 1`] = `
+{
+  "adj": "8f94b202",
+  "adj1": "8f94b202",
+  "adj2": "8f94b202",
+  "adj3": "8f94b202",
+  "adj4": "8f94b202",
+  "adj5": "8f94b202",
+  "adj6": "8f94b202",
+  "adj7": "8f94b202",
+  "adj8": "8f94b202",
+  "authored": "8f94b202",
+  "default": "8f94b202",
+  "hf": "8f94b202",
+  "vf": "8f94b202",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for flowChartManualInput 1`] = `
+{
+  "adj": "b9b3e1ef",
+  "adj1": "b9b3e1ef",
+  "adj2": "b9b3e1ef",
+  "adj3": "b9b3e1ef",
+  "adj4": "b9b3e1ef",
+  "adj5": "b9b3e1ef",
+  "adj6": "b9b3e1ef",
+  "adj7": "b9b3e1ef",
+  "adj8": "b9b3e1ef",
+  "authored": "b9b3e1ef",
+  "default": "b9b3e1ef",
+  "hf": "b9b3e1ef",
+  "vf": "b9b3e1ef",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for flowChartManualOperation 1`] = `
+{
+  "adj": "a5ed943d",
+  "adj1": "a4556844",
+  "adj2": "f173b0d2",
+  "adj3": "ecd762a0",
+  "adj4": "570f321d",
+  "adj5": "1fa62fd2",
+  "adj6": "eec2d2c8",
+  "adj7": "c67dae9b",
+  "adj8": "f173b0d2",
+  "authored": "56c50d38",
+  "default": "56c50d38",
+  "hf": "461d2b79",
+  "vf": "461d2b79",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for flowChartMerge 1`] = `
+{
+  "adj": "5d939cb4",
+  "adj1": "556bcaa0",
+  "adj2": "d371e6fe",
+  "adj3": "056fc1c0",
+  "adj4": "a5514ab7",
+  "adj5": "de93c126",
+  "adj6": "93affa8d",
+  "adj7": "a7ca46a9",
+  "adj8": "d371e6fe",
+  "authored": "d6121a25",
+  "default": "d6121a25",
+  "hf": "bd2e7825",
+  "vf": "bd2e7825",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for flowChartMultidocument 1`] = `
+{
+  "adj": "93bc7531",
+  "adj1": "93bc7531",
+  "adj2": "93bc7531",
+  "adj3": "93bc7531",
+  "adj4": "93bc7531",
+  "adj5": "93bc7531",
+  "adj6": "93bc7531",
+  "adj7": "93bc7531",
+  "adj8": "93bc7531",
+  "authored": "93bc7531",
+  "default": "93bc7531",
+  "hf": "93bc7531",
+  "vf": "93bc7531",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for flowChartOfflineStorage 1`] = `
+{
+  "adj": "701c4636",
+  "adj1": "701c4636",
+  "adj2": "701c4636",
+  "adj3": "701c4636",
+  "adj4": "701c4636",
+  "adj5": "701c4636",
+  "adj6": "701c4636",
+  "adj7": "701c4636",
+  "adj8": "701c4636",
+  "authored": "701c4636",
+  "default": "701c4636",
+  "hf": "701c4636",
+  "vf": "701c4636",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for flowChartOffpageConnector 1`] = `
+{
+  "adj": "802a3087",
+  "adj1": "802a3087",
+  "adj2": "802a3087",
+  "adj3": "802a3087",
+  "adj4": "802a3087",
+  "adj5": "802a3087",
+  "adj6": "802a3087",
+  "adj7": "802a3087",
+  "adj8": "802a3087",
+  "authored": "802a3087",
+  "default": "802a3087",
+  "hf": "802a3087",
+  "vf": "802a3087",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for flowChartOnlineStorage 1`] = `
+{
+  "adj": "1864b7d4",
+  "adj1": "1864b7d4",
+  "adj2": "1864b7d4",
+  "adj3": "1864b7d4",
+  "adj4": "1864b7d4",
+  "adj5": "1864b7d4",
+  "adj6": "1864b7d4",
+  "adj7": "1864b7d4",
+  "adj8": "1864b7d4",
+  "authored": "1864b7d4",
+  "default": "1864b7d4",
+  "hf": "1864b7d4",
+  "vf": "1864b7d4",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for flowChartOr 1`] = `
+{
+  "adj": "f8bef1f0",
+  "adj1": "f8bef1f0",
+  "adj2": "f8bef1f0",
+  "adj3": "f8bef1f0",
+  "adj4": "f8bef1f0",
+  "adj5": "f8bef1f0",
+  "adj6": "f8bef1f0",
+  "adj7": "f8bef1f0",
+  "adj8": "f8bef1f0",
+  "authored": "f8bef1f0",
+  "default": "f8bef1f0",
+  "hf": "f8bef1f0",
+  "vf": "f8bef1f0",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for flowChartPredefinedProcess 1`] = `
+{
+  "adj": "ef994338",
+  "adj1": "ef994338",
+  "adj2": "ef994338",
+  "adj3": "ef994338",
+  "adj4": "ef994338",
+  "adj5": "ef994338",
+  "adj6": "ef994338",
+  "adj7": "ef994338",
+  "adj8": "ef994338",
+  "authored": "ef994338",
+  "default": "ef994338",
+  "hf": "ef994338",
+  "vf": "ef994338",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for flowChartPreparation 1`] = `
+{
+  "adj": "a746e775",
+  "adj1": "efc3d095",
+  "adj2": "a321358d",
+  "adj3": "971dc03f",
+  "adj4": "918219ef",
+  "adj5": "d3d1c4cf",
+  "adj6": "d7873cf5",
+  "adj7": "7583db3d",
+  "adj8": "a321358d",
+  "authored": "a746e775",
+  "default": "a746e775",
+  "hf": "551f17cb",
+  "vf": "551f17cb",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for flowChartPunchedCard 1`] = `
+{
+  "adj": "a1a6ef45",
+  "adj1": "9b737143",
+  "adj2": "3baedc6d",
+  "adj3": "aa84b7a7",
+  "adj4": "6b35c83d",
+  "adj5": "78304193",
+  "adj6": "5e54416a",
+  "adj7": "bd0e4ac4",
+  "adj8": "3baedc6d",
+  "authored": "9b737143",
+  "default": "8117da94",
+  "hf": "08968a21",
+  "vf": "08968a21",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for flowChartPunchedTape 1`] = `
+{
+  "adj": "adda92d1",
+  "adj1": "adda92d1",
+  "adj2": "adda92d1",
+  "adj3": "adda92d1",
+  "adj4": "adda92d1",
+  "adj5": "adda92d1",
+  "adj6": "adda92d1",
+  "adj7": "adda92d1",
+  "adj8": "adda92d1",
+  "authored": "adda92d1",
+  "default": "adda92d1",
+  "hf": "adda92d1",
+  "vf": "adda92d1",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for flowChartSort 1`] = `
+{
+  "adj": "63961139",
+  "adj1": "63961139",
+  "adj2": "63961139",
+  "adj3": "63961139",
+  "adj4": "63961139",
+  "adj5": "63961139",
+  "adj6": "63961139",
+  "adj7": "63961139",
+  "adj8": "63961139",
+  "authored": "63961139",
+  "default": "63961139",
+  "hf": "63961139",
+  "vf": "63961139",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for flowChartSummingJunction 1`] = `
+{
+  "adj": "e481c8bb",
+  "adj1": "e481c8bb",
+  "adj2": "e481c8bb",
+  "adj3": "e481c8bb",
+  "adj4": "e481c8bb",
+  "adj5": "e481c8bb",
+  "adj6": "e481c8bb",
+  "adj7": "e481c8bb",
+  "adj8": "e481c8bb",
+  "authored": "e481c8bb",
+  "default": "e481c8bb",
+  "hf": "e481c8bb",
+  "vf": "e481c8bb",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for flowChartTerminator 1`] = `
+{
+  "adj": "b3e81f6b",
+  "adj1": "b3e81f6b",
+  "adj2": "b3e81f6b",
+  "adj3": "b3e81f6b",
+  "adj4": "b3e81f6b",
+  "adj5": "b3e81f6b",
+  "adj6": "b3e81f6b",
+  "adj7": "b3e81f6b",
+  "adj8": "b3e81f6b",
+  "authored": "b3e81f6b",
+  "default": "b3e81f6b",
+  "hf": "b3e81f6b",
+  "vf": "b3e81f6b",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for foldedCorner 1`] = `
+{
+  "adj": "24eaf3ac",
+  "adj1": "dce8ebd8",
+  "adj2": "84907562",
+  "adj3": "f163a10a",
+  "adj4": "5f2bf5d9",
+  "adj5": "950c2ade",
+  "adj6": "6eaaca9e",
+  "adj7": "24b86598",
+  "adj8": "84907562",
+  "authored": "27c1a1a2",
+  "default": "27c1a1a2",
+  "hf": "5cf94c9f",
+  "vf": "5cf94c9f",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for folderCorner 1`] = `
+{
+  "adj": "701c4636",
+  "adj1": "701c4636",
+  "adj2": "701c4636",
+  "adj3": "701c4636",
+  "adj4": "701c4636",
+  "adj5": "701c4636",
+  "adj6": "701c4636",
+  "adj7": "701c4636",
+  "adj8": "701c4636",
+  "authored": "701c4636",
+  "default": "701c4636",
+  "hf": "701c4636",
+  "vf": "701c4636",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for frame 1`] = `
+{
+  "adj": "f9b8afa1",
+  "adj1": "07bf2c79",
+  "adj2": "74eb4cad",
+  "adj3": "c3d6dbd7",
+  "adj4": "8e87301f",
+  "adj5": "f1672429",
+  "adj6": "e3002a3d",
+  "adj7": "b0d04e49",
+  "adj8": "74eb4cad",
+  "authored": "f1672429",
+  "default": "f1672429",
+  "hf": "ba9914b3",
+  "vf": "ba9914b3",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for funnel 1`] = `
+{
+  "adj": "701c4636",
+  "adj1": "701c4636",
+  "adj2": "701c4636",
+  "adj3": "701c4636",
+  "adj4": "701c4636",
+  "adj5": "701c4636",
+  "adj6": "701c4636",
+  "adj7": "701c4636",
+  "adj8": "701c4636",
+  "authored": "701c4636",
+  "default": "701c4636",
+  "hf": "701c4636",
+  "vf": "701c4636",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for gear6 1`] = `
+{
+  "adj": "953ca34c",
+  "adj1": "953ca34c",
+  "adj2": "953ca34c",
+  "adj3": "953ca34c",
+  "adj4": "953ca34c",
+  "adj5": "953ca34c",
+  "adj6": "953ca34c",
+  "adj7": "953ca34c",
+  "adj8": "953ca34c",
+  "authored": "953ca34c",
+  "default": "953ca34c",
+  "hf": "953ca34c",
+  "vf": "953ca34c",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for gear9 1`] = `
+{
+  "adj": "953ca34c",
+  "adj1": "953ca34c",
+  "adj2": "953ca34c",
+  "adj3": "953ca34c",
+  "adj4": "953ca34c",
+  "adj5": "953ca34c",
+  "adj6": "953ca34c",
+  "adj7": "953ca34c",
+  "adj8": "953ca34c",
+  "authored": "953ca34c",
+  "default": "953ca34c",
+  "hf": "953ca34c",
+  "vf": "953ca34c",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for halfFrame 1`] = `
+{
+  "adj": "a91929a2",
+  "adj1": "2ec827f1",
+  "adj2": "8131e4d6",
+  "adj3": "a91929a2",
+  "adj4": "a91929a2",
+  "adj5": "a91929a2",
+  "adj6": "a91929a2",
+  "adj7": "a91929a2",
+  "adj8": "a91929a2",
+  "authored": "d09a2887",
+  "default": "a91929a2",
+  "hf": "a91929a2",
+  "vf": "a91929a2",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for heart 1`] = `
+{
+  "adj": "1e87ff1d",
+  "adj1": "1e87ff1d",
+  "adj2": "1e87ff1d",
+  "adj3": "1e87ff1d",
+  "adj4": "1e87ff1d",
+  "adj5": "1e87ff1d",
+  "adj6": "1e87ff1d",
+  "adj7": "1e87ff1d",
+  "adj8": "1e87ff1d",
+  "authored": "1e87ff1d",
+  "default": "1e87ff1d",
+  "hf": "1e87ff1d",
+  "vf": "1e87ff1d",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for heptagon 1`] = `
+{
+  "adj": "5fef3723",
+  "adj1": "5fef3723",
+  "adj2": "5fef3723",
+  "adj3": "5fef3723",
+  "adj4": "5fef3723",
+  "adj5": "5fef3723",
+  "adj6": "5fef3723",
+  "adj7": "5fef3723",
+  "adj8": "5fef3723",
+  "authored": "5fef3723",
+  "default": "5fef3723",
+  "hf": "5fef3723",
+  "vf": "5fef3723",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for hexagon 1`] = `
+{
+  "adj": "a746e775",
+  "adj1": "efc3d095",
+  "adj2": "a321358d",
+  "adj3": "971dc03f",
+  "adj4": "918219ef",
+  "adj5": "d3d1c4cf",
+  "adj6": "d7873cf5",
+  "adj7": "7583db3d",
+  "adj8": "a321358d",
+  "authored": "a746e775",
+  "default": "a746e775",
+  "hf": "551f17cb",
+  "vf": "551f17cb",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for homePlate 1`] = `
+{
+  "adj": "d4be1bf3",
+  "adj1": "265d4ddd",
+  "adj2": "9a069dab",
+  "adj3": "01a768b3",
+  "adj4": "0178f69b",
+  "adj5": "a2ce8eb1",
+  "adj6": "9db83833",
+  "adj7": "113060f7",
+  "adj8": "9a069dab",
+  "authored": "06c5b64b",
+  "default": "06c5b64b",
+  "hf": "66928c3b",
+  "vf": "66928c3b",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for horizontalScroll 1`] = `
+{
+  "adj": "8abb405a",
+  "adj1": "44c19537",
+  "adj2": "22d97b47",
+  "adj3": "8abb405a",
+  "adj4": "8abb405a",
+  "adj5": "1a6020e7",
+  "adj6": "27581ff5",
+  "adj7": "2b0c41b2",
+  "adj8": "22d97b47",
+  "authored": "1a6020e7",
+  "default": "1a6020e7",
+  "hf": "8abb405a",
+  "vf": "8abb405a",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for irregularSeal1 1`] = `
+{
+  "adj": "9e87697d",
+  "adj1": "9e87697d",
+  "adj2": "9e87697d",
+  "adj3": "9e87697d",
+  "adj4": "9e87697d",
+  "adj5": "9e87697d",
+  "adj6": "9e87697d",
+  "adj7": "9e87697d",
+  "adj8": "9e87697d",
+  "authored": "9e87697d",
+  "default": "9e87697d",
+  "hf": "9e87697d",
+  "vf": "9e87697d",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for irregularSeal2 1`] = `
+{
+  "adj": "3f4e4398",
+  "adj1": "3f4e4398",
+  "adj2": "3f4e4398",
+  "adj3": "3f4e4398",
+  "adj4": "3f4e4398",
+  "adj5": "3f4e4398",
+  "adj6": "3f4e4398",
+  "adj7": "3f4e4398",
+  "adj8": "3f4e4398",
+  "authored": "3f4e4398",
+  "default": "3f4e4398",
+  "hf": "3f4e4398",
+  "vf": "3f4e4398",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for leftArrow 1`] = `
+{
+  "adj": "26814464",
+  "adj1": "e9982e40",
+  "adj2": "6acd8a48",
+  "adj3": "26814464",
+  "adj4": "26814464",
+  "adj5": "26814464",
+  "adj6": "26814464",
+  "adj7": "26814464",
+  "adj8": "26814464",
+  "authored": "4fd756c4",
+  "default": "26814464",
+  "hf": "26814464",
+  "vf": "26814464",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for leftArrowCallout 1`] = `
+{
+  "adj": "c13e6e50",
+  "adj1": "ca9ba858",
+  "adj2": "cac8550d",
+  "adj3": "894e5480",
+  "adj4": "22da740e",
+  "adj5": "c13e6e50",
+  "adj6": "c13e6e50",
+  "adj7": "c13e6e50",
+  "adj8": "c13e6e50",
+  "authored": "b0a87353",
+  "default": "c13e6e50",
+  "hf": "c13e6e50",
+  "vf": "c13e6e50",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for leftBrace 1`] = `
+{
+  "adj": "91301958",
+  "adj1": "b0cf5caf",
+  "adj2": "57aefa7a",
+  "adj3": "91301958",
+  "adj4": "91301958",
+  "adj5": "91301958",
+  "adj6": "91301958",
+  "adj7": "91301958",
+  "adj8": "91301958",
+  "authored": "70785146",
+  "default": "91301958",
+  "hf": "91301958",
+  "vf": "91301958",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for leftBracket 1`] = `
+{
+  "adj": "593f2468",
+  "adj1": "ed69603c",
+  "adj2": "82e3eaba",
+  "adj3": "dc164b10",
+  "adj4": "ebec06c8",
+  "adj5": "5a477b90",
+  "adj6": "86723277",
+  "adj7": "95d2da76",
+  "adj8": "82e3eaba",
+  "authored": "64fc5fdf",
+  "default": "64fc5fdf",
+  "hf": "c06e7edd",
+  "vf": "c06e7edd",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for leftCircularArrow 1`] = `
+{
+  "adj": "666106cb",
+  "adj1": "7f572e37",
+  "adj2": "fed35135",
+  "adj3": "ab3ae4ad",
+  "adj4": "690df6cb",
+  "adj5": "666106cb",
+  "adj6": "666106cb",
+  "adj7": "666106cb",
+  "adj8": "666106cb",
+  "authored": "e74629db",
+  "default": "666106cb",
+  "hf": "666106cb",
+  "vf": "666106cb",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for leftRightArrow 1`] = `
+{
+  "adj": "f626af57",
+  "adj1": "cdbdd99f",
+  "adj2": "3046bd23",
+  "adj3": "f626af57",
+  "adj4": "f626af57",
+  "adj5": "f626af57",
+  "adj6": "f626af57",
+  "adj7": "f626af57",
+  "adj8": "f626af57",
+  "authored": "3e817057",
+  "default": "f626af57",
+  "hf": "f626af57",
+  "vf": "f626af57",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for leftRightArrowCallout 1`] = `
+{
+  "adj": "18dededb",
+  "adj1": "5e14f50d",
+  "adj2": "f4768815",
+  "adj3": "89f42a19",
+  "adj4": "17aaea43",
+  "adj5": "18dededb",
+  "adj6": "18dededb",
+  "adj7": "18dededb",
+  "adj8": "18dededb",
+  "authored": "b5574f01",
+  "default": "18dededb",
+  "hf": "18dededb",
+  "vf": "18dededb",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for leftRightCircularArrow 1`] = `
+{
+  "adj": "701c4636",
+  "adj1": "701c4636",
+  "adj2": "701c4636",
+  "adj3": "701c4636",
+  "adj4": "701c4636",
+  "adj5": "701c4636",
+  "adj6": "701c4636",
+  "adj7": "701c4636",
+  "adj8": "701c4636",
+  "authored": "701c4636",
+  "default": "701c4636",
+  "hf": "701c4636",
+  "vf": "701c4636",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for leftRightRibbon 1`] = `
+{
+  "adj": "cb99b9d4",
+  "adj1": "05ed1505",
+  "adj2": "aae19740",
+  "adj3": "14b83e86",
+  "adj4": "cb99b9d4",
+  "adj5": "cb99b9d4",
+  "adj6": "cb99b9d4",
+  "adj7": "cb99b9d4",
+  "adj8": "cb99b9d4",
+  "authored": "ec7386f9",
+  "default": "cb99b9d4",
+  "hf": "cb99b9d4",
+  "vf": "cb99b9d4",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for leftRightUpArrow 1`] = `
+{
+  "adj": "604e0da9",
+  "adj1": "530cd661",
+  "adj2": "e69116c8",
+  "adj3": "604e0da9",
+  "adj4": "604e0da9",
+  "adj5": "604e0da9",
+  "adj6": "604e0da9",
+  "adj7": "604e0da9",
+  "adj8": "604e0da9",
+  "authored": "42299e5a",
+  "default": "604e0da9",
+  "hf": "604e0da9",
+  "vf": "604e0da9",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for leftUpArrow 1`] = `
+{
+  "adj": "69fed3ba",
+  "adj1": "8796d610",
+  "adj2": "838b0782",
+  "adj3": "a2df8062",
+  "adj4": "69fed3ba",
+  "adj5": "69fed3ba",
+  "adj6": "69fed3ba",
+  "adj7": "69fed3ba",
+  "adj8": "69fed3ba",
+  "authored": "dd45ad5e",
+  "default": "69fed3ba",
+  "hf": "69fed3ba",
+  "vf": "69fed3ba",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for lightningBolt 1`] = `
+{
+  "adj": "f12ab771",
+  "adj1": "f12ab771",
+  "adj2": "f12ab771",
+  "adj3": "f12ab771",
+  "adj4": "f12ab771",
+  "adj5": "f12ab771",
+  "adj6": "f12ab771",
+  "adj7": "f12ab771",
+  "adj8": "f12ab771",
+  "authored": "f12ab771",
+  "default": "f12ab771",
+  "hf": "f12ab771",
+  "vf": "f12ab771",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for line 1`] = `
+{
+  "adj": "175d0e9f",
+  "adj1": "175d0e9f",
+  "adj2": "175d0e9f",
+  "adj3": "175d0e9f",
+  "adj4": "175d0e9f",
+  "adj5": "175d0e9f",
+  "adj6": "175d0e9f",
+  "adj7": "175d0e9f",
+  "adj8": "175d0e9f",
+  "authored": "175d0e9f",
+  "default": "175d0e9f",
+  "hf": "175d0e9f",
+  "vf": "175d0e9f",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for lineInv 1`] = `
+{
+  "adj": "701c4636",
+  "adj1": "701c4636",
+  "adj2": "701c4636",
+  "adj3": "701c4636",
+  "adj4": "701c4636",
+  "adj5": "701c4636",
+  "adj6": "701c4636",
+  "adj7": "701c4636",
+  "adj8": "701c4636",
+  "authored": "701c4636",
+  "default": "701c4636",
+  "hf": "701c4636",
+  "vf": "701c4636",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for mathDivide 1`] = `
+{
+  "adj": "a534c2b0",
+  "adj1": "f4cf51b6",
+  "adj2": "9b0b8518",
+  "adj3": "d90ebc73",
+  "adj4": "9134b49a",
+  "adj5": "4c40a864",
+  "adj6": "34a61bb0",
+  "adj7": "5834bfa6",
+  "adj8": "9b0b8518",
+  "authored": "524c0dac",
+  "default": "3e3647af",
+  "hf": "9134b49a",
+  "vf": "9134b49a",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for mathEqual 1`] = `
+{
+  "adj": "2dafbe41",
+  "adj1": "eca3cb77",
+  "adj2": "e3e0bd0f",
+  "adj3": "4fce4cd9",
+  "adj4": "c5724e4f",
+  "adj5": "e52d737f",
+  "adj6": "2f7fdc5f",
+  "adj7": "5c1de167",
+  "adj8": "e3e0bd0f",
+  "authored": "768e89c7",
+  "default": "b177edf3",
+  "hf": "c5724e4f",
+  "vf": "c5724e4f",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for mathMinus 1`] = `
+{
+  "adj": "c0a4ae2a",
+  "adj1": "5443e906",
+  "adj2": "4200df9e",
+  "adj3": "a2952ae2",
+  "adj4": "f2db8faa",
+  "adj5": "242514ba",
+  "adj6": "54431dda",
+  "adj7": "4a6b0fd6",
+  "adj8": "4200df9e",
+  "authored": "5443e906",
+  "default": "d76c3572",
+  "hf": "962a3954",
+  "vf": "962a3954",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for mathMultiply 1`] = `
+{
+  "adj": "7fc47e46",
+  "adj1": "7ef2a197",
+  "adj2": "0ff282d4",
+  "adj3": "5489494b",
+  "adj4": "8b45bc4f",
+  "adj5": "c6414551",
+  "adj6": "75030c56",
+  "adj7": "95ffffe5",
+  "adj8": "0ff282d4",
+  "authored": "7ef2a197",
+  "default": "10839cb1",
+  "hf": "a70909da",
+  "vf": "a70909da",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for mathNotEqual 1`] = `
+{
+  "adj": "56ab2395",
+  "adj1": "6a0a35dd",
+  "adj2": "22be1152",
+  "adj3": "5eec32cf",
+  "adj4": "040487e5",
+  "adj5": "53410bb5",
+  "adj6": "f23e85fe",
+  "adj7": "d3e07bdf",
+  "adj8": "22be1152",
+  "authored": "1d4fbbbc",
+  "default": "1f0a695c",
+  "hf": "e154fbc1",
+  "vf": "e154fbc1",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for mathPlus 1`] = `
+{
+  "adj": "12bfb39e",
+  "adj1": "21742afe",
+  "adj2": "99e1b746",
+  "adj3": "23b80986",
+  "adj4": "09de2e7e",
+  "adj5": "1a3a2f62",
+  "adj6": "d72c693e",
+  "adj7": "5ab6dca2",
+  "adj8": "99e1b746",
+  "authored": "21742afe",
+  "default": "eaff5fa2",
+  "hf": "249e6c96",
+  "vf": "249e6c96",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for moon 1`] = `
+{
+  "adj": "a3f796e1",
+  "adj1": "01fb9d9d",
+  "adj2": "c33e42ea",
+  "adj3": "a4ef480c",
+  "adj4": "156d2d55",
+  "adj5": "693fa20c",
+  "adj6": "32136cdd",
+  "adj7": "440f468b",
+  "adj8": "c33e42ea",
+  "authored": "b2e47bbe",
+  "default": "b2e47bbe",
+  "hf": "f5d9a0e2",
+  "vf": "f5d9a0e2",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for noSmoking 1`] = `
+{
+  "adj": "c41e1e2c",
+  "adj1": "76d3f2d3",
+  "adj2": "af52da7e",
+  "adj3": "6f93fcfb",
+  "adj4": "ff1962de",
+  "adj5": "711b7547",
+  "adj6": "1a882664",
+  "adj7": "7e5a6c63",
+  "adj8": "af52da7e",
+  "authored": "4699d94b",
+  "default": "4699d94b",
+  "hf": "0b9c3d37",
+  "vf": "0b9c3d37",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for nonIsoscelesTrapezoid 1`] = `
+{
+  "adj": "701c4636",
+  "adj1": "701c4636",
+  "adj2": "701c4636",
+  "adj3": "701c4636",
+  "adj4": "701c4636",
+  "adj5": "701c4636",
+  "adj6": "701c4636",
+  "adj7": "701c4636",
+  "adj8": "701c4636",
+  "authored": "701c4636",
+  "default": "701c4636",
+  "hf": "701c4636",
+  "vf": "701c4636",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for notchedRightArrow 1`] = `
+{
+  "adj": "68777915",
+  "adj1": "709af18d",
+  "adj2": "cf468a15",
+  "adj3": "68777915",
+  "adj4": "68777915",
+  "adj5": "68777915",
+  "adj6": "68777915",
+  "adj7": "68777915",
+  "adj8": "68777915",
+  "authored": "477794ce",
+  "default": "68777915",
+  "hf": "68777915",
+  "vf": "68777915",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for octagon 1`] = `
+{
+  "adj": "8fca4fda",
+  "adj1": "08e205c8",
+  "adj2": "f30e73ba",
+  "adj3": "59904f30",
+  "adj4": "a72bdf76",
+  "adj5": "74cfdbb4",
+  "adj6": "ccfae4f0",
+  "adj7": "80731544",
+  "adj8": "f30e73ba",
+  "authored": "8fca4fda",
+  "default": "8fca4fda",
+  "hf": "951f8d18",
+  "vf": "951f8d18",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for parallelogram 1`] = `
+{
+  "adj": "4a6e64a8",
+  "adj1": "c15e7f83",
+  "adj2": "541a9891",
+  "adj3": "22168619",
+  "adj4": "f7b04e28",
+  "adj5": "812cfe80",
+  "adj6": "461e4784",
+  "adj7": "758251d0",
+  "adj8": "541a9891",
+  "authored": "78e3cb75",
+  "default": "78e3cb75",
+  "hf": "b94342d8",
+  "vf": "b94342d8",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for pentagon 1`] = `
+{
+  "adj": "f70017ad",
+  "adj1": "f70017ad",
+  "adj2": "f70017ad",
+  "adj3": "f70017ad",
+  "adj4": "f70017ad",
+  "adj5": "f70017ad",
+  "adj6": "f70017ad",
+  "adj7": "f70017ad",
+  "adj8": "f70017ad",
+  "authored": "f70017ad",
+  "default": "f70017ad",
+  "hf": "f70017ad",
+  "vf": "f70017ad",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for pie 1`] = `
+{
+  "adj": "a562dd03",
+  "adj1": "6589df08",
+  "adj2": "63f0ace8",
+  "adj3": "a562dd03",
+  "adj4": "a562dd03",
+  "adj5": "a562dd03",
+  "adj6": "a562dd03",
+  "adj7": "a562dd03",
+  "adj8": "a562dd03",
+  "authored": "2013284d",
+  "default": "a562dd03",
+  "hf": "a562dd03",
+  "vf": "a562dd03",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for pieWedge 1`] = `
+{
+  "adj": "b08dc39c",
+  "adj1": "36775057",
+  "adj2": "f61fdff0",
+  "adj3": "b08dc39c",
+  "adj4": "b08dc39c",
+  "adj5": "b08dc39c",
+  "adj6": "b08dc39c",
+  "adj7": "b08dc39c",
+  "adj8": "b08dc39c",
+  "authored": "8e312341",
+  "default": "b08dc39c",
+  "hf": "b08dc39c",
+  "vf": "b08dc39c",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for plaque 1`] = `
+{
+  "adj": "7b7af254",
+  "adj1": "bd926a0d",
+  "adj2": "2595c672",
+  "adj3": "ecdcb255",
+  "adj4": "f560a35a",
+  "adj5": "153ac563",
+  "adj6": "bff8aa1f",
+  "adj7": "769fdbda",
+  "adj8": "2595c672",
+  "authored": "3a0b89ee",
+  "default": "3a0b89ee",
+  "hf": "f4515b10",
+  "vf": "f4515b10",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for plaqueTabs 1`] = `
+{
+  "adj": "701c4636",
+  "adj1": "701c4636",
+  "adj2": "701c4636",
+  "adj3": "701c4636",
+  "adj4": "701c4636",
+  "adj5": "701c4636",
+  "adj6": "701c4636",
+  "adj7": "701c4636",
+  "adj8": "701c4636",
+  "authored": "701c4636",
+  "default": "701c4636",
+  "hf": "701c4636",
+  "vf": "701c4636",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for plus 1`] = `
+{
+  "adj": "7cb7e956",
+  "adj1": "8d2add1e",
+  "adj2": "ddc8d6d2",
+  "adj3": "8d6ddeb0",
+  "adj4": "58abc88a",
+  "adj5": "adef8422",
+  "adj6": "1b7c7572",
+  "adj7": "3d7cc83c",
+  "adj8": "ddc8d6d2",
+  "authored": "7cb7e956",
+  "default": "7cb7e956",
+  "hf": "604f42e6",
+  "vf": "604f42e6",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for quadArrow 1`] = `
+{
+  "adj": "5c2679a3",
+  "adj1": "adc8d28d",
+  "adj2": "a9e7b209",
+  "adj3": "44f4d4c5",
+  "adj4": "5c2679a3",
+  "adj5": "5c2679a3",
+  "adj6": "5c2679a3",
+  "adj7": "5c2679a3",
+  "adj8": "5c2679a3",
+  "authored": "ff6c40df",
+  "default": "5c2679a3",
+  "hf": "5c2679a3",
+  "vf": "5c2679a3",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for quadArrowCallout 1`] = `
+{
+  "adj": "85d760af",
+  "adj1": "a9031f6b",
+  "adj2": "3ad38af7",
+  "adj3": "44eb9771",
+  "adj4": "7e8c0c23",
+  "adj5": "85d760af",
+  "adj6": "85d760af",
+  "adj7": "85d760af",
+  "adj8": "85d760af",
+  "authored": "1781738b",
+  "default": "85d760af",
+  "hf": "85d760af",
+  "vf": "85d760af",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for rect 1`] = `
+{
+  "adj": "701c4636",
+  "adj1": "701c4636",
+  "adj2": "701c4636",
+  "adj3": "701c4636",
+  "adj4": "701c4636",
+  "adj5": "701c4636",
+  "adj6": "701c4636",
+  "adj7": "701c4636",
+  "adj8": "701c4636",
+  "authored": "701c4636",
+  "default": "701c4636",
+  "hf": "701c4636",
+  "vf": "701c4636",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for ribbon 1`] = `
+{
+  "adj": "349122a9",
+  "adj1": "f0df8c51",
+  "adj2": "3812ac71",
+  "adj3": "349122a9",
+  "adj4": "349122a9",
+  "adj5": "349122a9",
+  "adj6": "349122a9",
+  "adj7": "349122a9",
+  "adj8": "349122a9",
+  "authored": "d7558115",
+  "default": "349122a9",
+  "hf": "349122a9",
+  "vf": "349122a9",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for ribbon2 1`] = `
+{
+  "adj": "72f400ae",
+  "adj1": "b634524d",
+  "adj2": "4c3ff34a",
+  "adj3": "72f400ae",
+  "adj4": "72f400ae",
+  "adj5": "72f400ae",
+  "adj6": "72f400ae",
+  "adj7": "72f400ae",
+  "adj8": "72f400ae",
+  "authored": "78732af5",
+  "default": "72f400ae",
+  "hf": "72f400ae",
+  "vf": "72f400ae",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for rightArrow 1`] = `
+{
+  "adj": "92e3af87",
+  "adj1": "67348eb9",
+  "adj2": "b7f29249",
+  "adj3": "92e3af87",
+  "adj4": "92e3af87",
+  "adj5": "92e3af87",
+  "adj6": "92e3af87",
+  "adj7": "92e3af87",
+  "adj8": "92e3af87",
+  "authored": "705470a3",
+  "default": "92e3af87",
+  "hf": "92e3af87",
+  "vf": "92e3af87",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for rightArrowCallout 1`] = `
+{
+  "adj": "a8ce5de5",
+  "adj1": "6a3a7c63",
+  "adj2": "66dc9290",
+  "adj3": "330f4163",
+  "adj4": "4bd219d1",
+  "adj5": "a8ce5de5",
+  "adj6": "a8ce5de5",
+  "adj7": "a8ce5de5",
+  "adj8": "a8ce5de5",
+  "authored": "445daf54",
+  "default": "a8ce5de5",
+  "hf": "a8ce5de5",
+  "vf": "a8ce5de5",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for rightBrace 1`] = `
+{
+  "adj": "3f7ca072",
+  "adj1": "6a8cf0b8",
+  "adj2": "5b81d48a",
+  "adj3": "3f7ca072",
+  "adj4": "3f7ca072",
+  "adj5": "3f7ca072",
+  "adj6": "3f7ca072",
+  "adj7": "3f7ca072",
+  "adj8": "3f7ca072",
+  "authored": "f3aca0ad",
+  "default": "3f7ca072",
+  "hf": "3f7ca072",
+  "vf": "3f7ca072",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for rightBracket 1`] = `
+{
+  "adj": "a1e171f6",
+  "adj1": "053a53ff",
+  "adj2": "3f930c18",
+  "adj3": "859808d3",
+  "adj4": "75330c69",
+  "adj5": "d9994bfe",
+  "adj6": "96e41fc4",
+  "adj7": "1026fea3",
+  "adj8": "3f930c18",
+  "authored": "b0965bf7",
+  "default": "b0965bf7",
+  "hf": "5956d0f3",
+  "vf": "5956d0f3",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for round1Rect 1`] = `
+{
+  "adj": "f756a7a2",
+  "adj1": "11a3f3aa",
+  "adj2": "c0506411",
+  "adj3": "8649f24f",
+  "adj4": "05b1e599",
+  "adj5": "783d6cb2",
+  "adj6": "e024add1",
+  "adj7": "c984630e",
+  "adj8": "c0506411",
+  "authored": "11a3f3aa",
+  "default": "5746dc5b",
+  "hf": "0829a2cd",
+  "vf": "0829a2cd",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for round2DiagRect 1`] = `
+{
+  "adj": "19a3cc0f",
+  "adj1": "18af2e4a",
+  "adj2": "d216eebd",
+  "adj3": "21e83d15",
+  "adj4": "b5226e25",
+  "adj5": "d6e966bb",
+  "adj6": "966ad9ee",
+  "adj7": "cbdc4de3",
+  "adj8": "d216eebd",
+  "authored": "e8ab16cf",
+  "default": "c6ffbb8f",
+  "hf": "4f2049f6",
+  "vf": "4f2049f6",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for round2SameRect 1`] = `
+{
+  "adj": "e268fc49",
+  "adj1": "28a05d55",
+  "adj2": "085f2042",
+  "adj3": "bff584fe",
+  "adj4": "b8043f82",
+  "adj5": "f80d37f3",
+  "adj6": "cabd0841",
+  "adj7": "daa15190",
+  "adj8": "085f2042",
+  "authored": "25d97fa9",
+  "default": "22122dc5",
+  "hf": "6000968a",
+  "vf": "6000968a",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for roundRect 1`] = `
+{
+  "adj": "b7ca18d4",
+  "adj1": "98cf8556",
+  "adj2": "e46eb2ce",
+  "adj3": "48d6d074",
+  "adj4": "61e944a6",
+  "adj5": "90b3397a",
+  "adj6": "628ac804",
+  "adj7": "0d52e998",
+  "adj8": "e46eb2ce",
+  "authored": "98cf8556",
+  "default": "973e1838",
+  "hf": "e0c35d74",
+  "vf": "e0c35d74",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for rtTriangle 1`] = `
+{
+  "adj": "1760cb59",
+  "adj1": "1760cb59",
+  "adj2": "1760cb59",
+  "adj3": "1760cb59",
+  "adj4": "1760cb59",
+  "adj5": "1760cb59",
+  "adj6": "1760cb59",
+  "adj7": "1760cb59",
+  "adj8": "1760cb59",
+  "authored": "1760cb59",
+  "default": "1760cb59",
+  "hf": "1760cb59",
+  "vf": "1760cb59",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for smileyFace 1`] = `
+{
+  "adj": "8507aae9",
+  "adj1": "8507aae9",
+  "adj2": "8507aae9",
+  "adj3": "8507aae9",
+  "adj4": "8507aae9",
+  "adj5": "8507aae9",
+  "adj6": "8507aae9",
+  "adj7": "8507aae9",
+  "adj8": "8507aae9",
+  "authored": "8507aae9",
+  "default": "8507aae9",
+  "hf": "8507aae9",
+  "vf": "8507aae9",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for snip1Rect 1`] = `
+{
+  "adj": "ce383466",
+  "adj1": "f72bf1a6",
+  "adj2": "4e801397",
+  "adj3": "72911031",
+  "adj4": "873fb443",
+  "adj5": "370e8698",
+  "adj6": "fd0148b5",
+  "adj7": "4e4991ea",
+  "adj8": "4e801397",
+  "authored": "f72bf1a6",
+  "default": "971bca59",
+  "hf": "4c16b3f9",
+  "vf": "4c16b3f9",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for snip2DiagRect 1`] = `
+{
+  "adj": "ccb7785f",
+  "adj1": "efe430a0",
+  "adj2": "dc8e066f",
+  "adj3": "02536a6f",
+  "adj4": "c8e586cb",
+  "adj5": "1988518b",
+  "adj6": "0fbd8334",
+  "adj7": "720fb5c3",
+  "adj8": "dc8e066f",
+  "authored": "04993e31",
+  "default": "978a1947",
+  "hf": "447c56a6",
+  "vf": "447c56a6",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for snip2SameRect 1`] = `
+{
+  "adj": "2c7fea9b",
+  "adj1": "bc5aff49",
+  "adj2": "f4d7c904",
+  "adj3": "721d6900",
+  "adj4": "050fb1bc",
+  "adj5": "e9ccb36d",
+  "adj6": "be5b684f",
+  "adj7": "cdafc876",
+  "adj8": "f4d7c904",
+  "authored": "89683769",
+  "default": "ab600d53",
+  "hf": "ed71206c",
+  "vf": "ed71206c",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for snipRoundRect 1`] = `
+{
+  "adj": "b9b625f7",
+  "adj1": "548485c8",
+  "adj2": "90219dc9",
+  "adj3": "b9b625f7",
+  "adj4": "b9b625f7",
+  "adj5": "b9b625f7",
+  "adj6": "b9b625f7",
+  "adj7": "b9b625f7",
+  "adj8": "b9b625f7",
+  "authored": "66128382",
+  "default": "b9b625f7",
+  "hf": "b9b625f7",
+  "vf": "b9b625f7",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for squareTabs 1`] = `
+{
+  "adj": "701c4636",
+  "adj1": "701c4636",
+  "adj2": "701c4636",
+  "adj3": "701c4636",
+  "adj4": "701c4636",
+  "adj5": "701c4636",
+  "adj6": "701c4636",
+  "adj7": "701c4636",
+  "adj8": "701c4636",
+  "authored": "701c4636",
+  "default": "701c4636",
+  "hf": "701c4636",
+  "vf": "701c4636",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for star4 1`] = `
+{
+  "adj": "cc38dfe5",
+  "adj1": "f22c83ed",
+  "adj2": "f22c83ed",
+  "adj3": "f22c83ed",
+  "adj4": "f22c83ed",
+  "adj5": "f22c83ed",
+  "adj6": "f22c83ed",
+  "adj7": "f22c83ed",
+  "adj8": "f22c83ed",
+  "authored": "f22c83ed",
+  "default": "f22c83ed",
+  "hf": "f22c83ed",
+  "vf": "f22c83ed",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for star5 1`] = `
+{
+  "adj": "7291bf05",
+  "adj1": "7291bf05",
+  "adj2": "7291bf05",
+  "adj3": "7291bf05",
+  "adj4": "7291bf05",
+  "adj5": "7291bf05",
+  "adj6": "7291bf05",
+  "adj7": "7291bf05",
+  "adj8": "7291bf05",
+  "authored": "dcb8b961",
+  "default": "7291bf05",
+  "hf": "7291bf05",
+  "vf": "7291bf05",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for star6 1`] = `
+{
+  "adj": "d90da5d4",
+  "adj1": "d90da5d4",
+  "adj2": "d90da5d4",
+  "adj3": "d90da5d4",
+  "adj4": "d90da5d4",
+  "adj5": "d90da5d4",
+  "adj6": "d90da5d4",
+  "adj7": "d90da5d4",
+  "adj8": "d90da5d4",
+  "authored": "5bc0ad9c",
+  "default": "d90da5d4",
+  "hf": "d90da5d4",
+  "vf": "d90da5d4",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for star7 1`] = `
+{
+  "adj": "177f51c9",
+  "adj1": "177f51c9",
+  "adj2": "177f51c9",
+  "adj3": "177f51c9",
+  "adj4": "177f51c9",
+  "adj5": "177f51c9",
+  "adj6": "177f51c9",
+  "adj7": "177f51c9",
+  "adj8": "177f51c9",
+  "authored": "49d16024",
+  "default": "177f51c9",
+  "hf": "177f51c9",
+  "vf": "177f51c9",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for star8 1`] = `
+{
+  "adj": "38d2484d",
+  "adj1": "68e6decb",
+  "adj2": "68e6decb",
+  "adj3": "68e6decb",
+  "adj4": "68e6decb",
+  "adj5": "68e6decb",
+  "adj6": "68e6decb",
+  "adj7": "68e6decb",
+  "adj8": "68e6decb",
+  "authored": "68e6decb",
+  "default": "68e6decb",
+  "hf": "68e6decb",
+  "vf": "68e6decb",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for star10 1`] = `
+{
+  "adj": "5ca3dbff",
+  "adj1": "5ca3dbff",
+  "adj2": "5ca3dbff",
+  "adj3": "5ca3dbff",
+  "adj4": "5ca3dbff",
+  "adj5": "5ca3dbff",
+  "adj6": "5ca3dbff",
+  "adj7": "5ca3dbff",
+  "adj8": "5ca3dbff",
+  "authored": "addc2194",
+  "default": "5ca3dbff",
+  "hf": "5ca3dbff",
+  "vf": "5ca3dbff",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for star12 1`] = `
+{
+  "adj": "7936d109",
+  "adj1": "36c77e75",
+  "adj2": "36c77e75",
+  "adj3": "36c77e75",
+  "adj4": "36c77e75",
+  "adj5": "36c77e75",
+  "adj6": "36c77e75",
+  "adj7": "36c77e75",
+  "adj8": "36c77e75",
+  "authored": "36c77e75",
+  "default": "36c77e75",
+  "hf": "36c77e75",
+  "vf": "36c77e75",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for star16 1`] = `
+{
+  "adj": "7876c5af",
+  "adj1": "26a498ff",
+  "adj2": "26a498ff",
+  "adj3": "26a498ff",
+  "adj4": "26a498ff",
+  "adj5": "26a498ff",
+  "adj6": "26a498ff",
+  "adj7": "26a498ff",
+  "adj8": "26a498ff",
+  "authored": "26a498ff",
+  "default": "26a498ff",
+  "hf": "26a498ff",
+  "vf": "26a498ff",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for star24 1`] = `
+{
+  "adj": "3b793149",
+  "adj1": "834b5fdd",
+  "adj2": "834b5fdd",
+  "adj3": "834b5fdd",
+  "adj4": "834b5fdd",
+  "adj5": "834b5fdd",
+  "adj6": "834b5fdd",
+  "adj7": "834b5fdd",
+  "adj8": "834b5fdd",
+  "authored": "834b5fdd",
+  "default": "834b5fdd",
+  "hf": "834b5fdd",
+  "vf": "834b5fdd",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for star32 1`] = `
+{
+  "adj": "0ea21be1",
+  "adj1": "652dbef5",
+  "adj2": "652dbef5",
+  "adj3": "652dbef5",
+  "adj4": "652dbef5",
+  "adj5": "652dbef5",
+  "adj6": "652dbef5",
+  "adj7": "652dbef5",
+  "adj8": "652dbef5",
+  "authored": "652dbef5",
+  "default": "652dbef5",
+  "hf": "652dbef5",
+  "vf": "652dbef5",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for straightConnector1 1`] = `
+{
+  "adj": "175d0e9f",
+  "adj1": "175d0e9f",
+  "adj2": "175d0e9f",
+  "adj3": "175d0e9f",
+  "adj4": "175d0e9f",
+  "adj5": "175d0e9f",
+  "adj6": "175d0e9f",
+  "adj7": "175d0e9f",
+  "adj8": "175d0e9f",
+  "authored": "175d0e9f",
+  "default": "175d0e9f",
+  "hf": "175d0e9f",
+  "vf": "175d0e9f",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for stripedRightArrow 1`] = `
+{
+  "adj": "f085ac71",
+  "adj1": "a6d4d383",
+  "adj2": "60c15551",
+  "adj3": "f085ac71",
+  "adj4": "f085ac71",
+  "adj5": "f085ac71",
+  "adj6": "f085ac71",
+  "adj7": "f085ac71",
+  "adj8": "f085ac71",
+  "authored": "844da5e1",
+  "default": "f085ac71",
+  "hf": "f085ac71",
+  "vf": "f085ac71",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for sun 1`] = `
+{
+  "adj": "9c611fcb",
+  "adj1": "c59c0d71",
+  "adj2": "3ba171a7",
+  "adj3": "f2a2497f",
+  "adj4": "d60eba01",
+  "adj5": "c59c0d71",
+  "adj6": "0aa358cd",
+  "adj7": "57884983",
+  "adj8": "3ba171a7",
+  "authored": "9c611fcb",
+  "default": "9c611fcb",
+  "hf": "a7e6354e",
+  "vf": "a7e6354e",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for swooshArrow 1`] = `
+{
+  "adj": "28c613e0",
+  "adj1": "8f076ca1",
+  "adj2": "fa54cf18",
+  "adj3": "28c613e0",
+  "adj4": "28c613e0",
+  "adj5": "28c613e0",
+  "adj6": "28c613e0",
+  "adj7": "28c613e0",
+  "adj8": "28c613e0",
+  "authored": "9ca2f457",
+  "default": "28c613e0",
+  "hf": "28c613e0",
+  "vf": "28c613e0",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for teardrop 1`] = `
+{
+  "adj": "a63b3c25",
+  "adj1": "1700a533",
+  "adj2": "4f0e8865",
+  "adj3": "3fcfb38b",
+  "adj4": "6c25fa73",
+  "adj5": "13689cf2",
+  "adj6": "befdb7f1",
+  "adj7": "59b7187a",
+  "adj8": "4f0e8865",
+  "authored": "4eb41e0d",
+  "default": "4eb41e0d",
+  "hf": "4eb41e0d",
+  "vf": "4eb41e0d",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for trapezoid 1`] = `
+{
+  "adj": "685c04e0",
+  "adj1": "80cb0092",
+  "adj2": "d33f937a",
+  "adj3": "51081118",
+  "adj4": "4f313dd7",
+  "adj5": "13efddea",
+  "adj6": "1563d154",
+  "adj7": "b44c06d9",
+  "adj8": "d33f937a",
+  "authored": "7a71d3e6",
+  "default": "7a71d3e6",
+  "hf": "a15573df",
+  "vf": "a15573df",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for triangle 1`] = `
+{
+  "adj": "ccf4d212",
+  "adj1": "334aed4f",
+  "adj2": "4c1dd7a4",
+  "adj3": "fce9f49e",
+  "adj4": "419be071",
+  "adj5": "fa21edc8",
+  "adj6": "e59067b2",
+  "adj7": "9572bef1",
+  "adj8": "4c1dd7a4",
+  "authored": "91a5d4a7",
+  "default": "91a5d4a7",
+  "hf": "aa806407",
+  "vf": "aa806407",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for upArrow 1`] = `
+{
+  "adj": "5ed4be8f",
+  "adj1": "9a476487",
+  "adj2": "0f4b994f",
+  "adj3": "5ed4be8f",
+  "adj4": "5ed4be8f",
+  "adj5": "5ed4be8f",
+  "adj6": "5ed4be8f",
+  "adj7": "5ed4be8f",
+  "adj8": "5ed4be8f",
+  "authored": "76f69c07",
+  "default": "5ed4be8f",
+  "hf": "5ed4be8f",
+  "vf": "5ed4be8f",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for upArrowCallout 1`] = `
+{
+  "adj": "a00327a8",
+  "adj1": "71e72e80",
+  "adj2": "8b5f23a9",
+  "adj3": "73aa0e50",
+  "adj4": "c12eda3e",
+  "adj5": "a00327a8",
+  "adj6": "a00327a8",
+  "adj7": "a00327a8",
+  "adj8": "a00327a8",
+  "authored": "206c5587",
+  "default": "a00327a8",
+  "hf": "a00327a8",
+  "vf": "a00327a8",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for upDownArrow 1`] = `
+{
+  "adj": "b822fe6c",
+  "adj1": "1892ab18",
+  "adj2": "e3e517d6",
+  "adj3": "b822fe6c",
+  "adj4": "b822fe6c",
+  "adj5": "b822fe6c",
+  "adj6": "b822fe6c",
+  "adj7": "b822fe6c",
+  "adj8": "b822fe6c",
+  "authored": "215d422e",
+  "default": "b822fe6c",
+  "hf": "b822fe6c",
+  "vf": "b822fe6c",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for upDownArrowCallout 1`] = `
+{
+  "adj": "701c4636",
+  "adj1": "701c4636",
+  "adj2": "701c4636",
+  "adj3": "701c4636",
+  "adj4": "701c4636",
+  "adj5": "701c4636",
+  "adj6": "701c4636",
+  "adj7": "701c4636",
+  "adj8": "701c4636",
+  "authored": "701c4636",
+  "default": "701c4636",
+  "hf": "701c4636",
+  "vf": "701c4636",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for uturnArrow 1`] = `
+{
+  "adj": "01985f93",
+  "adj1": "4c3640c4",
+  "adj2": "c4a2b938",
+  "adj3": "f9de11d1",
+  "adj4": "1c0fe02b",
+  "adj5": "0d89b810",
+  "adj6": "01985f93",
+  "adj7": "01985f93",
+  "adj8": "01985f93",
+  "authored": "e850a1c0",
+  "default": "01985f93",
+  "hf": "01985f93",
+  "vf": "01985f93",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for verticalScroll 1`] = `
+{
+  "adj": "709cc4ba",
+  "adj1": "66100fef",
+  "adj2": "b496183f",
+  "adj3": "709cc4ba",
+  "adj4": "709cc4ba",
+  "adj5": "c64d9229",
+  "adj6": "4d1fff06",
+  "adj7": "ae69f4d6",
+  "adj8": "b496183f",
+  "authored": "c64d9229",
+  "default": "c64d9229",
+  "hf": "709cc4ba",
+  "vf": "709cc4ba",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for wave 1`] = `
+{
+  "adj": "dbdae067",
+  "adj1": "7bf5bd33",
+  "adj2": "d2ea1f05",
+  "adj3": "dbdae067",
+  "adj4": "dbdae067",
+  "adj5": "dbdae067",
+  "adj6": "dbdae067",
+  "adj7": "dbdae067",
+  "adj8": "dbdae067",
+  "authored": "574a63fb",
+  "default": "dbdae067",
+  "hf": "dbdae067",
+  "vf": "dbdae067",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for wedgeEllipseCallout 1`] = `
+{
+  "adj": "060e384b",
+  "adj1": "9177f6fd",
+  "adj2": "32e023c6",
+  "adj3": "060e384b",
+  "adj4": "060e384b",
+  "adj5": "060e384b",
+  "adj6": "060e384b",
+  "adj7": "060e384b",
+  "adj8": "060e384b",
+  "authored": "01223a77",
+  "default": "060e384b",
+  "hf": "060e384b",
+  "vf": "060e384b",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for wedgeRectCallout 1`] = `
+{
+  "adj": "431b6492",
+  "adj1": "1f1842c8",
+  "adj2": "7f983b22",
+  "adj3": "431b6492",
+  "adj4": "431b6492",
+  "adj5": "431b6492",
+  "adj6": "431b6492",
+  "adj7": "431b6492",
+  "adj8": "431b6492",
+  "authored": "13338a46",
+  "default": "431b6492",
+  "hf": "431b6492",
+  "vf": "431b6492",
+}
+`;
+
+exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for wedgeRoundRectCallout 1`] = `
+{
+  "adj": "12dfb803",
+  "adj1": "3264cca5",
+  "adj2": "cb6e4ad7",
+  "adj3": "21640ecd",
+  "adj4": "12dfb803",
+  "adj5": "12dfb803",
+  "adj6": "12dfb803",
+  "adj7": "12dfb803",
+  "adj8": "12dfb803",
+  "authored": "283e7df1",
+  "default": "12dfb803",
+  "hf": "12dfb803",
+  "vf": "12dfb803",
+}
+`;

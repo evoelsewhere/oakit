@@ -207,6 +207,20 @@ const AUTHORED_GUIDES = guides([
   ['vf', 'val 100000'],
 ]);
 
+const SINGLE_GUIDE_VARIANTS = [
+  ['adj', '25000'],
+  ['adj1', '10000'],
+  ['adj2', '20000'],
+  ['adj3', '30000'],
+  ['adj4', '40000'],
+  ['adj5', '12500'],
+  ['adj6', '15000'],
+  ['adj7', '17500'],
+  ['adj8', '20000'],
+  ['hf', '100000'],
+  ['vf', '100000'],
+] as const;
+
 function xml(value: object): XmlLookupValue {
   return value as unknown as XmlLookupValue;
 }
@@ -227,6 +241,26 @@ function guides(
   });
 }
 
+function singleGuide(name: string, value: string): XmlLookupValue {
+  return xml({
+    'p:spPr': {
+      'a:prstGeom': {
+        'a:avLst': {
+          'a:gd': { attrs: { fmla: `val ${value}`, name } },
+        },
+      },
+    },
+  });
+}
+
+function hashPath(path: string): string {
+  let hash = 0x811c9dc5;
+  for (let index = 0; index < path.length; index += 1) {
+    hash = Math.imul(hash ^ path.charCodeAt(index), 0x01000193);
+  }
+  return (hash >>> 0).toString(16).padStart(8, '0');
+}
+
 function expectFinitePath(path: string): void {
   expect(path).not.toBe('');
   expect(path).not.toMatch(/NaN|Infinity|undefined/);
@@ -238,6 +272,31 @@ describe('PowerPoint preset shape path safety', () => {
     'renders finite default geometry for %s',
     (shapeType) => {
       expectFinitePath(getShapePath(shapeType, 120, 80, xml({})));
+    },
+  );
+
+  it.each(PRESET_SHAPE_TYPES)(
+    'keeps the locked geometry contract for %s',
+    (shapeType) => {
+      const paths: Record<string, string> = {
+        authored: getShapePath(shapeType, 120, 80, AUTHORED_GUIDES),
+        default: getShapePath(shapeType, 120, 80, xml({})),
+      };
+      for (const [name, value] of SINGLE_GUIDE_VARIANTS) {
+        paths[name] = getShapePath(
+          shapeType,
+          120,
+          80,
+          singleGuide(name, value),
+        );
+      }
+      for (const path of Object.values(paths)) expectFinitePath(path);
+
+      expect(
+        Object.fromEntries(
+          Object.entries(paths).map(([name, path]) => [name, hashPath(path)]),
+        ),
+      ).toMatchSnapshot();
     },
   );
 
