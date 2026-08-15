@@ -2891,7 +2891,7 @@ exports[`PowerPoint preset shape path safety > keeps the locked geometry contrac
   "adj6": "f22c83ed",
   "adj7": "f22c83ed",
   "adj8": "f22c83ed",
-  "authored": "f22c83ed",
+  "authored": "cc38dfe5",
   "default": "f22c83ed",
   "hf": "f22c83ed",
   "vf": "f22c83ed",
@@ -2900,7 +2900,7 @@ exports[`PowerPoint preset shape path safety > keeps the locked geometry contrac
 
 exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for star5 1`] = `
 {
-  "adj": "7291bf05",
+  "adj": "c76b33e2",
   "adj1": "7291bf05",
   "adj2": "7291bf05",
   "adj3": "7291bf05",
@@ -2911,14 +2911,14 @@ exports[`PowerPoint preset shape path safety > keeps the locked geometry contrac
   "adj8": "7291bf05",
   "authored": "dcb8b961",
   "default": "7291bf05",
-  "hf": "7291bf05",
-  "vf": "7291bf05",
+  "hf": "9f37cf24",
+  "vf": "969d7439",
 }
 `;
 
 exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for star6 1`] = `
 {
-  "adj": "d90da5d4",
+  "adj": "28d9a049",
   "adj1": "d90da5d4",
   "adj2": "d90da5d4",
   "adj3": "d90da5d4",
@@ -2929,14 +2929,14 @@ exports[`PowerPoint preset shape path safety > keeps the locked geometry contrac
   "adj8": "d90da5d4",
   "authored": "5bc0ad9c",
   "default": "d90da5d4",
-  "hf": "d90da5d4",
+  "hf": "f7ff3fbd",
   "vf": "d90da5d4",
 }
 `;
 
 exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for star7 1`] = `
 {
-  "adj": "177f51c9",
+  "adj": "718f434f",
   "adj1": "177f51c9",
   "adj2": "177f51c9",
   "adj3": "177f51c9",
@@ -2947,8 +2947,8 @@ exports[`PowerPoint preset shape path safety > keeps the locked geometry contrac
   "adj8": "177f51c9",
   "authored": "49d16024",
   "default": "177f51c9",
-  "hf": "177f51c9",
-  "vf": "177f51c9",
+  "hf": "a20c5f3b",
+  "vf": "3fe875dc",
 }
 `;
 
@@ -2963,7 +2963,7 @@ exports[`PowerPoint preset shape path safety > keeps the locked geometry contrac
   "adj6": "68e6decb",
   "adj7": "68e6decb",
   "adj8": "68e6decb",
-  "authored": "68e6decb",
+  "authored": "38d2484d",
   "default": "68e6decb",
   "hf": "68e6decb",
   "vf": "68e6decb",

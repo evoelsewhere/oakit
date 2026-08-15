@@ -526,6 +526,18 @@ describe('PowerPoint preset shape path safety', () => {
     },
   );
 
+  it.each(['hexagon', 'star4', 'star5', 'star6', 'star7', 'star8'])(
+    'clamps authored adjustment bounds for %s',
+    (shapeType) => {
+      expect(
+        getShapePath(shapeType, 100, 100, singleGuide('adj', '-10000')),
+      ).toBe(getShapePath(shapeType, 100, 100, singleGuide('adj', '0')));
+      expect(
+        getShapePath(shapeType, 100, 100, singleGuide('adj', '100000')),
+      ).toBe(getShapePath(shapeType, 100, 100, singleGuide('adj', '50000')));
+    },
+  );
+
   it('keeps common default paths deterministic', () => {
     const rectangle = 'M 0 0 L 120 0 L 120 80 L 0 80 Z';
     expect(getShapePath('rect', 120, 80, xml({}))).toBe(rectangle);
