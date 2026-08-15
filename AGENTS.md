@@ -1,4 +1,4 @@
-# OAK development instructions
+# OAKit development instructions
 
 These instructions apply to the entire repository. They are mandatory for
 human contributors and coding agents. Follow them together with the public
@@ -6,7 +6,7 @@ contracts in `README.md` and the boundaries in `docs/architecture.md`.
 
 ## Mission
 
-OAK (Office Agent Kit) provides deterministic, bounded document capabilities
+OAKit (Office Agent Kit) provides deterministic, bounded document capabilities
 for AI agents and automation systems. It converts Office Open XML packages
 into normalized public models and will add explicit writer capabilities as
 each format matures.
@@ -24,7 +24,7 @@ Optimize every change for:
 - isolated format domains with shared format-neutral OOXML primitives;
 - small, reviewable changes backed by independent evidence.
 
-OAK is not an autonomous agent runtime. Core code must remain independent of
+OAKit is not an autonomous agent runtime. Core code must remain independent of
 LLM vendors, prompts, tool-calling protocols, vector stores, and agent
 frameworks.
 
@@ -109,7 +109,7 @@ every public capability:
   security-rejected values.
 - Never silently invent content to make a document appear complete.
 
-Any future agent adapter must depend on OAK's public API. The format core must
+Any future agent adapter must depend on OAKit's public API. The format core must
 not depend on an agent adapter.
 
 ## Correctness and security invariants

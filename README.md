@@ -1,14 +1,14 @@
 <p align="center">
-  <img src="docs/assets/oak-logo.png" alt="OAK logo" width="220" />
+  <img src="docs/assets/oakit-logo.png" alt="OAKit logo" width="220" />
 </p>
 
-<h1 align="center">OAK</h1>
+<h1 align="center">OAKit</h1>
 
 <p align="center">
   <strong>Office Agent Kit</strong> — document capabilities built for AI agents.
 </p>
 
-OAK gives agents and automation systems a reliable way to read, understand,
+OAKit gives agents and automation systems a reliable way to read, understand,
 edit, and eventually generate PowerPoint, Excel, and Word documents through a
 consistent structured model. It owns the difficult OOXML work—ZIP packages,
 relationships, inheritance, units, media, malformed input, and producer
@@ -19,14 +19,14 @@ of raw XML.
 > PowerPoint (`.pptx`) reading. Excel, Word, and document writing are product
 > direction, not completed APIs yet.
 
-## Why OAK
+## Why OAKit
 
 Office files are not single documents internally. They are ZIP packages made
 of interconnected XML parts, relationships, themes, layouts, media, charts,
 and vendor-specific extensions. That representation is a poor tool boundary
 for an AI agent.
 
-OAK turns those internals into bounded, deterministic application data that is
+OAKit turns those internals into bounded, deterministic application data that is
 easier to:
 
 - summarize, classify, index, and search;
@@ -36,7 +36,7 @@ easier to:
 - run consistently in Node.js and modern browsers;
 - process untrusted uploads with explicit diagnostics and resource limits.
 
-OAK is model- and framework-neutral. It does not require a particular LLM,
+OAKit is model- and framework-neutral. It does not require a particular LLM,
 agent runtime, tool-calling protocol, or vector database.
 
 ## Format support
@@ -61,18 +61,134 @@ be omitted with a diagnostic rather than represented inaccurately.
 
 ## Installation
 
-The target npm package is `@evoelsewhere/oak`:
+The target npm package is `oakit`:
 
 ```bash
-pnpm add @evoelsewhere/oak
+pnpm add oakit
 ```
 
 ```bash
-npm install @evoelsewhere/oak
+npm install oakit
 ```
 
-The first public release has not been published yet. Until then, use the
-repository directly for development.
+### Homebrew CLI
+
+On macOS or Linux, install the command-line interface from the EvoElsewhere
+tap after the first formula release:
+
+```bash
+brew install evoelsewhere/tap/oakit
+```
+
+The Homebrew formula installs the `oakit` executable. Use npm or pnpm when the
+programmatic JavaScript API is required.
+
+The npm package and Homebrew formula have not been published yet. Until then,
+use the repository directly for development.
+
+## Command-line interface
+
+The package installs the `oakit` executable for deterministic Office-to-JSON
+workflows in terminals, scripts, CI jobs, and agent sandboxes. The current CLI
+accepts PowerPoint (`.pptx`) input.
+
+Install it globally after the first npm release:
+
+```bash
+npm install --global oakit
+oakit --version
+```
+
+It can also be run without a global installation:
+
+```bash
+npx oakit deck.pptx --pretty
+```
+
+### Convert a file
+
+JSON is written to stdout by default, making the command suitable for pipes:
+
+```bash
+oakit deck.pptx > deck.json
+```
+
+Use the explicit `convert` command and `--output` when writing a file directly:
+
+```bash
+oakit convert deck.pptx --output deck.json --pretty
+```
+
+Both command forms are equivalent. OAKit refuses to overwrite the input document
+with JSON output.
+
+### Read from stdin
+
+Use `-` as the input path and provide the format explicitly:
+
+```bash
+cat deck.pptx | oakit - --format pptx --document-only > deck.json
+```
+
+`--format pptx` is required for stdin because there is no filename extension
+from which to infer the format.
+
+### CLI options
+
+```text
+Usage: oakit [convert] <input.pptx|-> [options]
+
+Options:
+  -o, --output <file>          Write JSON to a file instead of stdout
+      --format <pptx>          Input format; required when reading stdin
+      --strict                 Reject malformed optional OOXML content
+      --pretty                 Format JSON with two-space indentation
+      --document-only          Omit format metadata and diagnostics
+      --image-mode <mode>      Image output: none (default) or base64
+  -h, --help                   Show help
+  -v, --version                Show the installed OAKit version
+```
+
+The default output is an envelope that keeps format and recovery information
+available to automation:
+
+```json
+{
+  "format": "pptx",
+  "document": {
+    "slides": []
+  },
+  "diagnostics": []
+}
+```
+
+Use `--document-only` when a downstream tool accepts only the normalized
+document model. Use `--strict` when partial recovery is not acceptable. Images
+are omitted by default to keep agent context and pipeline output bounded;
+enable `--image-mode base64` only when the binary representation is required.
+Audio and video payloads are never emitted by the CLI.
+
+### Errors and exit codes
+
+Errors are written as single-line JSON to stderr without a stack trace:
+
+```json
+{
+  "error": {
+    "code": "unsupported-format",
+    "message": "Unsupported Office format: docx"
+  }
+}
+```
+
+| Exit code | Meaning                                         |
+| --------- | ----------------------------------------------- |
+| `0`       | Conversion, help, or version completed normally |
+| `1`       | Input read or document conversion failed        |
+| `2`       | Invalid command-line usage                      |
+
+The CLI processes one document per invocation. Resource-limit failures remain
+fatal in tolerant mode, matching the programmatic API's security boundary.
 
 ## Quick start
 
@@ -80,7 +196,7 @@ repository directly for development.
 
 ```ts
 import { readFile } from 'node:fs/promises';
-import { parsePptxWithDiagnostics } from '@evoelsewhere/oak';
+import { parsePptxWithDiagnostics } from 'oakit';
 
 const input = await readFile('./quarterly-review.pptx');
 const { document, diagnostics } = await parsePptxWithDiagnostics(input, {
@@ -97,12 +213,12 @@ console.log({
 ```
 
 Node.js `Buffer` extends `Uint8Array`, so bytes returned by `readFile` can be
-passed directly to OAK.
+passed directly to OAKit.
 
 ### Browser
 
 ```ts
-import { parsePptx } from '@evoelsewhere/oak/pptx';
+import { parsePptx } from 'oakit/pptx';
 
 const picker = document.querySelector<HTMLInputElement>('#presentation');
 const file = picker?.files?.[0];
@@ -124,7 +240,7 @@ Use the diagnostic API when an agent must distinguish usable partial output
 from a clean parse:
 
 ```ts
-import { parsePptxWithDiagnostics } from '@evoelsewhere/oak';
+import { parsePptxWithDiagnostics } from 'oakit';
 
 export async function inspectPresentation(bytes: Uint8Array) {
   const result = await parsePptxWithDiagnostics(bytes, {
@@ -151,13 +267,9 @@ in a document as trusted system or developer instructions.
 Both entry points expose the same reader:
 
 ```ts
-import {
-  parsePptx,
-  parsePptxWithDiagnostics,
-  PptxParseError,
-} from '@evoelsewhere/oak';
+import { parsePptx, parsePptxWithDiagnostics, PptxParseError } from 'oakit';
 
-import { parsePptx as parsePptxFormat } from '@evoelsewhere/oak/pptx';
+import { parsePptx as parsePptxFormat } from 'oakit/pptx';
 ```
 
 The format-specific entry point is preferred when an application only needs
@@ -255,7 +367,7 @@ represent a security boundary, not a recoverable fidelity problem.
 
 ## Security model
 
-OAK treats every uploaded package as untrusted input. The reader:
+OAKit treats every uploaded package as untrusted input. The reader:
 
 - rejects unsafe package and relationship paths;
 - rejects malformed XML structures and forbidden declarations;
@@ -286,7 +398,7 @@ outer timeout and memory limit.
 
 ## Media lifecycle
 
-When a blob mode is enabled, OAK calls `URL.createObjectURL`. The caller owns
+When a blob mode is enabled, OAKit calls `URL.createObjectURL`. The caller owns
 the returned URLs and must release them:
 
 ```ts
@@ -317,6 +429,7 @@ pnpm check
 | `pnpm test:corpus`       | Verify PowerPoint and LibreOffice documents             |
 | `pnpm test:corpus:large` | Include the large Google Slides corpus                  |
 | `pnpm test:mutation`     | Measure whether tests detect behavioral mutations       |
+| `pnpm test:package`      | Smoke-test package exports and the bundled CLI          |
 | `pnpm typecheck`         | Run strict type checking                                |
 | `pnpm lint`              | Run ESLint                                              |
 | `pnpm format:check`      | Verify formatting                                       |

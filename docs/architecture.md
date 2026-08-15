@@ -1,8 +1,8 @@
 # Architecture
 
-This document describes the architecture implemented by `office2json` today,
-the boundaries contributors must preserve, and the intended path from a
-PowerPoint reader to a multi-format Office reader/writer library.
+This document describes the architecture implemented by OAKit (Office Agent Kit)
+today, the boundaries contributors must preserve, and the intended path from a
+PowerPoint reader to a multi-format Office document toolkit.
 
 The current production path is:
 
@@ -40,13 +40,16 @@ current normalized reader model.
 ```mermaid
 flowchart LR
     Consumer["Application or AI pipeline"]
-    API["office2json public API"]
+    CLI["oakit command-line interface"]
+    API["OAKit public API"]
     ZIP["OPC ZIP package"]
     XML["OOXML parts and relationships"]
     Model["Typed PptxDocument"]
     Renderer["Renderer, indexer, or analyzer"]
 
     Consumer -->|"ArrayBuffer, Uint8Array, or Blob"| API
+    Consumer -->|"File path or stdin"| CLI
+    CLI --> API
     API --> ZIP
     ZIP --> XML
     XML -->|"resolve, inherit, normalize"| Model
@@ -62,6 +65,10 @@ maps, caches, and inheritance state remain internal.
 ```text
 src/
 ├── index.ts                         Root public entry point
+├── cli.ts                           Node.js executable entry point
+├── cli/
+│   ├── run.ts                       Testable Node.js command contract
+│   └── node-io.ts                   Node.js filesystem and stdio adapter
 ├── types/
 │   └── txml.d.ts                    Local declaration for the XML dependency
 ├── common/
@@ -75,7 +82,10 @@ src/
 │   ├── text/html.ts                 HTML escaping and content checks
 │   ├── numbers.ts                   Numeric normalization helpers
 │   └── xml/
-│       ├── read-xml.ts              ZIP part reader and XML simplifier
+│       ├── normalize.ts             Namespace-aware compatibility normalizer
+│       ├── read-xml.ts              Bounded ZIP part and XML orchestrator
+│       ├── types.ts                 XML results, values, and typed failures
+│       ├── validate.ts              Fatal decoding and structural validation
 │       └── tree.ts                  Dynamic path traversal helpers
 └── formats/
     └── pptx/
@@ -112,6 +122,7 @@ Tests live outside `src`:
 test/
 ├── black-box/                       Independent public-API fixtures and fuzzing
 ├── browser/                         Real Chromium boundary tests
+├── cli/                             Command parsing and I/O contract tests
 ├── common/                          Shared OOXML primitive tests
 ├── corpus/                          Producer manifest and semantic assertions
 └── pptx/                            Parser integration tests
@@ -123,6 +134,9 @@ The dependency direction is part of the architecture:
 
 ```mermaid
 flowchart TD
+    CLI["src/cli.ts"] --> CliRun["cli/run.ts"]
+    CLI --> NodeIO["cli/node-io.ts"]
+    CliRun --> FormatAPI
     Root["src/index.ts"] --> FormatAPI["formats/pptx/index.ts"]
     FormatAPI --> Types["formats/pptx/types.ts"]
     FormatAPI --> Parser["formats/pptx/parser.ts"]
@@ -136,6 +150,8 @@ flowchart TD
 | Layer                 | May depend on                                     | Must not expose                         |
 | --------------------- | ------------------------------------------------- | --------------------------------------- |
 | Root API              | Format public entry points                        | Format internals or raw XML             |
+| CLI command contract  | Format public API and injected I/O                | Parser internals                        |
+| Node CLI adapter      | Node.js filesystem and stdio                      | Browser-facing package chunks           |
 | Format public API     | Its parser and public types                       | Parser context or helper implementation |
 | Format orchestrator   | Public types, format internals, shared primitives | Raw XML in the returned document        |
 | Format internals      | Same-format types/context and shared primitives   | Cross-format assumptions                |
@@ -147,7 +163,7 @@ inheritance belongs under `formats/pptx`, even if a future Word parser may have
 similar needs.
 
 `src/formats/pptx/internal` is not a supported package entry point. Consumers
-must import from `office2json` or `office2json/pptx`.
+must import from `oakit` or `oakit/pptx`.
 
 ## Public API boundary
 
@@ -171,12 +187,16 @@ Everything else is an implementation detail. In particular, `XmlLookupValue`,
 public stability commitments.
 
 The package is built as ESM and CommonJS with declarations and source maps. The
-two export paths are:
+public exports and executable are:
 
 ```text
-office2json       -> dist/index.{js,cjs,d.ts}
-office2json/pptx  -> dist/pptx/index.{js,cjs,d.ts}
+oakit       -> dist/index.{js,cjs,d.ts}
+oakit/pptx  -> dist/pptx/index.{js,cjs,d.ts}
+oakit CLI   -> dist/cli.js
 ```
+
+The CLI is a Node.js boundary layered over the same public PowerPoint API. It
+does not change the browser-neutral contract of either package export.
 
 ## OOXML package model
 
@@ -226,15 +246,16 @@ resolved against the wrong owner.
 by the format parsers:
 
 1. the ZIP entry is expanded incrementally with a byte limit;
-2. a linear scan enforces XML depth and element-count limits before recursive
-   parsing;
-3. `txml` parses with whitespace retention enabled;
-4. whitespace-only text nodes and the XML declaration are discarded;
-5. qualified tag names such as `p:sp` and `a:xfrm` remain unchanged;
-6. attributes are stored under `attrs`;
-7. repeated sibling tags become arrays, while a single tag is collapsed to a
+2. `TextDecoder` decodes UTF-8 or BOM-selected UTF-16 in fatal mode;
+3. `saxes` rejects malformed structure and document types while enforcing XML
+   depth and element-count limits before recursive parsing;
+4. `txml` parses with whitespace retention enabled;
+5. namespace URIs are mapped to canonical OOXML prefixes;
+6. whitespace-only text nodes and the XML declaration are discarded;
+7. attributes are stored under `attrs`;
+8. repeated sibling tags become arrays, while a single tag is collapsed to a
    single value;
-8. a per-read, monotonically increasing `attrs.order` value records document
+9. a per-read, monotonically increasing `attrs.order` value records document
    traversal order without sharing mutable state across documents.
 
 For example, simplified XML resembles:
@@ -546,8 +567,10 @@ before that change.
 
 ## Build and runtime architecture
 
-The package targets ES2022 and supports ESM and CommonJS. `tsup` creates two
-entry points, declarations, and source maps. The compiler enables strict mode,
+The package targets ES2022 and supports ESM and CommonJS. `tsup` creates root,
+PowerPoint subpath, and CLI entry points with declarations and source maps. The
+library entry points remain browser-neutral. Only CLI chunks import Node.js
+filesystem, path, process, and stdio APIs. The compiler enables strict mode,
 `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, isolated modules, and
 case-consistency checks.
 
@@ -556,8 +579,23 @@ Runtime dependencies have narrow roles:
 | Dependency   | Responsibility                            |
 | ------------ | ----------------------------------------- |
 | `jszip`      | Open OPC archives and read package parts. |
+| `saxes`      | Validate XML structure and complexity.    |
 | `txml`       | Parse OOXML strings into a lossless tree. |
 | `tinycolor2` | Apply supported color transformations.    |
+
+### Command-line boundary
+
+`oakit [convert] <input.pptx|->` converts one presentation per process. The CLI
+defaults to tolerant parsing, omits binary media, and writes a deterministic
+JSON envelope containing `format`, `document`, and `diagnostics`. Input may
+come from a file or stdin; output may go to stdout or a separate file.
+
+Command parsing and conversion live in `cli/run.ts` behind the injected
+`OakitCliIo` contract. This keeps argument behavior independently testable and
+confines direct filesystem and process access to `cli/node-io.ts` and
+`cli.ts`. Usage errors exit with status 2; read, parse, and write failures exit
+with status 1 and emit structured JSON to stderr. The CLI refuses an output
+path that resolves to the input path.
 
 Strict compiler and lint settings are architecture constraints. Compatibility
 work should add local guards and explicit types rather than disable rules or
@@ -676,9 +714,9 @@ The root API can re-export new format entry points, while subpath exports keep
 format-only consumers isolated:
 
 ```text
-office2json/pptx
-office2json/xlsx    (future)
-office2json/docx    (future)
+oakit/pptx
+oakit/xlsx    (future)
+oakit/docx    (future)
 ```
 
 ## Reader and writer separation
