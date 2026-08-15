@@ -538,13 +538,30 @@ describe('PowerPoint preset shape path safety', () => {
     'star16',
     'star24',
     'star32',
+    'frame',
+    'donut',
+    'noSmoking',
   ])('clamps authored adjustment bounds for %s', (shapeType) => {
+    const lowerBound = getShapePath(
+      shapeType,
+      100,
+      100,
+      singleGuide('adj', '0'),
+    );
+    const upperBound = getShapePath(
+      shapeType,
+      100,
+      100,
+      singleGuide('adj', '50000'),
+    );
     expect(
       getShapePath(shapeType, 100, 100, singleGuide('adj', '-10000')),
-    ).toBe(getShapePath(shapeType, 100, 100, singleGuide('adj', '0')));
+    ).toBe(lowerBound);
     expect(
       getShapePath(shapeType, 100, 100, singleGuide('adj', '100000')),
-    ).toBe(getShapePath(shapeType, 100, 100, singleGuide('adj', '50000')));
+    ).toBe(upperBound);
+    expectFinitePath(lowerBound);
+    expectFinitePath(upperBound);
   });
 
   it.each(['star10', 'star12', 'star16', 'star24', 'star32'])(

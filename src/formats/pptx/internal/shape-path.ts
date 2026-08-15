@@ -1672,7 +1672,7 @@ export function getShapePath(
         if (shapAdjst) {
           adj1 = parseInt(shapAdjst.substring(4)) * RATIO_EMUs_Points;
         }
-        const a1 = adj1 < 0 ? 0 : adj1 > cnstVal1 ? cnstVal1 : adj1;
+        const a1 = Math.min(Math.max(adj1, 0), cnstVal1);
         const x1 = (Math.min(w, h) * a1) / cnstVal2;
         const x4 = w - x1;
         const y4 = h - x1;
@@ -1695,7 +1695,7 @@ export function getShapePath(
         if (shapAdjst) {
           adj = parseInt(shapAdjst.substring(4)) * RATIO_EMUs_Points;
         }
-        const a = adj < 0 ? 0 : adj > cnstVal1 ? cnstVal1 : adj;
+        const a = Math.min(Math.max(adj, 0), cnstVal1);
         const dr = (Math.min(w, h) * a) / cnstVal2;
         const iwd2 = w / 2 - dr;
         const ihd2 = h / 2 - dr;
@@ -1720,7 +1720,7 @@ export function getShapePath(
         if (shapAdjst) {
           adj = parseInt(shapAdjst.substring(4)) * RATIO_EMUs_Points;
         }
-        const a = adj < 0 ? 0 : adj > cnstVal1 ? cnstVal1 : adj;
+        const a = Math.min(Math.max(adj, 0), cnstVal1);
         const dr = (Math.min(w, h) * a) / cnstVal2;
         const iwd2 = w / 2 - dr;
         const ihd2 = h / 2 - dr;
@@ -1728,7 +1728,7 @@ export function getShapePath(
         const ct = ihd2 * Math.cos(ang);
         const st = iwd2 * Math.sin(ang);
         const m = Math.sqrt(ct * ct + st * st);
-        const n = (iwd2 * ihd2) / m;
+        const n = m === 0 ? 0 : (iwd2 * ihd2) / m;
         const drd2 = dr / 2;
         const dang = Math.atan(drd2 / n);
         const swAng = -Math.PI + dang * 2;
@@ -1737,7 +1737,7 @@ export function getShapePath(
         const ct1 = ihd2 * Math.cos(stAng1);
         const st1 = iwd2 * Math.sin(stAng1);
         const m1 = Math.sqrt(ct1 * ct1 + st1 * st1);
-        const n1 = (iwd2 * ihd2) / m1;
+        const n1 = m1 === 0 ? 0 : (iwd2 * ihd2) / m1;
         const dx1 = n1 * Math.cos(stAng1);
         const dy1 = n1 * Math.sin(stAng1);
         const x1 = w / 2 + dx1;
@@ -1764,31 +1764,25 @@ export function getShapePath(
         let sAdj1_val = 3.5;
         let sAdj2_val = 3.5;
         const cnsVal = 100000 * RATIO_EMUs_Points;
-        if (shapAdjst_ary) {
-          for (const adj of asArray(shapAdjst_ary)) {
-            const sAdj_name = getTextByPathList(adj, ['attrs', 'name']);
-            if (sAdj_name === 'adj1') {
-              sAdj1_val =
-                parseInt(
-                  getTextByPathList(adj, ['attrs', 'fmla']).substring(4),
-                ) * RATIO_EMUs_Points;
-            } else if (sAdj_name === 'adj2') {
-              sAdj2_val =
-                parseInt(
-                  getTextByPathList(adj, ['attrs', 'fmla']).substring(4),
-                ) * RATIO_EMUs_Points;
-            }
+        for (const adj of asArray(shapAdjst_ary)) {
+          const sAdj_name = getTextByPathList(adj, ['attrs', 'name']);
+          if (sAdj_name === 'adj1') {
+            sAdj1_val =
+              parseInt(getTextByPathList(adj, ['attrs', 'fmla']).substring(4)) *
+              RATIO_EMUs_Points;
+          } else if (sAdj_name === 'adj2') {
+            sAdj2_val =
+              parseInt(getTextByPathList(adj, ['attrs', 'fmla']).substring(4)) *
+              RATIO_EMUs_Points;
           }
         }
         const minWH = Math.min(w, h);
         const maxAdj2 = (cnsVal * w) / minWH;
-        const a2 =
-          sAdj2_val < 0 ? 0 : sAdj2_val > maxAdj2 ? maxAdj2 : sAdj2_val;
+        const a2 = Math.min(Math.max(sAdj2_val, 0), maxAdj2);
         const x1 = (minWH * a2) / cnsVal;
         const g2 = h - (h * x1) / w;
         const maxAdj1 = (cnsVal * g2) / minWH;
-        const a1 =
-          sAdj1_val < 0 ? 0 : sAdj1_val > maxAdj1 ? maxAdj1 : sAdj1_val;
+        const a1 = Math.min(Math.max(sAdj1_val, 0), maxAdj1);
         const y1 = (minWH * a1) / cnsVal;
         const x2 = w - (y1 * w) / h;
         const y2 = h - (x1 * h) / w;
