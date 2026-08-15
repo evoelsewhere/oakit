@@ -6,8 +6,9 @@ import {
   XmlStructureError,
 } from './types';
 
-const XML_QUALIFIED_NAME =
-  /^(?:[A-Za-z_][A-Za-z\d_.-]*:)?[A-Za-z_][A-Za-z\d_.-]*$/;
+function isXmlQualifiedName(name: string): boolean {
+  return /^(?:[A-Za-z_][A-Za-z\d_.-]*:)?[A-Za-z_][A-Za-z\d_.-]*$/.test(name);
+}
 
 export function decodeXmlBytes(bytes: Uint8Array): string {
   let encoding = 'utf-8';
@@ -42,12 +43,12 @@ export function assertXmlComplexity(
     );
   });
   parser.on('opentagstart', (tag) => {
-    if (!XML_QUALIFIED_NAME.test(tag.name)) {
+    if (!isXmlQualifiedName(tag.name)) {
       throw new XmlStructureError(`Invalid XML element name ${tag.name}`);
     }
   });
   parser.on('attribute', (attribute) => {
-    if (!XML_QUALIFIED_NAME.test(attribute.name)) {
+    if (!isXmlQualifiedName(attribute.name)) {
       throw new XmlStructureError(
         `Invalid XML attribute name ${attribute.name}`,
       );
