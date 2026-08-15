@@ -31,7 +31,12 @@ interface PathAnalysis {
 type OrderedCustomCommand =
   | { order: number; type: 'close' }
   | { order: number; point: Point; type: 'lineTo' | 'moveTo' }
-  | { order: number; points: Point[]; type: 'cubicBezTo' | 'quadBezTo' }
+  | {
+      order: number;
+      points: readonly [Point, Point, Point];
+      type: 'cubicBezTo';
+    }
+  | { order: number; points: readonly [Point, Point]; type: 'quadBezTo' }
   | {
       hR: number;
       order: number;
@@ -103,12 +108,8 @@ function collectPointCommands(
   type: 'lineTo' | 'moveTo',
 ): OrderedCustomCommand[] {
   return asArray(nodeAt(path, [elementName])).flatMap((item) => {
-    const points = pointsFromNode(nodeAt(item, ['a:pt']));
-    return points.map((point) => ({
-      type,
-      point,
-      order: commandOrder(nodeAt(item, ['a:pt']) ?? item),
-    }));
+    const point = pointsFromNode(nodeAt(item, ['a:pt']))[0];
+    return point ? [{ type, point, order: commandOrder(item) }] : [];
   });
 }
 
@@ -117,14 +118,32 @@ function collectBezierCommands(
   elementName: 'a:cubicBezTo' | 'a:quadBezTo',
   type: 'cubicBezTo' | 'quadBezTo',
 ): OrderedCustomCommand[] {
-  return asArray(nodeAt(path, [elementName])).map((item) => {
-    const pointNodes = nodeAt(item, ['a:pt']);
-    return {
-      type,
-      points: pointsFromNode(pointNodes),
-      order: commandOrder(asArray(pointNodes)[0] ?? item),
-    };
-  });
+  return asArray(nodeAt(path, [elementName])).flatMap(
+    (item): OrderedCustomCommand[] => {
+      const pointNodes = nodeAt(item, ['a:pt']);
+      const points = pointsFromNode(pointNodes);
+      if (type === 'cubicBezTo') {
+        return points.length === 3
+          ? [
+              {
+                type,
+                points: points as [Point, Point, Point],
+                order: commandOrder(item),
+              },
+            ]
+          : [];
+      }
+      return points.length === 2
+        ? [
+            {
+              type,
+              points: points as [Point, Point],
+              order: commandOrder(item),
+            },
+          ]
+        : [];
+    },
+  );
 }
 
 function collectArcCommands(path: XmlLookupValue): OrderedCustomCommand[] {
@@ -141,6 +160,13 @@ function collectArcCommands(path: XmlLookupValue): OrderedCustomCommand[] {
   });
 }
 
+function collectCloseCommands(path: XmlLookupValue): OrderedCustomCommand[] {
+  return asArray(nodeAt(path, ['a:close'])).map((item) => ({
+    type: 'close',
+    order: commandOrder(item),
+  }));
+}
+
 function renderCustomCommand(
   command: OrderedCustomCommand,
   scaleX: number,
@@ -153,12 +179,10 @@ function renderCustomCommand(
       return ` L${command.point.x * scaleX},${command.point.y * scaleY}`;
     case 'cubicBezTo': {
       const [first, second, third] = command.points;
-      if (!first || !second || !third) return '';
       return ` C${first.x * scaleX},${first.y * scaleY} ${second.x * scaleX},${second.y * scaleY} ${third.x * scaleX},${third.y * scaleY}`;
     }
     case 'quadBezTo': {
       const [first, second] = command.points;
-      if (!first || !second) return '';
       return ` Q${first.x * scaleX},${first.y * scaleY} ${second.x * scaleX},${second.y * scaleY}`;
     }
     case 'arcTo': {
@@ -180,29 +204,32 @@ function renderCustomCommand(
   }
 }
 
-export function getCustomShapePath(
-  customGeometry: XmlLookupValue,
+function renderCustomPath(
+  pathNode: XmlLookupValue,
   width: number,
   height: number,
 ): string {
-  const pathNode = asArray(nodeAt(customGeometry, ['a:pathLst', 'a:path']))[0];
-  if (!pathNode) return '';
-
   const pathAttributes = attributes(pathNode);
   const sourceWidth = Number(pathAttributes.w ?? 0);
   const sourceHeight = Number(pathAttributes.h ?? 0);
-  const scaleX = sourceWidth === 0 ? 0 : width / sourceWidth;
-  const scaleY = sourceHeight === 0 ? 0 : height / sourceHeight;
+  if (
+    !Number.isFinite(sourceWidth) ||
+    !Number.isFinite(sourceHeight) ||
+    sourceWidth <= 0 ||
+    sourceHeight <= 0
+  ) {
+    return '';
+  }
+  const scaleX = width / sourceWidth;
+  const scaleY = height / sourceHeight;
   const commands: OrderedCustomCommand[] = [
     ...collectPointCommands(pathNode, 'a:moveTo', 'moveTo'),
     ...collectPointCommands(pathNode, 'a:lnTo', 'lineTo'),
     ...collectBezierCommands(pathNode, 'a:cubicBezTo', 'cubicBezTo'),
     ...collectBezierCommands(pathNode, 'a:quadBezTo', 'quadBezTo'),
     ...collectArcCommands(pathNode),
+    ...collectCloseCommands(pathNode),
   ];
-  if (nodeAt(pathNode, ['a:close'])) {
-    commands.push({ type: 'close', order: Number.POSITIVE_INFINITY });
-  }
 
   return commands
     .sort((left, right) => left.order - right.order)
@@ -210,11 +237,23 @@ export function getCustomShapePath(
     .join('');
 }
 
+export function getCustomShapePath(
+  customGeometry: XmlLookupValue,
+  width: number,
+  height: number,
+): string {
+  return asArray(nodeAt(customGeometry, ['a:pathLst', 'a:path']))
+    .map((path) => renderCustomPath(path, width, height))
+    .join('');
+}
+
 export function isStrokeOnlyCustomGeometry(
   customGeometry: XmlLookupValue,
 ): boolean {
   const paths = asArray(nodeAt(customGeometry, ['a:pathLst', 'a:path']));
-  return paths.length === 1 && attributes(paths[0]).fill === 'none';
+  return (
+    paths.length > 0 && paths.every((path) => attributes(path).fill === 'none')
+  );
 }
 
 function extractPathCommands(path: XmlLookupValue): PathCommand[] {

@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
 import type { XmlLookupValue } from '../../src/common';
-import { identifyShape } from '../../src/formats/pptx/internal/shape';
+import {
+  getCustomShapePath,
+  identifyShape,
+  isStrokeOnlyCustomGeometry,
+} from '../../src/formats/pptx/internal/shape';
 
 interface Point {
   x: number;
@@ -705,5 +709,157 @@ describe('PowerPoint custom shape classification', () => {
         ]),
       ),
     ).toBe('rhombus');
+  });
+});
+
+describe('PowerPoint custom path collection', () => {
+  it('returns an empty path when custom geometry has no paths', () => {
+    expect(getCustomShapePath(xml({}), 20, 10)).toBe('');
+  });
+
+  it.each([
+    ['zero width', { h: '100', w: '0' }],
+    ['zero height', { h: '0', w: '100' }],
+    ['missing width', { h: '100' }],
+    ['missing height', { w: '100' }],
+    ['non-numeric width', { h: '100', w: 'wide' }],
+    ['non-numeric height', { h: 'tall', w: '100' }],
+  ] as const)('skips a path with %s', (_label, attrs) => {
+    const geometry = xml({
+      'a:pathLst': {
+        'a:path': {
+          attrs,
+          'a:moveTo': {
+            attrs: { order: '1' },
+            'a:pt': pointNode({ x: 10, y: 10 }, 2),
+          },
+        },
+      },
+    });
+
+    expect(getCustomShapePath(geometry, 20, 10)).toBe('');
+  });
+
+  it('renders every path with its own coordinate system', () => {
+    const geometry = xml({
+      'a:pathLst': {
+        'a:path': [
+          {
+            attrs: { h: '100', order: '1', w: '100' },
+            'a:moveTo': {
+              attrs: { order: '2' },
+              'a:pt': pointNode({ x: 0, y: 0 }, 3),
+            },
+            'a:lnTo': {
+              attrs: { order: '4' },
+              'a:pt': pointNode({ x: 100, y: 100 }, 5),
+            },
+            'a:close': { attrs: { order: '6' } },
+          },
+          {
+            attrs: { h: '100', order: '7', w: '200' },
+            'a:moveTo': {
+              attrs: { order: '8' },
+              'a:pt': pointNode({ x: 200, y: 0 }, 9),
+            },
+            'a:lnTo': {
+              attrs: { order: '10' },
+              'a:pt': pointNode({ x: 0, y: 100 }, 11),
+            },
+          },
+        ],
+      },
+    });
+
+    expect(getCustomShapePath(geometry, 20, 10)).toBe(
+      ' M0,0 L20,10z M20,0 L0,10',
+    );
+  });
+
+  it('preserves interleaved command and subpath order', () => {
+    const geometry = xml({
+      'a:pathLst': {
+        'a:path': {
+          attrs: { h: '100', w: '100' },
+          'a:moveTo': [
+            {
+              attrs: { order: '1' },
+              'a:pt': pointNode({ x: 0, y: 0 }, 90),
+            },
+            {
+              attrs: { order: '5' },
+              'a:pt': pointNode({ x: 10, y: 10 }, 91),
+            },
+          ],
+          'a:lnTo': {
+            attrs: { order: '3' },
+            'a:pt': pointNode({ x: 100, y: 0 }, 92),
+          },
+          'a:quadBezTo': {
+            attrs: { order: '2' },
+            'a:pt': [
+              pointNode({ x: 25, y: 25 }, 93),
+              pointNode({ x: 50, y: 50 }, 94),
+            ],
+          },
+          'a:cubicBezTo': {
+            attrs: { order: '6' },
+            'a:pt': [
+              pointNode({ x: 20, y: 20 }, 95),
+              pointNode({ x: 30, y: 30 }, 96),
+              pointNode({ x: 40, y: 40 }, 97),
+            ],
+          },
+          'a:close': [{ attrs: { order: '4' } }, { attrs: { order: '7' } }],
+        },
+      },
+    });
+
+    expect(getCustomShapePath(geometry, 10, 10)).toBe(
+      ' M0,0 Q2.5,2.5 5,5 L10,0z M1,1 C2,2 3,3 4,4z',
+    );
+  });
+
+  it('skips point and Bézier commands with missing control points', () => {
+    const geometry = xml({
+      'a:pathLst': {
+        'a:path': {
+          attrs: { h: '100', w: '100' },
+          'a:moveTo': { attrs: { order: '1' } },
+          'a:lnTo': { attrs: { order: '2' } },
+          'a:quadBezTo': {
+            attrs: { order: '3' },
+            'a:pt': pointNode({ x: 10, y: 10 }, 4),
+          },
+          'a:cubicBezTo': {
+            attrs: { order: '5' },
+            'a:pt': [
+              pointNode({ x: 10, y: 10 }, 6),
+              pointNode({ x: 20, y: 20 }, 7),
+            ],
+          },
+          'a:close': { attrs: { order: '8' } },
+        },
+      },
+    });
+
+    expect(getCustomShapePath(geometry, 10, 10)).toBe('z');
+  });
+
+  it('marks custom geometry stroke-only only when every path disables fill', () => {
+    const paths = (fills: readonly (string | undefined)[]) =>
+      xml({
+        'a:pathLst': {
+          'a:path': fills.map((fill) => ({
+            attrs: fill === undefined ? {} : { fill },
+          })),
+        },
+      });
+
+    expect(isStrokeOnlyCustomGeometry(xml({}))).toBe(false);
+    expect(isStrokeOnlyCustomGeometry(paths(['none']))).toBe(true);
+    expect(isStrokeOnlyCustomGeometry(paths(['none', 'none']))).toBe(true);
+    expect(isStrokeOnlyCustomGeometry(paths(['none', 'norm']))).toBe(false);
+    expect(isStrokeOnlyCustomGeometry(paths([undefined]))).toBe(false);
   });
 });
