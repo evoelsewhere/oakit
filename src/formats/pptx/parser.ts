@@ -1391,6 +1391,7 @@ async function genShape(
     'leftBracket',
     'rightBracket',
     'bracketPair',
+    'lineInv',
   ];
   const isStrokeOnlyPresetShape =
     shapeType !== undefined &&

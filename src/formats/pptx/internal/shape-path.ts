@@ -5202,15 +5202,23 @@ export function getShapePath(
         pathData = `M ${xE},${yE} L ${xD},${yD} ${shapeArc(w / 2, h / 2, rw2, rh2, stiAng, ediAng, false).replace('M', 'L')} L ${xBp},${yBp} L ${xA},${yA} L ${xGp},${yGp} L ${xF},${yF} ${shapeArc(w / 2, h / 2, rw1, rh1, strtAng, endAngVal, false).replace('M', 'L')} z`;
       }
       break;
-    case 'leftRightCircularArrow':
     case 'chartPlus':
+      pathData = `M ${w / 2} 0 L ${w / 2} ${h} M 0 ${h / 2} L ${w} ${h / 2} M 0 0 L 0 ${h} L ${w} ${h} L ${w} 0 Z`;
+      break;
     case 'chartStar':
+      pathData = `M 0 0 L ${w} ${h} M 0 ${h} L ${w} 0 M ${w / 2} 0 L ${w / 2} ${h} M 0 0 L 0 ${h} L ${w} ${h} L ${w} 0 Z`;
+      break;
     case 'chartX':
+      pathData = `M 0 0 L ${w} ${h} M 0 ${h} L ${w} 0 M 0 0 L 0 ${h} L ${w} ${h} L ${w} 0 Z`;
+      break;
+    case 'lineInv':
+      pathData = `M 0 ${h} L ${w} 0`;
+      break;
+    case 'leftRightCircularArrow':
     case 'cornerTabs':
     case 'flowChartOfflineStorage':
     case 'folderCorner':
     case 'funnel':
-    case 'lineInv':
     case 'nonIsoscelesTrapezoid':
     case 'plaqueTabs':
     case 'squareTabs':

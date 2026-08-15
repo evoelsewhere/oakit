@@ -2170,6 +2170,21 @@ describe('PowerPoint preset shape path safety', () => {
     expect(hashPath(paths.join('|'))).toBe('8fdd2816');
   });
 
+  it('renders chart markers and the inverted line from preset coordinates', () => {
+    expect(getShapePath('chartPlus', 120, 80, xml({}))).toBe(
+      'M 60 0 L 60 80 M 0 40 L 120 40 M 0 0 L 0 80 L 120 80 L 120 0 Z',
+    );
+    expect(getShapePath('chartStar', 120, 80, xml({}))).toBe(
+      'M 0 0 L 120 80 M 0 80 L 120 0 M 60 0 L 60 80 M 0 0 L 0 80 L 120 80 L 120 0 Z',
+    );
+    expect(getShapePath('chartX', 120, 80, xml({}))).toBe(
+      'M 0 0 L 120 80 M 0 80 L 120 0 M 0 0 L 0 80 L 120 80 L 120 0 Z',
+    );
+    expect(getShapePath('lineInv', 120, 80, xml({}))).toBe(
+      'M 0 80 L 120 0',
+    );
+  });
+
   it('keeps common default paths deterministic', () => {
     const rectangle = 'M 0 0 L 120 0 L 120 80 L 0 80 Z';
     expect(getShapePath('rect', 120, 80, xml({}))).toBe(rectangle);

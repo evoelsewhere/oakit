@@ -39,4 +39,41 @@ describe('parsePptx', () => {
       expect.stringContaining('Hello&nbsp;AI'),
     );
   });
+
+  it('preserves the inverted-line preset as stroke-only geometry', async () => {
+    const input = await createMinimalPptx({
+      'ppt/slides/slide1.xml': `<?xml version="1.0" encoding="UTF-8"?>
+        <p:sld>
+          <p:cSld>
+            <p:spTree>
+              <p:sp>
+                <p:nvSpPr>
+                  <p:cNvPr id="2" name="Inverted line"/>
+                  <p:cNvSpPr/>
+                  <p:nvPr/>
+                </p:nvSpPr>
+                <p:spPr>
+                  <a:xfrm>
+                    <a:off x="914400" y="914400"/>
+                    <a:ext cx="1828800" cy="914400"/>
+                  </a:xfrm>
+                  <a:prstGeom prst="lineInv"><a:avLst/></a:prstGeom>
+                  <a:noFill/>
+                  <a:ln><a:solidFill><a:srgbClr val="000000"/></a:solidFill></a:ln>
+                </p:spPr>
+              </p:sp>
+            </p:spTree>
+          </p:cSld>
+        </p:sld>`,
+    });
+
+    const result = await parsePptx(input, { errorMode: 'strict' });
+
+    expect(result.slides[0]?.elements[0]).toMatchObject({
+      type: 'shape',
+      shapType: 'lineInv',
+      path: 'M 0 72 L 144 0',
+      strokeOnly: true,
+    });
+  });
 });
