@@ -77,6 +77,14 @@ import { getShapePath } from './internal/shape-path';
 import { parseTransition, findTransitionNode } from './internal/animation';
 import { getDiagramNodeContext, getSmartArtTextData } from './internal/diagram';
 import { PptxXmlReader } from './internal/xml-reader';
+import { PptxParseError } from './errors';
+import {
+  assertPptxArchiveWithinLimits,
+  assertPptxInputWithinLimits,
+  PptxResourceLimitError,
+  resolvePptxResourceLimits,
+  resourceLimitDiagnostic,
+} from './internal/resource-limits';
 
 function nodeAt(
   node: unknown,
@@ -102,6 +110,15 @@ function emptyXmlNode(): XmlLookupValue {
   return {} as unknown as XmlLookupValue;
 }
 
+function throwResourceLimit(
+  error: PptxResourceLimitError,
+  diagnostics: PptxDiagnostic[],
+): never {
+  const diagnostic = resourceLimitDiagnostic(error);
+  diagnostics.push(diagnostic);
+  throw new PptxParseError(diagnostic, { cause: error });
+}
+
 export async function parse(
   file: PptxInput,
   options: PptxParseOptions = {},
@@ -111,16 +128,34 @@ export async function parse(
   const loadedImages: Record<string, PptxMediaData> = {};
   const loadedVideos: Record<string, PptxMediaData> = {};
   const loadedAudios: Record<string, PptxMediaData> = {};
+  const limits = resolvePptxResourceLimits(options.limits);
+  try {
+    assertPptxInputWithinLimits(file, limits);
+  } catch (error) {
+    if (error instanceof PptxResourceLimitError) {
+      throwResourceLimit(error, diagnostics);
+    }
+    throw error;
+  }
+
   const parseOptions: Required<PptxParseOptions> = {
     ...options,
     imageMode: options.imageMode || 'base64',
     videoMode: options.videoMode || 'none',
     audioMode: options.audioMode || 'none',
     errorMode: options.errorMode || 'tolerant',
-    limits: options.limits ?? {},
+    limits,
   };
 
   const zip = await JSZip.loadAsync(file);
+  try {
+    assertPptxArchiveWithinLimits(zip, limits);
+  } catch (error) {
+    if (error instanceof PptxResourceLimitError) {
+      throwResourceLimit(error, diagnostics);
+    }
+    throw error;
+  }
   const xmlReader = new PptxXmlReader(zip, parseOptions.errorMode, diagnostics);
 
   const filesInfo = await getContentTypes(xmlReader);
