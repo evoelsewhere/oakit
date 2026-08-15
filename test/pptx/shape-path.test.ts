@@ -1943,6 +1943,29 @@ describe('PowerPoint preset shape path safety', () => {
     );
   });
 
+  it.each([
+    [120, 80, '50000'],
+    [80, 120, '75000'],
+  ])(
+    'clamps the PowerPoint can depth in a %sx%s box',
+    (width, height, maximum) => {
+      const can = (value: string): string =>
+        getShapePath('can', width, height, singleGuide('adj', value));
+
+      expect(can('-10000')).toBe(can('0'));
+      expect(can('100000')).toBe(can(maximum));
+    },
+  );
+
+  it.each(['flowChartMagneticDisk', 'flowChartMagneticDrum'])(
+    'keeps the fixed PowerPoint cap depth for %s',
+    (shapeType) => {
+      expect(getShapePath(shapeType, 120, 80, singleGuide('adj', '0'))).toBe(
+        getShapePath(shapeType, 120, 80, singleGuide('adj', '100000')),
+      );
+    },
+  );
+
   it('keeps common default paths deterministic', () => {
     const rectangle = 'M 0 0 L 120 0 L 120 80 L 0 80 Z';
     expect(getShapePath('rect', 120, 80, xml({}))).toBe(rectangle);

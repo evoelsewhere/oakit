@@ -4775,21 +4775,21 @@ export function getShapePath(
           'attrs',
           'fmla',
         ]);
-        let adj = 25000 * RATIO_EMUs_Points;
-        const cnstVal1 = 50000 * RATIO_EMUs_Points;
-        const cnstVal2 = 200000 * RATIO_EMUs_Points;
+        let adj = 25000;
+        const cnstVal1 = 50000;
+        const cnstVal2 = 200000;
         if (shapAdjst) {
-          adj = parseInt(shapAdjst.substring(4)) * RATIO_EMUs_Points;
+          adj = parseInt(shapAdjst.substring(4));
         }
         if (
           shapType === 'flowChartMagneticDisk' ||
           shapType === 'flowChartMagneticDrum'
         ) {
-          adj = 50000 * RATIO_EMUs_Points;
+          adj = 50000;
         }
         const ss = Math.min(w, h);
         const maxAdj = (cnstVal1 * h) / ss;
-        const a = adj < 0 ? 0 : adj > maxAdj ? maxAdj : adj;
+        const a = Math.min(Math.max(adj, 0), maxAdj);
         const y1 = (ss * a) / cnstVal2;
         const y3 = h - y1;
         const cd2 = 180,
