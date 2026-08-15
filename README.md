@@ -5,7 +5,7 @@
 <h1 align="center">Office Agent Kit</h1>
 
 <p align="center">
-  <strong> Document capabilities built for AI agents.</strong>
+  <strong> Office documents become agent-ready knowledge. </strong>
 </p>
 
 OAKit gives agents and automation systems a reliable way to read, understand,
