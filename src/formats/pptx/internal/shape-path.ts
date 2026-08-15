@@ -61,16 +61,12 @@ function shapePie(
   const endX = centerX + Math.cos(endRadians) * radiusX;
   const endY = centerY + Math.sin(endRadians) * radiusY;
 
-  let longArc, d;
+  const longArc = value > 180 ? 1 : 0;
   if (isClose) {
-    longArc = value <= 180 ? 0 : 1;
-    d = `M${centerX},${centerY} L${startX},${startY} A${radiusX},${radiusY} 0 ${longArc},1 ${endX},${endY} z`;
-  } else {
-    longArc = value <= 180 ? 0 : 1;
-    d = `M${startX},${startY} A${radiusX},${radiusY} 0 ${longArc},1 ${endX},${endY}`;
+    return `M${centerX},${centerY} L${startX},${startY} A${radiusX},${radiusY} 0 ${longArc},1 ${endX},${endY} z`;
   }
 
-  return d;
+  return `M${startX},${startY} A${radiusX},${radiusY} 0 ${longArc},1 ${endX},${endY}`;
 }
 function shapeGear(w: number, h: number, teeth: number): string {
   const centerX = w / 2;
@@ -100,10 +96,9 @@ function shapeArc(
   endAng: number,
   isClose: boolean,
 ) {
-  let dData = '';
   const requestedSweep = endAng - stAng;
   const sweep = Math.max(-360, Math.min(360, requestedSweep));
-  const increment = sweep >= 0 ? 1 : -1;
+  const increment = Math.sign(sweep);
   const normalizedStart = ((stAng % 360) + 360) % 360;
   const wholeSteps = Math.floor(Math.abs(sweep));
   const angles = Array.from(
@@ -112,15 +107,14 @@ function shapeArc(
   );
   if (Math.abs(sweep) > wholeSteps) angles.push(normalizedStart + sweep);
 
-  for (const angle of angles) {
-    const radians = angle * (Math.PI / 180);
-    const x = cX + Math.cos(radians) * rX;
-    const y = cY + Math.sin(radians) * rY;
-    if (angle === normalizedStart) {
-      dData = ` M${x} ${y}`;
-    }
-    dData += ` L${x} ${y}`;
-  }
+  let dData = angles
+    .map((angle, index) => {
+      const radians = angle * (Math.PI / 180);
+      const x = cX + Math.cos(radians) * rX;
+      const y = cY + Math.sin(radians) * rY;
+      return index === 0 ? ` M${x} ${y} L${x} ${y}` : ` L${x} ${y}`;
+    })
+    .join('');
 
   if (isClose) {
     dData += ' z';
