@@ -1725,6 +1725,73 @@ describe('PowerPoint preset shape path safety', () => {
     );
   });
 
+  it.each([
+    ['curvedDownArrow', 80, 120, false],
+    ['curvedUpArrow', 80, 120, false],
+    ['curvedLeftArrow', 120, 80, true],
+    ['curvedRightArrow', 120, 80, true],
+  ])(
+    'clamps coupled PowerPoint curved-arrow adjustments for %s',
+    (shapeType, width, height, couplesThickness) => {
+      const arrow = (
+        adjustments: ReadonlyArray<readonly [string, string]>,
+      ): string =>
+        getShapePath(
+          shapeType,
+          width,
+          height,
+          guides(
+            adjustments.map(([name, value]) => [name, `val ${value}`] as const),
+          ),
+        );
+
+      expect(arrow([['adj2', '-10000']])).toBe(arrow([['adj2', '0']]));
+      expect(arrow([['adj2', '100000']])).toBe(arrow([['adj2', '50000']]));
+      expect(arrow([['adj1', '-10000']])).toBe(arrow([['adj1', '0']]));
+      if (couplesThickness) {
+        expect(
+          arrow([
+            ['adj1', '100000'],
+            ['adj2', '30000'],
+          ]),
+        ).toBe(
+          arrow([
+            ['adj1', '30000'],
+            ['adj2', '30000'],
+          ]),
+        );
+      } else {
+        expect(arrow([['adj1', '200000']])).toBe(arrow([['adj1', '100000']]));
+      }
+      expect(
+        arrow([
+          ['adj1', '0'],
+          ['adj2', '0'],
+          ['adj3', '-10000'],
+        ]),
+      ).toBe(
+        arrow([
+          ['adj1', '0'],
+          ['adj2', '0'],
+          ['adj3', '0'],
+        ]),
+      );
+      expect(
+        arrow([
+          ['adj1', '0'],
+          ['adj2', '0'],
+          ['adj3', '200000'],
+        ]),
+      ).toBe(
+        arrow([
+          ['adj1', '0'],
+          ['adj2', '0'],
+          ['adj3', '150000'],
+        ]),
+      );
+    },
+  );
+
   it('keeps common default paths deterministic', () => {
     const rectangle = 'M 0 0 L 120 0 L 120 80 L 0 80 Z';
     expect(getShapePath('rect', 120, 80, xml({}))).toBe(rectangle);

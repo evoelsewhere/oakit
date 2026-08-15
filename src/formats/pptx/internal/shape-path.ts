@@ -4296,30 +4296,25 @@ export function getShapePath(
           'a:avLst',
           'a:gd',
         ]);
-        let adj1 = 25000 * RATIO_EMUs_Points;
-        let adj2 = 50000 * RATIO_EMUs_Points;
-        let adj3 = 25000 * RATIO_EMUs_Points;
-        const cnstVal1 = 50000 * RATIO_EMUs_Points;
-        const cnstVal2 = 100000 * RATIO_EMUs_Points;
-        if (shapAdjst_ary) {
-          for (const adj of asArray(shapAdjst_ary)) {
-            const sAdj_name = getTextByPathList(adj, ['attrs', 'name']);
-            if (sAdj_name === 'adj1') {
-              adj1 =
-                parseInt(
-                  getTextByPathList(adj, ['attrs', 'fmla']).substring(4),
-                ) * RATIO_EMUs_Points;
-            } else if (sAdj_name === 'adj2') {
-              adj2 =
-                parseInt(
-                  getTextByPathList(adj, ['attrs', 'fmla']).substring(4),
-                ) * RATIO_EMUs_Points;
-            } else if (sAdj_name === 'adj3') {
-              adj3 =
-                parseInt(
-                  getTextByPathList(adj, ['attrs', 'fmla']).substring(4),
-                ) * RATIO_EMUs_Points;
-            }
+        let adj1 = 25000;
+        let adj2 = 50000;
+        let adj3 = 25000;
+        const cnstVal1 = 50000;
+        const cnstVal2 = 100000;
+        for (const adj of asArray(shapAdjst_ary)) {
+          const sAdj_name = getTextByPathList(adj, ['attrs', 'name']);
+          if (sAdj_name === 'adj1') {
+            adj1 = parseInt(
+              getTextByPathList(adj, ['attrs', 'fmla']).substring(4),
+            );
+          } else if (sAdj_name === 'adj2') {
+            adj2 = parseInt(
+              getTextByPathList(adj, ['attrs', 'fmla']).substring(4),
+            );
+          } else if (sAdj_name === 'adj3') {
+            adj3 = parseInt(
+              getTextByPathList(adj, ['attrs', 'fmla']).substring(4),
+            );
           }
         }
         const wd2 = w / 2,
@@ -4331,8 +4326,8 @@ export function getShapePath(
           cd4 = 90;
         const ss = Math.min(w, h);
         const maxAdj2 = (cnstVal1 * w) / ss;
-        const a2 = adj2 < 0 ? 0 : adj2 > maxAdj2 ? maxAdj2 : adj2;
-        const a1 = adj1 < 0 ? 0 : adj1 > cnstVal2 ? cnstVal2 : adj1;
+        const a2 = Math.min(Math.max(adj2, 0), maxAdj2);
+        const a1 = Math.min(Math.max(adj1, 0), cnstVal2);
         const th = (ss * a1) / cnstVal2;
         const aw = (ss * a2) / cnstVal2;
         const q1 = (th + aw) / 4;
@@ -4341,7 +4336,7 @@ export function getShapePath(
         const q11 = Math.sqrt(q7 * q7 - th * th);
         const idy = (q11 * h) / q7;
         const maxAdj3 = (cnstVal2 * idy) / ss;
-        const a3 = adj3 < 0 ? 0 : adj3 > maxAdj3 ? maxAdj3 : adj3;
+        const a3 = Math.min(Math.max(adj3, 0), maxAdj3);
         const ah = (ss * a3) / cnstVal2;
         const x3 = wR + th;
         const q5 = Math.sqrt(h * h - ah * ah);
@@ -4373,30 +4368,25 @@ export function getShapePath(
           'a:avLst',
           'a:gd',
         ]);
-        let adj1 = 25000 * RATIO_EMUs_Points;
-        let adj2 = 50000 * RATIO_EMUs_Points;
-        let adj3 = 25000 * RATIO_EMUs_Points;
-        const cnstVal1 = 50000 * RATIO_EMUs_Points;
-        const cnstVal2 = 100000 * RATIO_EMUs_Points;
-        if (shapAdjst_ary) {
-          for (const adj of asArray(shapAdjst_ary)) {
-            const sAdj_name = getTextByPathList(adj, ['attrs', 'name']);
-            if (sAdj_name === 'adj1') {
-              adj1 =
-                parseInt(
-                  getTextByPathList(adj, ['attrs', 'fmla']).substring(4),
-                ) * RATIO_EMUs_Points;
-            } else if (sAdj_name === 'adj2') {
-              adj2 =
-                parseInt(
-                  getTextByPathList(adj, ['attrs', 'fmla']).substring(4),
-                ) * RATIO_EMUs_Points;
-            } else if (sAdj_name === 'adj3') {
-              adj3 =
-                parseInt(
-                  getTextByPathList(adj, ['attrs', 'fmla']).substring(4),
-                ) * RATIO_EMUs_Points;
-            }
+        let adj1 = 25000;
+        let adj2 = 50000;
+        let adj3 = 25000;
+        const cnstVal1 = 50000;
+        const cnstVal2 = 100000;
+        for (const adj of asArray(shapAdjst_ary)) {
+          const sAdj_name = getTextByPathList(adj, ['attrs', 'name']);
+          if (sAdj_name === 'adj1') {
+            adj1 = parseInt(
+              getTextByPathList(adj, ['attrs', 'fmla']).substring(4),
+            );
+          } else if (sAdj_name === 'adj2') {
+            adj2 = parseInt(
+              getTextByPathList(adj, ['attrs', 'fmla']).substring(4),
+            );
+          } else if (sAdj_name === 'adj3') {
+            adj3 = parseInt(
+              getTextByPathList(adj, ['attrs', 'fmla']).substring(4),
+            );
           }
         }
         const hd2 = h / 2,
@@ -4408,8 +4398,8 @@ export function getShapePath(
           cd4 = 90;
         const ss = Math.min(w, h);
         const maxAdj2 = (cnstVal1 * h) / ss;
-        const a2 = adj2 < 0 ? 0 : adj2 > maxAdj2 ? maxAdj2 : adj2;
-        const a1 = adj1 < 0 ? 0 : adj1 > a2 ? a2 : adj1;
+        const a2 = Math.min(Math.max(adj2, 0), maxAdj2);
+        const a1 = Math.min(Math.max(adj1, 0), a2);
         const th = (ss * a1) / cnstVal2;
         const aw = (ss * a2) / cnstVal2;
         const q1 = (th + aw) / 4;
@@ -4418,7 +4408,7 @@ export function getShapePath(
         const q11 = Math.sqrt(q7 * q7 - th * th);
         const iDx = (q11 * w) / q7;
         const maxAdj3 = (cnstVal2 * iDx) / ss;
-        const a3 = adj3 < 0 ? 0 : adj3 > maxAdj3 ? maxAdj3 : adj3;
+        const a3 = Math.min(Math.max(adj3, 0), maxAdj3);
         const ah = (ss * a3) / cnstVal2;
         const y3 = hR + th;
         const q5 = Math.sqrt(w * w - ah * ah);
@@ -4446,30 +4436,25 @@ export function getShapePath(
           'a:avLst',
           'a:gd',
         ]);
-        let adj1 = 25000 * RATIO_EMUs_Points;
-        let adj2 = 50000 * RATIO_EMUs_Points;
-        let adj3 = 25000 * RATIO_EMUs_Points;
-        const cnstVal1 = 50000 * RATIO_EMUs_Points;
-        const cnstVal2 = 100000 * RATIO_EMUs_Points;
-        if (shapAdjst_ary) {
-          for (const adj of asArray(shapAdjst_ary)) {
-            const sAdj_name = getTextByPathList(adj, ['attrs', 'name']);
-            if (sAdj_name === 'adj1') {
-              adj1 =
-                parseInt(
-                  getTextByPathList(adj, ['attrs', 'fmla']).substring(4),
-                ) * RATIO_EMUs_Points;
-            } else if (sAdj_name === 'adj2') {
-              adj2 =
-                parseInt(
-                  getTextByPathList(adj, ['attrs', 'fmla']).substring(4),
-                ) * RATIO_EMUs_Points;
-            } else if (sAdj_name === 'adj3') {
-              adj3 =
-                parseInt(
-                  getTextByPathList(adj, ['attrs', 'fmla']).substring(4),
-                ) * RATIO_EMUs_Points;
-            }
+        let adj1 = 25000;
+        let adj2 = 50000;
+        let adj3 = 25000;
+        const cnstVal1 = 50000;
+        const cnstVal2 = 100000;
+        for (const adj of asArray(shapAdjst_ary)) {
+          const sAdj_name = getTextByPathList(adj, ['attrs', 'name']);
+          if (sAdj_name === 'adj1') {
+            adj1 = parseInt(
+              getTextByPathList(adj, ['attrs', 'fmla']).substring(4),
+            );
+          } else if (sAdj_name === 'adj2') {
+            adj2 = parseInt(
+              getTextByPathList(adj, ['attrs', 'fmla']).substring(4),
+            );
+          } else if (sAdj_name === 'adj3') {
+            adj3 = parseInt(
+              getTextByPathList(adj, ['attrs', 'fmla']).substring(4),
+            );
           }
         }
         const hd2 = h / 2,
@@ -4481,8 +4466,8 @@ export function getShapePath(
           c3d4 = 270;
         const ss = Math.min(w, h);
         const maxAdj2 = (cnstVal1 * h) / ss;
-        const a2 = adj2 < 0 ? 0 : adj2 > maxAdj2 ? maxAdj2 : adj2;
-        const a1 = adj1 < 0 ? 0 : adj1 > a2 ? a2 : adj1;
+        const a2 = Math.min(Math.max(adj2, 0), maxAdj2);
+        const a1 = Math.min(Math.max(adj1, 0), a2);
         const th = (ss * a1) / cnstVal2;
         const aw = (ss * a2) / cnstVal2;
         const q1 = (th + aw) / 4;
@@ -4491,7 +4476,7 @@ export function getShapePath(
         const q11 = Math.sqrt(q7 * q7 - th * th);
         const iDx = (q11 * w) / q7;
         const maxAdj3 = (cnstVal2 * iDx) / ss;
-        const a3 = adj3 < 0 ? 0 : adj3 > maxAdj3 ? maxAdj3 : adj3;
+        const a3 = Math.min(Math.max(adj3, 0), maxAdj3);
         const ah = (ss * a3) / cnstVal2;
         const y3 = hR + th;
         const q5 = Math.sqrt(w * w - ah * ah);
@@ -4523,30 +4508,25 @@ export function getShapePath(
           'a:avLst',
           'a:gd',
         ]);
-        let adj1 = 25000 * RATIO_EMUs_Points;
-        let adj2 = 50000 * RATIO_EMUs_Points;
-        let adj3 = 25000 * RATIO_EMUs_Points;
-        const cnstVal1 = 50000 * RATIO_EMUs_Points;
-        const cnstVal2 = 100000 * RATIO_EMUs_Points;
-        if (shapAdjst_ary) {
-          for (const adj of asArray(shapAdjst_ary)) {
-            const sAdj_name = getTextByPathList(adj, ['attrs', 'name']);
-            if (sAdj_name === 'adj1') {
-              adj1 =
-                parseInt(
-                  getTextByPathList(adj, ['attrs', 'fmla']).substring(4),
-                ) * RATIO_EMUs_Points;
-            } else if (sAdj_name === 'adj2') {
-              adj2 =
-                parseInt(
-                  getTextByPathList(adj, ['attrs', 'fmla']).substring(4),
-                ) * RATIO_EMUs_Points;
-            } else if (sAdj_name === 'adj3') {
-              adj3 =
-                parseInt(
-                  getTextByPathList(adj, ['attrs', 'fmla']).substring(4),
-                ) * RATIO_EMUs_Points;
-            }
+        let adj1 = 25000;
+        let adj2 = 50000;
+        let adj3 = 25000;
+        const cnstVal1 = 50000;
+        const cnstVal2 = 100000;
+        for (const adj of asArray(shapAdjst_ary)) {
+          const sAdj_name = getTextByPathList(adj, ['attrs', 'name']);
+          if (sAdj_name === 'adj1') {
+            adj1 = parseInt(
+              getTextByPathList(adj, ['attrs', 'fmla']).substring(4),
+            );
+          } else if (sAdj_name === 'adj2') {
+            adj2 = parseInt(
+              getTextByPathList(adj, ['attrs', 'fmla']).substring(4),
+            );
+          } else if (sAdj_name === 'adj3') {
+            adj3 = parseInt(
+              getTextByPathList(adj, ['attrs', 'fmla']).substring(4),
+            );
           }
         }
         const wd2 = w / 2,
@@ -4557,8 +4537,8 @@ export function getShapePath(
           cd4 = 90;
         const ss = Math.min(w, h);
         const maxAdj2 = (cnstVal1 * w) / ss;
-        const a2 = adj2 < 0 ? 0 : adj2 > maxAdj2 ? maxAdj2 : adj2;
-        const a1 = adj1 < 0 ? 0 : adj1 > cnstVal2 ? cnstVal2 : adj1;
+        const a2 = Math.min(Math.max(adj2, 0), maxAdj2);
+        const a1 = Math.min(Math.max(adj1, 0), cnstVal2);
         const th = (ss * a1) / cnstVal2;
         const aw = (ss * a2) / cnstVal2;
         const q1 = (th + aw) / 4;
@@ -4567,7 +4547,7 @@ export function getShapePath(
         const q11 = Math.sqrt(q7 * q7 - th * th);
         const idy = (q11 * h) / q7;
         const maxAdj3 = (cnstVal2 * idy) / ss;
-        const a3 = adj3 < 0 ? 0 : adj3 > maxAdj3 ? maxAdj3 : adj3;
+        const a3 = Math.min(Math.max(adj3, 0), maxAdj3);
         const ah = (ss * a3) / cnstVal2;
         const x3 = wR + th;
         const q5 = Math.sqrt(h * h - ah * ah);
