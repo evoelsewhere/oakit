@@ -573,7 +573,7 @@ export function getShapePath(
       {
         const c3d4 = 270,
           cd2 = 180;
-        const x1 = (w * 1) / 6;
+        const x1 = w / 6;
         const x2 = (w * 5) / 6;
         const y1 = (h * 3) / 6;
         pathData = `M 0,${y1} L ${x1},0 L ${x2},0 ${shapeArc(w, h / 2, x1, y1, c3d4, c3d4 + cd2, false).replace('M', 'L')} L ${x1},${h} z`;
