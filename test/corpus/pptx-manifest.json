@@ -1,0 +1,86 @@
+{
+  "version": 1,
+  "entries": [
+    {
+      "id": "powerpoint-columns",
+      "producer": "Microsoft Office PowerPoint 16",
+      "tier": "curated",
+      "url": "https://raw.githubusercontent.com/LibreOffice/core/master/sd/qa/unit/data/pptx/3columns.pptx",
+      "sha256": "e639064968d29c4cf5cc3ad4dae28e825ec9d2567ae78aac895c870e91170d71",
+      "minimumSlides": 1,
+      "minimumElementCounts": { "text": 1 }
+    },
+    {
+      "id": "powerpoint-chart",
+      "producer": "Microsoft Office PowerPoint 16",
+      "tier": "curated",
+      "url": "https://raw.githubusercontent.com/LibreOffice/core/master/sd/qa/unit/data/pptx/chart_pt_color_bg1.pptx",
+      "sha256": "11b8fbd9710c79a9e0d7bc466f27a071dc7a8f0de3078eaf79e7967af46d5c1e",
+      "minimumSlides": 1,
+      "minimumElementCounts": { "chart": 1 }
+    },
+    {
+      "id": "powerpoint-animations",
+      "producer": "Microsoft Macintosh PowerPoint 16",
+      "tier": "curated",
+      "url": "https://raw.githubusercontent.com/LibreOffice/core/master/sd/qa/unit/data/pptx/connector-shape-animations.pptx",
+      "sha256": "40d07c0c9433c65c640bc6d4d5f25228735dc15d1bb719530cad0662a926a618",
+      "minimumSlides": 1,
+      "minimumElementCounts": { "shape": 2, "table": 1 }
+    },
+    {
+      "id": "powerpoint-groups",
+      "producer": "Microsoft Office PowerPoint",
+      "tier": "curated",
+      "url": "https://raw.githubusercontent.com/LibreOffice/core/master/sd/qa/unit/data/pptx/group.pptx",
+      "sha256": "b8aedd7a9a09b46ec691bc5c92e141eb874606f5601d14ac51e3ec1f71a516bd",
+      "minimumSlides": 2,
+      "minimumElementCounts": { "group": 3, "shape": 7, "text": 5 }
+    },
+    {
+      "id": "powerpoint-custom-shapes",
+      "producer": "Microsoft Office PowerPoint 14",
+      "tier": "curated",
+      "url": "https://raw.githubusercontent.com/LibreOffice/core/master/sd/qa/unit/data/pptx/cshapes.pptx",
+      "sha256": "96b9eb638d6f708482d71d3f0f19e200c8bdfa15a00ada71859e618211f1860b",
+      "minimumSlides": 1,
+      "minimumElementCounts": { "shape": 180 }
+    },
+    {
+      "id": "powerpoint-crop",
+      "producer": "Microsoft Office PowerPoint 14",
+      "tier": "curated",
+      "url": "https://raw.githubusercontent.com/LibreOffice/core/master/sd/qa/unit/data/pptx/crop-position.pptx",
+      "sha256": "56025c102ed893688356f82207e14549a98e5bb1d394955a59bb805f0df22dd7",
+      "minimumSlides": 1,
+      "minimumElementCounts": { "image": 1 }
+    },
+    {
+      "id": "powerpoint-animation-audio",
+      "producer": "PowerPoint-compatible regression fixture",
+      "tier": "curated",
+      "url": "https://raw.githubusercontent.com/LibreOffice/core/master/sd/qa/unit/data/pptx/animation-sound-embedded.pptx",
+      "sha256": "0c722d58248f1925bd2553a85e70c36ce17f2537604955cc67a2e30b21bdd342",
+      "minimumSlides": 1
+    },
+    {
+      "id": "powerpoint-shape-image",
+      "producer": "Microsoft Office PowerPoint",
+      "tier": "curated",
+      "url": "https://raw.githubusercontent.com/LibreOffice/core/master/sd/qa/unit/data/pptx/ShapePlusImage.pptx",
+      "sha256": "5b4016ca717d6ca552e6bdf06f0b756f72c98c2ee3798a04d4de07baf9116d51",
+      "minimumSlides": 1,
+      "minimumElementCounts": { "image": 1, "text": 1 }
+    },
+    {
+      "id": "google-slides-public-history",
+      "producer": "Google Slides PPTX export",
+      "tier": "large",
+      "url": "https://docs.google.com/presentation/d/1wTvmPAudkyVw9KuYiqFuNjLMacc1bRPolUbZxY4fPQU/export/pptx",
+      "slideTextSha256": "6119322706bf99c9d6c5e3c810bfe332287aeac283a51e7cfe2fe4eb2371d6a1",
+      "maxBytes": 41943040,
+      "minimumSlides": 400,
+      "minimumElementCounts": { "image": 200, "table": 5, "text": 400 }
+    }
+  ]
+}
