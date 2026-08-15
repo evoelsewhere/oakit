@@ -1596,46 +1596,39 @@ export function getShapePath(
           'a:avLst',
           'a:gd',
         ]);
-        let adj1 = 0;
-        let adj2 = 0;
-        let H = h;
-        let isClose = false;
+        let adj1: number;
+        let adj2: number;
+        let shapeHeight: number;
+        let isClose: boolean;
 
         if (shapType === 'pie') {
           adj1 = 0;
           adj2 = 270;
-          H = h;
+          shapeHeight = h;
           isClose = true;
         } else if (shapType === 'pieWedge') {
           adj1 = 180;
           adj2 = 270;
-          H = 2 * h;
+          shapeHeight = 2 * h;
           isClose = true;
-        } else if (shapType === 'arc') {
+        } else {
           adj1 = 270;
           adj2 = 0;
-          H = h;
+          shapeHeight = h;
           isClose = false;
         }
 
-        if (shapAdjst) {
-          const shapAdjstAry = Array.isArray(shapAdjst)
-            ? shapAdjst
-            : [shapAdjst];
-          for (const adj of shapAdjstAry) {
-            const name = getTextByPathList(adj, ['attrs', 'name']);
-            const fmla = getTextByPathList(adj, ['attrs', 'fmla']);
-            if (!name || !fmla) continue;
-
-            if (name === 'adj1') {
-              adj1 = parseInt(fmla.substring(4)) / 60000;
-            } else if (name === 'adj2') {
-              adj2 = parseInt(fmla.substring(4)) / 60000;
-            }
+        for (const guide of asArray(shapAdjst)) {
+          const name = getGuideAttribute(guide, 'name');
+          const formula = String(getGuideAttribute(guide, 'fmla'));
+          if (name === 'adj1') {
+            adj1 = parseInt(formula.substring(4)) / 60000;
+          } else if (name === 'adj2') {
+            adj2 = parseInt(formula.substring(4)) / 60000;
           }
         }
 
-        pathData = shapePie(H, w, adj1, adj2, isClose);
+        pathData = shapePie(shapeHeight, w, adj1, adj2, isClose);
       }
       break;
     case 'chord':
@@ -1648,16 +1641,14 @@ export function getShapePath(
         ]);
         let sAdj1_val = 45;
         let sAdj2_val = 270;
-        if (shapAdjst_ary) {
-          for (const adj of asArray(shapAdjst_ary)) {
-            const sAdj_name = getTextByPathList(adj, ['attrs', 'name']);
-            if (sAdj_name === 'adj1') {
-              const sAdj1 = getTextByPathList(adj, ['attrs', 'fmla']);
-              sAdj1_val = parseInt(sAdj1.substring(4)) / 60000;
-            } else if (sAdj_name === 'adj2') {
-              const sAdj2 = getTextByPathList(adj, ['attrs', 'fmla']);
-              sAdj2_val = parseInt(sAdj2.substring(4)) / 60000;
-            }
+        for (const adj of asArray(shapAdjst_ary)) {
+          const sAdj_name = getTextByPathList(adj, ['attrs', 'name']);
+          if (sAdj_name === 'adj1') {
+            const sAdj1 = getTextByPathList(adj, ['attrs', 'fmla']);
+            sAdj1_val = parseInt(sAdj1.substring(4)) / 60000;
+          } else if (sAdj_name === 'adj2') {
+            const sAdj2 = getTextByPathList(adj, ['attrs', 'fmla']);
+            sAdj2_val = parseInt(sAdj2.substring(4)) / 60000;
           }
         }
         const hR = h / 2;
