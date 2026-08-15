@@ -68,10 +68,7 @@ describe('PPTX XML integrity black-box cases', () => {
 
   it('rejects duplicate XML attributes', async () => {
     await expectStrictXmlFailure(
-      validPresentation().replace(
-        'cx="9144000"',
-        'cx="9144000" cx="18288000"',
-      ),
+      validPresentation().replace('cx="9144000"', 'cx="9144000" cx="18288000"'),
     );
   });
 
@@ -81,10 +78,7 @@ describe('PPTX XML integrity black-box cases', () => {
         `xmlns:r="${OFFICE_REL_NS}"`,
         `xmlns:r="${OFFICE_REL_NS}" xmlns:rel="${OFFICE_REL_NS}"`,
       )
-      .replace(
-        'r:id="rIdSlide1"',
-        'r:id="rIdSlide1" rel:id="rIdMissing"',
-      );
+      .replace('r:id="rIdSlide1"', 'r:id="rIdSlide1" rel:id="rIdMissing"');
 
     await expectStrictXmlFailure(presentation);
   });
@@ -109,10 +103,7 @@ describe('PPTX XML integrity black-box cases', () => {
 
   it('rejects a CDATA terminator in regular character data', async () => {
     await expectStrictXmlFailure(
-      validPresentation().replace(
-        '<p:sldIdLst>',
-        'invalid]]><p:sldIdLst>',
-      ),
+      validPresentation().replace('<p:sldIdLst>', 'invalid]]><p:sldIdLst>'),
     );
   });
 
