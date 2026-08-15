@@ -1,4 +1,5 @@
 import type JSZip from 'jszip';
+import { SaxesParser } from 'saxes';
 import { parse } from 'txml';
 
 import {
@@ -62,6 +63,9 @@ interface SimplifyState {
   documentOrder: number;
 }
 
+const XML_QUALIFIED_NAME =
+  /^(?:[A-Za-z_][A-Za-z\d_.-]*:)?[A-Za-z_][A-Za-z\d_.-]*$/;
+
 const CANONICAL_NAMESPACE_PREFIXES: Readonly<Record<string, string>> = {
   'http://purl.oclc.org/ooxml/drawingml/chart': 'c',
   'http://purl.oclc.org/ooxml/drawingml/diagram': 'dgm',
@@ -103,11 +107,10 @@ function normalizeQualifiedName(
   bindings: ReadonlyMap<string, string>,
   attribute: boolean,
 ): string {
-  if (name === 'xmlns' || name.startsWith('xmlns:')) return name;
-
   const separatorIndex = name.indexOf(':');
-  const sourcePrefix = separatorIndex < 0 ? '' : name.slice(0, separatorIndex);
-  const localName = separatorIndex < 0 ? name : name.slice(separatorIndex + 1);
+  const hasPrefix = name.includes(':');
+  const sourcePrefix = hasPrefix ? name.slice(0, separatorIndex) : '';
+  const localName = hasPrefix ? name.slice(separatorIndex + 1) : name;
   if (attribute && !sourcePrefix) return name;
 
   const namespace = bindings.get(sourcePrefix);
@@ -128,11 +131,7 @@ function normalizeAttributes(
   const normalized: Record<string, string> = {};
   for (const [name, value] of Object.entries(attributes)) {
     const normalizedName = normalizeQualifiedName(name, bindings, true);
-    if (
-      name !== 'xmlns' &&
-      !name.startsWith('xmlns:') &&
-      Object.hasOwn(normalized, normalizedName)
-    ) {
+    if (Object.hasOwn(normalized, normalizedName)) {
       throw new XmlStructureError(
         `XML element has duplicate expanded attribute ${normalizedName}`,
       );
@@ -153,7 +152,6 @@ function simplifyLosslessWithState(
   parentNamespaces: ReadonlyMap<string, string>,
 ): XmlValue {
   const output: XmlNode = {};
-  if (children.length === 0) return output;
 
   if (children.length === 1 && typeof children[0] === 'string') {
     return Object.keys(parentAttributes).length > 0
@@ -180,11 +178,7 @@ function simplifyLosslessWithState(
       namespaces,
     );
     const existing = output[tagName];
-    const values = Array.isArray(existing)
-      ? existing
-      : existing
-        ? [existing]
-        : [];
+    const values = Array.isArray(existing) ? existing : [];
     const value = simplifyLosslessWithState(
       child.children ?? [],
       childAttributes,
@@ -196,9 +190,7 @@ function simplifyLosslessWithState(
       const attrs = value.attrs;
       value.attrs = {
         order: state.documentOrder++,
-        ...(typeof attrs === 'object' && attrs !== null && !Array.isArray(attrs)
-          ? attrs
-          : {}),
+        ...(typeof attrs === 'object' && !Array.isArray(attrs) ? attrs : {}),
         ...childAttributes,
       };
     }
@@ -229,28 +221,6 @@ export function simplifyLossless(
   );
 }
 
-function markupEnd(xml: string, start: number, declaration: boolean): number {
-  let quote = '';
-  let subsetDepth = 0;
-  for (let index = start; index < xml.length; index++) {
-    const character = xml[index]!;
-    if (quote) {
-      if (character === quote) quote = '';
-      continue;
-    }
-    if (character === '"' || character === "'") {
-      quote = character;
-      continue;
-    }
-    if (declaration) {
-      if (character === '[') subsetDepth++;
-      else if (character === ']' && subsetDepth > 0) subsetDepth--;
-    }
-    if (character === '>' && subsetDepth === 0) return index;
-  }
-  return xml.length - 1;
-}
-
 function decodeXmlBytes(bytes: Uint8Array): string {
   let encoding = 'utf-8';
   if (bytes[0] === 0xff && bytes[1] === 0xfe) encoding = 'utf-16le';
@@ -265,137 +235,6 @@ function decodeXmlBytes(bytes: Uint8Array): string {
   }
 }
 
-function isValidXmlCodePoint(codePoint: number): boolean {
-  return (
-    codePoint === 0x9 ||
-    codePoint === 0xa ||
-    codePoint === 0xd ||
-    (codePoint >= 0x20 && codePoint <= 0xd7ff) ||
-    (codePoint >= 0xe000 && codePoint <= 0xfffd) ||
-    (codePoint >= 0x10_000 && codePoint <= 0x10_ffff)
-  );
-}
-
-function assertValidXmlCharacters(value: string): void {
-  for (const character of value) {
-    if (!isValidXmlCodePoint(character.codePointAt(0)!)) {
-      throw new XmlStructureError('XML contains an invalid character');
-    }
-  }
-}
-
-function assertValidEntityReferences(value: string): void {
-  let index = value.indexOf('&');
-  while (index >= 0) {
-    const end = value.indexOf(';', index + 1);
-    if (end < 0) {
-      throw new XmlStructureError(
-        'XML entity reference is missing a semicolon',
-      );
-    }
-    const entity = value.slice(index + 1, end);
-    if (!/^(?:amp|apos|gt|lt|quot)$/.test(entity)) {
-      const decimal = /^#(\d+)$/.exec(entity)?.[1];
-      const hexadecimal = /^#x([\da-f]+)$/i.exec(entity)?.[1];
-      const codePoint = decimal
-        ? Number.parseInt(decimal, 10)
-        : hexadecimal
-          ? Number.parseInt(hexadecimal, 16)
-          : Number.NaN;
-      if (!Number.isInteger(codePoint) || !isValidXmlCodePoint(codePoint)) {
-        throw new XmlStructureError(`Invalid XML entity reference &${entity};`);
-      }
-    }
-    index = value.indexOf('&', end + 1);
-  }
-}
-
-interface StartTagDetails {
-  elementName: string;
-  selfClosing: boolean;
-}
-
-function inspectStartTag(tagContent: string): StartTagDetails {
-  let contentEnd = tagContent.length;
-  while (contentEnd > 0 && /\s/.test(tagContent[contentEnd - 1]!)) {
-    contentEnd--;
-  }
-
-  const selfClosing = tagContent[contentEnd - 1] === '/';
-  if (selfClosing) {
-    contentEnd--;
-    while (contentEnd > 0 && /\s/.test(tagContent[contentEnd - 1]!)) {
-      contentEnd--;
-    }
-  }
-
-  const content = tagContent.slice(0, contentEnd);
-  const elementName =
-    /^(?:[A-Za-z_][A-Za-z\d_.-]*:)?[A-Za-z_][A-Za-z\d_.-]*/.exec(content)?.[0];
-  if (!elementName) {
-    throw new XmlStructureError('XML opening tag has no valid element name');
-  }
-
-  let cursor = elementName.length;
-  const attributes = new Set<string>();
-  while (cursor < content.length) {
-    if (!/\s/.test(content[cursor]!)) {
-      throw new XmlStructureError(
-        `XML attribute after ${elementName} is not separated by whitespace`,
-      );
-    }
-    while (cursor < content.length && /\s/.test(content[cursor]!)) cursor++;
-    if (cursor >= content.length) break;
-
-    const attributeName =
-      /^(?:[A-Za-z_][A-Za-z\d_.-]*:)?[A-Za-z_][A-Za-z\d_.-]*/.exec(
-        content.slice(cursor),
-      )?.[0];
-    if (!attributeName) {
-      throw new XmlStructureError(
-        `XML element ${elementName} has an invalid attribute name`,
-      );
-    }
-    if (attributes.has(attributeName)) {
-      throw new XmlStructureError(
-        `XML element ${elementName} has duplicate attribute ${attributeName}`,
-      );
-    }
-    attributes.add(attributeName);
-    cursor += attributeName.length;
-
-    while (cursor < content.length && /\s/.test(content[cursor]!)) cursor++;
-    if (content[cursor] !== '=') {
-      throw new XmlStructureError(
-        `XML attribute ${attributeName} must have a value`,
-      );
-    }
-    cursor++;
-    while (cursor < content.length && /\s/.test(content[cursor]!)) cursor++;
-
-    const quote = content[cursor];
-    if (quote !== '"' && quote !== "'") {
-      throw new XmlStructureError(
-        `XML attribute ${attributeName} must use a quoted value`,
-      );
-    }
-    const valueEnd = content.indexOf(quote, cursor + 1);
-    if (valueEnd < 0) {
-      throw new XmlStructureError(
-        `XML attribute ${attributeName} has an unclosed value`,
-      );
-    }
-    if (content.slice(cursor + 1, valueEnd).includes('<')) {
-      throw new XmlStructureError(
-        `XML attribute ${attributeName} contains an invalid character`,
-      );
-    }
-    cursor = valueEnd + 1;
-  }
-
-  return { elementName, selfClosing };
-}
-
 /** Reject pathological nesting before the recursive XML parser sees it. */
 export function assertXmlComplexity(
   xml: string,
@@ -403,113 +242,53 @@ export function assertXmlComplexity(
 ): number {
   let depth = 0;
   let nodes = 0;
-  let index = 0;
-  let rootElements = 0;
-  const openElements: string[] = [];
+  const parser = new SaxesParser({
+    defaultXMLVersion: '1.0',
+    forceXMLVersion: true,
+    xmlns: false,
+  });
 
-  assertValidXmlCharacters(xml);
-
-  while (index < xml.length) {
-    const opening = xml.indexOf('<', index);
-    const textEnd = opening < 0 ? xml.length : opening;
-    const text = xml.slice(index, textEnd);
-    assertValidEntityReferences(text);
-    if (text.includes(']]>')) {
+  parser.on('doctype', () => {
+    throw new XmlStructureError(
+      'XML document type declarations are not allowed',
+    );
+  });
+  parser.on('opentagstart', (tag) => {
+    if (!XML_QUALIFIED_NAME.test(tag.name)) {
+      throw new XmlStructureError(`Invalid XML element name ${tag.name}`);
+    }
+  });
+  parser.on('attribute', (attribute) => {
+    if (!XML_QUALIFIED_NAME.test(attribute.name)) {
       throw new XmlStructureError(
-        'XML CDATA terminator appears outside a CDATA section',
+        `Invalid XML attribute name ${attribute.name}`,
       );
     }
-    if (depth === 0 && text.trim()) {
-      throw new XmlStructureError('XML text is not inside the document root');
+  });
+  parser.on('opentag', () => {
+    nodes += 1;
+    depth += 1;
+    if (limits.maxNodes !== undefined && nodes > limits.maxNodes) {
+      throw new XmlComplexityLimitError('maxXmlNodes', nodes, limits.maxNodes);
     }
-    if (opening < 0) break;
+    if (limits.maxDepth !== undefined && depth > limits.maxDepth) {
+      throw new XmlComplexityLimitError('maxXmlDepth', depth, limits.maxDepth);
+    }
+  });
+  parser.on('closetag', () => {
+    depth -= 1;
+  });
 
-    if (xml.startsWith('<!--', opening)) {
-      const end = xml.indexOf('-->', opening + 4);
-      if (end < 0) throw new XmlStructureError('Unclosed XML comment');
-      const comment = xml.slice(opening + 4, end);
-      if (comment.includes('--') || comment.endsWith('-')) {
-        throw new XmlStructureError('XML comment contains an invalid hyphen');
-      }
-      index = end < 0 ? xml.length : end + 3;
-      continue;
+  try {
+    parser.write(xml).close();
+  } catch (cause) {
+    if (
+      cause instanceof XmlComplexityLimitError ||
+      cause instanceof XmlStructureError
+    ) {
+      throw cause;
     }
-    if (xml.startsWith('<![CDATA[', opening)) {
-      const end = xml.indexOf(']]>', opening + 9);
-      if (end < 0) throw new XmlStructureError('Unclosed XML CDATA section');
-      const content = xml.slice(opening + 9, end);
-      if (depth === 0 && content.trim()) {
-        throw new XmlStructureError(
-          'XML CDATA is not inside the document root',
-        );
-      }
-      index = end < 0 ? xml.length : end + 3;
-      continue;
-    }
-    if (xml.startsWith('<?', opening)) {
-      const end = xml.indexOf('?>', opening + 2);
-      if (end < 0) {
-        throw new XmlStructureError('Unclosed XML processing instruction');
-      }
-      index = end < 0 ? xml.length : end + 2;
-      continue;
-    }
-    if (xml.startsWith('<!', opening)) {
-      throw new XmlStructureError('XML declarations with <! are not allowed');
-    }
-
-    const end = markupEnd(xml, opening + 1, false);
-    if (xml.startsWith('</', opening)) {
-      const closingName = xml.slice(opening + 2, end).trim();
-      const expectedName = openElements.pop();
-      if (!expectedName || closingName !== expectedName) {
-        throw new XmlStructureError(
-          `Unexpected XML closing tag ${closingName || '(empty)'}; expected ${expectedName ?? '(none)'}`,
-        );
-      }
-      depth--;
-    } else {
-      const tagContent = xml.slice(opening + 1, end).trimStart();
-      assertValidEntityReferences(tagContent);
-      const { elementName, selfClosing } = inspectStartTag(tagContent);
-      nodes++;
-      if (limits.maxNodes !== undefined && nodes > limits.maxNodes) {
-        throw new XmlComplexityLimitError(
-          'maxXmlNodes',
-          nodes,
-          limits.maxNodes,
-        );
-      }
-      const nodeDepth = depth + 1;
-      if (depth === 0) {
-        rootElements++;
-        if (rootElements > 1) {
-          throw new XmlStructureError(
-            'XML document has multiple root elements',
-          );
-        }
-      }
-      if (limits.maxDepth !== undefined && nodeDepth > limits.maxDepth) {
-        throw new XmlComplexityLimitError(
-          'maxXmlDepth',
-          nodeDepth,
-          limits.maxDepth,
-        );
-      }
-      if (!selfClosing) {
-        depth = nodeDepth;
-        openElements.push(elementName);
-      }
-    }
-    index = end + 1;
-  }
-  if (openElements.length > 0) {
-    throw new XmlStructureError(
-      `Unclosed XML element ${openElements.at(-1) ?? '(unknown)'}`,
-    );
-  }
-  if (rootElements !== 1) {
-    throw new XmlStructureError('XML document must contain one root element');
+    throw new XmlStructureError('Invalid XML structure', { cause });
   }
   return nodes;
 }
@@ -520,7 +299,6 @@ export async function readXmlFileResult<T extends XmlValue = XmlValue>(
   filename: string,
   limits: XmlReadLimits = {},
 ): Promise<XmlReadResult<T>> {
-  if (!filename) return { status: 'missing' };
   const file = zip.file(filename);
   if (!file) return { status: 'missing' };
 
