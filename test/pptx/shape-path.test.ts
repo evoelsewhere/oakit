@@ -2197,6 +2197,41 @@ describe('PowerPoint preset shape path safety', () => {
     );
   });
 
+  it('renders the PowerPoint offline-storage flowchart marker', () => {
+    expect(getShapePath('flowChartOfflineStorage', 120, 80, xml({}))).toBe(
+      'M 0 0 L 120 0 L 60 80 Z M 48 64 L 72 64',
+    );
+  });
+
+  it('clamps independent PowerPoint non-isosceles trapezoid sides', () => {
+    const trapezoid = (name: string, value: string): string =>
+      getShapePath(
+        'nonIsoscelesTrapezoid',
+        120,
+        80,
+        singleGuide(name, value),
+      );
+
+    expect(getShapePath('nonIsoscelesTrapezoid', 120, 80, xml({}))).toBe(
+      'M 0 80 L 20 0 L 100 0 L 120 80 Z',
+    );
+    expect(
+      getShapePath(
+        'nonIsoscelesTrapezoid',
+        120,
+        80,
+        guides([
+          ['adj1', 'val 12500'],
+          ['adj2', 'val 50000'],
+        ]),
+      ),
+    ).toBe('M 0 80 L 10 0 L 80 0 L 120 80 Z');
+    expect(trapezoid('adj1', '-10000')).toBe(trapezoid('adj1', '0'));
+    expect(trapezoid('adj1', '100000')).toBe(trapezoid('adj1', '75000'));
+    expect(trapezoid('adj2', '-10000')).toBe(trapezoid('adj2', '0'));
+    expect(trapezoid('adj2', '100000')).toBe(trapezoid('adj2', '75000'));
+  });
+
   it('keeps common default paths deterministic', () => {
     const rectangle = 'M 0 0 L 120 0 L 120 80 L 0 80 Z';
     expect(getShapePath('rect', 120, 80, xml({}))).toBe(rectangle);

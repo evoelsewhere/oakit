@@ -5231,11 +5231,40 @@ export function getShapePath(
         }
       }
       break;
-    case 'leftRightCircularArrow':
     case 'flowChartOfflineStorage':
+      pathData = `M 0 0 L ${w} 0 L ${w / 2} ${h} Z M ${(w * 2) / 5} ${(h * 4) / 5} L ${(w * 3) / 5} ${(h * 4) / 5}`;
+      break;
+    case 'nonIsoscelesTrapezoid':
+      {
+        const adjustmentGuides = getTextByPathList(node, [
+          'p:spPr',
+          'a:prstGeom',
+          'a:avLst',
+          'a:gd',
+        ]);
+        let adj1 = 25000;
+        let adj2 = 25000;
+        for (const guide of asArray(adjustmentGuides)) {
+          const name = getTextByPathList(guide, ['attrs', 'name']);
+          const value = parseInt(
+            getTextByPathList(guide, ['attrs', 'fmla']).substring(4),
+          );
+          if (name === 'adj1') adj1 = value;
+          else if (name === 'adj2') adj2 = value;
+        }
+
+        const shortSide = Math.min(w, h);
+        const maxAdjustment = (50000 * w) / shortSide;
+        const leftAdjustment = Math.min(Math.max(adj1, 0), maxAdjustment);
+        const rightAdjustment = Math.min(Math.max(adj2, 0), maxAdjustment);
+        const topLeft = (shortSide * leftAdjustment) / 100000;
+        const topRight = w - (shortSide * rightAdjustment) / 100000;
+        pathData = `M 0 ${h} L ${topLeft} 0 L ${topRight} 0 L ${w} ${h} Z`;
+      }
+      break;
+    case 'leftRightCircularArrow':
     case 'folderCorner':
     case 'funnel':
-    case 'nonIsoscelesTrapezoid':
     case 'upDownArrowCallout':
       pathData = `M 0 0 L ${w} 0 L ${w} ${h} L 0 ${h} Z`;
       break;

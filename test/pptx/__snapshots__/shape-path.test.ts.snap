@@ -1496,19 +1496,19 @@ exports[`PowerPoint preset shape path safety > keeps the locked geometry contrac
 
 exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for flowChartOfflineStorage 1`] = `
 {
-  "adj": "701c4636",
-  "adj1": "701c4636",
-  "adj2": "701c4636",
-  "adj3": "701c4636",
-  "adj4": "701c4636",
-  "adj5": "701c4636",
-  "adj6": "701c4636",
-  "adj7": "701c4636",
-  "adj8": "701c4636",
-  "authored": "701c4636",
-  "default": "701c4636",
-  "hf": "701c4636",
-  "vf": "701c4636",
+  "adj": "996ed501",
+  "adj1": "996ed501",
+  "adj2": "996ed501",
+  "adj3": "996ed501",
+  "adj4": "996ed501",
+  "adj5": "996ed501",
+  "adj6": "996ed501",
+  "adj7": "996ed501",
+  "adj8": "996ed501",
+  "authored": "996ed501",
+  "default": "996ed501",
+  "hf": "996ed501",
+  "vf": "996ed501",
 }
 `;
 
@@ -2342,19 +2342,19 @@ exports[`PowerPoint preset shape path safety > keeps the locked geometry contrac
 
 exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for nonIsoscelesTrapezoid 1`] = `
 {
-  "adj": "701c4636",
-  "adj1": "701c4636",
-  "adj2": "701c4636",
-  "adj3": "701c4636",
-  "adj4": "701c4636",
-  "adj5": "701c4636",
-  "adj6": "701c4636",
-  "adj7": "701c4636",
-  "adj8": "701c4636",
-  "authored": "701c4636",
-  "default": "701c4636",
-  "hf": "701c4636",
-  "vf": "701c4636",
+  "adj": "642f2cda",
+  "adj1": "bfe9c924",
+  "adj2": "1f08cd0e",
+  "adj3": "642f2cda",
+  "adj4": "642f2cda",
+  "adj5": "642f2cda",
+  "adj6": "642f2cda",
+  "adj7": "642f2cda",
+  "adj8": "642f2cda",
+  "authored": "7527c920",
+  "default": "642f2cda",
+  "hf": "642f2cda",
+  "vf": "642f2cda",
 }
 `;
 
