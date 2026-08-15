@@ -48,13 +48,13 @@ async function createSmokePptx() {
 }
 
 const metadata = require('../package.json');
-assert.equal(metadata.name, 'oakit');
+assert.equal(metadata.name, '@evoelsewhere/oakit');
 assert.equal(metadata.bin.oakit, './dist/cli.js');
 
-const esm = await import('oakit');
-const esmPptx = await import('oakit/pptx');
-const cjs = require('oakit');
-const cjsPptx = require('oakit/pptx');
+const esm = await import('@evoelsewhere/oakit');
+const esmPptx = await import('@evoelsewhere/oakit/pptx');
+const cjs = require('@evoelsewhere/oakit');
+const cjsPptx = require('@evoelsewhere/oakit/pptx');
 assert.equal(typeof esm.parsePptx, 'function');
 assert.equal(typeof esmPptx.parsePptxWithDiagnostics, 'function');
 assert.equal(typeof cjs.parsePptx, 'function');

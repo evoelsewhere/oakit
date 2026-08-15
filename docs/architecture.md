@@ -163,7 +163,7 @@ inheritance belongs under `formats/pptx`, even if a future Word parser may have
 similar needs.
 
 `src/formats/pptx/internal` is not a supported package entry point. Consumers
-must import from `oakit` or `oakit/pptx`.
+must import from `@evoelsewhere/oakit` or `@evoelsewhere/oakit/pptx`.
 
 ## Public API boundary
 
@@ -190,9 +190,9 @@ The package is built as ESM and CommonJS with declarations and source maps. The
 public exports and executable are:
 
 ```text
-oakit       -> dist/index.{js,cjs,d.ts}
-oakit/pptx  -> dist/pptx/index.{js,cjs,d.ts}
-oakit CLI   -> dist/cli.js
+@evoelsewhere/oakit       -> dist/index.{js,cjs,d.ts}
+@evoelsewhere/oakit/pptx  -> dist/pptx/index.{js,cjs,d.ts}
+oakit CLI                 -> dist/cli.js
 ```
 
 The CLI is a Node.js boundary layered over the same public PowerPoint API. It
@@ -714,9 +714,9 @@ The root API can re-export new format entry points, while subpath exports keep
 format-only consumers isolated:
 
 ```text
-oakit/pptx
-oakit/xlsx    (future)
-oakit/docx    (future)
+@evoelsewhere/oakit/pptx
+@evoelsewhere/oakit/xlsx    (future)
+@evoelsewhere/oakit/docx    (future)
 ```
 
 ## Reader and writer separation

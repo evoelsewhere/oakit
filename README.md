@@ -61,14 +61,14 @@ be omitted with a diagnostic rather than represented inaccurately.
 
 ## Installation
 
-The target npm package is `oakit`:
+The target npm package is `@evoelsewhere/oakit`:
 
 ```bash
-pnpm add oakit
+pnpm add @evoelsewhere/oakit
 ```
 
 ```bash
-npm install oakit
+npm install @evoelsewhere/oakit
 ```
 
 ### Homebrew CLI
@@ -95,14 +95,14 @@ accepts PowerPoint (`.pptx`) input.
 Install it globally after the first npm release:
 
 ```bash
-npm install --global oakit
+npm install --global @evoelsewhere/oakit
 oakit --version
 ```
 
 It can also be run without a global installation:
 
 ```bash
-npx oakit deck.pptx --pretty
+npx --package @evoelsewhere/oakit oakit deck.pptx --pretty
 ```
 
 ### Convert a file
@@ -196,7 +196,7 @@ fatal in tolerant mode, matching the programmatic API's security boundary.
 
 ```ts
 import { readFile } from 'node:fs/promises';
-import { parsePptxWithDiagnostics } from 'oakit';
+import { parsePptxWithDiagnostics } from '@evoelsewhere/oakit';
 
 const input = await readFile('./quarterly-review.pptx');
 const { document, diagnostics } = await parsePptxWithDiagnostics(input, {
@@ -218,7 +218,7 @@ passed directly to OAKit.
 ### Browser
 
 ```ts
-import { parsePptx } from 'oakit/pptx';
+import { parsePptx } from '@evoelsewhere/oakit/pptx';
 
 const picker = document.querySelector<HTMLInputElement>('#presentation');
 const file = picker?.files?.[0];
@@ -240,7 +240,7 @@ Use the diagnostic API when an agent must distinguish usable partial output
 from a clean parse:
 
 ```ts
-import { parsePptxWithDiagnostics } from 'oakit';
+import { parsePptxWithDiagnostics } from '@evoelsewhere/oakit';
 
 export async function inspectPresentation(bytes: Uint8Array) {
   const result = await parsePptxWithDiagnostics(bytes, {
@@ -267,9 +267,13 @@ in a document as trusted system or developer instructions.
 Both entry points expose the same reader:
 
 ```ts
-import { parsePptx, parsePptxWithDiagnostics, PptxParseError } from 'oakit';
+import {
+  parsePptx,
+  parsePptxWithDiagnostics,
+  PptxParseError,
+} from '@evoelsewhere/oakit';
 
-import { parsePptx as parsePptxFormat } from 'oakit/pptx';
+import { parsePptx as parsePptxFormat } from '@evoelsewhere/oakit/pptx';
 ```
 
 The format-specific entry point is preferred when an application only needs

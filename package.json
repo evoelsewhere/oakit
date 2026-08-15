@@ -1,5 +1,5 @@
 {
-  "name": "oakit",
+  "name": "@evoelsewhere/oakit",
   "version": "0.0.0",
   "description": "Agent-ready tools for reading, understanding, editing, and generating PowerPoint, Excel, and Word documents.",
   "license": "MIT",

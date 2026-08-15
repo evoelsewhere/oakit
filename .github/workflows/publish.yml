@@ -66,7 +66,7 @@ jobs:
           fi
 
           echo "npm_tag=$npm_tag" >> "$GITHUB_OUTPUT"
-          echo "Publishing oakit@$package_version with npm dist-tag $npm_tag"
+          echo "Publishing @evoelsewhere/oakit@$package_version with npm dist-tag $npm_tag"
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
