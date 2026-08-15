@@ -4,7 +4,6 @@ import { describe, expect, it } from 'vitest';
 import {
   readZipEntryBytes,
   ZipExpansionBudgetLimitError,
-  ZipEntrySizeLimitError,
 } from '../../src/common/archive/read-entry';
 
 describe('readZipEntryBytes', () => {
@@ -23,9 +22,12 @@ describe('readZipEntryBytes', () => {
     zip.file('part.bin', 'hello world');
     const file = zip.file('part.bin')!;
 
-    await expect(readZipEntryBytes(file, 5)).rejects.toBeInstanceOf(
-      ZipEntrySizeLimitError,
-    );
+    await expect(readZipEntryBytes(file, 5)).rejects.toMatchObject({
+      actual: 11,
+      limit: 5,
+      message: 'Expanded ZIP entry exceeds 5 bytes',
+      name: 'ZipEntrySizeLimitError',
+    });
   });
 
   it('rejects oversized declared content before reading it', async () => {
@@ -42,6 +44,43 @@ describe('readZipEntryBytes', () => {
     ).rejects.toMatchObject({ actual: 1_000, limit: 10 });
   });
 
+  it('rejects a declared oversize without starting decompression', async () => {
+    let streamStarted = false;
+    const file = {
+      _data: { uncompressedSize: 6 },
+      internalStream() {
+        streamStarted = true;
+        throw new Error('The stream must not start');
+      },
+      name: 'part.bin',
+    } as unknown as JSZip.JSZipObject;
+
+    await expect(readZipEntryBytes(file, 5)).rejects.toMatchObject({
+      actual: 6,
+      limit: 5,
+      name: 'ZipEntrySizeLimitError',
+    });
+    expect(streamStarted).toBe(false);
+  });
+
+  it('assembles output correctly across multiple decompression chunks', async () => {
+    const content = Uint8Array.from(
+      { length: 80_000 },
+      (_, index) => index % 251,
+    );
+    const source = new JSZip();
+    source.file('part.bin', content);
+    const archive = await source.generateAsync({
+      compression: 'DEFLATE',
+      type: 'uint8array',
+    });
+    const loaded = await JSZip.loadAsync(archive);
+
+    await expect(
+      readZipEntryBytes(loaded.file('part.bin')!, content.byteLength),
+    ).resolves.toEqual(content);
+  });
+
   it('stops when a shared expansion budget is exhausted', async () => {
     const zip = new JSZip();
     zip.file('part.bin', 'hello world');
@@ -55,6 +94,11 @@ describe('readZipEntryBytes', () => {
           throw new ZipExpansionBudgetLimitError(expandedBytes, 5);
         }
       }),
-    ).rejects.toBeInstanceOf(ZipExpansionBudgetLimitError);
+    ).rejects.toMatchObject({
+      actual: 11,
+      limit: 5,
+      message: 'Expanded ZIP data exceeds the 5 byte parse budget',
+      name: 'ZipExpansionBudgetLimitError',
+    });
   });
 });

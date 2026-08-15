@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   decodeXmlEntities,
   escapeHtml,
+  hasValidText,
   sanitizeHyperlink,
 } from '../../src/common/text/html';
 
@@ -15,6 +16,15 @@ describe('HTML helpers', () => {
 
   it('decodes named and numeric XML entities before HTML escaping', () => {
     expect(decodeXmlEntities('&lt;&amp;&apos;&#39;&#x3E;')).toBe("<&''>");
+  });
+
+  it('keeps invalid numeric entities and accepts Unicode boundary values', () => {
+    expect(decodeXmlEntities('&#1114112; &#x110000;')).toBe(
+      '&#1114112; &#x110000;',
+    );
+    expect(decodeXmlEntities('&#0;&#1114111;')).toBe(
+      `\u0000${String.fromCodePoint(0x10ffff)}`,
+    );
   });
 
   it.each([
@@ -32,5 +42,21 @@ describe('HTML helpers', () => {
     'relative/path',
   ])('rejects unsafe or ambiguous hyperlinks: %s', (value) => {
     expect(sanitizeHyperlink(value)).toBeNull();
+  });
+
+  it('trims a safe link and rejects an empty candidate', () => {
+    expect(sanitizeHyperlink('  HTTPS://example.com/a  ')).toBe(
+      'HTTPS://example.com/a',
+    );
+    expect(sanitizeHyperlink(' \n\t ')).toBeNull();
+  });
+
+  it.each([
+    ['', false],
+    ['<p> \n <br>\t</p>', false],
+    ['<p>Visible</p>', true],
+    ['<span title="metadata">A   B</span>', true],
+  ])('recognizes visible text in %j', (html, expected) => {
+    expect(hasValidText(html)).toBe(expected);
   });
 });

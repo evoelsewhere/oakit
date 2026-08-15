@@ -11,6 +11,9 @@ describe('OPC part URI helpers', () => {
     expect(getRelationshipPartUri('ppt/slides/slide1.xml')).toBe(
       'ppt/slides/_rels/slide1.xml.rels',
     );
+    expect(getRelationshipPartUri('presentation.xml')).toBe(
+      '_rels/presentation.xml.rels',
+    );
   });
 
   it('resolves nested parent segments against the owner directory', () => {
@@ -57,5 +60,23 @@ describe('OPC part URI helpers', () => {
         'https://example.com/image.png',
       ),
     ).toThrow(/TargetMode/);
+  });
+
+  it('rejects empty internal targets after removing a query or fragment', () => {
+    expect(() => resolvePartUri('ppt/presentation.xml', ' ?query')).toThrow(
+      'OPC relationship target is empty',
+    );
+    expect(() => resolvePartUri('ppt/presentation.xml', '#fragment')).toThrow(
+      'OPC relationship target is empty',
+    );
+  });
+
+  it('rejects an empty owner and trims external targets', () => {
+    expect(() => resolvePartUri('', 'slide.xml')).toThrow(
+      'OPC owner part must name a file',
+    );
+    expect(
+      resolveRelationshipTarget('', '  https://example.com/deck  ', 'EXTERNAL'),
+    ).toBe('https://example.com/deck');
   });
 });
