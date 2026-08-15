@@ -1,17 +1,8 @@
+import { mutatedFiles } from './scripts/mutation-scope.mjs';
+
 /** @type {import('@stryker-mutator/api/core').PartialStrykerOptions} */
 const config = {
-  mutate: [
-    'src/cli/run.ts',
-    'src/common/archive/read-entry.ts',
-    'src/common/opc/part-uri.ts',
-    'src/common/text/css.ts',
-    'src/common/text/html.ts',
-    'src/common/xml/normalize.ts',
-    'src/common/xml/read-xml.ts',
-    'src/common/xml/types.ts',
-    'src/common/xml/validate.ts',
-    'src/formats/pptx/internal/resource-limits.ts',
-  ],
+  mutate: mutatedFiles,
   plugins: [
     '@stryker-mutator/typescript-checker',
     '@stryker-mutator/vitest-runner',

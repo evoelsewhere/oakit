@@ -27,6 +27,12 @@ for (const expectedFile of expectedFiles) {
   }
 }
 
+for (const reportedFile of reportedFiles) {
+  if (!expectedFiles.has(reportedFile)) {
+    failures.push(`Unexpected mutation report file: ${reportedFile}`);
+  }
+}
+
 for (const [fileName, fileReport] of Object.entries(report.files)) {
   const counts = new Map();
   for (const mutant of fileReport.mutants) {

@@ -47,10 +47,12 @@
     "test:corpus": "node scripts/corpus/fetch-pptx-corpus.mjs && vitest run --config vitest.corpus.config.ts",
     "test:corpus:large": "node scripts/corpus/fetch-pptx-corpus.mjs --include-large && vitest run --config vitest.corpus.config.ts",
     "test:mutation": "stryker run && pnpm test:mutation:audit",
-    "test:mutation:audit": "node scripts/check-mutation-report.mjs",
+    "test:mutation:audit": "pnpm test:mutation:scope && node scripts/check-mutation-report.mjs",
+    "test:mutation:scope": "node scripts/check-mutation-scope.mjs",
+    "test:mutation:scope:complete": "node scripts/check-mutation-scope.mjs --complete",
     "test:package": "node scripts/check-package.mjs",
     "test:watch": "vitest",
-    "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm test:package",
+    "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test:mutation:scope && pnpm test && pnpm build && pnpm test:package",
     "prepack": "pnpm build"
   },
   "engines": {
