@@ -143,8 +143,8 @@ function shapeSnipRoundRect(
   h: number,
   adj1: number,
   adj2: number,
-  shapeType: string,
-  adjType: string,
+  shapeType: 'round' | 'snip',
+  adjType: 'cornr1' | 'cornr2' | 'cornrAll' | 'cornrTL' | 'diag',
 ) {
   let adjA, adjB, adjC, adjD;
 
@@ -645,7 +645,6 @@ export function getShapePath(
           'a:gd',
         ]);
         let sAdj1_val, sAdj2_val;
-        let shpTyp, adjTyp;
 
         if (shapAdjst_ary && Array.isArray(shapAdjst_ary)) {
           for (const adj of asArray(shapAdjst_ary)) {
@@ -667,63 +666,86 @@ export function getShapePath(
         switch (shapType) {
           case 'roundRect':
           case 'flowChartAlternateProcess':
-            shpTyp = 'round';
-            adjTyp = 'cornrAll';
-            if (sAdj1_val === undefined) sAdj1_val = 0.33334;
-            sAdj2_val = 0;
+            pathData = shapeSnipRoundRect(
+              w,
+              h,
+              sAdj1_val ?? 0.33334,
+              0,
+              'round',
+              'cornrAll',
+            );
             break;
           case 'round1Rect':
-            shpTyp = 'round';
-            adjTyp = 'cornr1';
-            if (sAdj1_val === undefined) sAdj1_val = 0.33334;
-            sAdj2_val = 0;
+            pathData = shapeSnipRoundRect(
+              w,
+              h,
+              sAdj1_val ?? 0.33334,
+              0,
+              'round',
+              'cornr1',
+            );
             break;
           case 'round2DiagRect':
-            shpTyp = 'round';
-            adjTyp = 'diag';
-            if (sAdj1_val === undefined) sAdj1_val = 0.33334;
-            if (sAdj2_val === undefined) sAdj2_val = 0;
+            pathData = shapeSnipRoundRect(
+              w,
+              h,
+              sAdj1_val ?? 0.33334,
+              sAdj2_val ?? 0,
+              'round',
+              'diag',
+            );
             break;
           case 'round2SameRect':
-            shpTyp = 'round';
-            adjTyp = 'cornr2';
-            if (sAdj1_val === undefined) sAdj1_val = 0.33334;
-            if (sAdj2_val === undefined) sAdj2_val = 0;
+            pathData = shapeSnipRoundRect(
+              w,
+              h,
+              sAdj1_val ?? 0.33334,
+              sAdj2_val ?? 0,
+              'round',
+              'cornr2',
+            );
             break;
           case 'snip1Rect':
-            shpTyp = 'snip';
-            adjTyp = 'cornr1';
-            if (sAdj1_val === undefined) sAdj1_val = 0.33334;
-            sAdj2_val = 0;
+            pathData = shapeSnipRoundRect(
+              w,
+              h,
+              sAdj1_val ?? 0.33334,
+              0,
+              'snip',
+              'cornr1',
+            );
             break;
           case 'flowChartPunchedCard':
-            shpTyp = 'snip';
-            adjTyp = 'cornrTL';
-            if (sAdj1_val === undefined) sAdj1_val = 0.33334;
-            sAdj2_val = 0;
+            pathData = shapeSnipRoundRect(
+              w,
+              h,
+              sAdj1_val ?? 0.33334,
+              0,
+              'snip',
+              'cornrTL',
+            );
             break;
           case 'snip2DiagRect':
-            shpTyp = 'snip';
-            adjTyp = 'diag';
-            if (sAdj1_val === undefined) sAdj1_val = 0;
-            if (sAdj2_val === undefined) sAdj2_val = 0.33334;
+            pathData = shapeSnipRoundRect(
+              w,
+              h,
+              sAdj1_val ?? 0,
+              sAdj2_val ?? 0.33334,
+              'snip',
+              'diag',
+            );
             break;
           case 'snip2SameRect':
-            shpTyp = 'snip';
-            adjTyp = 'cornr2';
-            if (sAdj1_val === undefined) sAdj1_val = 0.33334;
-            if (sAdj2_val === undefined) sAdj2_val = 0;
+            pathData = shapeSnipRoundRect(
+              w,
+              h,
+              sAdj1_val ?? 0.33334,
+              sAdj2_val ?? 0,
+              'snip',
+              'cornr2',
+            );
             break;
-          default:
         }
-        pathData = shapeSnipRoundRect(
-          w,
-          h,
-          sAdj1_val ?? 0,
-          sAdj2_val ?? 0,
-          shpTyp ?? '',
-          adjTyp ?? '',
-        );
       }
       break;
     case 'snipRoundRect':
@@ -736,16 +758,14 @@ export function getShapePath(
         ]);
         let sAdj1_val = 0.33334;
         let sAdj2_val = 0.33334;
-        if (shapAdjst_ary) {
-          for (const adj of asArray(shapAdjst_ary)) {
-            const sAdj_name = getTextByPathList(adj, ['attrs', 'name']);
-            if (sAdj_name === 'adj1') {
-              const sAdj1 = getTextByPathList(adj, ['attrs', 'fmla']);
-              sAdj1_val = parseInt(sAdj1.substring(4)) / 50000;
-            } else if (sAdj_name === 'adj2') {
-              const sAdj2 = getTextByPathList(adj, ['attrs', 'fmla']);
-              sAdj2_val = parseInt(sAdj2.substring(4)) / 50000;
-            }
+        for (const adj of asArray(shapAdjst_ary)) {
+          const sAdj_name = getTextByPathList(adj, ['attrs', 'name']);
+          if (sAdj_name === 'adj1') {
+            const sAdj1 = getTextByPathList(adj, ['attrs', 'fmla']);
+            sAdj1_val = parseInt(sAdj1.substring(4)) / 50000;
+          } else if (sAdj_name === 'adj2') {
+            const sAdj2 = getTextByPathList(adj, ['attrs', 'fmla']);
+            sAdj2_val = parseInt(sAdj2.substring(4)) / 50000;
           }
         }
         pathData = `M0,${h} L${w},${h} L${w},${(h / 2) * sAdj2_val} L${w / 2 + (w / 2) * (1 - sAdj2_val)},0 L${(w / 2) * sAdj1_val},0 Q0,0 0,${(h / 2) * sAdj1_val} z`;
