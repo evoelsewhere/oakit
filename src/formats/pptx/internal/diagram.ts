@@ -8,9 +8,72 @@ import type {
 import { getRelationshipPartUri, getTextByPathList } from '../../../common';
 import { getTextNodeValue } from './text';
 
+const STANDARD_RELATIONSHIP_PREFIX =
+  'http://schemas.openxmlformats.org/officeDocument/2006/relationships/';
+const STRICT_RELATIONSHIP_PREFIX =
+  'http://purl.oclc.org/ooxml/officeDocument/relationships/';
+
 function asArray(value: XmlLookupValue | undefined): XmlLookupValue[] {
   if (!value) return [];
   return Array.isArray(value) ? value : [value];
+}
+
+function renameDrawingPrefixes(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(renameDrawingPrefixes);
+  if (typeof value !== 'object' || value === null) return value;
+
+  return Object.fromEntries(
+    Object.entries(value).map(([key, child]) => [
+      key.startsWith('dsp:') ? `p:${key.slice(4)}` : key,
+      renameDrawingPrefixes(child),
+    ]),
+  );
+}
+
+function relationshipTypeName(type: string | undefined): string {
+  if (!type) return '';
+  if (type.startsWith(STANDARD_RELATIONSHIP_PREFIX)) {
+    return type.slice(STANDARD_RELATIONSHIP_PREFIX.length);
+  }
+  if (type.startsWith(STRICT_RELATIONSHIP_PREFIX)) {
+    return type.slice(STRICT_RELATIONSHIP_PREFIX.length);
+  }
+  return type;
+}
+
+async function getPartRelationships(
+  context: PptxParserContext,
+  ownerPart: string,
+): Promise<PptxRelationshipMap> {
+  const result: PptxRelationshipMap = {};
+  const relationships = await context.xmlReader.read(
+    getRelationshipPartUri(ownerPart),
+  );
+  const relationshipNodes = getTextByPathList<XmlLookupValue>(relationships, [
+    'Relationships',
+    'Relationship',
+  ]);
+
+  for (const relationship of asArray(relationshipNodes)) {
+    const attributes =
+      getTextByPathList<Record<string, string>>(relationship, ['attrs']) ?? {};
+    const id = attributes.Id;
+    const target = attributes.Target;
+    if (!id || !target) continue;
+    const resolvedTarget = context.xmlReader.resolveRelationshipTarget(
+      ownerPart,
+      target,
+      attributes.TargetMode,
+    );
+    if (!resolvedTarget) continue;
+
+    result[id] = {
+      type: relationshipTypeName(attributes.Type),
+      target: resolvedTarget,
+    };
+  }
+
+  return result;
 }
 
 export async function loadDiagramFile(
@@ -20,22 +83,23 @@ export async function loadDiagramFile(
 ): Promise<XmlLookupValue | null> {
   if (!filename) return null;
 
-  const cacheKey = `${transformDrawing ? 'drawing:' : 'xml:'}${filename}`;
-  const cached = context.diagramFileCache[cacheKey];
-  if (cached) return cached;
+  const cacheKey = String(transformDrawing) + filename;
+  if (Object.hasOwn(context.diagramFileCache, cacheKey)) {
+    return context.diagramFileCache[cacheKey] ?? null;
+  }
 
   let content: XmlLookupValue | null = await context.xmlReader.read(filename);
   if (content && transformDrawing) {
-    content = JSON.parse(
-      JSON.stringify(content).replace(/dsp:/g, 'p:'),
-    ) as XmlLookupValue;
+    content = renameDrawingPrefixes(content) as XmlLookupValue;
   }
 
   context.diagramFileCache[cacheKey] = content;
   return content;
 }
 
-export function getDiagramDrawingRelId(dataContent: XmlLookupValue): string {
+export function getDiagramDrawingRelId(
+  dataContent: XmlLookupValue | null,
+): string {
   const extensionNodes = getTextByPathList<XmlLookupValue>(dataContent, [
     'dgm:dataModel',
     'dgm:extLst',
@@ -98,48 +162,22 @@ export async function getDiagramNodeContext(
   if (colorsTarget)
     diagramContent.colors = await loadDiagramFile(context, colorsTarget);
 
-  const drawingRelationshipId = diagramContent.data
-    ? getDiagramDrawingRelId(diagramContent.data)
-    : '';
-  const drawingTarget = relationshipTarget(context, drawingRelationshipId);
+  const drawingRelationshipId = getDiagramDrawingRelId(diagramContent.data);
+  const dataRelationships = dataTarget
+    ? await getPartRelationships(context, dataTarget)
+    : {};
+  const drawingTarget =
+    dataRelationships[drawingRelationshipId]?.target ??
+    relationshipTarget(context, drawingRelationshipId);
   let drawing: XmlLookupValue | null = null;
 
   if (drawingTarget) {
     drawing = await loadDiagramFile(context, drawingTarget, true);
     diagramContent.drawing = drawing;
-
-    const drawingName = drawingTarget.split('/').pop();
-    if (drawingName) {
-      const relationshipsFilename = getRelationshipPartUri(drawingTarget);
-      const relationships = await context.xmlReader.read(relationshipsFilename);
-      const relationshipNodes = getTextByPathList<XmlLookupValue>(
-        relationships,
-        ['Relationships', 'Relationship'],
-      );
-
-      for (const relationship of asArray(relationshipNodes)) {
-        const attributes =
-          getTextByPathList<Record<string, string>>(relationship, ['attrs']) ??
-          {};
-        const id = attributes.Id;
-        const target = attributes.Target;
-        if (!id || !target) continue;
-        const resolvedTarget = context.xmlReader.resolveRelationshipTarget(
-          drawingTarget,
-          target,
-          attributes.TargetMode,
-        );
-        if (!resolvedTarget) continue;
-
-        diagramResObj[id] = {
-          type: (attributes.Type ?? '').replace(
-            'http://schemas.openxmlformats.org/officeDocument/2006/relationships/',
-            '',
-          ),
-          target: resolvedTarget,
-        };
-      }
-    }
+    Object.assign(
+      diagramResObj,
+      await getPartRelationships(context, drawingTarget),
+    );
   }
 
   return {
@@ -160,7 +198,6 @@ export function getSmartArtTextData(dataContent: XmlLookupValue): string[] {
 
   for (const point of asArray(points)) {
     const textBody = getTextByPathList<XmlLookupValue>(point, ['dgm:t']);
-    if (!textBody) continue;
 
     let nodeText = '';
     const paragraphs = getTextByPathList<XmlLookupValue>(textBody, ['a:p']);
@@ -168,11 +205,10 @@ export function getSmartArtTextData(dataContent: XmlLookupValue): string[] {
       const runs = getTextByPathList<XmlLookupValue>(paragraph, ['a:r']);
       for (const run of asArray(runs)) {
         const textNode = getTextByPathList<XmlLookupValue>(run, ['a:t']);
-        if (!textNode) continue;
         const text = getTextNodeValue(textNode);
         if (text) nodeText += text;
       }
-      if (nodeText) nodeText += '\n';
+      nodeText += '\n';
     }
 
     const cleanText = nodeText.trim();
