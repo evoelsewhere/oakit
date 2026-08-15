@@ -44,6 +44,24 @@ interface FillCandidate {
   source: string;
 }
 
+interface AlphaTransformation {
+  apply: (current: number, amount: number) => number;
+  kind: 'alpha';
+  name: string;
+}
+
+interface ColorValueTransformation {
+  apply: (value: string, amount: number, hasAlpha: boolean) => string;
+  kind: 'color';
+  name: string;
+}
+
+type ColorTransformation = AlphaTransformation | ColorValueTransformation;
+type AuthoredColorTransformation = ColorTransformation & {
+  amount: number;
+  order: number;
+};
+
 type FillResolution =
   { state: 'found'; fill: Fill } | { state: 'missing' | 'none' };
 
@@ -71,6 +89,76 @@ function wrapChild(key: string, child: XmlLookupValue): XmlLookupValue {
   return { [key]: child } as unknown as XmlLookupValue;
 }
 
+function finiteNumber(value: string | undefined): number | undefined {
+  if (value === undefined || value.trim() === '') return undefined;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+function fixedPercentage(value: string | undefined): number | undefined {
+  const parsed = finiteNumber(value?.replace(/%$/, ''));
+  if (parsed === undefined) return undefined;
+  return parsed / (value?.endsWith('%') ? 100 : 100_000);
+}
+
+function clampUnit(value: number): number {
+  return Math.min(Math.max(value, 0), 1);
+}
+
+function byteHex(value: number): string {
+  const finite = Number.isFinite(value) ? value : 0;
+  return toHex(Math.round(Math.min(Math.max(finite, 0), 255)));
+}
+
+function normalizedColor(value: string | undefined): string {
+  if (value === undefined) return '';
+  return normalizeHexColor(value) ?? '';
+}
+
+function replaceAlpha(_current: number, amount: number): number {
+  return amount;
+}
+
+function multiplyAlpha(current: number, amount: number): number {
+  return current * amount;
+}
+
+function addAlpha(current: number, amount: number): number {
+  return current + amount;
+}
+
+const COLOR_TRANSFORMATIONS: readonly ColorTransformation[] = [
+  { apply: replaceAlpha, kind: 'alpha', name: 'a:alpha' },
+  { apply: multiplyAlpha, kind: 'alpha', name: 'a:alphaMod' },
+  { apply: addAlpha, kind: 'alpha', name: 'a:alphaOff' },
+  { apply: applyHueMod, kind: 'color', name: 'a:hueMod' },
+  { apply: applyLumMod, kind: 'color', name: 'a:lumMod' },
+  { apply: applyLumOff, kind: 'color', name: 'a:lumOff' },
+  { apply: applySatMod, kind: 'color', name: 'a:satMod' },
+  { apply: applyShade, kind: 'color', name: 'a:shade' },
+  { apply: applyTint, kind: 'color', name: 'a:tint' },
+];
+
+function authoredColorTransformations(
+  colorNode: XmlLookupValue,
+): AuthoredColorTransformation[] {
+  const authored: AuthoredColorTransformation[] = [];
+  for (const descriptor of COLOR_TRANSFORMATIONS) {
+    for (const transformNode of asArray(nodeAt(colorNode, [descriptor.name]))) {
+      const amount = fixedPercentage(textAt(transformNode, ['attrs', 'val']));
+      if (amount === undefined) continue;
+      authored.push({
+        ...descriptor,
+        amount,
+        order:
+          finiteNumber(textAt(transformNode, ['attrs', 'order'])) ??
+          Number.MAX_SAFE_INTEGER,
+      });
+    }
+  }
+  return authored.sort((left, right) => left.order - right.order);
+}
+
 export function getFillType(node: unknown): string {
   if (nodeAt(node, ['a:noFill'])) return 'NO_FILL';
   if (nodeAt(node, ['a:solidFill'])) return 'SOLID_FILL';
@@ -85,7 +173,7 @@ function createImageData(ref = ''): PptxMediaData {
   return { ref, base64: '', blob: '' };
 }
 
-function createMediaData(ref = ''): Pick<PptxMediaData, 'blob' | 'ref'> {
+function createMediaData(ref: string): Pick<PptxMediaData, 'blob' | 'ref'> {
   return { ref, blob: '' };
 }
 
@@ -104,7 +192,9 @@ async function loadMedia(
 
   if (cacheItem[mode]) return cacheItem[mode];
 
-  const fileExtension = normalizedPath.split('.').pop()?.toLowerCase() ?? '';
+  const fileExtension = normalizedPath
+    .slice(normalizedPath.lastIndexOf('.') + 1)
+    .toLowerCase();
   if (fileExtension === 'xml') return '';
 
   const bytes = await warpObj.xmlReader.readMedia(normalizedPath);
@@ -158,8 +248,6 @@ export async function getImageData(
   warpObj: PptxParserContext,
 ): Promise<PptxMediaData> {
   const imageData = createImageData(imagePath);
-  if (!imagePath) return imageData;
-
   const mode = warpObj.options.imageMode;
   if (mode === 'base64' || mode === 'both') {
     imageData.base64 = await loadImage(imagePath, warpObj, 'base64');
@@ -197,30 +285,27 @@ export async function getPicFill(
   node: XmlLookupValue | undefined,
   warpObj: PptxParserContext,
 ): Promise<PptxMediaData> {
-  if (!node) return createImageData();
-
   const relationshipId = textAt(node, ['a:blip', 'attrs', 'r:embed']);
   if (!relationshipId) return createImageData();
 
-  const relationships =
-    source === 'slideBg' || source === 'slide'
-      ? warpObj.slideResObj
-      : source === 'slideLayoutBg'
-        ? warpObj.layoutResObj
-        : source === 'slideMasterBg'
-          ? warpObj.masterResObj
-          : source === 'themeBg'
-            ? warpObj.themeResObj
-            : source === 'diagramBg'
-              ? warpObj.diagramResObj
-              : undefined;
+  const relationshipsBySource: Partial<
+    Record<string, PptxParserContext['slideResObj'] | undefined>
+  > = {
+    diagramBg: warpObj.diagramResObj,
+    slide: warpObj.slideResObj,
+    slideBg: warpObj.slideResObj,
+    slideLayoutBg: warpObj.layoutResObj,
+    slideMasterBg: warpObj.masterResObj,
+    themeBg: warpObj.themeResObj,
+  };
+  const relationships = relationshipsBySource[source];
   const imagePath = relationships?.[relationshipId]?.target;
   return imagePath ? getImageData(imagePath, warpObj) : createImageData();
 }
 
 export function getPicFillOpacity(node: XmlLookupValue): number {
   const amount = textAt(node, ['a:blip', 'a:alphaModFix', 'attrs', 'amt']);
-  return amount ? Number.parseInt(amount) / 100_000 : 1;
+  return clampUnit(fixedPercentage(amount) ?? 1);
 }
 
 export function getPicFilters(
@@ -235,8 +320,10 @@ export function getPicFilters(
     );
     for (const effect of effects) {
       const saturation = textAt(effect, ['a14:saturation', 'attrs', 'sat']);
-      if (saturation)
-        filters.saturation = Number.parseInt(saturation) / 100_000;
+      const parsedSaturation = fixedPercentage(saturation);
+      if (parsedSaturation !== undefined) {
+        filters.saturation = parsedSaturation;
+      }
 
       const brightness = textAt(effect, [
         'a14:brightnessContrast',
@@ -248,19 +335,28 @@ export function getPicFilters(
         'attrs',
         'contrast',
       ]);
-      if (brightness)
-        filters.brightness = Number.parseInt(brightness) / 100_000;
-      if (contrast) filters.contrast = Number.parseInt(contrast) / 100_000;
+      const parsedBrightness = fixedPercentage(brightness);
+      const parsedContrast = fixedPercentage(contrast);
+      if (parsedBrightness !== undefined) {
+        filters.brightness = parsedBrightness;
+      }
+      if (parsedContrast !== undefined) filters.contrast = parsedContrast;
 
       const sharpenSoften = textAt(effect, [
         'a14:sharpenSoften',
         'attrs',
         'amount',
       ]);
-      if (sharpenSoften) {
-        const amount = Number.parseInt(sharpenSoften) / 100_000;
-        if (amount > 0) filters.sharpen = amount;
-        else filters.soften = Math.abs(amount);
+      const amount = fixedPercentage(sharpenSoften);
+      if (amount !== undefined) {
+        switch (Math.sign(amount)) {
+          case 1:
+            filters.sharpen = amount;
+            break;
+          case -1:
+            filters.soften = Math.abs(amount);
+            break;
+        }
       }
 
       const colorTemperature = textAt(effect, [
@@ -268,8 +364,9 @@ export function getPicFilters(
         'attrs',
         'colorTemp',
       ]);
-      if (colorTemperature) {
-        filters.colorTemperature = Number.parseInt(colorTemperature);
+      const parsedColorTemperature = finiteNumber(colorTemperature);
+      if (parsedColorTemperature !== undefined) {
+        filters.colorTemperature = parsedColorTemperature;
       }
     }
   }
@@ -295,8 +392,12 @@ async function getBackgroundPicture(
 function normalizeGradientPath(
   path: string | undefined,
 ): GradientValue['path'] {
-  if (path === 'circle' || path === 'rect' || path === 'shape') return path;
-  return 'line';
+  const supported: ReadonlySet<string | undefined> = new Set([
+    'circle',
+    'rect',
+    'shape',
+  ]);
+  return supported.has(path) ? (path as GradientValue['path']) : 'line';
 }
 
 function buildGradient(
@@ -307,15 +408,19 @@ function buildGradient(
 ): GradientValue {
   const colors = asArray(nodeAt(node, ['a:gsLst', 'a:gs']))
     .map((stop) => {
-      const position = Number(textAt(stop, ['attrs', 'pos']) ?? 0);
+      const position = clampUnit(
+        fixedPercentage(textAt(stop, ['attrs', 'pos'])) ?? 0,
+      );
       return {
-        pos: position ? `${position / 1000}%` : '',
+        position,
         color: getSolidFill(stop, colorMap, placeholderColor, warpObj),
       };
     })
-    .sort(
-      (left, right) => Number.parseInt(left.pos) - Number.parseInt(right.pos),
-    );
+    .sort((left, right) => left.position - right.position)
+    .map(({ color, position }) => ({
+      color,
+      pos: `${position * 100}%`,
+    }));
 
   const linearNode = nodeAt(node, ['a:lin']);
   const path = textAt(node, ['a:path', 'attrs', 'path']);
@@ -340,24 +445,30 @@ export function getPatternFill(
   const pattern = nodeAt(node, ['a:pattFill']);
   if (!pattern) return null;
 
+  return buildPattern(pattern, warpObj);
+}
+
+function buildPattern(
+  pattern: XmlLookupValue,
+  warpObj: PptxParserContext,
+): PatternValue {
+  const foregroundColor = getSolidFill(
+    nodeAt(pattern, ['a:fgClr']),
+    undefined,
+    undefined,
+    warpObj,
+  );
+  const backgroundColor = getSolidFill(
+    nodeAt(pattern, ['a:bgClr']),
+    undefined,
+    undefined,
+    warpObj,
+  );
+
   return {
     type: textAt(pattern, ['attrs', 'prst']) ?? '',
-    foregroundColor: nodeAt(pattern, ['a:fgClr'])
-      ? getSolidFill(
-          nodeAt(pattern, ['a:fgClr']),
-          undefined,
-          undefined,
-          warpObj,
-        )
-      : '#000000',
-    backgroundColor: nodeAt(pattern, ['a:bgClr'])
-      ? getSolidFill(
-          nodeAt(pattern, ['a:bgClr']),
-          undefined,
-          undefined,
-          warpObj,
-        )
-      : '#FFFFFF',
+    foregroundColor: foregroundColor || '#000000',
+    backgroundColor: backgroundColor || '#ffffff',
   };
 }
 
@@ -376,11 +487,8 @@ export function getBgGradientFill(
     ]);
     return buildGradient(gradient, warpObj, colorMap, placeholderColor);
   }
-  return placeholderColor
-    ? placeholderColor.startsWith('#')
-      ? placeholderColor
-      : `#${placeholderColor}`
-    : null;
+  if (placeholderColor === undefined) return null;
+  return normalizeHexColor(placeholderColor);
 }
 
 function getMasterColorMap(
@@ -417,12 +525,12 @@ function orderedThemeBackgroundFills(
   if (!fillList) return [];
 
   const fills: { node: XmlLookupValue; order: number }[] = [];
-  for (const key of Object.keys(fillList)) {
-    if (key === 'attrs') continue;
-    for (const child of asArray(nodeAt(fillList, [key]))) {
+  for (const [key, value] of Object.entries(fillList)) {
+    if (!key.startsWith('a:')) continue;
+    for (const child of asArray(value)) {
       fills.push({
         node: wrapChild(key, child),
-        order: Number(attributes(child).order ?? Number.MAX_SAFE_INTEGER),
+        order: finiteNumber(attributes(child).order) ?? Number.MAX_SAFE_INTEGER,
       });
     }
   }
@@ -438,36 +546,28 @@ async function resolveBackgroundNode(
   placeholderColor: string | undefined,
   warpObj: PptxParserContext,
 ): Promise<Fill | null> {
-  const fillType = getFillType(node);
-  if (fillType === 'SOLID_FILL') {
+  const solid = nodeAt(node, ['a:solidFill']);
+  if (solid) {
+    const value = getSolidFill(solid, colorMap, placeholderColor, warpObj);
+    return value ? { type: 'color', value } : null;
+  }
+  const gradient = nodeAt(node, ['a:gradFill']);
+  if (gradient) {
     return {
-      type: 'color',
-      value: getSolidFill(
-        nodeAt(node, ['a:solidFill']),
-        colorMap,
-        placeholderColor,
-        warpObj,
-      ),
+      type: 'gradient',
+      value: buildGradient(gradient, warpObj, colorMap, placeholderColor),
     };
   }
-  if (fillType === 'GRADIENT_FILL') {
-    const gradient = nodeAt(node, ['a:gradFill']);
-    return gradient
-      ? {
-          type: 'gradient',
-          value: buildGradient(gradient, warpObj, colorMap, placeholderColor),
-        }
-      : null;
-  }
-  if (fillType === 'PIC_FILL') {
+  const picture = nodeAt(node, ['a:blipFill']);
+  if (picture) {
     return {
       type: 'image',
       value: await getBackgroundPicture(node, source, warpObj),
     };
   }
-  if (fillType === 'PATTERN_FILL') {
-    const pattern = getPatternFill(node, warpObj);
-    return pattern ? { type: 'pattern', value: pattern } : null;
+  const pattern = nodeAt(node, ['a:pattFill']);
+  if (pattern) {
+    return { type: 'pattern', value: buildPattern(pattern, warpObj) };
   }
   return null;
 }
@@ -542,8 +642,7 @@ export async function getSlideBackgroundFill(
         warpObj,
       );
       const index = Number(attributes(backgroundReference).idx ?? 0) - 1000;
-      const themeFill =
-        index > 0 ? orderedThemeBackgroundFills(warpObj)[index - 1] : undefined;
+      const themeFill = orderedThemeBackgroundFills(warpObj)[index - 1];
       return themeFill
         ? ((await resolveBackgroundNode(
             themeFill,
@@ -579,7 +678,7 @@ async function findFillInGroupHierarchy(
   warpObj: PptxParserContext,
   source: string,
 ): Promise<Fill | null> {
-  for (const groupNode of groupHierarchy) {
+  for (const groupNode of [...groupHierarchy].reverse()) {
     const groupProperties = nodeAt(groupNode, ['p:grpSpPr']);
     if (!groupProperties) continue;
 
@@ -601,48 +700,41 @@ async function resolveShapeProperties(
   source: string,
   groupHierarchy: XmlLookupValue[],
 ): Promise<FillResolution> {
-  const fillType = getFillType(shapeProperties);
-  if (fillType === 'NO_FILL') return { state: 'none' };
-  if (fillType === 'SOLID_FILL') {
-    const value = getSolidFill(
-      nodeAt(shapeProperties, ['a:solidFill']),
-      undefined,
-      undefined,
-      warpObj,
-    );
+  if (nodeAt(shapeProperties, ['a:noFill'])) return { state: 'none' };
+
+  const solid = nodeAt(shapeProperties, ['a:solidFill']);
+  if (solid) {
+    const value = getSolidFill(solid, undefined, undefined, warpObj);
     return value
       ? { state: 'found', fill: { type: 'color', value } }
       : { state: 'missing' };
   }
-  if (fillType === 'GRADIENT_FILL') {
-    const gradient = nodeAt(shapeProperties, ['a:gradFill']);
-    return gradient
-      ? {
-          state: 'found',
-          fill: { type: 'gradient', value: getGradientFill(gradient, warpObj) },
-        }
-      : { state: 'missing' };
+  const gradient = nodeAt(shapeProperties, ['a:gradFill']);
+  if (gradient) {
+    return {
+      state: 'found',
+      fill: { type: 'gradient', value: getGradientFill(gradient, warpObj) },
+    };
   }
-  if (fillType === 'PIC_FILL') {
-    const pictureNode = nodeAt(shapeProperties, ['a:blipFill']);
+  const pictureNode = nodeAt(shapeProperties, ['a:blipFill']);
+  if (pictureNode) {
     const picture = await getPicFill(source, pictureNode, warpObj);
-    return pictureNode
-      ? {
-          state: 'found',
-          fill: {
-            type: 'image',
-            value: { ...picture, opacity: getPicFillOpacity(pictureNode) },
-          },
-        }
-      : { state: 'missing' };
+    return {
+      state: 'found',
+      fill: {
+        type: 'image',
+        value: { ...picture, opacity: getPicFillOpacity(pictureNode) },
+      },
+    };
   }
-  if (fillType === 'PATTERN_FILL') {
-    const pattern = getPatternFill(shapeProperties, warpObj);
-    return pattern
-      ? { state: 'found', fill: { type: 'pattern', value: pattern } }
-      : { state: 'missing' };
+  const pattern = nodeAt(shapeProperties, ['a:pattFill']);
+  if (pattern) {
+    return {
+      state: 'found',
+      fill: { type: 'pattern', value: buildPattern(pattern, warpObj) },
+    };
   }
-  if (fillType === 'GROUP_FILL') {
+  if (nodeAt(shapeProperties, ['a:grpFill'])) {
     const fill = await findFillInGroupHierarchy(
       groupHierarchy,
       warpObj,
@@ -707,13 +799,8 @@ export async function getShapeFill(
   return null;
 }
 
-function modifier(node: XmlLookupValue | undefined, name: string): number {
-  const value = textAt(node, [name, 'attrs', 'val']);
-  return value === undefined ? Number.NaN : Number.parseInt(value) / 100_000;
-}
-
 function percentComponent(value: string | undefined): number {
-  return Number(value?.replace('%', '') ?? 0) / 100;
+  return clampUnit(fixedPercentage(value) ?? 0);
 }
 
 export function getSolidFill(
@@ -722,62 +809,62 @@ export function getSolidFill(
   placeholderColor: string | undefined,
   warpObj: PptxParserContext,
 ): string {
-  if (!solidFill) return '';
-
-  let color = '';
-  let colorNode: XmlLookupValue | undefined;
-  if ((colorNode = nodeAt(solidFill, ['a:srgbClr']))) {
-    color = textAt(colorNode, ['attrs', 'val']) ?? '';
+  let colorNode = nodeAt(solidFill, ['a:srgbClr']);
+  let color: string;
+  if (colorNode) {
+    color = normalizedColor(textAt(colorNode, ['attrs', 'val']));
   } else if ((colorNode = nodeAt(solidFill, ['a:schemeClr']))) {
-    const scheme = textAt(colorNode, ['attrs', 'val']) ?? '';
+    const scheme = textAt(colorNode, ['attrs', 'val']);
     color =
-      getSchemeColorFromTheme(
-        `a:${scheme}`,
-        warpObj,
-        colorMap,
-        placeholderColor,
-      ) ?? '';
+      scheme === undefined
+        ? ''
+        : normalizedColor(
+            getSchemeColorFromTheme(
+              `a:${scheme}`,
+              warpObj,
+              colorMap,
+              placeholderColor,
+            ),
+          );
   } else if ((colorNode = nodeAt(solidFill, ['a:scrgbClr']))) {
     const values = attributes(colorNode);
-    color =
-      toHex(255 * percentComponent(values.r)) +
-      toHex(255 * percentComponent(values.g)) +
-      toHex(255 * percentComponent(values.b));
+    color = normalizedColor(
+      byteHex(255 * percentComponent(values.r)) +
+        byteHex(255 * percentComponent(values.g)) +
+        byteHex(255 * percentComponent(values.b)),
+    );
   } else if ((colorNode = nodeAt(solidFill, ['a:prstClr']))) {
-    color = getColorName2Hex(textAt(colorNode, ['attrs', 'val']) ?? '') ?? '';
+    const preset = textAt(colorNode, ['attrs', 'val']);
+    color = normalizedColor(
+      preset === undefined ? undefined : getColorName2Hex(preset),
+    );
   } else if ((colorNode = nodeAt(solidFill, ['a:hslClr']))) {
     const values = attributes(colorNode);
+    const hue = finiteNumber(values.hue) ?? 0;
     const rgb = hslToRgb(
-      Number(values.hue ?? 0) / 100_000,
+      hue / 60_000,
       percentComponent(values.sat),
       percentComponent(values.lum),
     );
-    color = toHex(rgb.r) + toHex(rgb.g) + toHex(rgb.b);
+    color = normalizedColor(byteHex(rgb.r) + byteHex(rgb.g) + byteHex(rgb.b));
   } else if ((colorNode = nodeAt(solidFill, ['a:sysClr']))) {
-    color = textAt(colorNode, ['attrs', 'lastClr']) ?? '';
+    color = normalizedColor(textAt(colorNode, ['attrs', 'lastClr']));
+  } else {
+    return '';
   }
 
-  let hasAlpha = false;
-  const alpha = modifier(colorNode, 'a:alpha');
-  if (!Number.isNaN(alpha)) {
-    color = tinycolor(color).setAlpha(alpha).toHex8();
-    hasAlpha = true;
-  }
+  if (color === '') return '';
 
-  const transformations: [
-    string,
-    (value: string, amount: number, alpha: boolean) => string,
-  ][] = [
-    ['a:hueMod', applyHueMod],
-    ['a:lumMod', applyLumMod],
-    ['a:lumOff', applyLumOff],
-    ['a:satMod', applySatMod],
-    ['a:shade', applyShade],
-    ['a:tint', applyTint],
-  ];
-  for (const [name, transform] of transformations) {
-    const amount = modifier(colorNode, name);
-    if (!Number.isNaN(amount)) color = transform(color, amount, hasAlpha);
+  let alpha: number | undefined;
+  for (const transformation of authoredColorTransformations(colorNode)) {
+    if (transformation.kind === 'alpha') {
+      alpha = clampUnit(
+        transformation.apply(alpha ?? 1, transformation.amount),
+      );
+    } else {
+      color = transformation.apply(color, transformation.amount, false);
+    }
   }
-  return normalizeHexColor(color) ?? '';
+  if (alpha !== undefined) color = tinycolor(color).setAlpha(alpha).toHex8();
+  return color.startsWith('#') ? color : `#${color}`;
 }
