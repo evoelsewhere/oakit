@@ -356,6 +356,7 @@ export type PptxErrorMode = 'strict' | 'tolerant';
 export type PptxDiagnosticCode =
   | 'invalid-relationship-target'
   | 'missing-required-part'
+  | 'resource-limit-exceeded'
   | 'xml-parse-failed'
   | 'xml-read-failed';
 
@@ -366,11 +367,33 @@ export interface PptxDiagnostic {
   severity: 'error' | 'warning';
 }
 
+export interface PptxResourceLimits {
+  /** Maximum compressed input size in bytes. */
+  maxInputBytes?: number;
+  /** Maximum number of non-directory entries in the package. */
+  maxEntries?: number;
+  /** Maximum declared expanded size across all package entries. */
+  maxTotalUncompressedBytes?: number;
+  /** Maximum declared expanded size of any single package entry. */
+  maxPartBytes?: number;
+  /** Maximum expanded size of an XML part. */
+  maxXmlBytes?: number;
+  /** Maximum XML element nesting depth. */
+  maxXmlDepth?: number;
+  /** Maximum number of elements in one XML part. */
+  maxXmlNodes?: number;
+  /** Maximum expanded size of an embedded media part. */
+  maxMediaBytes?: number;
+  /** Maximum number of slides selected by the presentation manifest. */
+  maxSlides?: number;
+}
+
 export interface Options {
   imageMode?: 'base64' | 'blob' | 'both' | 'none';
   videoMode?: 'blob' | 'none';
   audioMode?: 'blob' | 'none';
   errorMode?: PptxErrorMode;
+  limits?: PptxResourceLimits;
 }
 
 /** Binary inputs accepted by JSZip in browsers and Node.js. */

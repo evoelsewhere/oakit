@@ -12,5 +12,6 @@ export type {
   PptxInput,
   PptxParseOptions,
   PptxParseResult,
+  PptxResourceLimits,
   PptxSlide,
 } from './formats/pptx/index';
