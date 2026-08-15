@@ -25,11 +25,7 @@ export function decodeXmlEntities(text: string): string {
         decimal || hexadecimal,
         decimal ? 10 : 16,
       );
-      if (
-        !Number.isInteger(codePoint) ||
-        codePoint < 0 ||
-        codePoint > 0x10ffff
-      ) {
+      if (!Number.isInteger(codePoint) || codePoint > 0x10ffff) {
         return entity;
       }
       return String.fromCodePoint(codePoint);
@@ -43,7 +39,6 @@ export function escapeHtml(text: string): string {
 
 export function sanitizeHyperlink(value: string): string | null {
   const candidate = value.trim();
-  if (!candidate) return null;
 
   try {
     const url = new URL(candidate);
@@ -57,12 +52,7 @@ export function sanitizeHyperlink(value: string): string | null {
 
 export function hasValidText(html: string): boolean {
   if (typeof DOMParser === 'undefined') {
-    return (
-      html
-        .replace(/<[^>]+>/g, '')
-        .replace(/\s+/g, ' ')
-        .trim() !== ''
-    );
+    return /\S/.test(html.replace(/<[^>]+>/g, ''));
   }
 
   const document = new DOMParser().parseFromString(html, 'text/html');

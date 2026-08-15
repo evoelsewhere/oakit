@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
   decodeXmlEntities,
@@ -8,6 +8,10 @@ import {
 } from '../../src/common/text/html';
 
 describe('HTML helpers', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
   it('escapes text and attribute delimiters', () => {
     expect(escapeHtml(`<script data-value="'&">`)).toBe(
       '&lt;script data-value=&quot;&#039;&amp;&quot;&gt;',
@@ -15,7 +19,9 @@ describe('HTML helpers', () => {
   });
 
   it('decodes named and numeric XML entities before HTML escaping', () => {
-    expect(decodeXmlEntities('&lt;&amp;&apos;&#39;&#x3E;')).toBe("<&''>");
+    expect(decodeXmlEntities('&LT;&amp;&apos;&gt;&quot;&#39;&#x3E;')).toBe(
+      `<&'>"'>`,
+    );
   });
 
   it('keeps invalid numeric entities and accepts Unicode boundary values', () => {
@@ -59,4 +65,25 @@ describe('HTML helpers', () => {
   ])('recognizes visible text in %j', (html, expected) => {
     expect(hasValidText(html)).toBe(expected);
   });
+
+  it.each([
+    ['Visible text', true],
+    [' \n\t ', false],
+    [null, false],
+  ])(
+    'uses DOMParser text content when it is available: %j',
+    (textContent, expected) => {
+      vi.stubGlobal(
+        'DOMParser',
+        class {
+          parseFromString(_html: string, mediaType: string) {
+            expect(mediaType).toBe('text/html');
+            return { body: { textContent } };
+          }
+        },
+      );
+
+      expect(hasValidText('<p>ignored by the parser stub</p>')).toBe(expected);
+    },
+  );
 });
