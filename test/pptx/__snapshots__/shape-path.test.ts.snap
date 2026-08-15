@@ -2,37 +2,37 @@
 
 exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for accentBorderCallout1 1`] = `
 {
-  "adj": "8184b4e6",
-  "adj1": "89b85032",
-  "adj2": "448a22e0",
-  "adj3": "dbb2bffa",
-  "adj4": "01b9591e",
-  "adj5": "8184b4e6",
-  "adj6": "8184b4e6",
-  "adj7": "8184b4e6",
-  "adj8": "8184b4e6",
+  "adj": "57fc935c",
+  "adj1": "65c56a68",
+  "adj2": "7b5a2d7e",
+  "adj3": "a71dbca6",
+  "adj4": "ecdd7450",
+  "adj5": "57fc935c",
+  "adj6": "57fc935c",
+  "adj7": "57fc935c",
+  "adj8": "57fc935c",
   "authored": "4c059f48",
   "default": "57fc935c",
-  "hf": "8184b4e6",
-  "vf": "8184b4e6",
+  "hf": "57fc935c",
+  "vf": "57fc935c",
 }
 `;
 
 exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for accentBorderCallout2 1`] = `
 {
-  "adj": "257ee6fa",
-  "adj1": "455560a6",
-  "adj2": "8232368c",
-  "adj3": "8713a58e",
-  "adj4": "1d058532",
-  "adj5": "07c7f069",
-  "adj6": "6d440d9f",
-  "adj7": "257ee6fa",
-  "adj8": "257ee6fa",
+  "adj": "be132a64",
+  "adj1": "4ff17aa8",
+  "adj2": "09536bde",
+  "adj3": "c7613550",
+  "adj4": "de9a2a5c",
+  "adj5": "bef3d967",
+  "adj6": "1cf42be5",
+  "adj7": "be132a64",
+  "adj8": "be132a64",
   "authored": "9a14a912",
   "default": "be132a64",
-  "hf": "257ee6fa",
-  "vf": "257ee6fa",
+  "hf": "be132a64",
+  "vf": "be132a64",
 }
 `;
 
@@ -56,37 +56,37 @@ exports[`PowerPoint preset shape path safety > keeps the locked geometry contrac
 
 exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for accentCallout1 1`] = `
 {
-  "adj": "8184b4e6",
-  "adj1": "89b85032",
-  "adj2": "448a22e0",
-  "adj3": "dbb2bffa",
-  "adj4": "01b9591e",
-  "adj5": "8184b4e6",
-  "adj6": "8184b4e6",
-  "adj7": "8184b4e6",
-  "adj8": "8184b4e6",
+  "adj": "57fc935c",
+  "adj1": "65c56a68",
+  "adj2": "7b5a2d7e",
+  "adj3": "a71dbca6",
+  "adj4": "ecdd7450",
+  "adj5": "57fc935c",
+  "adj6": "57fc935c",
+  "adj7": "57fc935c",
+  "adj8": "57fc935c",
   "authored": "4c059f48",
   "default": "57fc935c",
-  "hf": "8184b4e6",
-  "vf": "8184b4e6",
+  "hf": "57fc935c",
+  "vf": "57fc935c",
 }
 `;
 
 exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for accentCallout2 1`] = `
 {
-  "adj": "257ee6fa",
-  "adj1": "455560a6",
-  "adj2": "8232368c",
-  "adj3": "8713a58e",
-  "adj4": "1d058532",
-  "adj5": "07c7f069",
-  "adj6": "6d440d9f",
-  "adj7": "257ee6fa",
-  "adj8": "257ee6fa",
+  "adj": "be132a64",
+  "adj1": "4ff17aa8",
+  "adj2": "09536bde",
+  "adj3": "c7613550",
+  "adj4": "de9a2a5c",
+  "adj5": "bef3d967",
+  "adj6": "1cf42be5",
+  "adj7": "be132a64",
+  "adj8": "be132a64",
   "authored": "9a14a912",
   "default": "be132a64",
-  "hf": "257ee6fa",
-  "vf": "257ee6fa",
+  "hf": "be132a64",
+  "vf": "be132a64",
 }
 `;
 
@@ -488,37 +488,37 @@ exports[`PowerPoint preset shape path safety > keeps the locked geometry contrac
 
 exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for borderCallout1 1`] = `
 {
-  "adj": "b5f42505",
-  "adj1": "856e5bc9",
-  "adj2": "14eec657",
-  "adj3": "c6f20131",
-  "adj4": "d2e7fa1d",
-  "adj5": "b5f42505",
-  "adj6": "b5f42505",
-  "adj7": "b5f42505",
-  "adj8": "b5f42505",
+  "adj": "e268aa9f",
+  "adj1": "d98e4d93",
+  "adj2": "c34fb931",
+  "adj3": "803e6545",
+  "adj4": "b7075a3b",
+  "adj5": "e268aa9f",
+  "adj6": "e268aa9f",
+  "adj7": "e268aa9f",
+  "adj8": "e268aa9f",
   "authored": "b1e97a9f",
   "default": "e268aa9f",
-  "hf": "b5f42505",
-  "vf": "b5f42505",
+  "hf": "e268aa9f",
+  "vf": "e268aa9f",
 }
 `;
 
 exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for borderCallout2 1`] = `
 {
-  "adj": "e949a631",
-  "adj1": "1fec9145",
-  "adj2": "d8ffeabb",
-  "adj3": "831fcf0d",
-  "adj4": "0fab8ac9",
-  "adj5": "5332f3c0",
-  "adj6": "8d67de92",
-  "adj7": "e949a631",
-  "adj8": "e949a631",
+  "adj": "782cd4e7",
+  "adj1": "5942d553",
+  "adj2": "17d45391",
+  "adj3": "427fed3b",
+  "adj4": "1e179f9f",
+  "adj5": "8cc30cda",
+  "adj6": "556a14e4",
+  "adj7": "782cd4e7",
+  "adj8": "782cd4e7",
   "authored": "4a9d1efd",
   "default": "782cd4e7",
-  "hf": "e949a631",
-  "vf": "e949a631",
+  "hf": "782cd4e7",
+  "vf": "782cd4e7",
 }
 `;
 
@@ -578,37 +578,37 @@ exports[`PowerPoint preset shape path safety > keeps the locked geometry contrac
 
 exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for callout1 1`] = `
 {
-  "adj": "b5f42505",
-  "adj1": "856e5bc9",
-  "adj2": "14eec657",
-  "adj3": "c6f20131",
-  "adj4": "d2e7fa1d",
-  "adj5": "b5f42505",
-  "adj6": "b5f42505",
-  "adj7": "b5f42505",
-  "adj8": "b5f42505",
+  "adj": "e268aa9f",
+  "adj1": "d98e4d93",
+  "adj2": "c34fb931",
+  "adj3": "803e6545",
+  "adj4": "b7075a3b",
+  "adj5": "e268aa9f",
+  "adj6": "e268aa9f",
+  "adj7": "e268aa9f",
+  "adj8": "e268aa9f",
   "authored": "b1e97a9f",
   "default": "e268aa9f",
-  "hf": "b5f42505",
-  "vf": "b5f42505",
+  "hf": "e268aa9f",
+  "vf": "e268aa9f",
 }
 `;
 
 exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for callout2 1`] = `
 {
-  "adj": "e949a631",
-  "adj1": "1fec9145",
-  "adj2": "d8ffeabb",
-  "adj3": "831fcf0d",
-  "adj4": "0fab8ac9",
-  "adj5": "5332f3c0",
-  "adj6": "8d67de92",
-  "adj7": "e949a631",
-  "adj8": "e949a631",
+  "adj": "782cd4e7",
+  "adj1": "5942d553",
+  "adj2": "17d45391",
+  "adj3": "427fed3b",
+  "adj4": "1e179f9f",
+  "adj5": "8cc30cda",
+  "adj6": "556a14e4",
+  "adj7": "782cd4e7",
+  "adj8": "782cd4e7",
   "authored": "4a9d1efd",
   "default": "782cd4e7",
-  "hf": "e949a631",
-  "vf": "e949a631",
+  "hf": "782cd4e7",
+  "vf": "782cd4e7",
 }
 `;
 

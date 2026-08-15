@@ -1009,6 +1009,25 @@ describe('PowerPoint preset shape path safety', () => {
     },
   );
 
+  it.each([
+    'accentBorderCallout1',
+    'accentBorderCallout2',
+    'accentBorderCallout3',
+    'borderCallout1',
+    'borderCallout2',
+    'borderCallout3',
+    'accentCallout1',
+    'accentCallout2',
+    'accentCallout3',
+    'callout1',
+    'callout2',
+    'callout3',
+  ])('ignores an unrelated guide for %s', (shapeType) => {
+    expect(getShapePath(shapeType, 120, 80, singleGuide('adj', '25000'))).toBe(
+      getShapePath(shapeType, 120, 80, xml({})),
+    );
+  });
+
   it('keeps common default paths deterministic', () => {
     const rectangle = 'M 0 0 L 120 0 L 120 80 L 0 80 Z';
     expect(getShapePath('rect', 120, 80, xml({}))).toBe(rectangle);

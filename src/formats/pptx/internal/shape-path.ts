@@ -2816,58 +2816,50 @@ export function getShapePath(
           'a:gd',
         ]);
         const refr = RATIO_EMUs_Points;
+        const usesSingleSegment = shapType.endsWith('1');
+        const usesTwoSegments = shapType.endsWith('2');
         let adj1 = 18750 * refr;
         let adj2 = -8333 * refr;
-        let adj3 = 18750 * refr;
-        let adj4 = -16667 * refr;
-        let adj5 = 100000 * refr;
-        let adj6 = -16667 * refr;
+        let adj3 = (usesSingleSegment ? 112500 : 18750) * refr;
+        let adj4 = (usesSingleSegment ? -38333 : -16667) * refr;
+        let adj5 = (usesTwoSegments ? 112500 : 100000) * refr;
+        let adj6 = (usesTwoSegments ? -46667 : -16667) * refr;
         let adj7 = 112963 * refr;
         let adj8 = -8333 * refr;
-        if (shapAdjst_ary) {
-          for (const adj of asArray(shapAdjst_ary)) {
-            const sAdj_name = getTextByPathList(adj, ['attrs', 'name']);
-            if (sAdj_name === 'adj1') {
-              adj1 =
-                parseInt(
-                  getTextByPathList(adj, ['attrs', 'fmla']).substring(4),
-                ) * refr;
-            } else if (sAdj_name === 'adj2') {
-              adj2 =
-                parseInt(
-                  getTextByPathList(adj, ['attrs', 'fmla']).substring(4),
-                ) * refr;
-            } else if (sAdj_name === 'adj3') {
-              adj3 =
-                parseInt(
-                  getTextByPathList(adj, ['attrs', 'fmla']).substring(4),
-                ) * refr;
-            } else if (sAdj_name === 'adj4') {
-              adj4 =
-                parseInt(
-                  getTextByPathList(adj, ['attrs', 'fmla']).substring(4),
-                ) * refr;
-            } else if (sAdj_name === 'adj5') {
-              adj5 =
-                parseInt(
-                  getTextByPathList(adj, ['attrs', 'fmla']).substring(4),
-                ) * refr;
-            } else if (sAdj_name === 'adj6') {
-              adj6 =
-                parseInt(
-                  getTextByPathList(adj, ['attrs', 'fmla']).substring(4),
-                ) * refr;
-            } else if (sAdj_name === 'adj7') {
-              adj7 =
-                parseInt(
-                  getTextByPathList(adj, ['attrs', 'fmla']).substring(4),
-                ) * refr;
-            } else if (sAdj_name === 'adj8') {
-              adj8 =
-                parseInt(
-                  getTextByPathList(adj, ['attrs', 'fmla']).substring(4),
-                ) * refr;
-            }
+        for (const adj of asArray(shapAdjst_ary)) {
+          const sAdj_name = getTextByPathList(adj, ['attrs', 'name']);
+          if (sAdj_name === 'adj1') {
+            adj1 =
+              parseInt(getTextByPathList(adj, ['attrs', 'fmla']).substring(4)) *
+              refr;
+          } else if (sAdj_name === 'adj2') {
+            adj2 =
+              parseInt(getTextByPathList(adj, ['attrs', 'fmla']).substring(4)) *
+              refr;
+          } else if (sAdj_name === 'adj3') {
+            adj3 =
+              parseInt(getTextByPathList(adj, ['attrs', 'fmla']).substring(4)) *
+              refr;
+          } else if (sAdj_name === 'adj4') {
+            adj4 =
+              parseInt(getTextByPathList(adj, ['attrs', 'fmla']).substring(4)) *
+              refr;
+          } else if (sAdj_name === 'adj5') {
+            adj5 =
+              parseInt(getTextByPathList(adj, ['attrs', 'fmla']).substring(4)) *
+              refr;
+          } else if (sAdj_name === 'adj6') {
+            adj6 =
+              parseInt(getTextByPathList(adj, ['attrs', 'fmla']).substring(4)) *
+              refr;
+          } else if (sAdj_name === 'adj7') {
+            adj7 =
+              parseInt(getTextByPathList(adj, ['attrs', 'fmla']).substring(4)) *
+              refr;
+          } else if (sAdj_name === 'adj8') {
+            adj8 =
+              parseInt(getTextByPathList(adj, ['attrs', 'fmla']).substring(4)) *
+              refr;
           }
         }
         const cnstVal1 = 100000 * refr;
@@ -2876,12 +2868,6 @@ export function getShapePath(
         switch (shapType) {
           case 'borderCallout1':
           case 'callout1':
-            if (!shapAdjst_ary) {
-              adj1 = 18750 * refr;
-              adj2 = -8333 * refr;
-              adj3 = 112500 * refr;
-              adj4 = -38333 * refr;
-            }
             y1 = (h * adj1) / cnstVal1;
             x1 = (w * adj2) / cnstVal1;
             y2 = (h * adj3) / cnstVal1;
@@ -2890,14 +2876,6 @@ export function getShapePath(
             break;
           case 'borderCallout2':
           case 'callout2':
-            if (!shapAdjst_ary) {
-              adj1 = 18750 * refr;
-              adj2 = -8333 * refr;
-              adj3 = 18750 * refr;
-              adj4 = -16667 * refr;
-              adj5 = 112500 * refr;
-              adj6 = -46667 * refr;
-            }
             y1 = (h * adj1) / cnstVal1;
             x1 = (w * adj2) / cnstVal1;
             y2 = (h * adj3) / cnstVal1;
@@ -2908,16 +2886,6 @@ export function getShapePath(
             break;
           case 'borderCallout3':
           case 'callout3':
-            if (!shapAdjst_ary) {
-              adj1 = 18750 * refr;
-              adj2 = -8333 * refr;
-              adj3 = 18750 * refr;
-              adj4 = -16667 * refr;
-              adj5 = 100000 * refr;
-              adj6 = -16667 * refr;
-              adj7 = 112963 * refr;
-              adj8 = -8333 * refr;
-            }
             y1 = (h * adj1) / cnstVal1;
             x1 = (w * adj2) / cnstVal1;
             y2 = (h * adj3) / cnstVal1;
@@ -2930,12 +2898,6 @@ export function getShapePath(
             break;
           case 'accentBorderCallout1':
           case 'accentCallout1':
-            if (!shapAdjst_ary) {
-              adj1 = 18750 * refr;
-              adj2 = -8333 * refr;
-              adj3 = 112500 * refr;
-              adj4 = -38333 * refr;
-            }
             y1 = (h * adj1) / cnstVal1;
             x1 = (w * adj2) / cnstVal1;
             y2 = (h * adj3) / cnstVal1;
@@ -2944,14 +2906,6 @@ export function getShapePath(
             break;
           case 'accentBorderCallout2':
           case 'accentCallout2':
-            if (!shapAdjst_ary) {
-              adj1 = 18750 * refr;
-              adj2 = -8333 * refr;
-              adj3 = 18750 * refr;
-              adj4 = -16667 * refr;
-              adj5 = 112500 * refr;
-              adj6 = -46667 * refr;
-            }
             y1 = (h * adj1) / cnstVal1;
             x1 = (w * adj2) / cnstVal1;
             y2 = (h * adj3) / cnstVal1;
@@ -2962,16 +2916,6 @@ export function getShapePath(
             break;
           case 'accentBorderCallout3':
           case 'accentCallout3':
-            if (!shapAdjst_ary) {
-              adj1 = 18750 * refr;
-              adj2 = -8333 * refr;
-              adj3 = 18750 * refr;
-              adj4 = -16667 * refr;
-              adj5 = 100000 * refr;
-              adj6 = -16667 * refr;
-              adj7 = 112963 * refr;
-              adj8 = -8333 * refr;
-            }
             y1 = (h * adj1) / cnstVal1;
             x1 = (w * adj2) / cnstVal1;
             y2 = (h * adj3) / cnstVal1;
