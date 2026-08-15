@@ -24,6 +24,7 @@ import {
   getParagraphIndent,
   getParagraphSpacing,
 } from './paragraph';
+import { serializeCssFontFamily } from '../../../common/text/css';
 
 type ListType = 'ol' | 'ul';
 
@@ -429,7 +430,8 @@ export function getSpanStyleInfo(
     styleText += `background: ${gradient}; background-clip: text; color: transparent;`;
   }
   if (fontSize) styleText += `font-size: ${fontSize};`;
-  if (fontType) styleText += `font-family: ${fontType};`;
+  const fontFamily = fontType ? serializeCssFontFamily(fontType) : null;
+  if (fontFamily) styleText += `font-family: ${fontFamily};`;
   if (fontBold) styleText += `font-weight: ${fontBold};`;
   if (fontItalic) styleText += `font-style: ${fontItalic};`;
   if (fontDecoration) styleText += `text-decoration: ${fontDecoration};`;
