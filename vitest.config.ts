@@ -2,6 +2,11 @@ import { configDefaults, defineConfig } from 'vitest/config';
 
 export default defineConfig({
   test: {
-    exclude: [...configDefaults.exclude, 'test/browser/**', 'test/corpus/**'],
+    exclude: [
+      ...configDefaults.exclude,
+      '.stryker-tmp/**',
+      '**/test/browser/**',
+      '**/test/corpus/**',
+    ],
   },
 });
