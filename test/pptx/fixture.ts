@@ -12,11 +12,15 @@ const MINIMAL_PPTX_PARTS: Readonly<Record<string, string>> = {
     </Types>`,
   'ppt/presentation.xml': `<?xml version="1.0" encoding="UTF-8"?>
     <p:presentation>
+      <p:sldIdLst>
+        <p:sldId id="256" r:id="rIdSlide1"/>
+      </p:sldIdLst>
       <p:sldSz cx="9144000" cy="5143500"/>
     </p:presentation>`,
   'ppt/_rels/presentation.xml.rels': `<?xml version="1.0" encoding="UTF-8"?>
     <Relationships>
       <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme" Target="theme/theme1.xml"/>
+      <Relationship Id="rIdSlide1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide" Target="slides/slide1.xml"/>
     </Relationships>`,
   'ppt/theme/theme1.xml': `<?xml version="1.0" encoding="UTF-8"?>
     <a:theme>
