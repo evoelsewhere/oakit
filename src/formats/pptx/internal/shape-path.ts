@@ -2643,20 +2643,16 @@ export function getShapePath(
         const refr = RATIO_EMUs_Points;
         let adj1 = -20833 * refr;
         let adj2 = 62500 * refr;
-        if (shapAdjst_ary) {
-          for (const adj of asArray(shapAdjst_ary)) {
-            const sAdj_name = getTextByPathList(adj, ['attrs', 'name']);
-            if (sAdj_name === 'adj1') {
-              adj1 =
-                parseInt(
-                  getTextByPathList(adj, ['attrs', 'fmla']).substring(4),
-                ) * refr;
-            } else if (sAdj_name === 'adj2') {
-              adj2 =
-                parseInt(
-                  getTextByPathList(adj, ['attrs', 'fmla']).substring(4),
-                ) * refr;
-            }
+        for (const adj of asArray(shapAdjst_ary)) {
+          const sAdj_name = getTextByPathList(adj, ['attrs', 'name']);
+          if (sAdj_name === 'adj1') {
+            adj1 =
+              parseInt(getTextByPathList(adj, ['attrs', 'fmla']).substring(4)) *
+              refr;
+          } else if (sAdj_name === 'adj2') {
+            adj2 =
+              parseInt(getTextByPathList(adj, ['attrs', 'fmla']).substring(4)) *
+              refr;
           }
         }
         const cnstVal1 = 100000 * RATIO_EMUs_Points;
@@ -2692,20 +2688,16 @@ export function getShapePath(
         const refr = RATIO_EMUs_Points;
         let adj1 = -20833 * refr;
         let adj2 = 62500 * refr;
-        if (shapAdjst_ary) {
-          for (const adj of asArray(shapAdjst_ary)) {
-            const sAdj_name = getTextByPathList(adj, ['attrs', 'name']);
-            if (sAdj_name === 'adj1') {
-              adj1 =
-                parseInt(
-                  getTextByPathList(adj, ['attrs', 'fmla']).substring(4),
-                ) * refr;
-            } else if (sAdj_name === 'adj2') {
-              adj2 =
-                parseInt(
-                  getTextByPathList(adj, ['attrs', 'fmla']).substring(4),
-                ) * refr;
-            }
+        for (const adj of asArray(shapAdjst_ary)) {
+          const sAdj_name = getTextByPathList(adj, ['attrs', 'name']);
+          if (sAdj_name === 'adj1') {
+            adj1 =
+              parseInt(getTextByPathList(adj, ['attrs', 'fmla']).substring(4)) *
+              refr;
+          } else if (sAdj_name === 'adj2') {
+            adj2 =
+              parseInt(getTextByPathList(adj, ['attrs', 'fmla']).substring(4)) *
+              refr;
           }
         }
         const cnstVal1 = 100000 * RATIO_EMUs_Points;
@@ -2717,22 +2709,25 @@ export function getShapePath(
         const yPos = vc + dyPos;
         const dq = (dxPos * h) / w;
         const dz = Math.abs(dyPos) - Math.abs(dq);
-        const xg1 = dxPos > 0 ? 7 : 2;
-        const xg2 = dxPos > 0 ? 10 : 5;
+        const pointsRight = Math.sign(dxPos) === 1;
+        const pointsLower = Math.sign(dyPos) === 1;
+        const usesVerticalEdge = Math.sign(dz) === 1;
+        const xg1 = pointsRight ? 7 : 2;
+        const xg2 = pointsRight ? 10 : 5;
         const x1 = (w * xg1) / 12;
         const x2 = (w * xg2) / 12;
-        const yg1 = dyPos > 0 ? 7 : 2;
-        const yg2 = dyPos > 0 ? 10 : 5;
+        const yg1 = pointsLower ? 7 : 2;
+        const yg2 = pointsLower ? 10 : 5;
         const y1 = (h * yg1) / 12;
         const y2 = (h * yg2) / 12;
-        const xl = dz > 0 ? 0 : dxPos > 0 ? 0 : xPos;
-        const xt = dz > 0 ? (dyPos > 0 ? x1 : xPos) : x1;
-        const xr = dz > 0 ? w : dxPos > 0 ? xPos : w;
-        const xb = dz > 0 ? (dyPos > 0 ? xPos : x1) : x1;
-        const yl = dz > 0 ? y1 : dxPos > 0 ? y1 : yPos;
-        const yt = dz > 0 ? (dyPos > 0 ? 0 : yPos) : 0;
-        const yr = dz > 0 ? y1 : dxPos > 0 ? yPos : y1;
-        const yb = dz > 0 ? (dyPos > 0 ? yPos : h) : h;
+        const xl = usesVerticalEdge ? 0 : pointsRight ? 0 : xPos;
+        const xt = usesVerticalEdge ? (pointsLower ? x1 : xPos) : x1;
+        const xr = usesVerticalEdge ? w : pointsRight ? xPos : w;
+        const xb = usesVerticalEdge ? (pointsLower ? xPos : x1) : x1;
+        const yl = usesVerticalEdge ? y1 : pointsRight ? y1 : yPos;
+        const yt = usesVerticalEdge ? (pointsLower ? 0 : yPos) : 0;
+        const yr = usesVerticalEdge ? y1 : pointsRight ? yPos : y1;
+        const yb = usesVerticalEdge ? (pointsLower ? yPos : h) : h;
         pathData = `M 0,0 L ${x1},0 L ${xt},${yt} L ${x2},0 L ${w},0 L ${w},${y1} L ${xr},${yr} L ${w},${y2} L ${w},${h} L ${x2},${h} L ${xb},${yb} L ${x1},${h} L 0,${h} L 0,${y2} L ${xl},${yl} L 0,${y1} z`;
       }
       break;
@@ -2748,28 +2743,24 @@ export function getShapePath(
         let adj1 = -20833 * refr;
         let adj2 = 62500 * refr;
         let adj3 = 16667 * refr;
-        if (shapAdjst_ary) {
-          for (const adj of asArray(shapAdjst_ary)) {
-            const sAdj_name = getTextByPathList(adj, ['attrs', 'name']);
-            if (sAdj_name === 'adj1') {
-              adj1 =
-                parseInt(
-                  getTextByPathList(adj, ['attrs', 'fmla']).substring(4),
-                ) * refr;
-            } else if (sAdj_name === 'adj2') {
-              adj2 =
-                parseInt(
-                  getTextByPathList(adj, ['attrs', 'fmla']).substring(4),
-                ) * refr;
-            } else if (sAdj_name === 'adj3') {
-              adj3 =
-                parseInt(
-                  getTextByPathList(adj, ['attrs', 'fmla']).substring(4),
-                ) * refr;
-            }
+        for (const adj of asArray(shapAdjst_ary)) {
+          const sAdj_name = getTextByPathList(adj, ['attrs', 'name']);
+          if (sAdj_name === 'adj1') {
+            adj1 =
+              parseInt(getTextByPathList(adj, ['attrs', 'fmla']).substring(4)) *
+              refr;
+          } else if (sAdj_name === 'adj2') {
+            adj2 =
+              parseInt(getTextByPathList(adj, ['attrs', 'fmla']).substring(4)) *
+              refr;
+          } else if (sAdj_name === 'adj3') {
+            adj3 =
+              parseInt(getTextByPathList(adj, ['attrs', 'fmla']).substring(4)) *
+              refr;
           }
         }
         const cnstVal1 = 100000 * RATIO_EMUs_Points;
+        const maxCornerAdjustment = 50000 * refr;
         const ss = Math.min(w, h);
         const vc = h / 2,
           hc = w / 2;
@@ -2779,23 +2770,27 @@ export function getShapePath(
         const yPos = vc + dyPos;
         const dq = (dxPos * h) / w;
         const dz = Math.abs(dyPos) - Math.abs(dq);
-        const xg1 = dxPos > 0 ? 7 : 2;
-        const xg2 = dxPos > 0 ? 10 : 5;
+        const pointsRight = Math.sign(dxPos) === 1;
+        const pointsLower = Math.sign(dyPos) === 1;
+        const usesVerticalEdge = Math.sign(dz) === 1;
+        const xg1 = pointsRight ? 7 : 2;
+        const xg2 = pointsRight ? 10 : 5;
         const x1 = (w * xg1) / 12;
         const x2 = (w * xg2) / 12;
-        const yg1 = dyPos > 0 ? 7 : 2;
-        const yg2 = dyPos > 0 ? 10 : 5;
+        const yg1 = pointsLower ? 7 : 2;
+        const yg2 = pointsLower ? 10 : 5;
         const y1 = (h * yg1) / 12;
         const y2 = (h * yg2) / 12;
-        const xl = dz > 0 ? 0 : dxPos > 0 ? 0 : xPos;
-        const xt = dz > 0 ? (dyPos > 0 ? x1 : xPos) : x1;
-        const xr = dz > 0 ? w : dxPos > 0 ? xPos : w;
-        const xb = dz > 0 ? (dyPos > 0 ? xPos : x1) : x1;
-        const yl = dz > 0 ? y1 : dxPos > 0 ? y1 : yPos;
-        const yt = dz > 0 ? (dyPos > 0 ? 0 : yPos) : 0;
-        const yr = dz > 0 ? y1 : dxPos > 0 ? yPos : y1;
-        const yb = dz > 0 ? (dyPos > 0 ? yPos : h) : h;
-        const u1 = (ss * adj3) / cnstVal1;
+        const xl = usesVerticalEdge ? 0 : pointsRight ? 0 : xPos;
+        const xt = usesVerticalEdge ? (pointsLower ? x1 : xPos) : x1;
+        const xr = usesVerticalEdge ? w : pointsRight ? xPos : w;
+        const xb = usesVerticalEdge ? (pointsLower ? xPos : x1) : x1;
+        const yl = usesVerticalEdge ? y1 : pointsRight ? y1 : yPos;
+        const yt = usesVerticalEdge ? (pointsLower ? 0 : yPos) : 0;
+        const yr = usesVerticalEdge ? y1 : pointsRight ? yPos : y1;
+        const yb = usesVerticalEdge ? (pointsLower ? yPos : h) : h;
+        const a3 = Math.min(Math.max(adj3, 0), maxCornerAdjustment);
+        const u1 = (ss * a3) / cnstVal1;
         const u2 = w - u1;
         const v2 = h - u1;
         pathData = `M 0,${u1} ${shapeArc(u1, u1, u1, u1, 180, 270, false).replace('M', 'L')} L ${x1},0 L ${xt},${yt} L ${x2},0 L ${u2},0 ${shapeArc(u2, u1, u1, u1, 270, 360, false).replace('M', 'L')} L ${w},${y1} L ${xr},${yr} L ${w},${y2} L ${w},${v2} ${shapeArc(u2, v2, u1, u1, 0, 90, false).replace('M', 'L')} L ${x2},${h} L ${xb},${yb} L ${x1},${h} L ${u1},${h} ${shapeArc(u1, v2, u1, u1, 90, 180, false).replace('M', 'L')} L 0,${y2} L ${xl},${yl} L 0,${y1} z`;

@@ -956,6 +956,59 @@ describe('PowerPoint preset shape path safety', () => {
     ).toBe(upperBound);
   });
 
+  it('clamps rounded wedge callout corners to their authored bounds', () => {
+    const roundedWedge = (cornerAdjustment: number) =>
+      getShapePath(
+        'wedgeRoundRectCallout',
+        120,
+        80,
+        guides([
+          ['adj1', 'val -20833'],
+          ['adj2', 'val 62500'],
+          ['adj3', `val ${cornerAdjustment}`],
+        ]),
+      );
+    const lowerBound = roundedWedge(0);
+    const upperBound = roundedWedge(50000);
+
+    expect(roundedWedge(-10000)).toBe(lowerBound);
+    expect(roundedWedge(100000)).toBe(upperBound);
+    expectFinitePath(lowerBound);
+    expectFinitePath(upperBound);
+  });
+
+  it.each([
+    ['right-lower horizontal', 60000, 20000, '8fe9445b', 'ce826378'],
+    ['right-upper horizontal', 60000, -20000, '2008646a', 'b4a869ab'],
+    ['left-lower horizontal', -60000, 20000, '27092998', 'b2fee451'],
+    ['left-upper horizontal', -60000, -20000, '5101aba3', '0bcd7238'],
+    ['right-lower vertical', 20000, 60000, 'd953982e', '9b03c237'],
+    ['right-upper vertical', 20000, -60000, '64860eef', '4c41013a'],
+    ['left-lower vertical', -20000, 60000, 'c5ccdfae', 'ea89ae61'],
+    ['left-upper vertical', -20000, -60000, '332cb849', '889bd45a'],
+    ['vertical axis', 0, 60000, '2cc46005', '0906c078'],
+    ['horizontal axis', 60000, 0, '5739ae7c', 'eb9ad8d5'],
+    ['diagonal boundary', 50000, 50000, 'f913fd15', 'aab0e586'],
+  ] as const)(
+    'routes wedge callouts toward the %s',
+    (_route, horizontalAdjustment, verticalAdjustment, rectHash, roundHash) => {
+      const adjustmentNode = guides([
+        ['adj1', `val ${horizontalAdjustment}`],
+        ['adj2', `val ${verticalAdjustment}`],
+      ]);
+      const paths = {
+        rect: hashPath(
+          getShapePath('wedgeRectCallout', 120, 80, adjustmentNode),
+        ),
+        round: hashPath(
+          getShapePath('wedgeRoundRectCallout', 120, 80, adjustmentNode),
+        ),
+      };
+
+      expect(paths).toEqual({ rect: rectHash, round: roundHash });
+    },
+  );
+
   it('keeps common default paths deterministic', () => {
     const rectangle = 'M 0 0 L 120 0 L 120 80 L 0 80 Z';
     expect(getShapePath('rect', 120, 80, xml({}))).toBe(rectangle);
