@@ -10,6 +10,11 @@ export {
   resolvePartUri,
   resolveRelationshipTarget,
 } from './opc/part-uri';
-export { escapeHtml, hasValidText, sanitizeHyperlink } from './text/html';
+export {
+  decodeXmlEntities,
+  escapeHtml,
+  hasValidText,
+  sanitizeHyperlink,
+} from './text/html';
 export { eachElement, getTextByPathList } from './xml/tree';
 export type { XmlLookupValue } from './xml/tree';

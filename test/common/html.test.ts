@@ -1,12 +1,20 @@
 import { describe, expect, it } from 'vitest';
 
-import { escapeHtml, sanitizeHyperlink } from '../../src/common/text/html';
+import {
+  decodeXmlEntities,
+  escapeHtml,
+  sanitizeHyperlink,
+} from '../../src/common/text/html';
 
 describe('HTML helpers', () => {
   it('escapes text and attribute delimiters', () => {
     expect(escapeHtml(`<script data-value="'&">`)).toBe(
       '&lt;script data-value=&quot;&#039;&amp;&quot;&gt;',
     );
+  });
+
+  it('decodes named and numeric XML entities before HTML escaping', () => {
+    expect(decodeXmlEntities('&lt;&amp;&apos;&#39;&#x3E;')).toBe("<&''>");
   });
 
   it.each([
