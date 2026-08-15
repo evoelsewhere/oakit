@@ -3073,20 +3073,16 @@ export function getShapePath(
             ? 6250 * RATIO_EMUs_Points
             : 12500 * RATIO_EMUs_Points;
         let adj2 = 0;
-        if (shapAdjst_ary) {
-          for (const adj of asArray(shapAdjst_ary)) {
-            const sAdj_name = getTextByPathList(adj, ['attrs', 'name']);
-            if (sAdj_name === 'adj1') {
-              adj1 =
-                parseInt(
-                  getTextByPathList(adj, ['attrs', 'fmla']).substring(4),
-                ) * RATIO_EMUs_Points;
-            } else if (sAdj_name === 'adj2') {
-              adj2 =
-                parseInt(
-                  getTextByPathList(adj, ['attrs', 'fmla']).substring(4),
-                ) * RATIO_EMUs_Points;
-            }
+        for (const adj of asArray(shapAdjst_ary)) {
+          const sAdj_name = getTextByPathList(adj, ['attrs', 'name']);
+          if (sAdj_name === 'adj1') {
+            adj1 =
+              parseInt(getTextByPathList(adj, ['attrs', 'fmla']).substring(4)) *
+              RATIO_EMUs_Points;
+          } else if (sAdj_name === 'adj2') {
+            adj2 =
+              parseInt(getTextByPathList(adj, ['attrs', 'fmla']).substring(4)) *
+              RATIO_EMUs_Points;
           }
         }
         const cnstVal2 = -10000 * RATIO_EMUs_Points;
@@ -3097,9 +3093,8 @@ export function getShapePath(
           r = w;
         if (shapType === 'doubleWave') {
           const cnstVal1 = 12500 * RATIO_EMUs_Points;
-          const a1 = adj1 < 0 ? 0 : adj1 > cnstVal1 ? cnstVal1 : adj1;
-          const a2 =
-            adj2 < cnstVal2 ? cnstVal2 : adj2 > cnstVal4 ? cnstVal4 : adj2;
+          const a1 = Math.min(Math.max(adj1, 0), cnstVal1);
+          const a2 = Math.min(Math.max(adj2, cnstVal2), cnstVal4);
           const y1 = (h * a1) / cnstVal4;
           const dy2 = (y1 * 10) / 3;
           const y2 = y1 - dy2;
@@ -3108,9 +3103,9 @@ export function getShapePath(
           const y5 = y4 - dy2;
           const y6 = y4 + dy2;
           const of2 = (w * a2) / cnstVal3;
-          const dx2 = of2 > 0 ? 0 : of2;
+          const dx2 = Math.min(of2, 0);
           const x2 = l - dx2;
-          const dx8 = of2 > 0 ? of2 : 0;
+          const dx8 = Math.max(of2, 0);
           const x8 = r - dx8;
           const dx3 = (dx2 + x8) / 6;
           const x3 = x2 + dx3;
@@ -3127,11 +3122,10 @@ export function getShapePath(
           const x13 = x12 + dx3;
           const x14 = (x13 + x15) / 2;
           pathData = `M ${x2},${y1} C ${x3},${y2} ${x4},${y3} ${x5},${y1} C ${x6},${y2} ${x7},${y3} ${x8},${y1} L ${x15},${y4} C ${x14},${y6} ${x13},${y5} ${x12},${y4} C ${x11},${y6} ${x10},${y5} ${x9},${y4} z`;
-        } else if (shapType === 'wave') {
+        } else {
           const cnstVal5 = 20000 * RATIO_EMUs_Points;
-          const a1 = adj1 < 0 ? 0 : adj1 > cnstVal5 ? cnstVal5 : adj1;
-          const a2 =
-            adj2 < cnstVal2 ? cnstVal2 : adj2 > cnstVal4 ? cnstVal4 : adj2;
+          const a1 = Math.min(Math.max(adj1, 0), cnstVal5);
+          const a2 = Math.min(Math.max(adj2, cnstVal2), cnstVal4);
           const y1 = (h * a1) / cnstVal4;
           const dy2 = (y1 * 10) / 3;
           const y2 = y1 - dy2;
@@ -3140,9 +3134,9 @@ export function getShapePath(
           const y5 = y4 - dy2;
           const y6 = y4 + dy2;
           const of2 = (w * a2) / cnstVal3;
-          const dx2 = of2 > 0 ? 0 : of2;
+          const dx2 = Math.min(of2, 0);
           const x2 = l - dx2;
-          const dx5 = of2 > 0 ? of2 : 0;
+          const dx5 = Math.max(of2, 0);
           const x5 = r - dx5;
           const dx3 = (dx2 + x5) / 3;
           const x3 = x2 + dx3;

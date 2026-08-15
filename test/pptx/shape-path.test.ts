@@ -1084,6 +1084,40 @@ describe('PowerPoint preset shape path safety', () => {
     },
   );
 
+  it.each([
+    ['doubleWave', '12500'],
+    ['wave', '20000'],
+  ])('clamps PowerPoint wave adjustments for %s', (shapeType, maximum) => {
+    const wave = (name: string, value: string): string =>
+      getShapePath(shapeType, 120, 80, singleGuide(name, value));
+
+    expect(wave('adj1', '-10000')).toBe(wave('adj1', '0'));
+    expect(wave('adj1', '100000')).toBe(wave('adj1', maximum));
+    expect(wave('adj2', '-100000')).toBe(wave('adj2', '-10000'));
+    expect(wave('adj2', '200000')).toBe(wave('adj2', '100000'));
+  });
+
+  it('preserves signed PowerPoint wave offsets', () => {
+    const waveHash = (shapeType: string, adjustment: string): string =>
+      hashPath(
+        getShapePath(shapeType, 120, 80, singleGuide('adj2', adjustment)),
+      );
+
+    expect({
+      doubleWaveNegative: waveHash('doubleWave', '-10000'),
+      doubleWavePositive: waveHash('doubleWave', '100000'),
+      waveNegative: waveHash('wave', '-10000'),
+      wavePositive: waveHash('wave', '100000'),
+    }).toMatchInlineSnapshot(`
+      {
+        "doubleWaveNegative": "eee59400",
+        "doubleWavePositive": "fdf46df3",
+        "waveNegative": "53a56a0d",
+        "wavePositive": "3bc8f7ab",
+      }
+    `);
+  });
+
   it('keeps common default paths deterministic', () => {
     const rectangle = 'M 0 0 L 120 0 L 120 80 L 0 80 Z';
     expect(getShapePath('rect', 120, 80, xml({}))).toBe(rectangle);
