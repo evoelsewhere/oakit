@@ -5141,37 +5141,15 @@ export function getShapePath(
         const y3 = h - y1;
         const cd2 = 180,
           wd2 = w / 2;
-        let dVal = `${shapeArc(wd2, y1, wd2, y1, 0, cd2, false)} ${shapeArc(wd2, y1, wd2, y1, cd2, cd2 + cd2, false).replace('M', 'L')} L ${w},${y3} ${shapeArc(wd2, y3, wd2, y1, 0, cd2, false).replace('M', 'L')} L 0,${y1}`;
-
         if (shapType === 'flowChartMagneticDrum') {
-          dVal = dVal
-            .replace(
-              /([MLQC])\s*([-\d.e]+)\s*([-\d.e]+)/gi,
-              (match: string, command: string, x: string, y: string) => {
-                const newX = w / 2 - (parseFloat(y) - h / 2);
-                const newY = h / 2 + (parseFloat(x) - w / 2);
-                return `${command}${newX} ${newY}`;
-              },
-            )
-            .replace(
-              /([MLQC])\s*([-\d.e]+)\s*([-\d.e]+)\s*([-\d.e]+)\s*([-\d.e]+)/gi,
-              (
-                match: string,
-                command: string,
-                c1x: string,
-                c1y: string,
-                x: string,
-                y: string,
-              ) => {
-                const newC1X = w / 2 - (parseFloat(c1y) - h / 2);
-                const newC1Y = h / 2 + (parseFloat(c1x) - w / 2);
-                const newX = w / 2 - (parseFloat(y) - h / 2);
-                const newY = h / 2 + (parseFloat(x) - w / 2);
-                return `${command}${newC1X} ${newC1Y} ${newX} ${newY}`;
-              },
-            );
+          const capRadiusX = y1;
+          const capRadiusY = h / 2;
+          const left = capRadiusX;
+          const right = w - capRadiusX;
+          pathData = `M ${left},0 L ${right},0 A ${capRadiusX},${capRadiusY} 0 0,1 ${right},${h} L ${left},${h} A ${capRadiusX},${capRadiusY} 0 0,1 ${left},0 Z M ${right},0 A ${capRadiusX},${capRadiusY} 0 0,0 ${right},${h}`;
+        } else {
+          pathData = `${shapeArc(wd2, y1, wd2, y1, 0, cd2, false)} ${shapeArc(wd2, y1, wd2, y1, cd2, cd2 + cd2, false).replace('M', 'L')} L ${w},${y3} ${shapeArc(wd2, y3, wd2, y1, 0, cd2, false).replace('M', 'L')} L 0,${y1}`;
         }
-        pathData = dVal;
       }
       break;
     case 'swooshArrow':
