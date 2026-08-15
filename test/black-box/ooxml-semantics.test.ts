@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { parsePptx, parsePptxWithDiagnostics } from '../../src';
 import {
   createIndependentPptx,
+  independentTextSlide,
   OFFICE_REL_NS,
   PRESENTATION_NS,
 } from './pptx-package';
@@ -69,6 +70,52 @@ describe('PPTX semantic validity at the public boundary', () => {
       diagnostic: {
         code: 'invalid-document-structure',
         part: 'ppt/presentation.xml',
+      },
+    });
+  });
+
+  it('reports a missing required presentation size', async () => {
+    const input = await createIndependentPptx({
+      'ppt/presentation.xml': `<p:presentation xmlns:p="${PRESENTATION_NS}" xmlns:r="${OFFICE_REL_NS}">
+        <p:sldIdLst><p:sldId id="256" r:id="rIdSlide1"/></p:sldIdLst>
+      </p:presentation>`,
+    });
+
+    const tolerant = await parsePptxWithDiagnostics(input);
+
+    expect(tolerant.document.size).toEqual({ width: 0, height: 0 });
+    expect(tolerant.diagnostics).toContainEqual(
+      expect.objectContaining({
+        code: 'invalid-document-value',
+        part: 'ppt/presentation.xml',
+      }),
+    );
+  });
+
+  it('never returns non-finite numbers from malformed shape coordinates', async () => {
+    const input = await createIndependentPptx({
+      'ppt/slides/slide1.xml': independentTextSlide('Bad coordinate').replace(
+        'cx="914400"',
+        'cx="not-a-number"',
+      ),
+    });
+
+    const tolerant = await parsePptxWithDiagnostics(input);
+    const element = tolerant.document.slides[0]?.elements[0];
+
+    expect(element?.width).toBe(0);
+    expect(tolerant.diagnostics).toContainEqual(
+      expect.objectContaining({
+        code: 'invalid-document-value',
+        part: 'ppt/slides/slide1.xml',
+      }),
+    );
+    await expect(
+      parsePptx(input, { errorMode: 'strict' }),
+    ).rejects.toMatchObject({
+      diagnostic: {
+        code: 'invalid-document-value',
+        part: 'ppt/slides/slide1.xml',
       },
     });
   });
