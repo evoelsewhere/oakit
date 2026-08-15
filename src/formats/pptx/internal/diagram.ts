@@ -5,7 +5,11 @@ import type {
   PptxRelationshipMap,
 } from './context';
 
-import { getTextByPathList } from '../../../common';
+import {
+  getRelationshipPartUri,
+  getTextByPathList,
+  resolveRelationshipTarget,
+} from '../../../common';
 import { readXmlFile } from '../../../common/xml/read-xml';
 import { getTextNodeValue } from './text';
 
@@ -111,10 +115,7 @@ export async function getDiagramNodeContext(
 
     const drawingName = drawingTarget.split('/').pop();
     if (drawingName) {
-      const relationshipsFilename = `${drawingTarget.replace(
-        drawingName,
-        `_rels/${drawingName}`,
-      )}.rels`;
+      const relationshipsFilename = getRelationshipPartUri(drawingTarget);
       const relationships = await readXmlFile<XmlLookupValue>(
         context.zip,
         relationshipsFilename,
@@ -129,20 +130,19 @@ export async function getDiagramNodeContext(
           getTextByPathList<Record<string, string>>(relationship, ['attrs']) ??
           {};
         const id = attributes.Id;
-        let target = attributes.Target;
+        const target = attributes.Target;
         if (!id || !target) continue;
-
-        target = target.replace(/\\/g, '/');
-        if (target.startsWith('/ppt/')) target = target.slice(1);
-        else if (target.includes('../')) target = target.replace('../', 'ppt/');
-        else target = `${drawingTarget.replace(drawingName, '')}${target}`;
 
         diagramResObj[id] = {
           type: (attributes.Type ?? '').replace(
             'http://schemas.openxmlformats.org/officeDocument/2006/relationships/',
             '',
           ),
-          target,
+          target: resolveRelationshipTarget(
+            drawingTarget,
+            target,
+            attributes.TargetMode,
+          ),
         };
       }
     }
