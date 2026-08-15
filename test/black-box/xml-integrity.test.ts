@@ -26,6 +26,18 @@ function encodeUtf16Le(value: string): Uint8Array {
   return bytes;
 }
 
+function encodeUtf16Be(value: string): Uint8Array {
+  const bytes = new Uint8Array(2 + value.length * 2);
+  bytes[0] = 0xfe;
+  bytes[1] = 0xff;
+  for (let index = 0; index < value.length; index++) {
+    const codeUnit = value.charCodeAt(index);
+    bytes[2 + index * 2] = codeUnit >> 8;
+    bytes[3 + index * 2] = codeUnit & 0xff;
+  }
+  return bytes;
+}
+
 async function expectStrictXmlFailure(
   presentationXml: string | Uint8Array,
 ): Promise<void> {
@@ -101,6 +113,32 @@ describe('PPTX XML integrity black-box cases', () => {
     );
   });
 
+  it('rejects an XML comment whose content ends in a hyphen', async () => {
+    await expectStrictXmlFailure(
+      validPresentation().replace(
+        '<p:sldIdLst>',
+        '<!-- invalid ---><p:sldIdLst>',
+      ),
+    );
+  });
+
+  it('rejects the reserved XML processing-instruction target', async () => {
+    await expectStrictXmlFailure(
+      validPresentation().replace(
+        '<p:sldIdLst>',
+        '<?XML version="1.0"?><p:sldIdLst>',
+      ),
+    );
+  });
+
+  it('rejects qualified names containing more than one colon', async () => {
+    await expectStrictXmlFailure(
+      validPresentation()
+        .replace('<p:sldIdLst>', '<p::sldIdLst>')
+        .replace('</p:sldIdLst>', '</p::sldIdLst>'),
+    );
+  });
+
   it('rejects a CDATA terminator in regular character data', async () => {
     await expectStrictXmlFailure(
       validPresentation().replace('<p:sldIdLst>', 'invalid]]><p:sldIdLst>'),
@@ -129,6 +167,19 @@ describe('PPTX XML integrity black-box cases', () => {
   it('accepts a valid UTF-16LE OOXML part with a byte-order mark', async () => {
     const input = await createIndependentPptx({
       'ppt/presentation.xml': encodeUtf16Le(
+        `<?xml version="1.0" encoding="UTF-16"?>${validPresentation()}`,
+      ),
+    });
+
+    const result = await parsePptx(input, { errorMode: 'strict' });
+
+    expect(result.size).toEqual({ width: 720, height: 405 });
+    expect(result.slides).toHaveLength(1);
+  });
+
+  it('accepts a valid UTF-16BE OOXML part with a byte-order mark', async () => {
+    const input = await createIndependentPptx({
+      'ppt/presentation.xml': encodeUtf16Be(
         `<?xml version="1.0" encoding="UTF-16"?>${validPresentation()}`,
       ),
     });
