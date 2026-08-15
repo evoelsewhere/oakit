@@ -253,6 +253,18 @@ function singleGuide(name: string, value: string): XmlLookupValue {
   });
 }
 
+function rawGuides(values: object | object[]): XmlLookupValue {
+  return xml({
+    'p:spPr': {
+      'a:prstGeom': {
+        'a:avLst': {
+          'a:gd': values,
+        },
+      },
+    },
+  });
+}
+
 function hashPath(path: string): string {
   let hash = 0x811c9dc5;
   for (let index = 0; index < path.length; index += 1) {
@@ -332,21 +344,128 @@ describe('PowerPoint preset shape path safety', () => {
   });
 
   it.each([
-    ['not-a-number', Number.NaN, 80],
-    ['positive infinity', Number.POSITIVE_INFINITY, 80],
-    ['negative width', -120, 80],
-    ['zero width', 0, 80],
-    ['negative height', 120, -80],
-    ['zero height', 120, 0],
-    ['overflowing width', Number.MAX_VALUE, 80],
-  ])('returns a finite degenerate path for %s', (_name, width, height) => {
-    expectFinitePath(getShapePath('ellipse', width, height, xml({})));
+    ['missing name', { attrs: { fmla: 'val 10000' } }],
+    ['missing formula', { attrs: { name: 'adj1' } }],
+    ['formula prefix', { attrs: { fmla: 'prefix val 10000', name: 'adj1' } }],
+    ['formula suffix', { attrs: { fmla: 'val 10000 suffix', name: 'adj1' } }],
+    [
+      'unexpected sign character',
+      { attrs: { fmla: 'val x10000', name: 'adj1' } },
+    ],
+    [
+      'unsafe integer',
+      { attrs: { fmla: 'val 9007199254740992', name: 'adj1' } },
+    ],
+  ])('falls back to default geometry for %s', (_name, guide) => {
+    expect(getShapePath('roundRect', 120, 80, rawGuides(guide))).toBe(
+      getShapePath('roundRect', 120, 80, xml({})),
+    );
+  });
+
+  it('rejects a malformed guide when valid guides precede it', () => {
+    const node = rawGuides([
+      { attrs: { fmla: 'val 10000', name: 'adj1' } },
+      { attrs: { fmla: 'val 20000 suffix', name: 'adj2' } },
+    ]);
+
+    expect(getShapePath('round2DiagRect', 120, 80, node)).toBe(
+      getShapePath('round2DiagRect', 120, 80, xml({})),
+    );
+  });
+
+  it.each([
+    ['not-a-number', Number.NaN, 80, 'M 0 0 L 0 0 L 0 80 L 0 80 Z'],
+    [
+      'positive infinity',
+      Number.POSITIVE_INFINITY,
+      80,
+      'M 0 0 L 0 0 L 0 80 L 0 80 Z',
+    ],
+    ['negative width', -120, 80, 'M 0 0 L 0 0 L 0 80 L 0 80 Z'],
+    ['zero width', 0, 80, 'M 0 0 L 0 0 L 0 80 L 0 80 Z'],
+    ['negative height', 120, -80, 'M 0 0 L 120 0 L 120 0 L 0 0 Z'],
+    ['zero height', 120, 0, 'M 0 0 L 120 0 L 120 0 L 0 0 Z'],
+    ['overflowing width', Number.MAX_VALUE, 80, 'M 0 0 L 0 0 L 0 80 L 0 80 Z'],
+  ])(
+    'returns the exact degenerate path for %s',
+    (_name, width, height, expected) => {
+      expect(getShapePath('ellipse', width, height, xml({}))).toBe(expected);
+    },
+  );
+
+  it.each([
+    ['smallest positive width', Number.MIN_VALUE],
+    ['largest safe width', Number.MAX_SAFE_INTEGER],
+  ])('preserves the %s dimension boundary', (_name, width) => {
+    expect(getShapePath('rect', width, 80, xml({}))).toBe(
+      `M 0 0 L ${width} 0 L ${width} 80 L 0 80 Z`,
+    );
+  });
+
+  it('distinguishes zero, half, and full pie sweeps', () => {
+    const zero = getShapePath(
+      'pie',
+      120,
+      80,
+      guides([
+        ['adj1', 'val 0'],
+        ['adj2', 'val 0'],
+      ]),
+    );
+    const half = getShapePath(
+      'pie',
+      120,
+      80,
+      guides([
+        ['adj1', 'val 0'],
+        ['adj2', 'val 10800000'],
+      ]),
+    );
+    const full = getShapePath(
+      'pie',
+      120,
+      80,
+      guides([
+        ['adj1', 'val 0'],
+        ['adj2', 'val 21600000'],
+      ]),
+    );
+
+    expect(zero).toBe('M60,40 L120,40 A60,40 0 0,1 120,40 z');
+    expect(half).toContain('A60,40 0 0,1 ');
+    expect(full).toContain('A60,40 0 1,1 ');
+  });
+
+  it('keeps an open half arc on the short-arc boundary', () => {
+    expect(
+      getShapePath(
+        'arc',
+        120,
+        80,
+        guides([
+          ['adj1', 'val 0'],
+          ['adj2', 'val 10800000'],
+        ]),
+      ),
+    ).toContain('A60,40 0 0,1 ');
+  });
+
+  it('renders different bounded tooth counts for gear presets', () => {
+    const gear6 = getShapePath('gear6', 120, 80, xml({}));
+    const gear9 = getShapePath('gear9', 120, 80, xml({}));
+
+    expect(gear6).not.toBe(gear9);
+    expect(gear6.match(/\bL\b/g)).toHaveLength(23);
+    expect(gear9.match(/\bL\b/g)).toHaveLength(35);
+    expectFinitePath(gear6);
+    expectFinitePath(gear9);
   });
 
   it('keeps common default paths deterministic', () => {
-    expect(getShapePath('rect', 120, 80, xml({}))).toBe(
-      'M 0 0 L 120 0 L 120 80 L 0 80 Z',
-    );
+    const rectangle = 'M 0 0 L 120 0 L 120 80 L 0 80 Z';
+    expect(getShapePath('rect', 120, 80, xml({}))).toBe(rectangle);
+    expect(getShapePath('actionButtonBlank', 120, 80, xml({}))).toBe(rectangle);
+    expect(getShapePath('unknown-preset', 120, 80, xml({}))).toBe(rectangle);
     expect(getShapePath('rtTriangle', 120, 80, xml({}))).toBe(
       'M 0 0 L 0 80 L 120 80 Z',
     );
