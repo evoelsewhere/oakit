@@ -57,4 +57,37 @@ describe('PPTX HTML security', () => {
     expect(element.content).not.toContain('<img');
     expect(element.content).not.toContain('href=');
   });
+
+  it('escapes speaker note HTML', async () => {
+    const input = await createMinimalPptx({
+      'ppt/slides/_rels/slide1.xml.rels': `
+        <Relationships>
+          <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout1.xml"/>
+          <Relationship Id="rIdNotes" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/notesSlide" Target="../notesSlides/notesSlide1.xml"/>
+        </Relationships>`,
+      'ppt/notesSlides/notesSlide1.xml': `
+        <p:notes>
+          <p:cSld>
+            <p:spTree>
+              <p:sp>
+                <p:nvSpPr>
+                  <p:cNvPr id="2" name="Notes"/>
+                  <p:nvPr><p:ph type="body"/></p:nvPr>
+                </p:nvSpPr>
+                <p:txBody>
+                  <a:p><a:r><a:t><![CDATA[<script>alert(1)</script> & note]]></a:t></a:r></a:p>
+                </p:txBody>
+              </p:sp>
+            </p:spTree>
+          </p:cSld>
+        </p:notes>`,
+    });
+
+    const result = await parsePptx(input);
+
+    expect(result.slides[0]?.note).toContain(
+      '&lt;script&gt;alert(1)&lt;/script&gt;&nbsp;&amp;&nbsp;note',
+    );
+    expect(result.slides[0]?.note).not.toContain('<script>');
+  });
 });

@@ -54,6 +54,7 @@ import {
   isStrokeOnlyCustomGeometry,
 } from './internal/shape';
 import {
+  decodeXmlEntities,
   extractFileExtension,
   getTextByPathList,
   angleToDegrees,
@@ -546,7 +547,11 @@ function getNote(noteContent: XmlLookupValue): string {
 
       for (const run of asArray(nodeAt(paragraph, ['a:r']))) {
         const value = getTextNodeValue(nodeAt(run, ['a:t']));
-        if (value) text += value;
+        if (value) {
+          text += escapeHtml(decodeXmlEntities(value))
+            .replace(/\t/g, '&nbsp;&nbsp;&nbsp;&nbsp;')
+            .replace(/\s/g, '&nbsp;');
+        }
       }
 
       if (listType) text += '</p></li>';
