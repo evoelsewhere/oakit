@@ -1,6 +1,10 @@
 import type { XmlLookupValue } from '../../../common';
 
 import { getTextByPathList } from '../../../common';
+import {
+  createDrawingGuideResolver,
+  type DrawingGuideResolver,
+} from './custom-geometry-guide';
 
 interface Point {
   x: number;
@@ -74,6 +78,28 @@ function pointsFromNode(node: XmlLookupValue | undefined): Point[] {
   return asArray(node).map(pointFromNode);
 }
 
+function resolvedPointFromNode(
+  node: XmlLookupValue,
+  resolve: DrawingGuideResolver,
+): Point | undefined {
+  const attrs = attributes(node);
+  const x = attrs.x === undefined ? undefined : resolve(attrs.x);
+  const y = attrs.y === undefined ? undefined : resolve(attrs.y);
+  return x === undefined || y === undefined ? undefined : { x, y };
+}
+
+function resolvedPointsFromNode(
+  node: XmlLookupValue | undefined,
+  resolve: DrawingGuideResolver,
+): Point[] | undefined {
+  const points = asArray(node).map((point) =>
+    resolvedPointFromNode(point, resolve),
+  );
+  return points.some((point) => point === undefined)
+    ? undefined
+    : (points as Point[]);
+}
+
 export function shapeArc(
   centerX: number,
   centerY: number,
@@ -106,9 +132,10 @@ function collectPointCommands(
   path: XmlLookupValue,
   elementName: 'a:lnTo' | 'a:moveTo',
   type: 'lineTo' | 'moveTo',
+  resolve: DrawingGuideResolver,
 ): OrderedCustomCommand[] {
   return asArray(nodeAt(path, [elementName])).flatMap((item) => {
-    const point = pointsFromNode(nodeAt(item, ['a:pt']))[0];
+    const point = resolvedPointsFromNode(nodeAt(item, ['a:pt']), resolve)?.[0];
     return point ? [{ type, point, order: commandOrder(item) }] : [];
   });
 }
@@ -117,11 +144,13 @@ function collectBezierCommands(
   path: XmlLookupValue,
   elementName: 'a:cubicBezTo' | 'a:quadBezTo',
   type: 'cubicBezTo' | 'quadBezTo',
+  resolve: DrawingGuideResolver,
 ): OrderedCustomCommand[] {
   return asArray(nodeAt(path, [elementName])).flatMap(
     (item): OrderedCustomCommand[] => {
       const pointNodes = nodeAt(item, ['a:pt']);
-      const points = pointsFromNode(pointNodes);
+      const points = resolvedPointsFromNode(pointNodes, resolve);
+      if (!points) return [];
       if (type === 'cubicBezTo') {
         return points.length === 3
           ? [
@@ -146,18 +175,51 @@ function collectBezierCommands(
   );
 }
 
-function collectArcCommands(path: XmlLookupValue): OrderedCustomCommand[] {
-  return asArray(nodeAt(path, ['a:arcTo'])).map((item) => {
+function collectArcCommands(
+  path: XmlLookupValue,
+  resolve: DrawingGuideResolver,
+): OrderedCustomCommand[] {
+  return asArray(nodeAt(path, ['a:arcTo'])).flatMap((item) => {
     const attrs = attributes(item);
-    return {
-      type: 'arcTo',
-      hR: Number(attrs.hR ?? 0),
-      wR: Number(attrs.wR ?? 0),
-      stAng: Number(attrs.stAng ?? 0),
-      swAng: Number(attrs.swAng ?? 0),
-      order: Number(attrs.order ?? 0),
-    };
+    const hR = attrs.hR === undefined ? undefined : resolve(attrs.hR);
+    const wR = attrs.wR === undefined ? undefined : resolve(attrs.wR);
+    const stAng = attrs.stAng === undefined ? undefined : resolve(attrs.stAng);
+    const swAng = attrs.swAng === undefined ? undefined : resolve(attrs.swAng);
+    return hR === undefined ||
+      wR === undefined ||
+      stAng === undefined ||
+      swAng === undefined
+      ? []
+      : [
+          {
+            type: 'arcTo',
+            hR,
+            wR,
+            stAng,
+            swAng,
+            order: commandOrder(item),
+          },
+        ];
   });
+}
+
+function collectGuideFormulas(
+  customGeometry: XmlLookupValue,
+): ReadonlyMap<string, string> {
+  const formulas = new Map<string, string>();
+  const guideLists = [
+    nodeAt(customGeometry, ['a:avLst', 'a:gd']),
+    nodeAt(customGeometry, ['a:gdLst', 'a:gd']),
+  ];
+  for (const guideList of guideLists) {
+    for (const guide of asArray(guideList)) {
+      const attrs = attributes(guide);
+      if (!attrs.name) continue;
+      if (attrs.fmla) formulas.set(attrs.name, attrs.fmla);
+      else formulas.delete(attrs.name);
+    }
+  }
+  return formulas;
 }
 
 function collectCloseCommands(path: XmlLookupValue): OrderedCustomCommand[] {
@@ -208,6 +270,7 @@ function renderCustomPath(
   pathNode: XmlLookupValue,
   width: number,
   height: number,
+  formulas: ReadonlyMap<string, string>,
 ): string {
   const pathAttributes = attributes(pathNode);
   const sourceWidth = Number(pathAttributes.w ?? 0);
@@ -222,12 +285,17 @@ function renderCustomPath(
   }
   const scaleX = width / sourceWidth;
   const scaleY = height / sourceHeight;
+  const resolve = createDrawingGuideResolver(
+    sourceWidth,
+    sourceHeight,
+    formulas,
+  );
   const commands: OrderedCustomCommand[] = [
-    ...collectPointCommands(pathNode, 'a:moveTo', 'moveTo'),
-    ...collectPointCommands(pathNode, 'a:lnTo', 'lineTo'),
-    ...collectBezierCommands(pathNode, 'a:cubicBezTo', 'cubicBezTo'),
-    ...collectBezierCommands(pathNode, 'a:quadBezTo', 'quadBezTo'),
-    ...collectArcCommands(pathNode),
+    ...collectPointCommands(pathNode, 'a:moveTo', 'moveTo', resolve),
+    ...collectPointCommands(pathNode, 'a:lnTo', 'lineTo', resolve),
+    ...collectBezierCommands(pathNode, 'a:cubicBezTo', 'cubicBezTo', resolve),
+    ...collectBezierCommands(pathNode, 'a:quadBezTo', 'quadBezTo', resolve),
+    ...collectArcCommands(pathNode, resolve),
     ...collectCloseCommands(pathNode),
   ];
 
@@ -242,8 +310,9 @@ export function getCustomShapePath(
   width: number,
   height: number,
 ): string {
+  const formulas = collectGuideFormulas(customGeometry);
   return asArray(nodeAt(customGeometry, ['a:pathLst', 'a:path']))
-    .map((path) => renderCustomPath(path, width, height))
+    .map((path) => renderCustomPath(path, width, height, formulas))
     .join('');
 }
 

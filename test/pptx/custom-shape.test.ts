@@ -776,6 +776,111 @@ describe('PowerPoint custom path collection', () => {
     );
   });
 
+  it('resolves adjustment, derived, built-in, and forward guide coordinates', () => {
+    const geometry = xml({
+      'a:avLst': {
+        'a:gd': { attrs: { fmla: 'val 25', name: 'adj' } },
+      },
+      'a:gdLst': {
+        'a:gd': [
+          { attrs: { fmla: '*/ w adj 100', name: 'x1' } },
+          { attrs: { fmla: '+- vc 10 0', name: 'y1' } },
+          { attrs: { fmla: 'val x3', name: 'x2' } },
+          { attrs: { fmla: '+- r 0 x1', name: 'x3' } },
+        ],
+      },
+      'a:pathLst': {
+        'a:path': {
+          attrs: { h: '80', w: '100' },
+          'a:moveTo': {
+            attrs: { order: '1' },
+            'a:pt': { attrs: { order: '2', x: 'x1', y: 'y1' } },
+          },
+          'a:lnTo': [
+            {
+              attrs: { order: '3' },
+              'a:pt': { attrs: { order: '4', x: 'x2', y: 'b' } },
+            },
+            {
+              attrs: { order: '5' },
+              'a:pt': { attrs: { order: '6', x: 'hc', y: 't' } },
+            },
+          ],
+        },
+      },
+    });
+
+    expect(getCustomShapePath(geometry, 200, 160)).toBe(
+      ' M50,100 L150,160 L100,0',
+    );
+  });
+
+  it('evaluates guides independently for each path coordinate space', () => {
+    const geometry = xml({
+      'a:gdLst': {
+        'a:gd': { attrs: { fmla: 'val hc', name: 'middle' } },
+      },
+      'a:pathLst': {
+        'a:path': [
+          {
+            attrs: { h: '100', w: '100' },
+            'a:moveTo': {
+              attrs: { order: '1' },
+              'a:pt': { attrs: { order: '2', x: 'middle', y: 'vc' } },
+            },
+          },
+          {
+            attrs: { h: '100', w: '200' },
+            'a:moveTo': {
+              attrs: { order: '3' },
+              'a:pt': { attrs: { order: '4', x: 'middle', y: 'vc' } },
+            },
+          },
+        ],
+      },
+    });
+
+    expect(getCustomShapePath(geometry, 20, 10)).toBe(' M10,5 M10,5');
+  });
+
+  it('skips commands with missing, malformed, or unresolved coordinates', () => {
+    const geometry = xml({
+      'a:avLst': {
+        'a:gd': [
+          { attrs: { fmla: 'val 20', name: 'valid' } },
+          { attrs: { fmla: 'val valid', name: 'removed' } },
+          { attrs: { name: 'removed' } },
+          { attrs: { fmla: 'val 10' } },
+        ],
+      },
+      'a:pathLst': {
+        'a:path': {
+          attrs: { h: '100', w: '100' },
+          'a:moveTo': [
+            {
+              attrs: { order: '1' },
+              'a:pt': { attrs: { order: '2', x: 'valid', y: 'valid' } },
+            },
+            {
+              attrs: { order: '3' },
+              'a:pt': { attrs: { order: '4', x: 'removed', y: '10' } },
+            },
+            {
+              attrs: { order: '5' },
+              'a:pt': { attrs: { order: '6', x: '10px', y: '10' } },
+            },
+            {
+              attrs: { order: '7' },
+              'a:pt': { attrs: { order: '8', x: '10' } },
+            },
+          ],
+        },
+      },
+    });
+
+    expect(getCustomShapePath(geometry, 100, 100)).toBe(' M20,20');
+  });
+
   it('preserves interleaved command and subpath order', () => {
     const geometry = xml({
       'a:pathLst': {
@@ -827,10 +932,19 @@ describe('PowerPoint custom path collection', () => {
           attrs: { h: '100', w: '100' },
           'a:moveTo': { attrs: { order: '1' } },
           'a:lnTo': { attrs: { order: '2' } },
-          'a:quadBezTo': {
-            attrs: { order: '3' },
-            'a:pt': pointNode({ x: 10, y: 10 }, 4),
-          },
+          'a:quadBezTo': [
+            {
+              attrs: { order: '3' },
+              'a:pt': pointNode({ x: 10, y: 10 }, 4),
+            },
+            {
+              attrs: { order: '4' },
+              'a:pt': [
+                pointNode({ x: 10, y: 10 }, 41),
+                { attrs: { order: '42', x: 'unknown', y: '20' } },
+              ],
+            },
+          ],
           'a:cubicBezTo': {
             attrs: { order: '5' },
             'a:pt': [

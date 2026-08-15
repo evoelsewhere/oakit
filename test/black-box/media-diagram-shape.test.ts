@@ -53,6 +53,30 @@ const MEDIA_DIAGRAM_SLIDE = `
     </p:spTree></p:cSld>
   </p:sld>`;
 
+const GUIDED_CUSTOM_SHAPE_SLIDE = `
+  <p:sld xmlns:p="${PRESENTATION_NS}" xmlns:a="${DRAWING_NS}">
+    <p:cSld><p:spTree>
+      <p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr/>
+      <p:sp>
+        <p:nvSpPr><p:cNvPr id="2" name="Guided shape"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr>
+        <p:spPr>
+          <a:xfrm><a:off x="0" y="0"/><a:ext cx="914400" cy="914400"/></a:xfrm>
+          <a:custGeom>
+            <a:avLst><a:gd name="adj" fmla="val 25"/></a:avLst>
+            <a:gdLst>
+              <a:gd name="x1" fmla="*/ w adj 100"/>
+              <a:gd name="y1" fmla="val vc"/>
+            </a:gdLst>
+            <a:pathLst><a:path w="100" h="80">
+              <a:moveTo><a:pt x="x1" y="y1"/></a:moveTo>
+              <a:lnTo><a:pt x="r" y="b"/></a:lnTo>
+            </a:path></a:pathLst>
+          </a:custGeom>
+        </p:spPr>
+      </p:sp>
+    </p:spTree></p:cSld>
+  </p:sld>`;
+
 const DIAGRAM_DATA = `
   <dgm:dataModel xmlns:dgm="${DIAGRAM_NS}" xmlns:a="${DRAWING_NS}" xmlns:dsp="${DIAGRAM_DRAWING_NS}">
     <dgm:ptLst>
@@ -75,6 +99,22 @@ const DIAGRAM_DRAWING = `
   </dsp:drawing>`;
 
 describe('PPTX diagram, media, and grouped custom shapes', () => {
+  it('resolves DrawingML guides from an independently packaged PPTX', async () => {
+    const input = await createIndependentPptx({
+      'ppt/slides/slide1.xml': GUIDED_CUSTOM_SHAPE_SLIDE,
+    });
+
+    const result = await parsePptx(input, { errorMode: 'strict' });
+    const shape = result.slides[0]?.elements[0];
+
+    expect(shape).toMatchObject({
+      id: '2',
+      path: ' M18,36 L72,72',
+      shapType: 'custom',
+      type: 'shape',
+    });
+  });
+
   it('parses diagram text, linked media, and nested custom geometry', async () => {
     const input = await createIndependentPptx({
       'ppt/slides/slide1.xml': MEDIA_DIAGRAM_SLIDE,
