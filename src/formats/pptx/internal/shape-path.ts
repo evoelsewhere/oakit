@@ -677,7 +677,7 @@ export function getShapePath(
         let shpTyp, adjTyp;
 
         if (shapAdjst_ary && Array.isArray(shapAdjst_ary)) {
-          for (const adj of shapAdjst_ary) {
+          for (const adj of asArray(shapAdjst_ary)) {
             const sAdj_name = getTextByPathList(adj, ['attrs', 'name']);
             if (sAdj_name === 'adj1') {
               const sAdj1 = getTextByPathList(adj, ['attrs', 'fmla']);
@@ -766,7 +766,7 @@ export function getShapePath(
         let sAdj1_val = 0.33334;
         let sAdj2_val = 0.33334;
         if (shapAdjst_ary) {
-          for (const adj of shapAdjst_ary) {
+          for (const adj of asArray(shapAdjst_ary)) {
             const sAdj_name = getTextByPathList(adj, ['attrs', 'name']);
             if (sAdj_name === 'adj1') {
               const sAdj1 = getTextByPathList(adj, ['attrs', 'fmla']);
@@ -1711,7 +1711,7 @@ export function getShapePath(
         let sAdj1_val = 45;
         let sAdj2_val = 270;
         if (shapAdjst_ary) {
-          for (const adj of shapAdjst_ary) {
+          for (const adj of asArray(shapAdjst_ary)) {
             const sAdj_name = getTextByPathList(adj, ['attrs', 'name']);
             if (sAdj_name === 'adj1') {
               const sAdj1 = getTextByPathList(adj, ['attrs', 'fmla']);
@@ -1836,7 +1836,7 @@ export function getShapePath(
         let sAdj2_val = 3.5;
         const cnsVal = 100000 * RATIO_EMUs_Points;
         if (shapAdjst_ary) {
-          for (const adj of shapAdjst_ary) {
+          for (const adj of asArray(shapAdjst_ary)) {
             const sAdj_name = getTextByPathList(adj, ['attrs', 'name']);
             if (sAdj_name === 'adj1') {
               sAdj1_val =
@@ -1880,7 +1880,7 @@ export function getShapePath(
         const cnstVal1 = 50000 * RATIO_EMUs_Points;
         const cnstVal2 = 100000 * RATIO_EMUs_Points;
         if (shapAdjst_ary) {
-          for (const adj of shapAdjst_ary) {
+          for (const adj of asArray(shapAdjst_ary)) {
             const sAdj_name = getTextByPathList(adj, ['attrs', 'name']);
             if (sAdj_name === 'adj1') {
               adj1 =
@@ -2002,7 +2002,7 @@ export function getShapePath(
         let adj2 = 50000 * RATIO_EMUs_Points;
         const cnstVal2 = 100000 * RATIO_EMUs_Points;
         if (shapAdjst_ary) {
-          for (const adj of shapAdjst_ary) {
+          for (const adj of asArray(shapAdjst_ary)) {
             const sAdj_name = getTextByPathList(adj, ['attrs', 'name']);
             if (sAdj_name === 'adj1') {
               adj1 =
@@ -2046,7 +2046,7 @@ export function getShapePath(
         let adj2 = 50000 * RATIO_EMUs_Points;
         const cnstVal2 = 100000 * RATIO_EMUs_Points;
         if (shapAdjst_ary) {
-          for (const adj of shapAdjst_ary) {
+          for (const adj of asArray(shapAdjst_ary)) {
             const sAdj_name = getTextByPathList(adj, ['attrs', 'name']);
             if (sAdj_name === 'adj1') {
               adj1 =
@@ -2192,7 +2192,7 @@ export function getShapePath(
         let sAdj2_val = 50000 * RATIO_EMUs_Points;
         const cnsVal = 100000 * RATIO_EMUs_Points;
         if (shapAdjst_ary) {
-          for (const adj of shapAdjst_ary) {
+          for (const adj of asArray(shapAdjst_ary)) {
             const sAdj_name = getTextByPathList(adj, ['attrs', 'name']);
             if (sAdj_name === 'adj1') {
               sAdj1_val =
@@ -2608,7 +2608,7 @@ export function getShapePath(
           let adj1 = -20833 * refr;
           let adj2 = 62500 * refr;
           if (shapAdjst_ary) {
-            for (const adj of shapAdjst_ary) {
+            for (const adj of asArray(shapAdjst_ary)) {
               const sAdj_name = getTextByPathList(adj, ['attrs', 'name']);
               if (sAdj_name === 'adj1') {
                 adj1 =
@@ -2762,7 +2762,7 @@ export function getShapePath(
         let adj1 = -20833 * refr;
         let adj2 = 62500 * refr;
         if (shapAdjst_ary) {
-          for (const adj of shapAdjst_ary) {
+          for (const adj of asArray(shapAdjst_ary)) {
             const sAdj_name = getTextByPathList(adj, ['attrs', 'name']);
             if (sAdj_name === 'adj1') {
               adj1 =
@@ -2811,7 +2811,7 @@ export function getShapePath(
         let adj1 = -20833 * refr;
         let adj2 = 62500 * refr;
         if (shapAdjst_ary) {
-          for (const adj of shapAdjst_ary) {
+          for (const adj of asArray(shapAdjst_ary)) {
             const sAdj_name = getTextByPathList(adj, ['attrs', 'name']);
             if (sAdj_name === 'adj1') {
               adj1 =
@@ -2867,7 +2867,7 @@ export function getShapePath(
         let adj2 = 62500 * refr;
         let adj3 = 16667 * refr;
         if (shapAdjst_ary) {
-          for (const adj of shapAdjst_ary) {
+          for (const adj of asArray(shapAdjst_ary)) {
             const sAdj_name = getTextByPathList(adj, ['attrs', 'name']);
             if (sAdj_name === 'adj1') {
               adj1 =
@@ -2948,7 +2948,7 @@ export function getShapePath(
         let adj7 = 112963 * refr;
         let adj8 = -8333 * refr;
         if (shapAdjst_ary) {
-          for (const adj of shapAdjst_ary) {
+          for (const adj of asArray(shapAdjst_ary)) {
             const sAdj_name = getTextByPathList(adj, ['attrs', 'name']);
             if (sAdj_name === 'adj1') {
               adj1 =
@@ -3122,7 +3122,7 @@ export function getShapePath(
         let adj2 = 50000 * refr;
         let adj3 = 16667 * refr;
         if (shapAdjst_ary) {
-          for (const adj of shapAdjst_ary) {
+          for (const adj of asArray(shapAdjst_ary)) {
             const sAdj_name = getTextByPathList(adj, ['attrs', 'name']);
             if (sAdj_name === 'adj1') {
               adj1 =
@@ -3185,7 +3185,7 @@ export function getShapePath(
         let adj1 = 16667 * RATIO_EMUs_Points;
         let adj2 = 50000 * RATIO_EMUs_Points;
         if (shapAdjst_ary) {
-          for (const adj of shapAdjst_ary) {
+          for (const adj of asArray(shapAdjst_ary)) {
             const sAdj_name = getTextByPathList(adj, ['attrs', 'name']);
             if (sAdj_name === 'adj1') {
               adj1 =
@@ -3263,7 +3263,7 @@ export function getShapePath(
             : 12500 * RATIO_EMUs_Points;
         let adj2 = 0;
         if (shapAdjst_ary) {
-          for (const adj of shapAdjst_ary) {
+          for (const adj of asArray(shapAdjst_ary)) {
             const sAdj_name = getTextByPathList(adj, ['attrs', 'name']);
             if (sAdj_name === 'adj1') {
               adj1 =
@@ -3357,7 +3357,7 @@ export function getShapePath(
         let adj2 = 50000 * RATIO_EMUs_Points;
         let adj3 = 12500 * RATIO_EMUs_Points;
         if (shapAdjst_ary) {
-          for (const adj of shapAdjst_ary) {
+          for (const adj of asArray(shapAdjst_ary)) {
             const sAdj_name = getTextByPathList(adj, ['attrs', 'name']);
             if (sAdj_name === 'adj1') {
               adj1 =
@@ -3474,7 +3474,7 @@ export function getShapePath(
         let sAdj2_val = 0.5;
         if (shapAdjst_ary) {
           const max_sAdj2_const = w / h;
-          for (const adj of shapAdjst_ary) {
+          for (const adj of asArray(shapAdjst_ary)) {
             const sAdj_name = getTextByPathList(adj, ['attrs', 'name']);
             if (sAdj_name === 'adj1') {
               sAdj1_val =
@@ -3507,7 +3507,7 @@ export function getShapePath(
         let sAdj2_val = 0.5;
         if (shapAdjst_ary) {
           const max_sAdj2_const = w / h;
-          for (const adj of shapAdjst_ary) {
+          for (const adj of asArray(shapAdjst_ary)) {
             const sAdj_name = getTextByPathList(adj, ['attrs', 'name']);
             if (sAdj_name === 'adj1') {
               sAdj1_val =
@@ -3541,7 +3541,7 @@ export function getShapePath(
         let sAdj2_val = 0.5;
         if (shapAdjst_ary) {
           const max_sAdj2_const = h / w;
-          for (const adj of shapAdjst_ary) {
+          for (const adj of asArray(shapAdjst_ary)) {
             const sAdj_name = getTextByPathList(adj, ['attrs', 'name']);
             if (sAdj_name === 'adj1') {
               sAdj1_val =
@@ -3576,7 +3576,7 @@ export function getShapePath(
         let sAdj2_val = 0.5;
         if (shapAdjst_ary) {
           const max_sAdj2_const = h / w;
-          for (const adj of shapAdjst_ary) {
+          for (const adj of asArray(shapAdjst_ary)) {
             const sAdj_name = getTextByPathList(adj, ['attrs', 'name']);
             if (sAdj_name === 'adj1') {
               sAdj1_val =
@@ -3607,7 +3607,7 @@ export function getShapePath(
         let sAdj2_val = 0.25;
         if (shapAdjst_ary) {
           const max_sAdj2_const = w / h;
-          for (const adj of shapAdjst_ary) {
+          for (const adj of asArray(shapAdjst_ary)) {
             const sAdj_name = getTextByPathList(adj, ['attrs', 'name']);
             if (sAdj_name === 'adj1') {
               sAdj1_val =
@@ -3640,7 +3640,7 @@ export function getShapePath(
         let sAdj2_val = 0.25;
         if (shapAdjst_ary) {
           const max_sAdj2_const = h / w;
-          for (const adj of shapAdjst_ary) {
+          for (const adj of asArray(shapAdjst_ary)) {
             const sAdj_name = getTextByPathList(adj, ['attrs', 'name']);
             if (sAdj_name === 'adj1') {
               sAdj1_val =
@@ -3676,7 +3676,7 @@ export function getShapePath(
         const cnstVal2 = 100000 * RATIO_EMUs_Points;
         const cnstVal3 = 200000 * RATIO_EMUs_Points;
         if (shapAdjst_ary) {
-          for (const adj of shapAdjst_ary) {
+          for (const adj of asArray(shapAdjst_ary)) {
             const sAdj_name = getTextByPathList(adj, ['attrs', 'name']);
             if (sAdj_name === 'adj1') {
               adj1 =
@@ -3736,7 +3736,7 @@ export function getShapePath(
         const cnstVal2 = 100000 * RATIO_EMUs_Points;
         const cnstVal3 = 200000 * RATIO_EMUs_Points;
         if (shapAdjst_ary) {
-          for (const adj of shapAdjst_ary) {
+          for (const adj of asArray(shapAdjst_ary)) {
             const sAdj_name = getTextByPathList(adj, ['attrs', 'name']);
             if (sAdj_name === 'adj1') {
               adj1 =
@@ -3795,7 +3795,7 @@ export function getShapePath(
         const cnstVal2 = 100000 * RATIO_EMUs_Points;
         const cnstVal3 = 200000 * RATIO_EMUs_Points;
         if (shapAdjst_ary) {
-          for (const adj of shapAdjst_ary) {
+          for (const adj of asArray(shapAdjst_ary)) {
             const sAdj_name = getTextByPathList(adj, ['attrs', 'name']);
             if (sAdj_name === 'adj1') {
               adj1 =
@@ -3851,7 +3851,7 @@ export function getShapePath(
         const cnstVal2 = 100000 * RATIO_EMUs_Points;
         const cnstVal3 = 200000 * RATIO_EMUs_Points;
         if (shapAdjst_ary) {
-          for (const adj of shapAdjst_ary) {
+          for (const adj of asArray(shapAdjst_ary)) {
             const sAdj_name = getTextByPathList(adj, ['attrs', 'name']);
             if (sAdj_name === 'adj1') {
               adj1 =
@@ -3903,7 +3903,7 @@ export function getShapePath(
         const cnstVal1 = 50000 * RATIO_EMUs_Points;
         const cnstVal2 = 100000 * RATIO_EMUs_Points;
         if (shapAdjst_ary) {
-          for (const adj of shapAdjst_ary) {
+          for (const adj of asArray(shapAdjst_ary)) {
             const sAdj_name = getTextByPathList(adj, ['attrs', 'name']);
             if (sAdj_name === 'adj1') {
               adj1 =
@@ -3971,7 +3971,7 @@ export function getShapePath(
         const cnstVal1 = 25000 * RATIO_EMUs_Points;
         const cnstVal2 = 100000 * RATIO_EMUs_Points;
         if (shapAdjst_ary) {
-          for (const adj of shapAdjst_ary) {
+          for (const adj of asArray(shapAdjst_ary)) {
             const sAdj_name = getTextByPathList(adj, ['attrs', 'name']);
             if (sAdj_name === 'adj1') {
               adj1 =
@@ -4050,7 +4050,7 @@ export function getShapePath(
         const cnstVal2 = 200000 * RATIO_EMUs_Points;
         const cnstVal3 = 84375 * RATIO_EMUs_Points;
         if (shapAdjst_ary) {
-          for (const adj of shapAdjst_ary) {
+          for (const adj of asArray(shapAdjst_ary)) {
             const sAdj_name = getTextByPathList(adj, ['attrs', 'name']);
             if (sAdj_name === 'adj1') {
               adj1 =
@@ -4095,7 +4095,7 @@ export function getShapePath(
         const cnstVal1 = 100000 * RATIO_EMUs_Points;
         const cnstVal2 = 200000 * RATIO_EMUs_Points;
         if (shapAdjst_ary) {
-          for (const adj of shapAdjst_ary) {
+          for (const adj of asArray(shapAdjst_ary)) {
             const sAdj_name = getTextByPathList(adj, ['attrs', 'name']);
             if (sAdj_name === 'adj1') {
               adj1 =
@@ -4189,7 +4189,7 @@ export function getShapePath(
         const cnstVal2 = 100000 * RATIO_EMUs_Points;
         const cnstVal3 = 200000 * RATIO_EMUs_Points;
         if (shapAdjst_ary) {
-          for (const adj of shapAdjst_ary) {
+          for (const adj of asArray(shapAdjst_ary)) {
             const sAdj_name = getTextByPathList(adj, ['attrs', 'name']);
             if (sAdj_name === 'adj1') {
               adj1 =
@@ -4257,7 +4257,7 @@ export function getShapePath(
         const cnstVal2 = 100000 * RATIO_EMUs_Points;
         const cnstVal3 = 200000 * RATIO_EMUs_Points;
         if (shapAdjst_ary) {
-          for (const adj of shapAdjst_ary) {
+          for (const adj of asArray(shapAdjst_ary)) {
             const sAdj_name = getTextByPathList(adj, ['attrs', 'name']);
             if (sAdj_name === 'adj1') {
               adj1 =
@@ -4325,7 +4325,7 @@ export function getShapePath(
         const cnstVal2 = 100000 * RATIO_EMUs_Points;
         const cnstVal3 = 200000 * RATIO_EMUs_Points;
         if (shapAdjst_ary) {
-          for (const adj of shapAdjst_ary) {
+          for (const adj of asArray(shapAdjst_ary)) {
             const sAdj_name = getTextByPathList(adj, ['attrs', 'name']);
             if (sAdj_name === 'adj1') {
               adj1 =
@@ -4393,7 +4393,7 @@ export function getShapePath(
         const cnstVal2 = 100000 * RATIO_EMUs_Points;
         const cnstVal3 = 200000 * RATIO_EMUs_Points;
         if (shapAdjst_ary) {
-          for (const adj of shapAdjst_ary) {
+          for (const adj of asArray(shapAdjst_ary)) {
             const sAdj_name = getTextByPathList(adj, ['attrs', 'name']);
             if (sAdj_name === 'adj1') {
               adj1 =
@@ -4461,7 +4461,7 @@ export function getShapePath(
         const cnstVal2 = 100000 * RATIO_EMUs_Points;
         const cnstVal3 = 200000 * RATIO_EMUs_Points;
         if (shapAdjst_ary) {
-          for (const adj of shapAdjst_ary) {
+          for (const adj of asArray(shapAdjst_ary)) {
             const sAdj_name = getTextByPathList(adj, ['attrs', 'name']);
             if (sAdj_name === 'adj1') {
               adj1 =
@@ -4532,7 +4532,7 @@ export function getShapePath(
         const cnstVal2 = 100000 * RATIO_EMUs_Points;
         const cnstVal3 = 200000 * RATIO_EMUs_Points;
         if (shapAdjst_ary) {
-          for (const adj of shapAdjst_ary) {
+          for (const adj of asArray(shapAdjst_ary)) {
             const sAdj_name = getTextByPathList(adj, ['attrs', 'name']);
             if (sAdj_name === 'adj1') {
               adj1 =
@@ -4608,7 +4608,7 @@ export function getShapePath(
         const cnstVal1 = 50000 * RATIO_EMUs_Points;
         const cnstVal2 = 100000 * RATIO_EMUs_Points;
         if (shapAdjst_ary) {
-          for (const adj of shapAdjst_ary) {
+          for (const adj of asArray(shapAdjst_ary)) {
             const sAdj_name = getTextByPathList(adj, ['attrs', 'name']);
             if (sAdj_name === 'adj1') {
               adj1 =
@@ -4685,7 +4685,7 @@ export function getShapePath(
         const cnstVal1 = 50000 * RATIO_EMUs_Points;
         const cnstVal2 = 100000 * RATIO_EMUs_Points;
         if (shapAdjst_ary) {
-          for (const adj of shapAdjst_ary) {
+          for (const adj of asArray(shapAdjst_ary)) {
             const sAdj_name = getTextByPathList(adj, ['attrs', 'name']);
             if (sAdj_name === 'adj1') {
               adj1 =
@@ -4758,7 +4758,7 @@ export function getShapePath(
         const cnstVal1 = 50000 * RATIO_EMUs_Points;
         const cnstVal2 = 100000 * RATIO_EMUs_Points;
         if (shapAdjst_ary) {
-          for (const adj of shapAdjst_ary) {
+          for (const adj of asArray(shapAdjst_ary)) {
             const sAdj_name = getTextByPathList(adj, ['attrs', 'name']);
             if (sAdj_name === 'adj1') {
               adj1 =
@@ -4835,7 +4835,7 @@ export function getShapePath(
         const cnstVal1 = 50000 * RATIO_EMUs_Points;
         const cnstVal2 = 100000 * RATIO_EMUs_Points;
         if (shapAdjst_ary) {
-          for (const adj of shapAdjst_ary) {
+          for (const adj of asArray(shapAdjst_ary)) {
             const sAdj_name = getTextByPathList(adj, ['attrs', 'name']);
             if (sAdj_name === 'adj1') {
               adj1 =
@@ -5164,7 +5164,7 @@ export function getShapePath(
         let adj1 = 25000 * refr;
         let adj2 = 16667 * refr;
         if (shapAdjst_ary) {
-          for (const adj of shapAdjst_ary) {
+          for (const adj of asArray(shapAdjst_ary)) {
             const sAdj_name = getTextByPathList(adj, ['attrs', 'name']);
             if (sAdj_name === 'adj1') {
               adj1 =
@@ -5226,7 +5226,7 @@ export function getShapePath(
         let adj4 = ((10800000 / 60000) * Math.PI) / 180;
         let adj5 = 12500 * RATIO_EMUs_Points;
         if (shapAdjst_ary) {
-          for (const adj of shapAdjst_ary) {
+          for (const adj of asArray(shapAdjst_ary)) {
             const sAdj_name = getTextByPathList(adj, ['attrs', 'name']);
             if (sAdj_name === 'adj1') {
               adj1 =
@@ -5406,7 +5406,7 @@ export function getShapePath(
         let adj4 = ((10800000 / 60000) * Math.PI) / 180;
         let adj5 = 12500 * RATIO_EMUs_Points;
         if (shapAdjst_ary) {
-          for (const adj of shapAdjst_ary) {
+          for (const adj of asArray(shapAdjst_ary)) {
             const sAdj_name = getTextByPathList(adj, ['attrs', 'name']);
             if (sAdj_name === 'adj1') {
               adj1 =
