@@ -1,6 +1,6 @@
 import type JSZip from 'jszip';
 
-interface ZipEntryStream {
+export interface ZipEntryStream {
   on(event: 'data', listener: (chunk: Uint8Array) => void): ZipEntryStream;
   on(event: 'error', listener: (error: unknown) => void): ZipEntryStream;
   on(event: 'end', listener: () => void): ZipEntryStream;
@@ -8,7 +8,8 @@ interface ZipEntryStream {
   resume(): ZipEntryStream;
 }
 
-interface StreamableZipObject extends JSZip.JSZipObject {
+export interface StreamableZipObject {
+  name: string;
   _data?: { uncompressedSize?: unknown };
   internalStream(type: 'uint8array'): ZipEntryStream;
 }
@@ -41,19 +42,16 @@ export class ZipExpansionBudgetLimitError extends Error {
   }
 }
 
-function declaredSize(file: JSZip.JSZipObject): number | null {
-  const size = (file as StreamableZipObject)._data?.uncompressedSize;
-  return Number.isSafeInteger(size) && Number(size) >= 0 ? Number(size) : null;
-}
-
 /** Read an entry while stopping decompression as soon as its byte limit is exceeded. */
 export function readZipEntryBytes(
-  file: JSZip.JSZipObject,
+  file: JSZip.JSZipObject | StreamableZipObject,
   maxBytes: number,
   consumeBytes?: (byteLength: number) => void,
 ): Promise<Uint8Array> {
-  const expectedSize = declaredSize(file);
-  if (expectedSize !== null && expectedSize > maxBytes) {
+  const expectedSize = Number(
+    (file as StreamableZipObject)._data?.uncompressedSize,
+  );
+  if (Number.isSafeInteger(expectedSize) && expectedSize > maxBytes) {
     return Promise.reject(new ZipEntrySizeLimitError(expectedSize, maxBytes));
   }
 
@@ -85,13 +83,11 @@ export function readZipEntryBytes(
         }
       })
       .on('error', (error) => {
-        if (settled) return;
         settled = true;
         chunks.length = 0;
         reject(asError(error));
       })
       .on('end', () => {
-        if (settled) return;
         settled = true;
         const output = new Uint8Array(byteLength);
         let offset = 0;
