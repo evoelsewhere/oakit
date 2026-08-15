@@ -1792,6 +1792,157 @@ describe('PowerPoint preset shape path safety', () => {
     },
   );
 
+  it.each([
+    ['mathMinus', '0', '100000'],
+    ['mathMultiply', '0', '51965'],
+    ['mathPlus', '0', '73490'],
+  ])(
+    'clamps the PowerPoint thickness for %s',
+    (shapeType, minimum, maximum) => {
+      const shape = (value: string): string =>
+        getShapePath(shapeType, 120, 80, singleGuide('adj1', value));
+
+      expect(shape('-10000')).toBe(shape(minimum));
+      expect(shape('200000')).toBe(shape(maximum));
+    },
+  );
+
+  it('clamps coupled PowerPoint equal-sign adjustments', () => {
+    const equal = (
+      adjustments: ReadonlyArray<readonly [string, string]>,
+    ): string =>
+      getShapePath(
+        'mathEqual',
+        120,
+        80,
+        guides(adjustments.map(([name, value]) => [name, `val ${value}`])),
+      );
+
+    expect(equal([['adj1', '-10000']])).toBe(equal([['adj1', '0']]));
+    expect(equal([['adj1', '100000']])).toBe(equal([['adj1', '36745']]));
+    expect(equal([['adj2', '-10000']])).toBe(equal([['adj2', '0']]));
+    expect(
+      equal([
+        ['adj1', '30000'],
+        ['adj2', '100000'],
+      ]),
+    ).toBe(
+      equal([
+        ['adj1', '30000'],
+        ['adj2', '40000'],
+      ]),
+    );
+  });
+
+  it('clamps coupled PowerPoint division-sign adjustments', () => {
+    const divide = (
+      width: number,
+      height: number,
+      adjustments: ReadonlyArray<readonly [string, string]>,
+    ): string =>
+      getShapePath(
+        'mathDivide',
+        width,
+        height,
+        guides(adjustments.map(([name, value]) => [name, `val ${value}`])),
+      );
+
+    expect(divide(120, 80, [['adj1', '0']])).toBe(
+      divide(120, 80, [['adj1', '1000']]),
+    );
+    expect(divide(120, 80, [['adj1', '100000']])).toBe(
+      divide(120, 80, [['adj1', '36745']]),
+    );
+    expect(divide(120, 80, [['adj3', '0']])).toBe(
+      divide(120, 80, [['adj3', '1000']]),
+    );
+    expect(
+      divide(120, 80, [
+        ['adj1', '23490'],
+        ['adj3', '100000'],
+      ]),
+    ).toBe(
+      divide(120, 80, [
+        ['adj1', '23490'],
+        ['adj3', '12500'],
+      ]),
+    );
+    expect(
+      divide(40, 100, [
+        ['adj1', '1490'],
+        ['adj3', '20000'],
+      ]),
+    ).toBe(
+      divide(40, 100, [
+        ['adj1', '1490'],
+        ['adj3', '14698'],
+      ]),
+    );
+    expect(divide(120, 80, [['adj2', '-10000']])).toBe(
+      divide(120, 80, [['adj2', '0']]),
+    );
+    expect(
+      divide(120, 80, [
+        ['adj1', '1000'],
+        ['adj2', '100000'],
+        ['adj3', '1000'],
+      ]),
+    ).toBe(
+      divide(120, 80, [
+        ['adj1', '1000'],
+        ['adj2', '68490'],
+        ['adj3', '1000'],
+      ]),
+    );
+    expect(
+      divide(120, 80, [
+        ['adj1', '1000'],
+        ['adj2', '68490'],
+        ['adj3', '1000'],
+      ]),
+    ).not.toBe(
+      divide(120, 80, [
+        ['adj1', '1000'],
+        ['adj2', '5880'],
+        ['adj3', '1000'],
+      ]),
+    );
+  });
+
+  it('clamps coupled PowerPoint not-equal-sign adjustments', () => {
+    const notEqual = (
+      adjustments: ReadonlyArray<readonly [string, string]>,
+    ): string =>
+      getShapePath(
+        'mathNotEqual',
+        120,
+        80,
+        guides(adjustments.map(([name, value]) => [name, `val ${value}`])),
+      );
+
+    expect(notEqual([['adj1', '-10000']])).toBe(notEqual([['adj1', '0']]));
+    expect(notEqual([['adj1', '100000']])).toBe(notEqual([['adj1', '50000']]));
+    expect(notEqual([['adj2', '0']])).toBe(notEqual([['adj2', '4200000']]));
+    expect(notEqual([['adj2', '10000000']])).toBe(
+      notEqual([['adj2', '6600000']]),
+    );
+    expect(notEqual([['adj2', '4800000']])).not.toBe(
+      notEqual([['adj2', '6000000']]),
+    );
+    expect(notEqual([['adj3', '-10000']])).toBe(notEqual([['adj3', '0']]));
+    expect(
+      notEqual([
+        ['adj1', '30000'],
+        ['adj3', '100000'],
+      ]),
+    ).toBe(
+      notEqual([
+        ['adj1', '30000'],
+        ['adj3', '40000'],
+      ]),
+    );
+  });
+
   it('keeps common default paths deterministic', () => {
     const rectangle = 'M 0 0 L 120 0 L 120 80 L 0 80 Z';
     expect(getShapePath('rect', 120, 80, xml({}))).toBe(rectangle);

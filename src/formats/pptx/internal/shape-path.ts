@@ -4584,34 +4584,25 @@ export function getShapePath(
           'a:avLst',
           'a:gd',
         ]);
-        let adj1, adj2, adj3;
-        if (shapAdjst_ary) {
-          if (Array.isArray(shapAdjst_ary)) {
-            for (const adj of shapAdjst_ary) {
-              const sAdj_name = getTextByPathList(adj, ['attrs', 'name']);
-              if (sAdj_name === 'adj1') {
-                adj1 = parseInt(
-                  getTextByPathList(adj, ['attrs', 'fmla']).substring(4),
-                );
-              } else if (sAdj_name === 'adj2') {
-                adj2 = parseInt(
-                  getTextByPathList(adj, ['attrs', 'fmla']).substring(4),
-                );
-              } else if (sAdj_name === 'adj3') {
-                adj3 = parseInt(
-                  getTextByPathList(adj, ['attrs', 'fmla']).substring(4),
-                );
-              }
-            }
-          } else {
-            adj1 = parseInt(
-              getTextByPathList(shapAdjst_ary, ['attrs', 'fmla']).substring(4),
-            );
+        let adj1: number | undefined;
+        let adj2: number | undefined;
+        let adj3: number | undefined;
+        for (const adj of asArray(shapAdjst_ary)) {
+          const name = getTextByPathList(adj, ['attrs', 'name']);
+          const value = parseInt(
+            getTextByPathList(adj, ['attrs', 'fmla']).substring(4),
+          );
+          if (name === 'adj1') {
+            adj1 = value;
+          } else if (name === 'adj2') {
+            adj2 = value;
+          } else if (name === 'adj3') {
+            adj3 = value;
           }
         }
-        const cnstVal1 = 50000 * RATIO_EMUs_Points;
-        const cnstVal2 = 100000 * RATIO_EMUs_Points;
-        const cnstVal3 = 200000 * RATIO_EMUs_Points;
+        const cnstVal1 = 50000;
+        const cnstVal2 = 100000;
+        const cnstVal3 = 200000;
         const hc = w / 2,
           vc = h / 2,
           hd2 = h / 2;
@@ -4619,17 +4610,14 @@ export function getShapePath(
           if (adj1 === undefined) adj1 = 23520;
           if (adj2 === undefined) adj2 = 110 * 60000;
           if (adj3 === undefined) adj3 = 11760;
-          adj1 *= RATIO_EMUs_Points;
           adj2 = ((adj2 / 60000) * Math.PI) / 180;
-          adj3 *= RATIO_EMUs_Points;
           const angVal1 = (70 * Math.PI) / 180,
             angVal2 = (110 * Math.PI) / 180;
-          const cnstVal4 = 73490 * RATIO_EMUs_Points;
-          const a1 = adj1 < 0 ? 0 : adj1 > cnstVal1 ? cnstVal1 : adj1;
-          const crAng =
-            adj2 < angVal1 ? angVal1 : adj2 > angVal2 ? angVal2 : adj2;
+          const cnstVal4 = 73490;
+          const a1 = Math.min(Math.max(adj1, 0), cnstVal1);
+          const crAng = Math.min(Math.max(adj2, angVal1), angVal2);
           const maxAdj3 = cnstVal2 - a1 * 2;
-          const a3 = adj3 < 0 ? 0 : adj3 > maxAdj3 ? maxAdj3 : adj3;
+          const a3 = Math.min(Math.max(adj3, 0), maxAdj3);
           const dy1 = (h * a1) / cnstVal2;
           const dy2 = (h * a3) / cnstVal3;
           const dx1 = (w * cnstVal4) / cnstVal3;
@@ -4660,11 +4648,12 @@ export function getShapePath(
           const dx7 = (dy1 * hd2) / len;
           const rxt = x7 + dx7;
           const lxt = x7 + bhw - dx7;
-          const rx = cadj2 > 0 ? rxt : x7 + bhw;
-          const lx = cadj2 > 0 ? x7 : lxt;
+          const positiveDirection = Math.max(Math.sign(cadj2), 0);
+          const rx = x7 + bhw + positiveDirection * (rxt - x7 - bhw);
+          const lx = lxt + positiveDirection * (x7 - lxt);
           const dy3 = (dy1 * xadj2) / len;
-          const ry = cadj2 > 0 ? dy3 : 0;
-          const ly = cadj2 > 0 ? 0 : -dy3;
+          const ry = Math.max(dy3, 0);
+          const ly = Math.max(-dy3, 0);
           const dlx = w - rx;
           const drx = w - lx;
           const dly = h - ry;
@@ -4674,21 +4663,16 @@ export function getShapePath(
           if (adj1 === undefined) adj1 = 23520;
           if (adj2 === undefined) adj2 = 5880;
           if (adj3 === undefined) adj3 = 11760;
-          adj1 *= RATIO_EMUs_Points;
-          adj2 *= RATIO_EMUs_Points;
-          adj3 *= RATIO_EMUs_Points;
-          const cnstVal4 = 1000 * RATIO_EMUs_Points;
-          const cnstVal5 = 36745 * RATIO_EMUs_Points;
-          const cnstVal6 = 73490 * RATIO_EMUs_Points;
-          const a1 =
-            adj1 < cnstVal4 ? cnstVal4 : adj1 > cnstVal5 ? cnstVal5 : adj1;
+          const cnstVal4 = 1000;
+          const cnstVal5 = 36745;
+          const cnstVal6 = 73490;
+          const a1 = Math.min(Math.max(adj1, cnstVal4), cnstVal5);
           const ma3h = (cnstVal6 - a1) / 4;
           const ma3w = (cnstVal5 * w) / h;
-          const maxAdj3 = ma3h < ma3w ? ma3h : ma3w;
-          const a3 =
-            adj3 < cnstVal4 ? cnstVal4 : adj3 > maxAdj3 ? maxAdj3 : adj3;
+          const maxAdj3 = Math.min(ma3h, ma3w);
+          const a3 = Math.min(Math.max(adj3, cnstVal4), maxAdj3);
           const maxAdj2 = cnstVal6 - 4 * a3 - a1;
-          const a2 = adj2 < 0 ? 0 : adj2 > maxAdj2 ? maxAdj2 : adj2;
+          const a2 = Math.min(Math.max(adj2, 0), maxAdj2);
           const dy1 = (h * a1) / cnstVal3;
           const yg = (h * a2) / cnstVal2;
           const rad = (h * a3) / cnstVal2;
@@ -4704,13 +4688,11 @@ export function getShapePath(
         } else if (shapType === 'mathEqual') {
           if (adj1 === undefined) adj1 = 23520;
           if (adj2 === undefined) adj2 = 11760;
-          adj1 *= RATIO_EMUs_Points;
-          adj2 *= RATIO_EMUs_Points;
-          const cnstVal5 = 36745 * RATIO_EMUs_Points;
-          const cnstVal6 = 73490 * RATIO_EMUs_Points;
-          const a1 = adj1 < 0 ? 0 : adj1 > cnstVal5 ? cnstVal5 : adj1;
+          const cnstVal5 = 36745;
+          const cnstVal6 = 73490;
+          const a1 = Math.min(Math.max(adj1, 0), cnstVal5);
           const mAdj2 = cnstVal2 - a1 * 2;
-          const a2 = adj2 < 0 ? 0 : adj2 > mAdj2 ? mAdj2 : adj2;
+          const a2 = Math.min(Math.max(adj2, 0), mAdj2);
           const dy1 = (h * a1) / cnstVal2;
           const dy2 = (h * a2) / cnstVal3;
           const dx1 = (w * cnstVal6) / cnstVal3;
@@ -4723,9 +4705,8 @@ export function getShapePath(
           pathData = `M ${x1},${y1} L ${x2},${y1} L ${x2},${y2} L ${x1},${y2} z M ${x1},${y3} L ${x2},${y3} L ${x2},${y4} L ${x1},${y4} z`;
         } else if (shapType === 'mathMinus') {
           if (adj1 === undefined) adj1 = 23520;
-          adj1 *= RATIO_EMUs_Points;
-          const cnstVal6 = 73490 * RATIO_EMUs_Points;
-          const a1 = adj1 < 0 ? 0 : adj1 > cnstVal2 ? cnstVal2 : adj1;
+          const cnstVal6 = 73490;
+          const a1 = Math.min(Math.max(adj1, 0), cnstVal2);
           const dy1 = (h * a1) / cnstVal3;
           const dx1 = (w * cnstVal6) / cnstVal3;
           const y1 = vc - dy1;
@@ -4735,10 +4716,9 @@ export function getShapePath(
           pathData = `M ${x1},${y1} L ${x2},${y1} L ${x2},${y2} L ${x1},${y2} z`;
         } else if (shapType === 'mathMultiply') {
           if (adj1 === undefined) adj1 = 23520;
-          adj1 *= RATIO_EMUs_Points;
-          const cnstVal6 = 51965 * RATIO_EMUs_Points;
+          const cnstVal6 = 51965;
           const ss = Math.min(w, h);
-          const a1 = adj1 < 0 ? 0 : adj1 > cnstVal6 ? cnstVal6 : adj1;
+          const a1 = Math.min(Math.max(adj1, 0), cnstVal6);
           const th = (ss * a1) / cnstVal2;
           const a = Math.atan(h / w);
           const sa = Math.sin(a);
@@ -4763,12 +4743,11 @@ export function getShapePath(
           const yH = h - yB;
           const yI = h - yC;
           pathData = `M ${xA},${yA} L ${xB},${yB} L ${hc},${yC} L ${xD},${yB} L ${xE},${yA} L ${xF},${vc} L ${xE},${yG} L ${xD},${yH} L ${hc},${yI} L ${xB},${yH} L ${xA},${yG} L ${xL},${vc} z`;
-        } else if (shapType === 'mathPlus') {
+        } else {
           if (adj1 === undefined) adj1 = 23520;
-          adj1 *= RATIO_EMUs_Points;
-          const cnstVal6 = 73490 * RATIO_EMUs_Points;
+          const cnstVal6 = 73490;
           const ss = Math.min(w, h);
-          const a1 = adj1 < 0 ? 0 : adj1 > cnstVal6 ? cnstVal6 : adj1;
+          const a1 = Math.min(Math.max(adj1, 0), cnstVal6);
           const dx1 = (w * cnstVal6) / cnstVal3;
           const dy1 = (h * cnstVal6) / cnstVal3;
           const dx2 = (ss * a1) / cnstVal3;
