@@ -4813,36 +4813,30 @@ export function getShapePath(
           'a:avLst',
           'a:gd',
         ]);
-        const refr = RATIO_EMUs_Points;
-        let adj1 = 25000 * refr;
-        let adj2 = 16667 * refr;
-        if (shapAdjst_ary) {
-          for (const adj of asArray(shapAdjst_ary)) {
-            const sAdj_name = getTextByPathList(adj, ['attrs', 'name']);
-            if (sAdj_name === 'adj1') {
-              adj1 =
-                parseInt(
-                  getTextByPathList(adj, ['attrs', 'fmla']).substring(4),
-                ) * refr;
-            } else if (sAdj_name === 'adj2') {
-              adj2 =
-                parseInt(
-                  getTextByPathList(adj, ['attrs', 'fmla']).substring(4),
-                ) * refr;
-            }
+        let adj1 = 25000;
+        let adj2 = 16667;
+        for (const adj of asArray(shapAdjst_ary)) {
+          const name = getTextByPathList(adj, ['attrs', 'name']);
+          if (name === 'adj1') {
+            adj1 = parseInt(
+              getTextByPathList(adj, ['attrs', 'fmla']).substring(4),
+            );
+          } else if (name === 'adj2') {
+            adj2 = parseInt(
+              getTextByPathList(adj, ['attrs', 'fmla']).substring(4),
+            );
           }
         }
-        const cnstVal1 = 1 * refr;
-        const cnstVal2 = 70000 * refr;
-        const cnstVal3 = 75000 * refr;
-        const cnstVal4 = 100000 * refr;
+        const cnstVal1 = 1;
+        const cnstVal2 = 70000;
+        const cnstVal3 = 75000;
+        const cnstVal4 = 100000;
         const ss = Math.min(w, h);
         const ssd8 = ss / 8;
         const hd6 = h / 6;
-        const a1 =
-          adj1 < cnstVal1 ? cnstVal1 : adj1 > cnstVal3 ? cnstVal3 : adj1;
+        const a1 = Math.min(Math.max(adj1, cnstVal1), cnstVal3);
         const maxAdj2 = (cnstVal2 * w) / ss;
-        const a2 = adj2 < 0 ? 0 : adj2 > maxAdj2 ? maxAdj2 : adj2;
+        const a2 = Math.min(Math.max(adj2, 0), maxAdj2);
         const ad1 = (h * a1) / cnstVal4;
         const ad2 = (ss * a2) / cnstVal4;
         const xB = w - ad2;

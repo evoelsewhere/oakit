@@ -1966,6 +1966,16 @@ describe('PowerPoint preset shape path safety', () => {
     },
   );
 
+  it('clamps PowerPoint swoosh-arrow adjustments', () => {
+    const swoosh = (name: string, value: string): string =>
+      getShapePath('swooshArrow', 80, 120, singleGuide(name, value));
+
+    expect(swoosh('adj1', '-10000')).toBe(swoosh('adj1', '1'));
+    expect(swoosh('adj1', '100000')).toBe(swoosh('adj1', '75000'));
+    expect(swoosh('adj2', '-10000')).toBe(swoosh('adj2', '0'));
+    expect(swoosh('adj2', '100000')).toBe(swoosh('adj2', '70000'));
+  });
+
   it('keeps common default paths deterministic', () => {
     const rectangle = 'M 0 0 L 120 0 L 120 80 L 0 80 Z';
     expect(getShapePath('rect', 120, 80, xml({}))).toBe(rectangle);
