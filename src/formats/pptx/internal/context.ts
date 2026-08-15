@@ -2,6 +2,7 @@ import type JSZip from 'jszip';
 
 import type { XmlLookupValue } from '../../../common';
 import type { PptxParseOptions } from '../types';
+import type { PptxXmlReader } from './xml-reader';
 
 export interface PptxRelationship {
   target: string;
@@ -52,5 +53,6 @@ export interface PptxParserContext {
   tableStyles: XmlLookupValue;
   themeContent: XmlLookupValue;
   themeResObj: PptxRelationshipMap;
+  xmlReader: PptxXmlReader;
   zip: JSZip;
 }

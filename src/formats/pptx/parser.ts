@@ -13,6 +13,7 @@ import type {
   Image,
   Math as MathElement,
   PptxDocument,
+  PptxDiagnostic,
   PptxInput,
   PptxParseOptions,
   Shape,
@@ -31,7 +32,6 @@ type ElementDraft = Element extends infer T
   : never;
 
 import JSZip from 'jszip';
-import { readXmlFile } from '../../common/xml/read-xml';
 import { getBorder } from './internal/border';
 import {
   getSlideBackgroundFill,
@@ -75,6 +75,7 @@ import { findOMath, latexFormart, parseOMath } from './internal/math';
 import { getShapePath } from './internal/shape-path';
 import { parseTransition, findTransitionNode } from './internal/animation';
 import { getDiagramNodeContext, getSmartArtTextData } from './internal/diagram';
+import { PptxXmlReader } from './internal/xml-reader';
 
 function nodeAt(
   node: unknown,
@@ -100,19 +101,15 @@ function emptyXmlNode(): XmlLookupValue {
   return {} as unknown as XmlLookupValue;
 }
 
-async function readXml(zip: JSZip, filename: string): Promise<XmlLookupValue> {
-  return (await readXmlFile<XmlLookupValue>(zip, filename)) ?? emptyXmlNode();
-}
-
 export async function parse(
   file: PptxInput,
   options: PptxParseOptions = {},
+  diagnostics: PptxDiagnostic[] = [],
 ): Promise<PptxDocument> {
   const slides: Slide[] = [];
   const loadedImages: Record<string, PptxMediaData> = {};
   const loadedVideos: Record<string, PptxMediaData> = {};
   const loadedAudios: Record<string, PptxMediaData> = {};
-  const xmlCache: Record<string, XmlLookupValue | null> = {};
   const parseOptions: Required<PptxParseOptions> = {
     ...options,
     imageMode: options.imageMode || 'base64',
@@ -122,15 +119,17 @@ export async function parse(
   };
 
   const zip = await JSZip.loadAsync(file);
+  const xmlReader = new PptxXmlReader(zip, parseOptions.errorMode, diagnostics);
 
-  const filesInfo = await getContentTypes(zip);
-  const { width, height, defaultTextStyle } = await getSlideInfo(zip);
-  const { themeContent, themeColors } = await getTheme(zip);
-  const usedFonts = await getUsedFonts(zip);
+  const filesInfo = await getContentTypes(xmlReader);
+  const { width, height, defaultTextStyle } = await getSlideInfo(xmlReader);
+  const { themeContent, themeColors } = await getTheme(xmlReader);
+  const usedFonts = await getUsedFonts(xmlReader);
 
   for (const filename of filesInfo.slides) {
     const singleSlide = await processSingleSlide(
       zip,
+      xmlReader,
       filename,
       themeContent,
       defaultTextStyle,
@@ -138,7 +137,6 @@ export async function parse(
       loadedVideos,
       loadedAudios,
       parseOptions,
-      xmlCache,
     );
     slides.push(singleSlide);
   }
@@ -154,8 +152,10 @@ export async function parse(
   };
 }
 
-async function getContentTypes(zip: JSZip) {
-  const contentTypes = await readXml(zip, '[Content_Types].xml');
+async function getContentTypes(xmlReader: PptxXmlReader) {
+  const contentTypes = await xmlReader.read('[Content_Types].xml', {
+    required: true,
+  });
   const overrides = asArray(nodeAt(contentTypes, ['Types', 'Override']));
   const slides: string[] = [];
   const slideLayouts: string[] = [];
@@ -189,8 +189,10 @@ async function getContentTypes(zip: JSZip) {
   };
 }
 
-async function getUsedFonts(zip: JSZip): Promise<string[]> {
-  const content = await readXml(zip, 'ppt/presentation.xml');
+async function getUsedFonts(xmlReader: PptxXmlReader): Promise<string[]> {
+  const content = await xmlReader.read('ppt/presentation.xml', {
+    required: true,
+  });
   const embeddedFonts = asArray(
     nodeAt(content, ['p:presentation', 'p:embeddedFontLst', 'p:embeddedFont']),
   );
@@ -203,8 +205,10 @@ async function getUsedFonts(zip: JSZip): Promise<string[]> {
   return usedFonts;
 }
 
-async function getSlideInfo(zip: JSZip) {
-  const content = await readXml(zip, 'ppt/presentation.xml');
+async function getSlideInfo(xmlReader: PptxXmlReader) {
+  const content = await xmlReader.read('ppt/presentation.xml', {
+    required: true,
+  });
   const sizeAttributes = attributes(
     nodeAt(content, ['p:presentation', 'p:sldSz']),
   );
@@ -217,10 +221,10 @@ async function getSlideInfo(zip: JSZip) {
   };
 }
 
-async function getTheme(zip: JSZip) {
+async function getTheme(xmlReader: PptxXmlReader) {
   const presentationPart = 'ppt/presentation.xml';
   const themeRelationship = (
-    await getRelationships(zip, presentationPart)
+    await getRelationships(xmlReader, presentationPart)
   ).find(
     (relationship) =>
       attributes(relationship).Type ===
@@ -235,7 +239,7 @@ async function getTheme(zip: JSZip) {
       themeUri,
       themeAttributes.TargetMode,
     );
-    themeContent = await readXml(zip, themeFilename);
+    themeContent = await xmlReader.read(themeFilename);
   }
 
   const themeColors: string[] = [];
@@ -256,30 +260,15 @@ async function getTheme(zip: JSZip) {
   return { themeContent, themeColors };
 }
 
-async function readXmlFileCached(
-  zip: JSZip,
-  filename: string,
-  xmlCache: Record<string, XmlLookupValue | null>,
-): Promise<XmlLookupValue> {
-  if (!filename) return emptyXmlNode();
-  if (Object.prototype.hasOwnProperty.call(xmlCache, filename)) {
-    return xmlCache[filename] ?? emptyXmlNode();
-  }
-
-  const content = await readXmlFile<XmlLookupValue>(zip, filename);
-  xmlCache[filename] = content;
-  return content ?? emptyXmlNode();
-}
-
 const STANDARD_RELATIONSHIP_PREFIX =
   'http://schemas.openxmlformats.org/officeDocument/2006/relationships/';
 
 async function getRelationships(
-  zip: JSZip,
+  xmlReader: PptxXmlReader,
   ownerPart: string,
 ): Promise<XmlLookupValue[]> {
   if (!ownerPart) return [];
-  const content = await readXml(zip, getRelationshipPartUri(ownerPart));
+  const content = await xmlReader.read(getRelationshipPartUri(ownerPart));
   return asArray(nodeAt(content, ['Relationships', 'Relationship']));
 }
 
@@ -298,6 +287,7 @@ function addRelationship(
 
 async function processSingleSlide(
   zip: JSZip,
+  xmlReader: PptxXmlReader,
   slideFilename: string,
   themeContent: XmlLookupValue | null,
   defaultTextStyle: XmlLookupValue,
@@ -305,9 +295,8 @@ async function processSingleSlide(
   loadedVideos: Record<string, PptxMediaData>,
   loadedAudios: Record<string, PptxMediaData>,
   options: Required<PptxParseOptions>,
-  xmlCache: Record<string, XmlLookupValue | null>,
 ): Promise<Slide> {
-  const slideRelationships = await getRelationships(zip, slideFilename);
+  const slideRelationships = await getRelationships(xmlReader, slideFilename);
 
   let noteFilename = '';
   let layoutFilename = '';
@@ -335,24 +324,16 @@ async function processSingleSlide(
   }
 
   const slideNotesContent = noteFilename
-    ? await readXml(zip, noteFilename)
+    ? await xmlReader.read(noteFilename)
     : emptyXmlNode();
   const note = getNote(slideNotesContent);
 
-  const slideLayoutContent = await readXmlFileCached(
-    zip,
-    layoutFilename,
-    xmlCache,
-  );
+  const slideLayoutContent = await xmlReader.read(layoutFilename);
   const slideLayoutTables = indexNodes(slideLayoutContent);
   const slideLayoutResFilename = layoutFilename
     ? getRelationshipPartUri(layoutFilename)
     : '';
-  const slideLayoutResContent = await readXmlFileCached(
-    zip,
-    slideLayoutResFilename,
-    xmlCache,
-  );
+  const slideLayoutResContent = await xmlReader.read(slideLayoutResFilename);
   const layoutRelationships = asArray(
     nodeAt(slideLayoutResContent, ['Relationships', 'Relationship']),
   );
@@ -371,11 +352,7 @@ async function processSingleSlide(
     }
   }
 
-  const slideMasterContent = await readXmlFileCached(
-    zip,
-    masterFilename,
-    xmlCache,
-  );
+  const slideMasterContent = await xmlReader.read(masterFilename);
   const slideMasterTextStyles = getTextByPathList(slideMasterContent, [
     'p:sldMaster',
     'p:txStyles',
@@ -384,11 +361,7 @@ async function processSingleSlide(
   const slideMasterResFilename = masterFilename
     ? getRelationshipPartUri(masterFilename)
     : '';
-  const slideMasterResContent = await readXmlFileCached(
-    zip,
-    slideMasterResFilename,
-    xmlCache,
-  );
+  const slideMasterResContent = await xmlReader.read(slideMasterResFilename);
   const masterRelationships = asArray(
     nodeAt(slideMasterResContent, ['Relationships', 'Relationship']),
   );
@@ -409,12 +382,15 @@ async function processSingleSlide(
 
   let currentThemeContent = themeContent;
   if (!currentThemeContent && themeFilename) {
-    currentThemeContent = await readXmlFileCached(zip, themeFilename, xmlCache);
+    currentThemeContent = await xmlReader.read(themeFilename);
   }
   if (themeFilename) {
     const themeName = themeFilename.split('/').pop();
     if (themeName) {
-      for (const relationship of await getRelationships(zip, themeFilename)) {
+      for (const relationship of await getRelationships(
+        xmlReader,
+        themeFilename,
+      )) {
         const values = attributes(relationship);
         if (!values.Target) continue;
         addRelationship(
@@ -430,13 +406,9 @@ async function processSingleSlide(
     }
   }
 
-  const tableStyles = await readXmlFileCached(
-    zip,
-    'ppt/tableStyles.xml',
-    xmlCache,
-  );
+  const tableStyles = await xmlReader.read('ppt/tableStyles.xml');
 
-  const slideContent = await readXml(zip, slideFilename);
+  const slideContent = await xmlReader.read(slideFilename, { required: true });
   const nodes = nodeAt(slideContent, ['p:sld', 'p:cSld', 'p:spTree']);
   const warpObj: PptxParserContext = {
     zip,
@@ -458,6 +430,7 @@ async function processSingleSlide(
     themeResObj,
     diagramFileCache: {},
     defaultTextStyle,
+    xmlReader,
   };
   const layoutElements = await getLayoutElements(warpObj);
   const fill = await getSlideBackgroundFill(warpObj);
@@ -1605,7 +1578,7 @@ async function genChart(
     : undefined;
   if (!referenceName) return null;
 
-  const content = await readXml(warpObj.zip, referenceName);
+  const content = await warpObj.xmlReader.read(referenceName);
   const plotArea = nodeAt(content, ['c:chartSpace', 'c:chart', 'c:plotArea']);
 
   if (!plotArea) return null;
