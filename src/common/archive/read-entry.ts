@@ -13,6 +13,10 @@ interface StreamableZipObject extends JSZip.JSZipObject {
   internalStream(type: 'uint8array'): ZipEntryStream;
 }
 
+function asError(value: unknown): Error {
+  return value instanceof Error ? value : new Error(String(value));
+}
+
 export class ZipEntrySizeLimitError extends Error {
   readonly actual: number;
   readonly limit: number;
@@ -77,14 +81,14 @@ export function readZipEntryBytes(
           settled = true;
           chunks.length = 0;
           stream.pause();
-          reject(error);
+          reject(asError(error));
         }
       })
       .on('error', (error) => {
         if (settled) return;
         settled = true;
         chunks.length = 0;
-        reject(error);
+        reject(asError(error));
       })
       .on('end', () => {
         if (settled) return;
