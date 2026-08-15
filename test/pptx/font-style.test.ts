@@ -244,6 +244,56 @@ describe('PowerPoint font style resolution', () => {
     expect(getFontItalic(...styleArgs(fixture))).toBe('');
   });
 
+  it('skips missing and empty attributes before inherited values', () => {
+    const missing: FontFixture = {
+      node: xml({ 'a:rPr': { attrs: { lang: 'en-US' } } }),
+      paragraph: xml({
+        'a:pPr': { 'a:defRPr': { attrs: { b: '1' } } },
+      }),
+    };
+    const empty: FontFixture = {
+      node: xml({ 'a:rPr': { attrs: { b: '' } } }),
+      paragraph: xml({
+        'a:pPr': { 'a:defRPr': { attrs: { b: '1' } } },
+      }),
+    };
+
+    expect(getFontBold(...styleArgs(missing))).toBe('bold');
+    expect(getFontBold(...styleArgs(empty))).toBe('bold');
+  });
+
+  it('does not apply end-paragraph properties to a run with explicit properties', () => {
+    const fixture: FontFixture = {
+      node: xml({ 'a:rPr': {} }),
+      paragraph: xml({
+        'a:endParaRPr': typeface('End paragraph'),
+        'a:pPr': { 'a:defRPr': typeface('Paragraph default') },
+      }),
+    };
+
+    expect(getFontType(...styleArgs(fixture), context(themeFontScheme()))).toBe(
+      'Paragraph default',
+    );
+  });
+
+  it.each(['title', 'ctrTitle'])(
+    'does not use body text styles for %s placeholders',
+    (type) => {
+      const fixture: FontFixture = {
+        masterTextStyles: xml({
+          'p:bodyStyle': {
+            'a:lvl1pPr': { 'a:defRPr': typeface('Body only') },
+          },
+        }),
+        type,
+      };
+
+      expect(
+        getFontType(...styleArgs(fixture), context(themeFontScheme())),
+      ).toBe('Major');
+    },
+  );
+
   it.each(['1', 'true'])('accepts DrawingML true value %j', (value) => {
     const fixture = {
       node: xml({ 'a:rPr': { attrs: { b: value, i: value } } }),
@@ -501,6 +551,50 @@ describe('PowerPoint font style resolution', () => {
     expect(getFontColor(...styleArgs(), undefined, context())).toBe('');
   });
 
+  it('keeps direct run color ahead of shape references', () => {
+    const fixture = { node: xml({ 'a:rPr': solidColor('abcdef') }) };
+
+    expect(
+      getFontColor(
+        ...styleArgs(fixture),
+        fontReferenceColor('111111'),
+        context(),
+      ),
+    ).toBe('#abcdef');
+  });
+
+  it('skips empty run colors and malformed references before valid fallbacks', () => {
+    const inherited: FontFixture = {
+      node: xml({ 'a:rPr': {} }),
+      paragraph: xml({
+        'a:pPr': { 'a:defRPr': solidColor('abcdef') },
+      }),
+    };
+    const referenceFallback: FontFixture = {
+      layout: xml({
+        'p:style': { 'a:fontRef': fontReferenceColor('222222') },
+      }),
+    };
+
+    expect(getFontColor(...styleArgs(inherited), undefined, context())).toBe(
+      '#abcdef',
+    );
+    expect(
+      getFontColor(
+        ...styleArgs(referenceFallback),
+        xml({ 'a:srgbClr': { attrs: { val: 'not-a-color' } } }),
+        context(),
+      ),
+    ).toBe('#222222');
+    expect(
+      getFontColor(
+        ...styleArgs({ node: xml({ 'a:rPr': {} }) }),
+        undefined,
+        context(),
+      ),
+    ).toBe('');
+  });
+
   it('formats shadows with and without optional blur and color', () => {
     const complete = {
       node: xml({
@@ -575,5 +669,18 @@ describe('PowerPoint font style resolution', () => {
     expect(
       getFontType(...styleArgs(unknownTheme), context(themeFontScheme())),
     ).toBe('custom');
+  });
+
+  it('uses stable fallbacks when a theme or requested theme face is missing', () => {
+    const themedRun = {
+      node: xml({
+        'a:rPr': { 'a:latin': { attrs: { typeface: '+mj-lt' } } },
+      }),
+    };
+
+    expect(getFontType(...styleArgs(), context())).toBe('');
+    expect(
+      getFontType(...styleArgs(themedRun), context(themeFontScheme({}, {}))),
+    ).toBe('mj-lt');
   });
 });

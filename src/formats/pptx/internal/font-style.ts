@@ -3,45 +3,78 @@ import type { PptxParserContext } from './context';
 
 import { getTextByPathList } from '../../../common';
 import { getShadow } from './shadow';
-import { getFillType, getGradientFill, getSolidFill } from './fill';
+import { getGradientFill, getSolidFill } from './fill';
 
-const UNDERLINE_VALUES = new Set([
-  'dash',
-  'dashHeavy',
-  'dashLong',
-  'dashLongHeavy',
-  'dbl',
-  'dotDash',
-  'dotDashHeavy',
-  'dotDotDash',
-  'dotDotDashHeavy',
-  'dotted',
-  'dottedHeavy',
-  'heavy',
-  'sng',
-  'wavy',
-  'wavyDbl',
-  'wavyHeavy',
-  'words',
-]);
-
-const THEME_FONT_PATHS: Readonly<Record<string, readonly [string, string]>> = {
-  '+mj-cs': ['a:majorFont', 'a:cs'],
-  '+mj-ea': ['a:majorFont', 'a:ea'],
-  '+mj-lt': ['a:majorFont', 'a:latin'],
-  '+mn-cs': ['a:minorFont', 'a:cs'],
-  '+mn-ea': ['a:minorFont', 'a:ea'],
-  '+mn-lt': ['a:minorFont', 'a:latin'],
-};
-
-function parseInteger(value: string): number | undefined {
-  if (!/^[+-]?\d+$/.test(value)) return undefined;
+function parseInteger(value: string | undefined): number | undefined {
+  if (value === undefined || !/^[+-]?\d+$/.test(value)) return undefined;
   const parsed = Number(value);
   return Number.isSafeInteger(parsed) ? parsed : undefined;
 }
 
-function isDrawingMlTrue(value: string): boolean {
+function isDrawingMlTrue(value: string | undefined): boolean {
   return value === '1' || value === 'true';
+}
+
+function isUnderline(value: string | undefined): boolean {
+  switch (value) {
+    case 'dash':
+    case 'dashHeavy':
+    case 'dashLong':
+    case 'dashLongHeavy':
+    case 'dbl':
+    case 'dotDash':
+    case 'dotDashHeavy':
+    case 'dotDotDash':
+    case 'dotDotDashHeavy':
+    case 'dotted':
+    case 'dottedHeavy':
+    case 'heavy':
+    case 'sng':
+    case 'wavy':
+    case 'wavyDbl':
+    case 'wavyHeavy':
+    case 'words':
+      return true;
+    default:
+      return false;
+  }
+}
+
+function resolveThemeTypeface(
+  typeface: string,
+  fontSchemeNode: XmlLookupValue | undefined,
+): string {
+  let path: readonly [string, string];
+  switch (typeface) {
+    case '+mj-cs':
+      path = ['a:majorFont', 'a:cs'];
+      break;
+    case '+mj-ea':
+      path = ['a:majorFont', 'a:ea'];
+      break;
+    case '+mj-lt':
+      path = ['a:majorFont', 'a:latin'];
+      break;
+    case '+mn-cs':
+      path = ['a:minorFont', 'a:cs'];
+      break;
+    case '+mn-ea':
+      path = ['a:minorFont', 'a:ea'];
+      break;
+    case '+mn-lt':
+      path = ['a:minorFont', 'a:latin'];
+      break;
+    default:
+      return typeface.slice(1);
+  }
+
+  const resolved = getTextByPathList(fontSchemeNode, [
+    path[0],
+    path[1],
+    'attrs',
+    'typeface',
+  ]);
+  return resolved || typeface.slice(1);
 }
 
 function pushStyleNode(
@@ -60,8 +93,6 @@ function appendTextBodyStyleNodes(
   textBodyNode: XmlLookupValue | undefined,
   lvl: number | string,
 ) {
-  if (!textBodyNode) return;
-
   const lvlPath = getLevelPath(lvl);
   pushStyleNode(
     styleNodes,
@@ -74,8 +105,6 @@ function appendShapeStyleNodes(
   shapeNode: XmlLookupValue | undefined,
   lvl: number | string,
 ) {
-  if (!shapeNode) return;
-
   const lvlPath = getLevelPath(lvl);
   pushStyleNode(
     styleNodes,
@@ -98,8 +127,6 @@ function appendMasterTextStyleNodes(
   lvl: number | string,
   slideMasterTextStyles: XmlLookupValue | undefined,
 ) {
-  if (!slideMasterTextStyles) return;
-
   const lvlPath = getLevelPath(lvl);
 
   if (type === 'title' || type === 'ctrTitle' || type === 'subTitle') {
@@ -147,8 +174,6 @@ function appendDefaultTextStyleNodes(
   lvl: number | string,
   defaultTextStyle: XmlLookupValue | undefined,
 ) {
-  if (!defaultTextStyle) return;
-
   const lvlPath = getLevelPath(lvl);
   pushStyleNode(
     styleNodes,
@@ -207,13 +232,16 @@ function getFontStyleNodes(
   return styleNodes;
 }
 
-function getFontAttr(styleNodes: XmlLookupValue[], attrName: string): string {
+function getFontAttr(
+  styleNodes: XmlLookupValue[],
+  attrName: string,
+): string | undefined {
   for (const styleNode of styleNodes) {
     const attrValue = getTextByPathList(styleNode, ['attrs', attrName]);
-    if (attrValue !== undefined && attrValue !== '') return attrValue;
+    if (attrValue) return attrValue;
   }
 
-  return '';
+  return undefined;
 }
 
 function getFontTypeface(styleNodes: XmlLookupValue[]): string {
@@ -230,16 +258,11 @@ function getFontTypeface(styleNodes: XmlLookupValue[]): string {
 }
 
 function getColorFromNode(node: XmlLookupValue, warpObj: PptxParserContext) {
-  if (!node) return '';
+  const solid = getTextByPathList<XmlLookupValue>(node, ['a:solidFill']);
+  if (solid) return getSolidFill(solid, undefined, undefined, warpObj);
 
-  const fillType = getFillType(node);
-  if (fillType === 'SOLID_FILL') {
-    return getSolidFill(node['a:solidFill'], undefined, undefined, warpObj);
-  }
-  if (fillType === 'GRADIENT_FILL') {
-    const gradient = getTextByPathList<XmlLookupValue>(node, ['a:gradFill']);
-    return gradient ? getGradientFill(gradient, warpObj) : '';
-  }
+  const gradient = getTextByPathList<XmlLookupValue>(node, ['a:gradFill']);
+  if (gradient) return getGradientFill(gradient, warpObj);
 
   return '';
 }
@@ -267,8 +290,7 @@ function getTextShadowFromStyleNodes(
     ]);
     if (!txtShadow) continue;
 
-    const shadow = getShadow(txtShadow, warpObj);
-    if (shadow) return shadow;
+    return getShadow(txtShadow, warpObj);
   }
 
   return null;
@@ -304,15 +326,8 @@ export function getFontType(
       'a:fontScheme',
     ]);
 
-    if (fontSchemeNode && typeface?.startsWith('+')) {
-      const path = THEME_FONT_PATHS[typeface];
-      if (!path) return typeface.slice(1);
-      return getTextByPathList(fontSchemeNode, [
-        path[0],
-        path[1],
-        'attrs',
-        'typeface',
-      ]);
+    if (typeface.startsWith('+')) {
+      return resolveThemeTypeface(typeface, fontSchemeNode);
     }
 
     if (type === 'title' || type === 'subTitle' || type === 'ctrTitle') {
@@ -358,7 +373,7 @@ export function getFontType(
     }
   }
 
-  return typeface || '';
+  return typeface ?? '';
 }
 
 export function getFontColor(
@@ -382,34 +397,20 @@ export function getFontColor(
     lvl,
   );
   let color = getFontColorFromStyleNodes(styleNodes, warpObj);
+  if (color) return color;
 
-  if (!color) {
-    if (pFontStyle)
-      color = getSolidFill(pFontStyle, undefined, undefined, warpObj);
-    if (!color) {
-      const layoutFontStyle = getTextByPathList(slideLayoutSpNode, [
-        'p:style',
-        'a:fontRef',
-      ]);
-      if (layoutFontStyle)
-        color = getSolidFill(layoutFontStyle, undefined, undefined, warpObj);
-    }
-    if (!color) {
-      const masterFontStyle = getTextByPathList(slideMasterSpNode, [
-        'p:style',
-        'a:fontRef',
-      ]);
-      if (masterFontStyle)
-        color = getSolidFill(masterFontStyle, undefined, undefined, warpObj);
-    }
+  const fallbackReferences = [
+    pFontStyle,
+    getTextByPathList(slideLayoutSpNode, ['p:style', 'a:fontRef']),
+    getTextByPathList(slideMasterSpNode, ['p:style', 'a:fontRef']),
+  ];
+  for (const reference of fallbackReferences) {
+    color = getSolidFill(reference, undefined, undefined, warpObj);
+    if (color) return color;
   }
 
-  if (!color) {
-    appendMasterTextStyleNodes(styleNodes, type, lvl, slideMasterTextStyles);
-    color = getFontColorFromStyleNodes(styleNodes, warpObj);
-  }
-
-  return color || '';
+  appendMasterTextStyleNodes(styleNodes, type, lvl, slideMasterTextStyles);
+  return getFontColorFromStyleNodes(styleNodes, warpObj);
 }
 
 export function getFontSize(
@@ -436,18 +437,12 @@ export function getFontSize(
   appendDefaultTextStyleNodes(styleNodes, lvl, defaultTextStyle);
   const sz = getFontAttr(styleNodes, 'sz');
   const sizeInHundredths = parseInteger(sz);
-  let fontSize =
+  const fontSize =
     sizeInHundredths !== undefined && sizeInHundredths > 0
       ? sizeInHundredths / 100
-      : undefined;
-
-  if (
-    (!Number.isFinite(fontSize) || !fontSize) &&
-    (type === 'dt' || type === 'sldNum')
-  )
-    fontSize = 12;
-
-  fontSize = !Number.isFinite(fontSize) || !fontSize ? 18 : fontSize;
+      : type === 'dt' || type === 'sldNum'
+        ? 12
+        : 18;
 
   return fontSize + 'pt';
 }
@@ -518,7 +513,7 @@ export function getFontDecoration(
     slideMasterTextStyles,
     lvl,
   );
-  return UNDERLINE_VALUES.has(getFontAttr(styleNodes, 'u')) ? 'underline' : '';
+  return isUnderline(getFontAttr(styleNodes, 'u')) ? 'underline' : '';
 }
 
 export function getFontDecorationLine(
@@ -592,8 +587,10 @@ export function getFontSubscript(
   );
   const baseline = getFontAttr(styleNodes, 'baseline');
   const offset = parseInteger(baseline);
-  if (offset === undefined || offset === 0) return '';
-  return offset > 0 ? 'super' : 'sub';
+  if (offset === undefined) return '';
+  if (offset > 0) return 'super';
+  if (offset < 0) return 'sub';
+  return '';
 }
 
 export function getFontShadow(
@@ -618,14 +615,11 @@ export function getFontShadow(
     lvl,
   );
   const shadow = getTextShadowFromStyleNodes(styleNodes, warpObj);
-  if (shadow) {
-    const { h, v, blur, color } = shadow;
-    if (Number.isFinite(v) && Number.isFinite(h)) {
-      const components = [`${h}pt`, `${v}pt`];
-      if (blur) components.push(`${blur}pt`);
-      if (color) components.push(color);
-      return components.join(' ');
-    }
-  }
-  return '';
+  if (!shadow) return '';
+
+  const { h, v, blur, color } = shadow;
+  const components = [`${h}pt`, `${v}pt`];
+  if (blur) components.push(`${blur}pt`);
+  if (color) components.push(color);
+  return components.join(' ');
 }
