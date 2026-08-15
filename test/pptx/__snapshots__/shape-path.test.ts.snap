@@ -2972,7 +2972,7 @@ exports[`PowerPoint preset shape path safety > keeps the locked geometry contrac
 
 exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for star10 1`] = `
 {
-  "adj": "5ca3dbff",
+  "adj": "e7d968ed",
   "adj1": "5ca3dbff",
   "adj2": "5ca3dbff",
   "adj3": "5ca3dbff",
@@ -2983,7 +2983,7 @@ exports[`PowerPoint preset shape path safety > keeps the locked geometry contrac
   "adj8": "5ca3dbff",
   "authored": "addc2194",
   "default": "5ca3dbff",
-  "hf": "5ca3dbff",
+  "hf": "8fa7dabb",
   "vf": "5ca3dbff",
 }
 `;
@@ -2999,7 +2999,7 @@ exports[`PowerPoint preset shape path safety > keeps the locked geometry contrac
   "adj6": "36c77e75",
   "adj7": "36c77e75",
   "adj8": "36c77e75",
-  "authored": "36c77e75",
+  "authored": "7936d109",
   "default": "36c77e75",
   "hf": "36c77e75",
   "vf": "36c77e75",
@@ -3017,7 +3017,7 @@ exports[`PowerPoint preset shape path safety > keeps the locked geometry contrac
   "adj6": "26a498ff",
   "adj7": "26a498ff",
   "adj8": "26a498ff",
-  "authored": "26a498ff",
+  "authored": "7876c5af",
   "default": "26a498ff",
   "hf": "26a498ff",
   "vf": "26a498ff",
@@ -3035,7 +3035,7 @@ exports[`PowerPoint preset shape path safety > keeps the locked geometry contrac
   "adj6": "834b5fdd",
   "adj7": "834b5fdd",
   "adj8": "834b5fdd",
-  "authored": "834b5fdd",
+  "authored": "3b793149",
   "default": "834b5fdd",
   "hf": "834b5fdd",
   "vf": "834b5fdd",
@@ -3053,7 +3053,7 @@ exports[`PowerPoint preset shape path safety > keeps the locked geometry contrac
   "adj6": "652dbef5",
   "adj7": "652dbef5",
   "adj8": "652dbef5",
-  "authored": "652dbef5",
+  "authored": "0ea21be1",
   "default": "652dbef5",
   "hf": "652dbef5",
   "vf": "652dbef5",

@@ -526,15 +526,40 @@ describe('PowerPoint preset shape path safety', () => {
     },
   );
 
-  it.each(['hexagon', 'star4', 'star5', 'star6', 'star7', 'star8'])(
-    'clamps authored adjustment bounds for %s',
+  it.each([
+    'hexagon',
+    'star4',
+    'star5',
+    'star6',
+    'star7',
+    'star8',
+    'star10',
+    'star12',
+    'star16',
+    'star24',
+    'star32',
+  ])('clamps authored adjustment bounds for %s', (shapeType) => {
+    expect(
+      getShapePath(shapeType, 100, 100, singleGuide('adj', '-10000')),
+    ).toBe(getShapePath(shapeType, 100, 100, singleGuide('adj', '0')));
+    expect(
+      getShapePath(shapeType, 100, 100, singleGuide('adj', '100000')),
+    ).toBe(getShapePath(shapeType, 100, 100, singleGuide('adj', '50000')));
+  });
+
+  it.each(['star10', 'star12', 'star16', 'star24', 'star32'])(
+    'applies equivalent single and array guides for %s',
     (shapeType) => {
-      expect(
-        getShapePath(shapeType, 100, 100, singleGuide('adj', '-10000')),
-      ).toBe(getShapePath(shapeType, 100, 100, singleGuide('adj', '0')));
-      expect(
-        getShapePath(shapeType, 100, 100, singleGuide('adj', '100000')),
-      ).toBe(getShapePath(shapeType, 100, 100, singleGuide('adj', '50000')));
+      const adjusted = getShapePath(
+        shapeType,
+        120,
+        80,
+        singleGuide('adj', '25000'),
+      );
+      expect(adjusted).toBe(
+        getShapePath(shapeType, 120, 80, guides([['adj', 'val 25000']])),
+      );
+      expect(adjusted).not.toBe(getShapePath(shapeType, 120, 80, xml({})));
     },
   );
 

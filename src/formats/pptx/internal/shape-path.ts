@@ -1201,24 +1201,19 @@ export function getShapePath(
           'a:avLst',
           'a:gd',
         ]);
-        if (shapAdjst) {
-          Object.keys(shapAdjst).forEach((key: string) => {
-            const guide = shapAdjst[key];
-            const name = getGuideAttribute(guide, 'name');
-            if (name === 'adj') {
-              adj =
-                parseInt(
-                  getGuideAttribute(guide, 'fmla')?.substring(4) ?? '0',
-                ) * RATIO_EMUs_Points;
-            } else if (name === 'hf') {
-              hf =
-                parseInt(
-                  getGuideAttribute(guide, 'fmla')?.substring(4) ?? '0',
-                ) * RATIO_EMUs_Points;
-            }
-          });
+        for (const guide of asArray(shapAdjst)) {
+          const name = getGuideAttribute(guide, 'name');
+          if (name === 'adj') {
+            adj =
+              parseInt(String(getGuideAttribute(guide, 'fmla')).substring(4)) *
+              RATIO_EMUs_Points;
+          } else if (name === 'hf') {
+            hf =
+              parseInt(String(getGuideAttribute(guide, 'fmla')).substring(4)) *
+              RATIO_EMUs_Points;
+          }
         }
-        const a = adj < 0 ? 0 : adj > maxAdj ? maxAdj : adj;
+        const a = Math.min(Math.max(adj, 0), maxAdj);
         const swd2 = (wd2 * hf) / cnstVal1;
         const dx1 = (swd2 * 95106) / 100000;
         const dx2 = (swd2 * 58779) / 100000;
@@ -1267,16 +1262,15 @@ export function getShapePath(
           'a:avLst',
           'a:gd',
         ]);
-        if (shapAdjst) {
-          const name = getGuideAttribute(shapAdjst, 'name');
+        for (const guide of asArray(shapAdjst)) {
+          const name = getGuideAttribute(guide, 'name');
           if (name === 'adj') {
             adj =
-              parseInt(
-                getGuideAttribute(shapAdjst, 'fmla')?.substring(4) ?? '0',
-              ) * RATIO_EMUs_Points;
+              parseInt(String(getGuideAttribute(guide, 'fmla')).substring(4)) *
+              RATIO_EMUs_Points;
           }
         }
-        const a = adj < 0 ? 0 : adj > maxAdj ? maxAdj : adj;
+        const a = Math.min(Math.max(adj, 0), maxAdj);
         const dx1 = wd2 * Math.cos(0.5235987756);
         const dy1 = hd2 * Math.sin(1.0471975512);
         const x1 = hc - dx1;
@@ -1322,16 +1316,15 @@ export function getShapePath(
           'a:avLst',
           'a:gd',
         ]);
-        if (shapAdjst) {
-          const name = getGuideAttribute(shapAdjst, 'name');
+        for (const guide of asArray(shapAdjst)) {
+          const name = getGuideAttribute(guide, 'name');
           if (name === 'adj') {
             adj =
-              parseInt(
-                getGuideAttribute(shapAdjst, 'fmla')?.substring(4) ?? '0',
-              ) * RATIO_EMUs_Points;
+              parseInt(String(getGuideAttribute(guide, 'fmla')).substring(4)) *
+              RATIO_EMUs_Points;
           }
         }
-        const a = adj < 0 ? 0 : adj > maxAdj ? maxAdj : adj;
+        const a = Math.min(Math.max(adj, 0), maxAdj);
         const dx1 = (wd2 * 92388) / 100000;
         const dx2 = (wd2 * 70711) / 100000;
         const dx3 = (wd2 * 38268) / 100000;
@@ -1395,16 +1388,15 @@ export function getShapePath(
           'a:avLst',
           'a:gd',
         ]);
-        if (shapAdjst) {
-          const name = getGuideAttribute(shapAdjst, 'name');
+        for (const guide of asArray(shapAdjst)) {
+          const name = getGuideAttribute(guide, 'name');
           if (name === 'adj') {
             adj =
-              parseInt(
-                getGuideAttribute(shapAdjst, 'fmla')?.substring(4) ?? '0',
-              ) * RATIO_EMUs_Points;
+              parseInt(String(getGuideAttribute(guide, 'fmla')).substring(4)) *
+              RATIO_EMUs_Points;
           }
         }
-        const a = adj < 0 ? 0 : adj > maxAdj ? maxAdj : adj;
+        const a = Math.min(Math.max(adj, 0), maxAdj);
         const dx1 = wd2 * Math.cos(0.2617993878);
         const dx2 = wd2 * Math.cos(0.5235987756);
         const dx3 = wd2 * Math.cos(0.7853981634);
@@ -1490,16 +1482,15 @@ export function getShapePath(
           'a:avLst',
           'a:gd',
         ]);
-        if (shapAdjst) {
-          const name = getGuideAttribute(shapAdjst, 'name');
+        for (const guide of asArray(shapAdjst)) {
+          const name = getGuideAttribute(guide, 'name');
           if (name === 'adj') {
             adj =
-              parseInt(
-                getGuideAttribute(shapAdjst, 'fmla')?.substring(4) ?? '0',
-              ) * RATIO_EMUs_Points;
+              parseInt(String(getGuideAttribute(guide, 'fmla')).substring(4)) *
+              RATIO_EMUs_Points;
           }
         }
-        const a = adj < 0 ? 0 : adj > maxAdj ? maxAdj : adj;
+        const a = Math.min(Math.max(adj, 0), maxAdj);
         const dx1 = (wd2 * 98079) / 100000;
         const dx2 = (wd2 * 92388) / 100000;
         const dx3 = (wd2 * 83147) / 100000;
