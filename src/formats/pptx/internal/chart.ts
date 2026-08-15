@@ -48,6 +48,20 @@ function textAt(node: unknown, path: readonly string[]): string | undefined {
   return getTextByPathList<string>(node, path);
 }
 
+function finiteNumber(value: string | undefined): number {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function seriesName(series: XmlLookupValue, fallbackIndex: number): string {
+  const points = nodeAt(series, ['c:tx', 'c:strRef', 'c:strCache', 'c:pt']);
+  for (const point of asArray(points)) {
+    const value = textAt(point, ['c:v']);
+    if (value !== undefined) return value;
+  }
+  return String(fallbackIndex);
+}
+
 function extractChartColors(
   series: XmlLookupValue | undefined,
   context: PptxParserContext,
@@ -123,14 +137,12 @@ function extractChartData(series: XmlLookupValue | undefined): ChartItem[] {
     for (const point of asArray(valuePoints)) {
       values.push({
         x: textAt(point, ['attrs', 'idx']) ?? '',
-        y: Number.parseFloat(textAt(point, ['c:v']) ?? '0'),
+        y: finiteNumber(textAt(point, ['c:v'])),
       });
     }
 
     return {
-      key:
-        textAt(item, ['c:tx', 'c:strRef', 'c:strCache', 'c:pt', 'c:v']) ??
-        String(seriesIndex),
+      key: seriesName(item, seriesIndex),
       values,
       xlabels: extractCategoryLabels(item),
     };
@@ -142,9 +154,7 @@ function extractNumericPoints(
   axis: 'c:xVal' | 'c:yVal',
 ): number[] {
   const points = nodeAt(series, [axis, 'c:numRef', 'c:numCache', 'c:pt']);
-  return asArray(points).map((point) =>
-    Number.parseFloat(textAt(point, ['c:v']) ?? '0'),
-  );
+  return asArray(points).map((point) => finiteNumber(textAt(point, ['c:v'])));
 }
 
 function extractScatterChartData(
