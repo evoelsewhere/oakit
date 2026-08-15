@@ -2185,6 +2185,18 @@ describe('PowerPoint preset shape path safety', () => {
     );
   });
 
+  it('renders PowerPoint corner tabs from the DrawingML diagonal', () => {
+    expect(getShapePath('cornerTabs', 60, 80, xml({}))).toBe(
+      'M 0 0 L 5 0 L 0 5 Z M 0 75 L 5 80 L 0 80 Z M 55 0 L 60 0 L 60 5 Z M 60 75 L 60 80 L 55 80 Z',
+    );
+    expect(getShapePath('plaqueTabs', 60, 80, xml({}))).toBe(
+      'M 0 0 L 5 0 A 5 5 0 0,1 0 5 Z M 0 75 A 5 5 0 0,1 5 80 L 0 80 Z M 60 0 L 60 5 A 5 5 0 0,1 55 0 Z M 55 80 A 5 5 0 0,1 60 75 L 60 80 Z',
+    );
+    expect(getShapePath('squareTabs', 60, 80, xml({}))).toBe(
+      'M 0 0 L 5 0 L 5 5 L 0 5 Z M 0 75 L 5 75 L 5 80 L 0 80 Z M 55 0 L 60 0 L 60 5 L 55 5 Z M 55 75 L 60 75 L 60 80 L 55 80 Z',
+    );
+  });
+
   it('keeps common default paths deterministic', () => {
     const rectangle = 'M 0 0 L 120 0 L 120 80 L 0 80 Z';
     expect(getShapePath('rect', 120, 80, xml({}))).toBe(rectangle);

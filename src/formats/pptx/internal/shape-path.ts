@@ -5214,14 +5214,28 @@ export function getShapePath(
     case 'lineInv':
       pathData = `M 0 ${h} L ${w} 0`;
       break;
-    case 'leftRightCircularArrow':
     case 'cornerTabs':
+    case 'plaqueTabs':
+    case 'squareTabs':
+      {
+        const tabSize = Math.hypot(w, h) / 20;
+        const rightTab = w - tabSize;
+        const bottomTab = h - tabSize;
+
+        if (shapType === 'cornerTabs') {
+          pathData = `M 0 0 L ${tabSize} 0 L 0 ${tabSize} Z M 0 ${bottomTab} L ${tabSize} ${h} L 0 ${h} Z M ${rightTab} 0 L ${w} 0 L ${w} ${tabSize} Z M ${w} ${bottomTab} L ${w} ${h} L ${rightTab} ${h} Z`;
+        } else if (shapType === 'plaqueTabs') {
+          pathData = `M 0 0 L ${tabSize} 0 A ${tabSize} ${tabSize} 0 0,1 0 ${tabSize} Z M 0 ${bottomTab} A ${tabSize} ${tabSize} 0 0,1 ${tabSize} ${h} L 0 ${h} Z M ${w} 0 L ${w} ${tabSize} A ${tabSize} ${tabSize} 0 0,1 ${rightTab} 0 Z M ${rightTab} ${h} A ${tabSize} ${tabSize} 0 0,1 ${w} ${bottomTab} L ${w} ${h} Z`;
+        } else {
+          pathData = `M 0 0 L ${tabSize} 0 L ${tabSize} ${tabSize} L 0 ${tabSize} Z M 0 ${bottomTab} L ${tabSize} ${bottomTab} L ${tabSize} ${h} L 0 ${h} Z M ${rightTab} 0 L ${w} 0 L ${w} ${tabSize} L ${rightTab} ${tabSize} Z M ${rightTab} ${bottomTab} L ${w} ${bottomTab} L ${w} ${h} L ${rightTab} ${h} Z`;
+        }
+      }
+      break;
+    case 'leftRightCircularArrow':
     case 'flowChartOfflineStorage':
     case 'folderCorner':
     case 'funnel':
     case 'nonIsoscelesTrapezoid':
-    case 'plaqueTabs':
-    case 'squareTabs':
     case 'upDownArrowCallout':
       pathData = `M 0 0 L ${w} 0 L ${w} ${h} L 0 ${h} Z`;
       break;

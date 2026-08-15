@@ -812,19 +812,19 @@ exports[`PowerPoint preset shape path safety > keeps the locked geometry contrac
 
 exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for cornerTabs 1`] = `
 {
-  "adj": "701c4636",
-  "adj1": "701c4636",
-  "adj2": "701c4636",
-  "adj3": "701c4636",
-  "adj4": "701c4636",
-  "adj5": "701c4636",
-  "adj6": "701c4636",
-  "adj7": "701c4636",
-  "adj8": "701c4636",
-  "authored": "701c4636",
-  "default": "701c4636",
-  "hf": "701c4636",
-  "vf": "701c4636",
+  "adj": "168094d1",
+  "adj1": "168094d1",
+  "adj2": "168094d1",
+  "adj3": "168094d1",
+  "adj4": "168094d1",
+  "adj5": "168094d1",
+  "adj6": "168094d1",
+  "adj7": "168094d1",
+  "adj8": "168094d1",
+  "authored": "168094d1",
+  "default": "168094d1",
+  "hf": "168094d1",
+  "vf": "168094d1",
 }
 `;
 
@@ -2486,19 +2486,19 @@ exports[`PowerPoint preset shape path safety > keeps the locked geometry contrac
 
 exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for plaqueTabs 1`] = `
 {
-  "adj": "701c4636",
-  "adj1": "701c4636",
-  "adj2": "701c4636",
-  "adj3": "701c4636",
-  "adj4": "701c4636",
-  "adj5": "701c4636",
-  "adj6": "701c4636",
-  "adj7": "701c4636",
-  "adj8": "701c4636",
-  "authored": "701c4636",
-  "default": "701c4636",
-  "hf": "701c4636",
-  "vf": "701c4636",
+  "adj": "3afe2663",
+  "adj1": "3afe2663",
+  "adj2": "3afe2663",
+  "adj3": "3afe2663",
+  "adj4": "3afe2663",
+  "adj5": "3afe2663",
+  "adj6": "3afe2663",
+  "adj7": "3afe2663",
+  "adj8": "3afe2663",
+  "authored": "3afe2663",
+  "default": "3afe2663",
+  "hf": "3afe2663",
+  "vf": "3afe2663",
 }
 `;
 
@@ -2864,19 +2864,19 @@ exports[`PowerPoint preset shape path safety > keeps the locked geometry contrac
 
 exports[`PowerPoint preset shape path safety > keeps the locked geometry contract for squareTabs 1`] = `
 {
-  "adj": "701c4636",
-  "adj1": "701c4636",
-  "adj2": "701c4636",
-  "adj3": "701c4636",
-  "adj4": "701c4636",
-  "adj5": "701c4636",
-  "adj6": "701c4636",
-  "adj7": "701c4636",
-  "adj8": "701c4636",
-  "authored": "701c4636",
-  "default": "701c4636",
-  "hf": "701c4636",
-  "vf": "701c4636",
+  "adj": "74e81d49",
+  "adj1": "74e81d49",
+  "adj2": "74e81d49",
+  "adj3": "74e81d49",
+  "adj4": "74e81d49",
+  "adj5": "74e81d49",
+  "adj6": "74e81d49",
+  "adj7": "74e81d49",
+  "adj8": "74e81d49",
+  "authored": "74e81d49",
+  "default": "74e81d49",
+  "hf": "74e81d49",
+  "vf": "74e81d49",
 }
 `;
 
