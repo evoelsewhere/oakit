@@ -82,6 +82,10 @@ export const excludedMutationFiles = [
     reason: 'Compile-time-only scene model interfaces and type aliases.',
   },
   {
+    file: 'src/formats/pptx/roundtrip/types.ts',
+    reason: 'Compile-time-only round-trip snapshot and option contracts.',
+  },
+  {
     file: 'src/formats/pptx/index.ts',
     reason:
       'Typed public delegation wrappers produce only compile-error mutants; parser behavior is mutation-tested at its implementation and public boundaries.',

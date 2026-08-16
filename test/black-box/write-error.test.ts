@@ -54,4 +54,12 @@ describe('PowerPoint write errors', () => {
 
     expect('data' in error).toBe(false);
   });
+
+  it.each([
+    'invalid-snapshot',
+    'snapshot-consistency-failed',
+    'unsupported-edit-operation',
+  ] as const)('exposes round-trip error code %s', (code) => {
+    expect(new PptxWriteError(code, 'Round-trip failed').code).toBe(code);
+  });
 });

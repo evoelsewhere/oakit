@@ -33,3 +33,4 @@ export async function parsePptxWithDiagnostics(
 export type * from './types';
 export type * from './scene-types';
 export type * from './write-types';
+export type * from './roundtrip/types';

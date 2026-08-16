@@ -3,7 +3,12 @@ import type { PptxSceneValidationIssue } from './scene-types';
 export type PptxFidelityLevel = 'C1' | 'C2' | 'R0' | 'R1' | 'R2' | 'R3';
 
 export type PptxWriteErrorCode =
-  'invalid-scene' | 'package-build-failed' | 'verification-failed';
+  | 'invalid-scene'
+  | 'invalid-snapshot'
+  | 'package-build-failed'
+  | 'snapshot-consistency-failed'
+  | 'unsupported-edit-operation'
+  | 'verification-failed';
 
 export interface PptxWriteErrorOptions extends ErrorOptions {
   issues?: readonly PptxSceneValidationIssue[];
