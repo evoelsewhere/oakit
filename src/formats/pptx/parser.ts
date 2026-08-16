@@ -1086,7 +1086,7 @@ async function processGroupSpNode(
   const currentGroupHierarchy = [...parentGroupHierarchy, node];
   const elements: Element[] = [];
   for (const nodeKey of Object.keys(node)) {
-    for (const child of asArray(nodeAt(node, [nodeKey]))) {
+    for (const child of asArray(node[nodeKey])) {
       const ret = await processNodesInSlide(
         nodeKey,
         child,
@@ -1105,15 +1105,14 @@ async function processGroupSpNode(
   ): Element => {
     const elementRotate = 'rotate' in element ? element.rotate : 0;
     const normalizedRotate = ((elementRotate % 360) + 360) % 360;
-    const isUniformScale = Math.abs(ws - hs) < 0.000001;
     const shouldSwapDimensions =
       normalizedRotate === 90 || normalizedRotate === 270;
     const centerX = element.left + element.width / 2;
     const centerY = element.top + element.height / 2;
     const nextCenterX = (centerX - offsetX) * ws;
     const nextCenterY = (centerY - offsetY) * hs;
-    const widthScale = shouldSwapDimensions && !isUniformScale ? hs : ws;
-    const heightScale = shouldSwapDimensions && !isUniformScale ? ws : hs;
+    const widthScale = shouldSwapDimensions ? hs : ws;
+    const heightScale = shouldSwapDimensions ? ws : hs;
     const width = element.width * widthScale;
     const height = element.height * heightScale;
 
@@ -1131,22 +1130,18 @@ async function processGroupSpNode(
     return transformed.type === 'group'
       ? {
           ...transformed,
-          elements: processNestedGroupElements(transformed.elements),
+          elements: transformNestedGroupElements(transformed.elements),
         }
       : transformed;
   });
 
-  function processNestedGroupElements(
-    nestedElements: Element[],
-    depth = 0,
-  ): Element[] {
-    if (depth > 10) return nestedElements;
+  function transformNestedGroupElements(nestedElements: Element[]): Element[] {
     return nestedElements.map((element) => {
       const processed = transformGroupedElement(element);
       if (processed.type === 'group') {
         return {
           ...processed,
-          elements: processNestedGroupElements(processed.elements, depth + 1),
+          elements: transformNestedGroupElements(processed.elements),
         };
       }
       return processed;
