@@ -36,11 +36,10 @@ export const mutatedFiles = [
   'src/formats/pptx/internal/text.ts',
   'src/formats/pptx/internal/text-insets.ts',
   'src/formats/pptx/internal/xml-reader.ts',
-];
-
-export const pendingMutationFiles = [
   'src/formats/pptx/parser.ts',
 ];
+
+export const pendingMutationFiles = [];
 
 export const excludedMutationFiles = [
   {
