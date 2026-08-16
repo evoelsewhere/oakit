@@ -60,6 +60,8 @@ describe('HTML helpers', () => {
   it.each([
     ['', false],
     ['<p> \n <br>\t</p>', false],
+    ['<p>&nbsp;</p>', false],
+    ['<p>&#160;&#xA0;</p>', false],
     ['<p>Visible</p>', true],
     ['<span title="metadata">A   B</span>', true],
   ])('recognizes visible text in %j', (html, expected) => {

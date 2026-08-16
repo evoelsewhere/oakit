@@ -77,7 +77,11 @@ export function sanitizeHyperlink(value: string): string | null {
 
 export function hasValidText(html: string): boolean {
   if (typeof DOMParser === 'undefined') {
-    return /\S/.test(html.replace(/<[^>]+>/g, ''));
+    const text = decodeXmlEntities(html.replace(/<[^>]+>/g, '')).replace(
+      /&nbsp;/gi,
+      '',
+    );
+    return text.trim() !== '';
   }
 
   const document = new DOMParser().parseFromString(html, 'text/html');
