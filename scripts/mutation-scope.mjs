@@ -45,6 +45,7 @@ export const mutatedFiles = [
   'src/formats/pptx/writer/identifiers.ts',
   'src/formats/pptx/writer/package-relationships.ts',
   'src/formats/pptx/writer/paragraph.ts',
+  'src/formats/pptx/writer/parts.ts',
   'src/formats/pptx/writer/presentation.ts',
   'src/formats/pptx/writer/relationships.ts',
   'src/formats/pptx/writer/slide.ts',
