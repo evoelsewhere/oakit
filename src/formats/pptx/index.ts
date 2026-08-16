@@ -7,6 +7,7 @@ import type {
 } from './types';
 
 export { validatePptxScene } from './scene-validation';
+export { createPptx } from './creator';
 
 export { PptxParseError } from './errors';
 export { PptxWriteError } from './write-error';

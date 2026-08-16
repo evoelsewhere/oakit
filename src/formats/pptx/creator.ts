@@ -1,0 +1,83 @@
+import type { PptxSceneDocument } from './scene-types';
+import { validatePptxScene } from './scene-validation';
+import { PptxWriteError } from './write-error';
+import type { PptxWriteReport, PptxWriteResult } from './write-types';
+import { serializePowerPointArchive } from './writer/archive';
+import {
+  type PptxSerializedPart,
+  serializePowerPointParts,
+} from './writer/parts';
+import { verifyPowerPointCreation } from './writer/verify';
+
+interface PptxCreatorDependencies {
+  serializeArchive(parts: readonly PptxSerializedPart[]): Promise<Uint8Array>;
+  verify(data: Uint8Array, scene: PptxSceneDocument): Promise<void>;
+}
+
+const DEFAULT_DEPENDENCIES: PptxCreatorDependencies = {
+  serializeArchive: serializePowerPointArchive,
+  verify: verifyPowerPointCreation,
+};
+
+function creationReport(addedPartCount: number): PptxWriteReport {
+  return {
+    addedPartCount,
+    copiedPartCount: 0,
+    diagnostics: [],
+    level: 'C1',
+    operations: [],
+    patchedPartCount: 0,
+    producerEvidence: [],
+    rebuiltPartCount: 0,
+    removedPartCount: 0,
+    supportProfile: {
+      effectiveLevel: 'C1',
+      id: 'pptx-create-text-v1',
+      producerMatrix: [],
+      version: '1',
+    },
+  };
+}
+
+export async function createPptxWithDependencies(
+  scene: PptxSceneDocument,
+  dependencies: PptxCreatorDependencies,
+): Promise<PptxWriteResult> {
+  const validation = validatePptxScene(scene, { profile: 'create-text-v1' });
+  if (!validation.valid) {
+    throw new PptxWriteError(
+      'invalid-scene',
+      'PowerPoint scene is not valid for creation',
+      { issues: validation.issues },
+    );
+  }
+
+  let parts: PptxSerializedPart[];
+  let data: Uint8Array;
+  try {
+    parts = serializePowerPointParts(scene);
+    data = await dependencies.serializeArchive(parts);
+  } catch (cause) {
+    throw new PptxWriteError(
+      'package-build-failed',
+      'Failed to build PowerPoint package',
+      { cause },
+    );
+  }
+
+  try {
+    await dependencies.verify(data, scene);
+  } catch (cause) {
+    throw new PptxWriteError(
+      'verification-failed',
+      'Generated PowerPoint package failed strict verification',
+      { cause },
+    );
+  }
+
+  return { data, report: creationReport(parts.length) };
+}
+
+export function createPptx(scene: PptxSceneDocument): Promise<PptxWriteResult> {
+  return createPptxWithDependencies(scene, DEFAULT_DEPENDENCIES);
+}

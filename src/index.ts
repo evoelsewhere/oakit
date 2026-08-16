@@ -1,4 +1,5 @@
 export {
+  createPptx,
   parsePptx,
   parsePptxWithDiagnostics,
   PptxParseError,

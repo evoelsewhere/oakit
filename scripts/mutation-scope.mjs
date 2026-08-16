@@ -16,6 +16,7 @@ export const mutatedFiles = [
   'src/common/xml/types.ts',
   'src/common/xml/validate.ts',
   'src/formats/pptx/creation-limits.ts',
+  'src/formats/pptx/creator.ts',
   'src/formats/pptx/errors.ts',
   'src/formats/pptx/internal/animation.ts',
   'src/formats/pptx/internal/border.ts',
@@ -56,6 +57,7 @@ export const mutatedFiles = [
   'src/formats/pptx/writer/theme.ts',
   'src/formats/pptx/writer/xml.ts',
   'src/formats/pptx/writer/units.ts',
+  'src/formats/pptx/writer/verify.ts',
 ];
 
 export const pendingMutationFiles = [];
