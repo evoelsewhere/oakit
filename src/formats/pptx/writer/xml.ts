@@ -29,7 +29,11 @@ function needsPreservedSpace(value: string): boolean {
   );
 }
 
-export function serializeDrawingText(value: string): string {
-  const preserve = needsPreservedSpace(value) ? ' xml:space="preserve"' : '';
+export function serializeDrawingText(
+  value: string,
+  preserveSpace = false,
+): string {
+  const preserve =
+    preserveSpace || needsPreservedSpace(value) ? ' xml:space="preserve"' : '';
   return `<a:t${preserve}>${escapeXmlText(value)}</a:t>`;
 }

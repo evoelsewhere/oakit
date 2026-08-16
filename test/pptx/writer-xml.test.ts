@@ -41,4 +41,14 @@ describe('PowerPoint writer XML primitives', () => {
   ])('serializes DrawingML text %j', (input, expected) => {
     expect(serializeDrawingText(input)).toBe(expected);
   });
+
+  it('honors an authored whitespace-preservation flag', () => {
+    expect(serializeDrawingText('plain', true)).toBe(
+      '<a:t xml:space="preserve">plain</a:t>',
+    );
+    expect(serializeDrawingText('plain', false)).toBe('<a:t>plain</a:t>');
+    expect(serializeDrawingText(' leading', false)).toBe(
+      '<a:t xml:space="preserve"> leading</a:t>',
+    );
+  });
 });
