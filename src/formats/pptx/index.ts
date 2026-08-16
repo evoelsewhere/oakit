@@ -8,6 +8,7 @@ import type {
 
 export { validatePptxScene } from './scene-validation';
 export { createPptx } from './creator';
+export { renderPptxDocumentToSvg } from './render-svg';
 export {
   defaultPptxRoundTripPortableLimits,
   parsePptxRoundTripJson,
@@ -18,6 +19,7 @@ export { readPptxRoundTrip } from './roundtrip/read';
 export { writePptxRoundTrip } from './roundtrip/write';
 
 export { PptxParseError } from './errors';
+export { PptxRenderError } from './render-error';
 export { PptxWriteError } from './write-error';
 
 /** Parse a PowerPoint Open XML package into the current structured JSON model. */
@@ -42,3 +44,4 @@ export type * from './types';
 export type * from './scene-types';
 export type * from './write-types';
 export type * from './roundtrip/types';
+export type * from './render-types';
