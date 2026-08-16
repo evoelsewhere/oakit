@@ -80,9 +80,21 @@ describe('PowerPoint round-trip reading through the public API', () => {
     expect(snapshot.document.size).toEqual(scene().size);
     expect(snapshot.document.slides).toHaveLength(1);
     expect(snapshot.document.slides[0]?.elements[0]).toMatchObject({
-      feature: 'text',
       key: 'slide-1-element-1',
-      type: 'unsupported',
+      text: {
+        paragraphs: [
+          {
+            children: [
+              {
+                key: 'slide-1-element-1-run-1',
+                text: 'Snapshot',
+                type: 'run',
+              },
+            ],
+          },
+        ],
+      },
+      type: 'text',
     });
     expect(snapshot.consistency).toMatchObject({
       canonicalizationVersion: 'canonical-json-v1',

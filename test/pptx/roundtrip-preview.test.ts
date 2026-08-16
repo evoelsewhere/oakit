@@ -4,7 +4,10 @@ import { createPptx } from '../../src/formats/pptx/creator';
 import { parse } from '../../src/formats/pptx/parser';
 import type { PptxSceneDocument } from '../../src/formats/pptx/scene-types';
 import { validatePptxScene } from '../../src/formats/pptx/scene-validation';
-import { createPowerPointRoundTripPreview } from '../../src/formats/pptx/roundtrip/preview';
+import {
+  createPowerPointRoundTripPreview,
+  plainTextFromPowerPointHtml,
+} from '../../src/formats/pptx/roundtrip/preview';
 
 function sourceScene(): PptxSceneDocument {
   return {
@@ -74,10 +77,8 @@ describe('PowerPoint round-trip semantic preview', () => {
     expect(first.slides[0]?.elements).toEqual([
       {
         authored: {},
-        feature: 'text',
         key: 'slide-1-element-1',
-        previewText:
-          '<p style="text-align: left;"><span style="font-size: 18pt;font-family: &quot;Aptos&quot;;">Preview&nbsp;text</span></p>',
+        name: 'Text Box 2',
         resolved: {
           hidden: false,
           transform: {
@@ -90,9 +91,36 @@ describe('PowerPoint round-trip semantic preview', () => {
             y: 30,
           },
         },
-        type: 'unsupported',
+        text: {
+          body: {
+            anchor: 'top',
+            vertical: false,
+            wrap: true,
+          },
+          paragraphs: [
+            {
+              children: [
+                {
+                  key: 'slide-1-element-1-run-1',
+                  text: 'Preview text',
+                  type: 'run',
+                },
+              ],
+              key: 'slide-1-element-1-paragraph-1',
+            },
+          ],
+        },
+        type: 'text',
       },
     ]);
+  });
+
+  it('decodes portable PowerPoint HTML into ordered plain text', () => {
+    expect(
+      plainTextFromPowerPointHtml(
+        '<p><span>A&nbsp;&lt;&amp;</span><br><span>B</span></p><p>C&#x21;</p>',
+      ),
+    ).toBe('A <&\nB\nC!');
   });
 
   it('does not mutate the parsed document', async () => {

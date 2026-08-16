@@ -1,10 +1,14 @@
+import { decodeXmlEntities } from '../../../common/text/html';
 import type {
   PptxSceneDocument,
+  PptxSceneElement,
   PptxSceneSlide,
+  PptxSceneTextBodyProperties,
+  PptxSceneTextElement,
   PptxSceneTransform,
   PptxSceneUnsupportedElement,
 } from '../scene-types';
-import type { PptxDocument, PptxElement } from '../types';
+import type { PptxDocument, PptxElement, Text } from '../types';
 
 function resolvedTransform(
   element: PptxElement,
@@ -34,7 +38,71 @@ function previewText(element: PptxElement): string | undefined {
   return 'content' in element ? element.content : undefined;
 }
 
-function sceneElement(
+export function plainTextFromPowerPointHtml(html: string): string {
+  const withLineBreaks = html
+    .replace(/<br\s*\/?\s*>/gi, '\n')
+    .replace(/<\/(?:li|p)\s*>/gi, '\n');
+  const withoutTags = withLineBreaks.replace(/<[^>]*>/g, '');
+  return decodeXmlEntities(withoutTags.replace(/&nbsp;/gi, ' ')).replace(
+    /\n+$/,
+    '',
+  );
+}
+
+function textBodyProperties(element: Text): PptxSceneTextBodyProperties {
+  const anchor =
+    element.vAlign === 'down'
+      ? 'bottom'
+      : element.vAlign === 'mid'
+        ? 'center'
+        : element.vAlign === 'dist'
+          ? 'distributed'
+          : element.vAlign === 'just'
+            ? 'justified'
+            : 'top';
+  return {
+    anchor,
+    ...(element.autoFit === undefined ? {} : { autoFit: element.autoFit.type }),
+    vertical: element.isVertical,
+    wrap: element.wrap,
+  };
+}
+
+function sceneTextElement(
+  element: Text,
+  slideIndex: number,
+  elementIndex: number,
+): PptxSceneTextElement {
+  const key = `slide-${slideIndex + 1}-element-${elementIndex + 1}`;
+  const transform = resolvedTransform(element);
+  return {
+    authored: {},
+    key,
+    name: element.name,
+    resolved: {
+      hidden: false,
+      ...(transform === undefined ? {} : { transform }),
+    },
+    text: {
+      body: textBodyProperties(element),
+      paragraphs: [
+        {
+          children: [
+            {
+              key: `${key}-run-1`,
+              text: plainTextFromPowerPointHtml(element.content),
+              type: 'run',
+            },
+          ],
+          key: `${key}-paragraph-1`,
+        },
+      ],
+    },
+    type: 'text',
+  };
+}
+
+function sceneUnsupportedElement(
   element: PptxElement,
   slideIndex: number,
   elementIndex: number,
@@ -52,6 +120,16 @@ function sceneElement(
     },
     type: 'unsupported',
   };
+}
+
+function sceneElement(
+  element: PptxElement,
+  slideIndex: number,
+  elementIndex: number,
+): PptxSceneElement {
+  return element.type === 'text'
+    ? sceneTextElement(element, slideIndex, elementIndex)
+    : sceneUnsupportedElement(element, slideIndex, elementIndex);
 }
 
 function sceneSlide(slide: PptxDocument['slides'][number], index: number) {
