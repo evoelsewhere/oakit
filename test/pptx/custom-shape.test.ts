@@ -137,9 +137,9 @@ describe('PowerPoint custom shape classification', () => {
     expect(identifyShape(xml({ 'a:pathLst': { 'a:path': {} } }))).toBe(
       'custom',
     );
-    expect(
-      identifyShape(xml({ 'a:pathLst': { 'a:path': [undefined] } })),
-    ).toBe('custom');
+    expect(identifyShape(xml({ 'a:pathLst': { 'a:path': [undefined] } }))).toBe(
+      'custom',
+    );
     expect(
       identifyShape(
         xml({
@@ -399,10 +399,7 @@ describe('PowerPoint custom shape classification', () => {
     ]) as unknown as Record<string, unknown>;
     const pathList = rectangle['a:pathLst'] as Record<string, unknown>;
     const path = pathList['a:path'] as Record<string, unknown>;
-    path['a:close'] = [
-      { attrs: { order: '4' } },
-      { attrs: { order: '5' } },
-    ];
+    path['a:close'] = [{ attrs: { order: '4' } }, { attrs: { order: '5' } }];
     expect(identifyShape(xml(rectangle))).toBe('custom');
   });
 
@@ -1560,10 +1557,13 @@ describe('PowerPoint custom path arcs', () => {
     const maximum = String(Number.MAX_SAFE_INTEGER);
     expect(
       getCustomShapePath(
-        arcGeometry({ ...QUARTER_ARC, wR: maximum }, {
-          x: Number.MAX_SAFE_INTEGER,
-          y: 50,
-        }),
+        arcGeometry(
+          { ...QUARTER_ARC, wR: maximum },
+          {
+            x: Number.MAX_SAFE_INTEGER,
+            y: 50,
+          },
+        ),
         100,
         100,
       ),
