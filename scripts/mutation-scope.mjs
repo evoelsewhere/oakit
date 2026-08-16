@@ -53,6 +53,7 @@ export const mutatedFiles = [
   'src/formats/pptx/render-error.ts',
   'src/formats/pptx/render-limits.ts',
   'src/formats/pptx/render-request.ts',
+  'src/formats/pptx/render-svg-slide.ts',
   'src/formats/pptx/render-svg-values.ts',
   'src/formats/pptx/render-text.ts',
   'src/formats/pptx/scene-validation.ts',
