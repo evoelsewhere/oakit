@@ -49,20 +49,23 @@ export function decodeBase64(input: string): Uint8Array {
   const byteLength = decodedBase64ByteLength(input);
   const alphabet = base64Alphabet();
   const output = new Uint8Array(byteLength);
-  for (const match of input.matchAll(/.{4}/g)) {
-    const inputIndex = match.index;
+  const outputView = new DataView(output.buffer);
+  for (let inputIndex = 0; inputIndex < input.length; inputIndex += 4) {
     const outputIndex = (inputIndex / 4) * 3;
-    const chunk = match[0];
-    const first = alphabet.indexOf(chunk.charAt(0));
-    const second = alphabet.indexOf(chunk.charAt(1));
-    const thirdCharacter = chunk.charAt(2);
-    const fourthCharacter = chunk.charAt(3);
+    const first = alphabet.indexOf(input.charAt(inputIndex));
+    const second = alphabet.indexOf(input.charAt(inputIndex + 1));
+    const thirdCharacter = input.charAt(inputIndex + 2);
+    const fourthCharacter = input.charAt(inputIndex + 3);
     const third = alphabet.indexOf(thirdCharacter);
     const fourth = alphabet.indexOf(fourthCharacter);
 
-    output[outputIndex] = (first << 2) | (second >> 4);
-    output[outputIndex + 1] = ((second & 15) << 4) | (third >> 2);
-    output[outputIndex + 2] = ((third & 3) << 6) | fourth;
+    outputView.setUint8(outputIndex, (first << 2) | (second >> 4));
+    if (outputIndex + 1 < byteLength) {
+      outputView.setUint8(outputIndex + 1, ((second & 15) << 4) | (third >> 2));
+    }
+    if (outputIndex + 2 < byteLength) {
+      outputView.setUint8(outputIndex + 2, ((third & 3) << 6) | fourth);
+    }
   }
   return output;
 }
@@ -74,32 +77,40 @@ export function encodeBase64(input: ArrayBuffer | ArrayBufferView): string {
     input instanceof ArrayBuffer
       ? new Uint8Array(input)
       : new Uint8Array(input.buffer, input.byteOffset, input.byteLength);
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const output = new Uint8Array(Math.ceil(bytes.byteLength / 3) * 4);
   const mainLength = bytes.byteLength - (bytes.byteLength % 3);
-  let base64 = '';
+  let outputIndex = 0;
 
-  for (const [index] of bytes.subarray(0, mainLength).entries()) {
-    if (index % 3 !== 0) continue;
+  for (let index = 0; index < mainLength; index += 3) {
     const chunk =
-      (bytes[index]! << 16) | (bytes[index + 1]! << 8) | bytes[index + 2]!;
-    base64 += alphabet[(chunk & 16_515_072) >> 18];
-    base64 += alphabet[(chunk & 258_048) >> 12];
-    base64 += alphabet[(chunk & 4_032) >> 6];
-    base64 += alphabet[chunk & 63];
+      (view.getUint8(index) << 16) |
+      (view.getUint8(index + 1) << 8) |
+      view.getUint8(index + 2);
+    output[outputIndex] = alphabet.charCodeAt((chunk & 16_515_072) >> 18);
+    output[outputIndex + 1] = alphabet.charCodeAt((chunk & 258_048) >> 12);
+    output[outputIndex + 2] = alphabet.charCodeAt((chunk & 4_032) >> 6);
+    output[outputIndex + 3] = alphabet.charCodeAt(chunk & 63);
+    outputIndex += 4;
   }
 
   const remainder = bytes.byteLength % 3;
   if (remainder === 1) {
-    const chunk = bytes[mainLength]!;
-    base64 += alphabet[(chunk & 252) >> 2];
-    base64 += `${alphabet[(chunk & 3) << 4]}==`;
+    const chunk = view.getUint8(mainLength);
+    output[outputIndex] = alphabet.charCodeAt((chunk & 252) >> 2);
+    output[outputIndex + 1] = alphabet.charCodeAt((chunk & 3) << 4);
+    output[outputIndex + 2] = 61;
+    output[outputIndex + 3] = 61;
   } else if (remainder === 2) {
-    const chunk = (bytes[mainLength]! << 8) | bytes[mainLength + 1]!;
-    base64 += alphabet[(chunk & 64_512) >> 10];
-    base64 += alphabet[(chunk & 1_008) >> 4];
-    base64 += `${alphabet[(chunk & 15) << 2]}=`;
+    const chunk =
+      (view.getUint8(mainLength) << 8) | view.getUint8(mainLength + 1);
+    output[outputIndex] = alphabet.charCodeAt((chunk & 64_512) >> 10);
+    output[outputIndex + 1] = alphabet.charCodeAt((chunk & 1_008) >> 4);
+    output[outputIndex + 2] = alphabet.charCodeAt((chunk & 15) << 2);
+    output[outputIndex + 3] = 61;
   }
 
-  return base64;
+  return new TextDecoder().decode(output);
 }
 
 /** @internal Compatibility name used by the upstream PPTX parser. */
