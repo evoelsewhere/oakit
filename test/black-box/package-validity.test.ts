@@ -102,6 +102,8 @@ describe('PPTX package validity at the public boundary', () => {
     expect(tolerant.diagnostics).toContainEqual(
       expect.objectContaining({
         code: 'invalid-document-structure',
+        message:
+          'Required OOXML root p:sld is missing from ppt/slides/slide1.xml',
         part: 'ppt/slides/slide1.xml',
         severity: 'error',
       }),
@@ -111,6 +113,34 @@ describe('PPTX package validity at the public boundary', () => {
     ).rejects.toMatchObject({
       diagnostic: {
         code: 'invalid-document-structure',
+        message:
+          'Required OOXML root p:sld is missing from ppt/slides/slide1.xml',
+        part: 'ppt/slides/slide1.xml',
+      },
+    });
+  });
+
+  it('reports a selected slide whose required OPC part is missing', async () => {
+    const input = await createIndependentPptx({
+      'ppt/slides/slide1.xml': null,
+    });
+
+    const tolerant = await parsePptxWithDiagnostics(input);
+
+    expect(tolerant.document.slides).toHaveLength(1);
+    expect(tolerant.document.slides[0]?.elements).toEqual([]);
+    expect(tolerant.diagnostics).toContainEqual({
+      code: 'missing-required-part',
+      message: 'Required OOXML part is missing: ppt/slides/slide1.xml',
+      part: 'ppt/slides/slide1.xml',
+      severity: 'error',
+    });
+    await expect(
+      parsePptx(input, { errorMode: 'strict' }),
+    ).rejects.toMatchObject({
+      diagnostic: {
+        code: 'missing-required-part',
+        message: 'Required OOXML part is missing: ppt/slides/slide1.xml',
         part: 'ppt/slides/slide1.xml',
       },
     });
