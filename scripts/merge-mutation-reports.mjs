@@ -17,12 +17,39 @@ function reportRecord(value, description) {
   return value;
 }
 
+function reportString(value, description) {
+  if (typeof value !== 'string' || value.length === 0) {
+    throw new TypeError(`${description} must be a non-empty string`);
+  }
+  return value;
+}
+
+function reportMutants(value, file) {
+  if (!Array.isArray(value)) {
+    throw new TypeError(`Mutation shard mutants for ${file} must be an array`);
+  }
+  return value;
+}
+
+export function reportMutantFingerprint(value) {
+  const mutant = reportRecord(value, 'Mutation shard mutant');
+  const location = reportRecord(mutant.location, 'Mutation shard location');
+  reportRecord(location.start, 'Mutation shard location start');
+  reportRecord(location.end, 'Mutation shard location end');
+  return JSON.stringify([
+    location,
+    reportString(mutant.mutatorName, 'Mutation shard mutator name'),
+    reportString(mutant.replacement, 'Mutation shard replacement'),
+  ]);
+}
+
 export function mergeMutationReports(reports, expectedFiles) {
   if (reports.length === 0) {
     throw new Error('At least one mutation shard report is required');
   }
   const first = reportRecord(reports[0], 'Mutation shard report');
   const files = {};
+  const fileMutants = new Map();
   const testFiles = {};
 
   for (const value of reports) {
@@ -31,17 +58,59 @@ export function mergeMutationReports(reports, expectedFiles) {
       throw new Error('Mutation shard schema versions do not match');
     }
     const shardFiles = reportRecord(report.files, 'Mutation shard files');
-    for (const [file, fileReport] of Object.entries(shardFiles)) {
-      if (Object.hasOwn(files, file)) {
-        throw new Error(`Duplicate mutation report file: ${file}`);
+    for (const [file, value] of Object.entries(shardFiles)) {
+      const fileReport = reportRecord(
+        value,
+        `Mutation shard file report for ${file}`,
+      );
+      const source = reportString(
+        fileReport.source,
+        `Mutation shard source for ${file}`,
+      );
+      const language = reportString(
+        fileReport.language,
+        `Mutation shard language for ${file}`,
+      );
+      let target = files[file];
+      let targetMutants = fileMutants.get(file);
+      if (target === undefined || targetMutants === undefined) {
+        target = { ...fileReport, language, mutants: [], source };
+        targetMutants = new Map();
+        files[file] = target;
+        fileMutants.set(file, targetMutants);
+      } else if (target.source !== source || target.language !== language) {
+        throw new Error(
+          `Mutation shard source metadata does not match: ${file}`,
+        );
       }
-      files[file] = fileReport;
+
+      for (const mutant of reportMutants(fileReport.mutants, file)) {
+        const fingerprint = reportMutantFingerprint(mutant);
+        const existing = targetMutants.get(fingerprint);
+        if (existing !== undefined) {
+          if (existing.status !== mutant.status) {
+            throw new Error(
+              `Mutation shard status does not match for ${file}: ${fingerprint}`,
+            );
+          }
+          continue;
+        }
+        targetMutants.set(fingerprint, mutant);
+      }
     }
     const shardTests = reportRecord(
       report.testFiles,
       'Mutation shard test files',
     );
-    Object.assign(testFiles, shardTests);
+    for (const [file, testFile] of Object.entries(shardTests)) {
+      if (
+        Object.hasOwn(testFiles, file) &&
+        JSON.stringify(testFiles[file]) !== JSON.stringify(testFile)
+      ) {
+        throw new Error(`Mutation shard test metadata does not match: ${file}`);
+      }
+      testFiles[file] = testFile;
+    }
   }
 
   const expected = new Set(expectedFiles);
@@ -54,6 +123,14 @@ export function mergeMutationReports(reports, expectedFiles) {
     if (!Object.hasOwn(files, file)) {
       throw new Error(`Missing mutation report file: ${file}`);
     }
+  }
+
+  for (const file of expectedFiles) {
+    const target = files[file];
+    const mutants = fileMutants.get(file);
+    target.mutants = [...mutants.entries()]
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([, mutant], index) => ({ ...mutant, id: String(index) }));
   }
 
   const orderedFiles = Object.fromEntries(

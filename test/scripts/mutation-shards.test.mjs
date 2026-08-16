@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import { mergeMutationReports } from '../../scripts/merge-mutation-reports.mjs';
+import {
+  mergeMutationReports,
+  reportMutantFingerprint,
+} from '../../scripts/merge-mutation-reports.mjs';
 import { mutatedFiles } from '../../scripts/mutation-scope.mjs';
 import { createMutationShards } from '../../scripts/mutation-shards.mjs';
 import {
@@ -20,6 +23,32 @@ function report(files, schemaVersion = '1.0') {
     schemaVersion,
     testFiles: {},
     thresholds: { high: 100, low: 100 },
+  };
+}
+
+function fileReport(
+  mutants = [],
+  source = 'const value = 1;',
+  language = 'ts',
+) {
+  return { language, mutants, source };
+}
+
+function reportMutant({
+  endLine = 1,
+  replacement = '0',
+  startLine = 1,
+  status = 'Killed',
+} = {}) {
+  return {
+    id: 'source-id',
+    location: {
+      end: { column: 2, line: endLine },
+      start: { column: 1, line: startLine },
+    },
+    mutatorName: 'ArithmeticOperator',
+    replacement,
+    status,
   };
 }
 
@@ -62,15 +91,65 @@ describe('mutation report sharding', () => {
 
   it('merges complete disjoint reports in configured file order', () => {
     const merged = mergeMutationReports(
-      [
-        report({ 'b.ts': { mutants: [] } }),
-        report({ 'a.ts': { mutants: [] } }),
-      ],
+      [report({ 'b.ts': fileReport() }), report({ 'a.ts': fileReport() })],
       ['a.ts', 'b.ts'],
     );
 
     expect(Object.keys(merged.files)).toEqual(['a.ts', 'b.ts']);
     expect(merged.config.mutate).toEqual(['a.ts', 'b.ts']);
+  });
+
+  it('merges and deduplicates matching ranges for one source file', () => {
+    const first = reportMutant({ replacement: '-' });
+    const second = reportMutant({ replacement: '*', startLine: 2 });
+    const merged = mergeMutationReports(
+      [
+        report({ 'a.ts': fileReport([first]) }),
+        report({ 'a.ts': fileReport([first, second]) }),
+      ],
+      ['a.ts'],
+    );
+
+    expect(merged.files['a.ts'].mutants).toHaveLength(2);
+    expect(merged.files['a.ts'].mutants.map((mutant) => mutant.id)).toEqual([
+      '0',
+      '1',
+    ]);
+    expect(
+      new Set(merged.files['a.ts'].mutants.map(reportMutantFingerprint)).size,
+    ).toBe(2);
+  });
+
+  it('rejects conflicting duplicate mutation results and source metadata', () => {
+    const killed = reportMutant();
+    const survived = reportMutant({ status: 'Survived' });
+    expect(() =>
+      mergeMutationReports(
+        [
+          report({ 'a.ts': fileReport([killed]) }),
+          report({ 'a.ts': fileReport([survived]) }),
+        ],
+        ['a.ts'],
+      ),
+    ).toThrow('Mutation shard status does not match for a.ts');
+    expect(() =>
+      mergeMutationReports(
+        [
+          report({ 'a.ts': fileReport([], 'source one') }),
+          report({ 'a.ts': fileReport([], 'source two') }),
+        ],
+        ['a.ts'],
+      ),
+    ).toThrow('Mutation shard source metadata does not match: a.ts');
+    expect(() =>
+      mergeMutationReports(
+        [
+          report({ 'a.ts': fileReport([], 'source', 'ts') }),
+          report({ 'a.ts': fileReport([], 'source', 'js') }),
+        ],
+        ['a.ts'],
+      ),
+    ).toThrow('Mutation shard source metadata does not match: a.ts');
   });
 
   it('rejects empty, malformed, mismatched, duplicate, missing, and extra reports', () => {
@@ -82,21 +161,18 @@ describe('mutation report sharding', () => {
     );
     expect(() =>
       mergeMutationReports(
-        [report({ 'a.ts': {} }), report({ 'b.ts': {} }, '2.0')],
+        [
+          report({ 'a.ts': fileReport() }),
+          report({ 'b.ts': fileReport() }, '2.0'),
+        ],
         ['a.ts', 'b.ts'],
       ),
     ).toThrow('Mutation shard schema versions do not match');
-    expect(() =>
-      mergeMutationReports(
-        [report({ 'a.ts': {} }), report({ 'a.ts': {} })],
-        ['a.ts'],
-      ),
-    ).toThrow('Duplicate mutation report file: a.ts');
     expect(() => mergeMutationReports([report({})], ['a.ts'])).toThrow(
       'Missing mutation report file: a.ts',
     );
     expect(() =>
-      mergeMutationReports([report({ 'b.ts': {} })], ['a.ts']),
+      mergeMutationReports([report({ 'b.ts': fileReport() })], ['a.ts']),
     ).toThrow('Unexpected mutation report file: b.ts');
   });
 });
