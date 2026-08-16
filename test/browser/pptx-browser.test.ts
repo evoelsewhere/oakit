@@ -3,7 +3,11 @@ import { describe, expect, it } from 'vitest';
 import {
   createPptx,
   parsePptx,
+  parsePptxRoundTripJson,
   parsePptxWithDiagnostics,
+  readPptxRoundTrip,
+  serializePptxRoundTripJson,
+  writePptxRoundTrip,
   type PptxSceneDocument,
 } from '../../src';
 import {
@@ -65,6 +69,43 @@ async function createImagePackage(imageBytes: Uint8Array): Promise<Uint8Array> {
 }
 
 describe('PPTX public API in browsers', () => {
+  it('preserves exact package bytes through a portable JSON agent hand-off', async () => {
+    const bytes = await createIndependentPptx({
+      'customXml/browser-agent.xml':
+        '<?xml version="1.0"?><agent xmlns="urn:oakit:browser">preserve me</agent>',
+      'ppt/slides/slide1.xml': independentTextSlide(
+        'Portable browser hand-off',
+      ),
+    });
+    const inputBuffer = exactArrayBuffer(bytes);
+    const [byteSnapshot, blobSnapshot] = await Promise.all([
+      readPptxRoundTrip(bytes),
+      readPptxRoundTrip(
+        new Blob([inputBuffer], {
+          type: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+        }),
+      ),
+    ]);
+    const [bytePortable, blobPortable] = await Promise.all([
+      serializePptxRoundTripJson(byteSnapshot),
+      serializePptxRoundTripJson(blobSnapshot),
+    ]);
+    const wireValue: unknown = JSON.parse(JSON.stringify(bytePortable));
+    const restored = await parsePptxRoundTripJson(wireValue);
+    const output = await writePptxRoundTrip(restored);
+    const decoded = Uint8Array.from(
+      atob(bytePortable.source.packageBase64),
+      (character) => character.charCodeAt(0),
+    );
+
+    expect(blobSnapshot.source.data).toBeInstanceOf(Blob);
+    expect(blobPortable).toEqual(bytePortable);
+    expect(decoded).toEqual(bytes);
+    expect(output.data).toEqual(bytes);
+    expect(output.data).not.toBe(bytes);
+    expect(output.report.level).toBe('R0');
+  });
+
   it('creates deterministic packages and strictly reads them back', async () => {
     const scene: PptxSceneDocument = {
       layouts: [],
