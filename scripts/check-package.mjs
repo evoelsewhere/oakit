@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { Buffer } from 'node:buffer';
 import { execFile } from 'node:child_process';
 import { readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -76,7 +77,9 @@ const smokeDirectory = await mkdtemp(
 try {
   const inputPath = path.join(smokeDirectory, 'smoke.pptx');
   const outputPath = path.join(smokeDirectory, 'smoke.json');
+  const portablePath = path.join(smokeDirectory, 'smoke.portable.json');
   const renderOutputPath = path.join(smokeDirectory, 'previews');
+  const restoredPath = path.join(smokeDirectory, 'restored.pptx');
   const inputBytes = await createSmokePptx();
   await writeFile(inputPath, inputBytes);
 
@@ -110,10 +113,42 @@ try {
   const filePayload = JSON.parse(await readFile(outputPath, 'utf8'));
   assert.equal(filePayload.document.slides.length, 1);
 
+  const snapshotResult = await execFileAsync(process.execPath, [
+    cliPath,
+    'snapshot',
+    inputPath,
+    '--output',
+    portablePath,
+  ]);
+  assert.equal(snapshotResult.stdout, '');
+  assert.equal(snapshotResult.stderr, '');
+  const portablePayload = JSON.parse(await readFile(portablePath, 'utf8'));
+  assert.equal(portablePayload.format, 'pptx');
+  assert.equal(portablePayload.schemaVersion, 1);
+  assert.equal(portablePayload.source.byteLength, inputBytes.byteLength);
+  assert.equal(
+    portablePayload.source.packageBase64,
+    Buffer.from(inputBytes).toString('base64'),
+  );
+
+  const restoreResult = await execFileAsync(process.execPath, [
+    cliPath,
+    'restore',
+    portablePath,
+    '--output',
+    restoredPath,
+  ]);
+  assert.equal(restoreResult.stdout, '');
+  assert.equal(restoreResult.stderr, '');
+  assert.deepEqual(
+    Array.from(await readFile(restoredPath)),
+    Array.from(inputBytes),
+  );
+
   const renderResult = await execFileAsync(process.execPath, [
     cliPath,
     'render',
-    inputPath,
+    restoredPath,
     '--output',
     renderOutputPath,
     '--render-format',
