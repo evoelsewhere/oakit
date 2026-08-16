@@ -111,4 +111,17 @@ describe('PPTX slide order', () => {
       }),
     ).rejects.toThrow('maxSlides');
   });
+
+  it('does not select an external slide relationship in any TargetMode case', async () => {
+    const input = await createMinimalPptx({
+      'ppt/_rels/presentation.xml.rels': `
+        <Relationships>
+          <Relationship Id="rIdSlide1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide" Target="ppt/slides/slide1.xml" TargetMode="eXtErNaL"/>
+        </Relationships>`,
+    });
+
+    const result = await parsePptx(input, { errorMode: 'strict' });
+
+    expect(result.slides).toEqual([]);
+  });
 });
