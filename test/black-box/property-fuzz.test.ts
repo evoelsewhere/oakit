@@ -1,3 +1,4 @@
+import JSZip from 'jszip';
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 
@@ -34,6 +35,20 @@ function expectOnlyFiniteNumbers(value: unknown): void {
   }
   if (!value || typeof value !== 'object') return;
   for (const child of Object.values(value)) expectOnlyFiniteNumbers(child);
+}
+
+async function expectFiniteDocumentOrTypedError(
+  input: Uint8Array,
+): Promise<void> {
+  try {
+    expectOnlyFiniteNumbers(await parsePptx(input, { errorMode: 'strict' }));
+  } catch (error) {
+    expect(error).toBeInstanceOf(PptxParseError);
+    if (!(error instanceof PptxParseError)) throw error;
+    expect(error.name).toBe('PptxParseError');
+    expect(typeof error.diagnostic.code).toBe('string');
+    expect(error.diagnostic.severity).toMatch(/^(?:error|warning)$/);
+  }
 }
 
 describe('PPTX seeded public-boundary properties', () => {
@@ -89,6 +104,55 @@ describe('PPTX seeded public-boundary properties', () => {
     );
   });
 
+  it('normalizes generated safe relationship dot segments without changing the selected slide', async () => {
+    await fc.assert(
+      fc.asyncProperty(
+        fc.integer({ min: 0, max: 8 }),
+        fc.integer({ min: 0, max: 8 }),
+        async (leadingDots, internalDots) => {
+          const target = `${'./'.repeat(leadingDots)}slides/${'folder/../'.repeat(internalDots)}slide1.xml`;
+          const input = await createIndependentPptx({
+            'ppt/_rels/presentation.xml.rels': `
+              <Relationships xmlns="${PACKAGE_REL_NS}">
+                <Relationship Id="rIdSlide1" Type="${OFFICE_REL_TYPE}slide" Target="${target}"/>
+              </Relationships>`,
+          });
+
+          const document = await parsePptx(input, { errorMode: 'strict' });
+
+          expect(document.slides).toHaveLength(1);
+          expectOnlyFiniteNumbers(document);
+        },
+      ),
+      { numRuns: FUZZ_RUNS, seed: FUZZ_SEED + 2 },
+    );
+  });
+
+  it('never selects a generated external relationship as an internal slide', async () => {
+    const externalTarget = fc
+      .webUrl({ validSchemes: ['http', 'https'] })
+      .map(escapeXmlAttribute);
+    await fc.assert(
+      fc.asyncProperty(
+        externalTarget,
+        fc.constantFrom('External', 'external', 'EXTERNAL'),
+        async (target, targetMode) => {
+          const input = await createIndependentPptx({
+            'ppt/_rels/presentation.xml.rels': `
+              <Relationships xmlns="${PACKAGE_REL_NS}">
+                <Relationship Id="rIdSlide1" Type="${OFFICE_REL_TYPE}slide" Target="${target}" TargetMode="${targetMode}"/>
+              </Relationships>`,
+          });
+
+          const document = await parsePptx(input, { errorMode: 'strict' });
+
+          expect(document.slides).toEqual([]);
+        },
+      ),
+      { numRuns: FUZZ_RUNS, seed: FUZZ_SEED + 3 },
+    );
+  });
+
   it('rejects generated mismatched XML closing names', async () => {
     const localName = fc.stringMatching(/^[A-Za-z][A-Za-z0-9]{0,15}$/);
 
@@ -110,7 +174,48 @@ describe('PPTX seeded public-boundary properties', () => {
           },
         });
       }),
-      { numRuns: FUZZ_RUNS, seed: FUZZ_SEED + 2 },
+      { numRuns: FUZZ_RUNS, seed: FUZZ_SEED + 4 },
+    );
+  });
+
+  it('rejects every generated ZIP truncation with a typed package error', async () => {
+    const baseline = await createIndependentPptx();
+
+    await fc.assert(
+      fc.asyncProperty(
+        fc.integer({ min: 0, max: baseline.byteLength - 1 }),
+        async (end) => {
+          await expect(parsePptx(baseline.slice(0, end))).rejects.toMatchObject(
+            {
+              name: 'PptxParseError',
+              diagnostic: { code: 'invalid-package' },
+            },
+          );
+        },
+      ),
+      { numRuns: FUZZ_RUNS, seed: FUZZ_SEED + 7 },
+    );
+  });
+
+  it('returns finite data or a typed error after generated OPC part removal', async () => {
+    const baseline = await createIndependentPptx();
+    const archive = await JSZip.loadAsync(baseline);
+    const partNames = Object.keys(archive.files).filter(
+      (name) => !archive.files[name]?.dir,
+    );
+
+    await fc.assert(
+      fc.asyncProperty(fc.constantFrom(...partNames), async (partName) => {
+        const mutatedArchive = await JSZip.loadAsync(baseline);
+        mutatedArchive.remove(partName);
+        const mutated = await mutatedArchive.generateAsync({
+          compression: 'DEFLATE',
+          type: 'uint8array',
+        });
+
+        await expectFiniteDocumentOrTypedError(mutated);
+      }),
+      { numRuns: FUZZ_RUNS, seed: FUZZ_SEED + 8 },
     );
   });
 
@@ -123,21 +228,15 @@ describe('PPTX seeded public-boundary properties', () => {
         fc.integer({ min: 1, max: 255 }),
         async (index, mask) => {
           const mutated = baseline.slice();
-          mutated[index] = mutated[index]! ^ mask;
+          const current = mutated[index];
+          if (current === undefined)
+            throw new Error('Generated invalid ZIP index');
+          mutated[index] = current ^ mask;
 
-          try {
-            const result = await parsePptx(mutated, { errorMode: 'strict' });
-            expectOnlyFiniteNumbers(result);
-          } catch (error) {
-            expect(error).toBeInstanceOf(PptxParseError);
-            if (!(error instanceof PptxParseError)) throw error;
-            expect(error.name).toBe('PptxParseError');
-            expect(typeof error.diagnostic.code).toBe('string');
-            expect(error.diagnostic.severity).toMatch(/^(?:error|warning)$/);
-          }
+          await expectFiniteDocumentOrTypedError(mutated);
         },
       ),
-      { numRuns: FUZZ_RUNS, seed: FUZZ_SEED + 3 },
+      { numRuns: FUZZ_RUNS, seed: FUZZ_SEED + 9 },
     );
   });
 });
