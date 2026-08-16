@@ -80,6 +80,7 @@ export const mutatedFiles = [
   'src/formats/xlsx/internal/streaming-xml.ts',
   'src/formats/xlsx/internal/workbook-discovery.ts',
   'src/formats/xlsx/internal/workbook-manifest.ts',
+  'src/formats/xlsx/internal/workbook-tables.ts',
   'src/formats/xlsx/parser.ts',
 ];
 

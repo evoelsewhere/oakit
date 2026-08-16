@@ -166,6 +166,49 @@ describe('public XLSX parser', () => {
     });
   });
 
+  it('maps streamed workbook-table limits to the public structured error', async () => {
+    const bytes = await createIndependentXlsx({
+      'xl/sharedStrings.xml': `<sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><si/><si/></sst>`,
+    });
+
+    await expect(
+      parseXlsx(bytes, { limits: { maxSharedStrings: 1 } }),
+    ).rejects.toMatchObject({
+      cause: {
+        actual: 2,
+        limit: 1,
+        limitName: 'maxSharedStrings',
+        name: 'XlsxResourceLimitError',
+        part: 'xl/sharedStrings.xml',
+      },
+      diagnostic: {
+        actual: 2,
+        code: 'resource-limit-exceeded',
+        limit: 1,
+        limitName: 'maxSharedStrings',
+        part: 'xl/sharedStrings.xml',
+        severity: 'error',
+      },
+      name: 'XlsxParseError',
+    });
+  });
+
+  it('rejects malformed shared strings through the public parser', async () => {
+    const bytes = await createIndependentXlsx({
+      'xl/sharedStrings.xml': `<sst xmlns="urn:wrong"><si><t>bad</t></si></sst>`,
+    });
+
+    await expect(parseXlsx(bytes)).rejects.toMatchObject({
+      diagnostic: {
+        code: 'invalid-document-structure',
+        message: 'Shared-string element has an unsupported namespace',
+        part: 'xl/sharedStrings.xml',
+        severity: 'error',
+      },
+      name: 'XlsxParseError',
+    });
+  });
+
   it.each([
     { errorMode: 'strict' },
     { errorMode: 'tolerant' },

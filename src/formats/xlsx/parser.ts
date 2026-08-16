@@ -14,6 +14,7 @@ import {
 } from './internal/resource-limits';
 import { discoverXlsxWorkbook } from './internal/workbook-discovery';
 import { parseXlsxWorkbookManifest } from './internal/workbook-manifest';
+import { loadXlsxSharedStrings } from './internal/workbook-tables';
 import type {
   XlsxDiagnostic,
   XlsxDocument,
@@ -112,8 +113,18 @@ export async function parseXlsxWithDiagnostics(
   const limits = resolveXlsxResourceLimits(options.limits);
   const zip = await openXlsxPackage(input, diagnostics, limits);
   const reader = new XlsxPartReader(zip, diagnostics, limits);
-  const discovery = await discoverXlsxWorkbook(reader, limits);
-  const manifest = await parseXlsxWorkbookManifest(discovery, reader, limits);
+  let discovery: Awaited<ReturnType<typeof discoverXlsxWorkbook>>;
+  let manifest: Awaited<ReturnType<typeof parseXlsxWorkbookManifest>>;
+  try {
+    discovery = await discoverXlsxWorkbook(reader, limits);
+    await loadXlsxSharedStrings(discovery, reader, limits);
+    manifest = await parseXlsxWorkbookManifest(discovery, reader, limits);
+  } catch (error) {
+    if (error instanceof XlsxResourceLimitError) {
+      failResource(error, diagnostics);
+    }
+    throw error;
+  }
   const document: XlsxDocument = {
     sheets: manifest.sheets,
     styles: [],

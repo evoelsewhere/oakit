@@ -54,7 +54,7 @@ export interface XlsxSharedString {
 }
 
 export interface XlsxSharedStringTable {
-  part: string;
+  part: string | null;
   values: readonly XlsxSharedString[];
 }
 
