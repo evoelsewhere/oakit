@@ -255,7 +255,7 @@ export async function parse(
     parseOptions.errorMode,
     diagnostics,
   );
-  const { themeContent, themeColors } = await getTheme(xmlReader);
+  const { themeFilename, themeColors } = await getTheme(xmlReader);
   const usedFonts = getUsedFonts(presentation);
 
   for (const filename of slideFilenames) {
@@ -263,7 +263,7 @@ export async function parse(
       zip,
       xmlReader,
       filename,
-      themeContent,
+      themeFilename,
       defaultTextStyle,
       loadedImages,
       loadedVideos,
@@ -443,15 +443,19 @@ async function getTheme(xmlReader: PptxXmlReader) {
     isRelationshipType(attributes(relationship).Type, 'theme'),
   );
   let themeContent: XmlLookupValue | null = null;
+  let themeFilename: string | undefined;
   const themeAttributes = attributes(themeRelationship);
   const themeUri = themeAttributes.Target;
   if (themeUri) {
-    const themeFilename = xmlReader.resolveRelationshipTarget(
+    const resolvedThemeFilename = xmlReader.resolveRelationshipTarget(
       presentationPart,
       themeUri,
       themeAttributes.TargetMode,
     );
-    if (themeFilename) themeContent = await xmlReader.read(themeFilename);
+    if (resolvedThemeFilename) {
+      themeFilename = resolvedThemeFilename;
+      themeContent = await xmlReader.read(themeFilename);
+    }
   }
 
   const themeColors: string[] = [];
@@ -469,7 +473,7 @@ async function getTheme(xmlReader: PptxXmlReader) {
     if (color) themeColors.push(color);
   }
 
-  return { themeContent, themeColors };
+  return { themeFilename, themeColors };
 }
 
 const STANDARD_RELATIONSHIP_PREFIX =
@@ -516,7 +520,7 @@ async function processSingleSlide(
   zip: JSZip,
   xmlReader: PptxXmlReader,
   slideFilename: string,
-  themeContent: XmlLookupValue | null,
+  presentationThemeFilename: string | undefined,
   defaultTextStyle: XmlLookupValue,
   loadedImages: Record<string, PptxMediaData>,
   loadedVideos: Record<string, PptxMediaData>,
@@ -529,7 +533,7 @@ async function processSingleSlide(
   let noteFilename = '';
   let layoutFilename = '';
   let masterFilename = '';
-  let themeFilename = '';
+  let themeFilename = presentationThemeFilename;
   const slideResObj: PptxRelationshipMap = {};
   const layoutResObj: PptxRelationshipMap = {};
   const masterResObj: PptxRelationshipMap = {};
@@ -611,27 +615,23 @@ async function processSingleSlide(
     }
   }
 
-  let currentThemeContent = themeContent;
-  if (!currentThemeContent && themeFilename) {
-    currentThemeContent = await xmlReader.read(themeFilename);
-  }
+  const currentThemeContent = themeFilename
+    ? await xmlReader.read(themeFilename)
+    : emptyXmlNode();
   if (themeFilename) {
-    const themeName = themeFilename.split('/').pop();
-    if (themeName) {
-      for (const relationship of await getRelationships(
-        xmlReader,
+    for (const relationship of await getRelationships(
+      xmlReader,
+      themeFilename,
+    )) {
+      const values = attributes(relationship);
+      if (!values.Target) continue;
+      const target = xmlReader.resolveRelationshipTarget(
         themeFilename,
-      )) {
-        const values = attributes(relationship);
-        if (!values.Target) continue;
-        const target = xmlReader.resolveRelationshipTarget(
-          themeFilename,
-          values.Target,
-          values.TargetMode,
-        );
-        if (!target) continue;
-        addRelationship(themeResObj, relationship, target);
-      }
+        values.Target,
+        values.TargetMode,
+      );
+      if (!target) continue;
+      addRelationship(themeResObj, relationship, target);
     }
   }
 
@@ -667,7 +667,7 @@ async function processSingleSlide(
     slideMasterTextStyles,
     layoutResObj,
     masterResObj,
-    themeContent: currentThemeContent ?? emptyXmlNode(),
+    themeContent: currentThemeContent,
     themeResObj,
     diagramFileCache: {},
     defaultTextStyle,
