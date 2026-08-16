@@ -3,18 +3,24 @@ import path from 'node:path';
 import {
   parsePptxWithDiagnostics,
   PptxParseError,
+  PptxRenderError,
+  renderPptxToSvg,
   type PptxDiagnostic,
 } from '../formats/pptx';
+import { renderPptxToPng } from '../formats/pptx/node';
 
 export interface OakitCliIo {
+  createDirectory(dirname: string): Promise<void>;
   readFile(filename: string): Promise<Uint8Array>;
   readStdin(): Promise<Uint8Array>;
+  writeBinaryFile(filename: string, value: Uint8Array): Promise<void>;
   writeFile(filename: string, value: string): Promise<void>;
   writeStderr(value: string): void;
   writeStdout(value: string): void;
 }
 
 type OakitCliFormat = 'pptx';
+type OakitRenderFormat = 'png' | 'svg';
 
 interface ConvertCommand {
   action: 'convert';
@@ -27,7 +33,30 @@ interface ConvertCommand {
   strict: boolean;
 }
 
-type CliCommand = ConvertCommand | { action: 'help' } | { action: 'version' };
+interface RenderCommand {
+  action: 'render';
+  format: OakitCliFormat;
+  input: string;
+  output: string;
+  renderFormat: OakitRenderFormat;
+  scale: number;
+  slideNumbers?: readonly number[];
+}
+
+type CliCommand =
+  ConvertCommand | RenderCommand | { action: 'help' } | { action: 'version' };
+
+export interface OakitCliOperations {
+  parsePptx: typeof parsePptxWithDiagnostics;
+  renderPng: typeof renderPptxToPng;
+  renderSvg: typeof renderPptxToSvg;
+}
+
+const DEFAULT_OPERATIONS: OakitCliOperations = {
+  parsePptx: parsePptxWithDiagnostics,
+  renderPng: renderPptxToPng,
+  renderSvg: renderPptxToSvg,
+};
 
 class CliUsageError extends Error {
   readonly code: string;
@@ -39,16 +68,26 @@ class CliUsageError extends Error {
 }
 
 const HELP = `Usage: oakit [convert] <input.pptx|-> [options]
+       oakit render <input.pptx|-> --output <directory> [options]
 
 Convert a PowerPoint Open XML presentation into deterministic JSON.
+Render agent-readable SVG or PNG slide previews without an Office runtime.
 
-Options:
+Convert options:
   -o, --output <file>          Write JSON to a file instead of stdout
-      --format <pptx>          Input format; required when reading stdin
       --strict                 Reject malformed optional OOXML content
       --pretty                 Format JSON with two-space indentation
       --document-only          Omit format metadata and diagnostics
       --image-mode <mode>      Image output: none (default) or base64
+
+Render options:
+  -o, --output <directory>     Write slide files and manifest.json
+      --render-format <format> png (default) or svg
+      --slides <list>          One-based comma-separated slide numbers
+      --scale <number>         Positive decimal output scale (default: 1)
+
+Shared options:
+      --format <pptx>          Input format; required when reading stdin
   -h, --help                   Show this help
   -v, --version                Show the installed OAKit version
 `;
@@ -92,34 +131,87 @@ function inferFormat(input: string, explicitFormat?: string): OakitCliFormat {
   return normalizeFormat(path.extname(input).slice(1));
 }
 
+function renderFormat(value: string): OakitRenderFormat {
+  if (value !== 'png' && value !== 'svg') {
+    throw new CliUsageError(
+      'invalid-render-format',
+      `Unsupported render format: ${value}`,
+    );
+  }
+  return value;
+}
+
+function renderSlideNumbers(value: string): readonly number[] {
+  const tokens = value.split(',');
+  if (tokens.some((token) => !/^[1-9]\d*$/.test(token))) {
+    throw new CliUsageError(
+      'invalid-slides',
+      'Render slides must be unique positive safe integers',
+    );
+  }
+  const numbers = tokens.map((token) => Number(token));
+  if (
+    numbers.some((number) => !Number.isSafeInteger(number)) ||
+    new Set(numbers).size !== numbers.length
+  ) {
+    throw new CliUsageError(
+      'invalid-slides',
+      'Render slides must be unique positive safe integers',
+    );
+  }
+  return numbers;
+}
+
+function renderScale(value: string): number {
+  if (!/^(?:0|[1-9]\d*)(?:\.\d+)?$/.test(value)) {
+    throw new CliUsageError(
+      'invalid-scale',
+      'Render scale must be a positive finite number',
+    );
+  }
+  const scale = Number(value);
+  if (!Number.isFinite(scale) || scale <= 0) {
+    throw new CliUsageError(
+      'invalid-scale',
+      'Render scale must be a positive finite number',
+    );
+  }
+  return scale;
+}
+
 function parseCommand(args: readonly string[]): CliCommand {
   if (args.includes('--help') || args.includes('-h')) return { action: 'help' };
   if (args.includes('--version') || args.includes('-v')) {
     return { action: 'version' };
   }
 
-  const values = args[0] === 'convert' ? args.slice(1) : [...args];
+  const action = args[0] === 'render' ? 'render' : 'convert';
+  const values =
+    args[0] === 'convert' || args[0] === 'render' ? args.slice(1) : [...args];
   const inputs: string[] = [];
   let documentOnly = false;
   let explicitFormat: string | undefined;
   let imageMode: 'base64' | 'none' = 'none';
   let output: string | undefined;
   let pretty = false;
+  let selectedRenderFormat: OakitRenderFormat = 'png';
+  let scale = 1;
+  let slideNumbers: readonly number[] | undefined;
   let strict = false;
 
   const iterator = values.values();
   for (const value of iterator) {
-    if (value === '--document-only') {
+    if (value === '--document-only' && action === 'convert') {
       documentOnly = true;
-    } else if (value === '--strict') {
+    } else if (value === '--strict' && action === 'convert') {
       strict = true;
-    } else if (value === '--pretty') {
+    } else if (value === '--pretty' && action === 'convert') {
       pretty = true;
     } else if (value === '--output' || value === '-o') {
       output = optionValue(iterator, value);
     } else if (value === '--format') {
       explicitFormat = optionValue(iterator, value);
-    } else if (value === '--image-mode') {
+    } else if (value === '--image-mode' && action === 'convert') {
       const selectedMode = optionValue(iterator, value);
       if (selectedMode !== 'none' && selectedMode !== 'base64') {
         throw new CliUsageError(
@@ -128,6 +220,12 @@ function parseCommand(args: readonly string[]): CliCommand {
         );
       }
       imageMode = selectedMode;
+    } else if (value === '--render-format' && action === 'render') {
+      selectedRenderFormat = renderFormat(optionValue(iterator, value));
+    } else if (value === '--slides' && action === 'render') {
+      slideNumbers = renderSlideNumbers(optionValue(iterator, value));
+    } else if (value === '--scale' && action === 'render') {
+      scale = renderScale(optionValue(iterator, value));
     } else if (value === '-' || !value.startsWith('-')) {
       inputs.push(value);
     } else {
@@ -154,14 +252,35 @@ function parseCommand(args: readonly string[]): CliCommand {
   ) {
     throw new CliUsageError(
       'output-overwrites-input',
-      'The JSON output path must not overwrite the input document',
+      action === 'render'
+        ? 'The render output directory must not overwrite the input document'
+        : 'The JSON output path must not overwrite the input document',
     );
+  }
+
+  const format = inferFormat(input, explicitFormat);
+  if (action === 'render') {
+    if (output === undefined || output === '-') {
+      throw new CliUsageError(
+        'render-output-required',
+        'Rendering requires an output directory',
+      );
+    }
+    return {
+      action,
+      format,
+      input,
+      output,
+      renderFormat: selectedRenderFormat,
+      scale,
+      ...(slideNumbers === undefined ? {} : { slideNumbers }),
+    };
   }
 
   return {
     action: 'convert',
     documentOnly,
-    format: inferFormat(input, explicitFormat),
+    format,
     imageMode,
     input,
     ...(output === undefined ? {} : { output }),
@@ -187,7 +306,7 @@ function errorJson(
 async function convert(
   command: ConvertCommand,
   io: OakitCliIo,
-  parsePptx: typeof parsePptxWithDiagnostics,
+  operations: OakitCliOperations,
 ): Promise<number> {
   let input: Uint8Array;
   try {
@@ -203,7 +322,7 @@ async function convert(
 
   let json: string;
   try {
-    const result = await parsePptx(input, {
+    const result = await operations.parsePptx(input, {
       audioMode: 'none',
       errorMode: command.strict ? 'strict' : 'tolerant',
       imageMode: command.imageMode,
@@ -239,12 +358,105 @@ async function convert(
   }
 }
 
+async function renderSlides(
+  command: RenderCommand,
+  io: OakitCliIo,
+  operations: OakitCliOperations,
+): Promise<number> {
+  let input: Uint8Array;
+  try {
+    input =
+      command.input === '-'
+        ? await io.readStdin()
+        : await io.readFile(command.input);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    io.writeStderr(errorJson('input-read-failed', message));
+    return 1;
+  }
+
+  let result:
+    | Awaited<ReturnType<OakitCliOperations['renderPng']>>
+    | Awaited<ReturnType<OakitCliOperations['renderSvg']>>;
+  try {
+    const options = {
+      scale: command.scale,
+      ...(command.slideNumbers === undefined
+        ? {}
+        : { slideNumbers: command.slideNumbers }),
+    };
+    result =
+      command.renderFormat === 'png'
+        ? await operations.renderPng(input, options)
+        : await operations.renderSvg(input, options);
+  } catch (error) {
+    if (error instanceof PptxParseError) {
+      io.writeStderr(
+        errorJson(error.diagnostic.code, error.message, error.diagnostic),
+      );
+    } else if (error instanceof PptxRenderError) {
+      io.writeStderr(errorJson(error.code, error.message));
+    } else {
+      const message = error instanceof Error ? error.message : String(error);
+      io.writeStderr(errorJson('render-failed', message));
+    }
+    return 1;
+  }
+
+  const slides = result.slides.map((slide) => {
+    const filename = `slide-${slide.slideNumber}.${slide.format}`;
+    return {
+      data: slide.data,
+      manifest: {
+        byteLength: slide.data.byteLength,
+        file: filename,
+        format: slide.format,
+        height: slide.height,
+        mimeType: slide.mimeType,
+        slideNumber: slide.slideNumber,
+        warnings: slide.warnings,
+        width: slide.width,
+      },
+    };
+  });
+
+  try {
+    await io.createDirectory(command.output);
+    for (const slide of slides) {
+      await io.writeBinaryFile(
+        path.join(command.output, slide.manifest.file),
+        slide.data,
+      );
+    }
+    await io.writeFile(
+      path.join(command.output, 'manifest.json'),
+      `${JSON.stringify(
+        {
+          format: 'pptx-render',
+          renderFormat: command.renderFormat,
+          scale: command.scale,
+          slides: slides.map(({ manifest }) => manifest),
+          source: command.input === '-' ? 'stdin' : command.input,
+        },
+        null,
+        2,
+      )}\n`,
+    );
+    return 0;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    io.writeStderr(errorJson('output-write-failed', message));
+    return 1;
+  }
+}
+
 export async function runOakitCli(
   args: readonly string[],
   io: OakitCliIo,
   version: string,
-  parsePptx: typeof parsePptxWithDiagnostics = parsePptxWithDiagnostics,
+  operationOverrides: Partial<OakitCliOperations> = {},
 ): Promise<number> {
+  const operations = { ...DEFAULT_OPERATIONS, ...operationOverrides };
   let command: CliCommand;
   try {
     command = parseCommand(args);
@@ -262,5 +474,7 @@ export async function runOakitCli(
     io.writeStdout(`oakit ${version}\n`);
     return 0;
   }
-  return convert(command, io, parsePptx);
+  return command.action === 'render'
+    ? renderSlides(command, io, operations)
+    : convert(command, io, operations);
 }

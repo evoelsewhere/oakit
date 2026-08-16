@@ -15,8 +15,10 @@ function createFixture(runCli: NodeCliLaunchDependencies['runCli']): {
 } {
   const stderr: string[] = [];
   const io: OakitCliIo = {
+    createDirectory: vi.fn(() => Promise.resolve()),
     readFile: vi.fn(() => Promise.resolve(new Uint8Array())),
     readStdin: vi.fn(() => Promise.resolve(new Uint8Array())),
+    writeBinaryFile: vi.fn(() => Promise.resolve()),
     writeFile: vi.fn(() => Promise.resolve()),
     writeStderr(value) {
       stderr.push(value);

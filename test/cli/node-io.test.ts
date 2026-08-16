@@ -1,3 +1,7 @@
+import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+
 import { describe, expect, it, vi } from 'vitest';
 
 import {
@@ -14,8 +18,10 @@ function createDependencies(
   stdin: AsyncIterable<unknown> = chunks([]),
 ): NodeCliDependencies {
   return {
+    createDirectory: vi.fn(() => Promise.resolve()),
     readFile: vi.fn(() => Promise.resolve(Uint8Array.from([1, 2, 3]))),
     stdin,
+    writeBinaryFile: vi.fn(() => Promise.resolve()),
     writeFile: vi.fn(() => Promise.resolve()),
     writeStderr: vi.fn(),
     writeStdout: vi.fn(),
@@ -23,6 +29,33 @@ function createDependencies(
 }
 
 describe('Node CLI I/O adapter', () => {
+  it('creates nested directories and writes binary bytes through the real Node adapter', async () => {
+    const temporaryDirectory = await mkdtemp(join(tmpdir(), 'oakit-node-io-'));
+    try {
+      const outputDirectory = join(temporaryDirectory, 'nested', 'previews');
+      const outputFile = join(outputDirectory, 'slide-1.png');
+      const bytes = Uint8Array.from([137, 80, 78, 71]);
+      const io = createNodeCliIo();
+
+      await io.createDirectory(outputDirectory);
+      await io.writeBinaryFile(outputFile, bytes);
+
+      expect(Array.from(await readFile(outputFile))).toEqual(Array.from(bytes));
+    } finally {
+      await rm(temporaryDirectory, { force: true, recursive: true });
+    }
+  });
+
+  it('creates output directories through the injected filesystem', async () => {
+    const dependencies = createDependencies();
+    const io = createNodeCliIo(dependencies);
+
+    await expect(io.createDirectory('previews')).resolves.toBeUndefined();
+    expect(dependencies.createDirectory).toHaveBeenCalledExactlyOnceWith(
+      'previews',
+    );
+  });
+
   it('forwards file reads and returns their bytes', async () => {
     const dependencies = createDependencies();
     const io = createNodeCliIo(dependencies);
@@ -73,6 +106,20 @@ describe('Node CLI I/O adapter', () => {
       'deck.json',
       '{"ok":true}\n',
       'utf8',
+    );
+  });
+
+  it('writes binary output without text encoding', async () => {
+    const dependencies = createDependencies();
+    const io = createNodeCliIo(dependencies);
+    const bytes = Uint8Array.from([137, 80, 78, 71]);
+
+    await expect(io.writeBinaryFile('slide-1.png', bytes)).resolves.toBe(
+      undefined,
+    );
+    expect(dependencies.writeBinaryFile).toHaveBeenCalledExactlyOnceWith(
+      'slide-1.png',
+      bytes,
     );
   });
 

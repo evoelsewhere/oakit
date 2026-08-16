@@ -20,6 +20,11 @@ class MemoryCliIo implements OakitCliIo {
   stdin: Uint8Array<ArrayBufferLike> = new Uint8Array();
   writeError?: Error;
 
+  createDirectory(): Promise<void> {
+    if (this.writeError !== undefined) return Promise.reject(this.writeError);
+    return Promise.resolve();
+  }
+
   readFile(filename: string): Promise<Uint8Array> {
     if (this.readError !== undefined) return Promise.reject(this.readError);
     const value = this.files.get(filename);
@@ -35,6 +40,12 @@ class MemoryCliIo implements OakitCliIo {
 
   writeStderr(value: string): void {
     this.stderr += value;
+  }
+
+  writeBinaryFile(filename: string, value: Uint8Array): Promise<void> {
+    if (this.writeError !== undefined) return Promise.reject(this.writeError);
+    this.files.set(filename, Uint8Array.from(value));
+    return Promise.resolve();
   }
 
   writeStdout(value: string): void {
@@ -298,7 +309,7 @@ describe('oakit CLI contract', () => {
       () => Promise.reject(new Error('unexpected parser failure'));
 
     await expect(
-      runOakitCli(['deck.pptx'], io, '1.2.3', failParse),
+      runOakitCli(['deck.pptx'], io, '1.2.3', { parsePptx: failParse }),
     ).resolves.toBe(1);
     expect(parsedJson(io.stderr)).toEqual({
       error: {

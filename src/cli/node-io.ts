@@ -1,10 +1,15 @@
-import { readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 
 import type { OakitCliIo } from './run';
 
 export interface NodeCliDependencies {
+  readonly createDirectory: (dirname: string) => Promise<void>;
   readonly stdin: AsyncIterable<unknown>;
   readonly readFile: (filename: string) => Promise<Uint8Array>;
+  readonly writeBinaryFile: (
+    filename: string,
+    value: Uint8Array,
+  ) => Promise<void>;
   readonly writeFile: (
     filename: string,
     value: string,
@@ -41,8 +46,14 @@ async function readStdin(stdin: AsyncIterable<unknown>): Promise<Uint8Array> {
 }
 
 const nodeCliDependencies: NodeCliDependencies = {
+  async createDirectory(dirname) {
+    await mkdir(dirname, { recursive: true });
+  },
   readFile,
   stdin: process.stdin,
+  async writeBinaryFile(filename, value) {
+    await writeFile(filename, value);
+  },
   writeFile,
   writeStderr: process.stderr.write.bind(process.stderr),
   writeStdout: process.stdout.write.bind(process.stdout),
@@ -52,11 +63,17 @@ export function createNodeCliIo(
   dependencies: NodeCliDependencies = nodeCliDependencies,
 ): OakitCliIo {
   return {
+    async createDirectory(dirname) {
+      await dependencies.createDirectory(dirname);
+    },
     async readFile(filename) {
       return dependencies.readFile(filename);
     },
     async readStdin() {
       return readStdin(dependencies.stdin);
+    },
+    async writeBinaryFile(filename, value) {
+      await dependencies.writeBinaryFile(filename, value);
     },
     async writeFile(filename, value) {
       await dependencies.writeFile(filename, value, 'utf8');
