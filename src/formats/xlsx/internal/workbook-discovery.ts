@@ -1,6 +1,9 @@
 import type { XmlLookupValue } from '../../../common/xml/tree';
 import { XlsxParseError } from '../errors';
-import { parseXlsxContentTypes } from './content-types';
+import {
+  parseXlsxContentTypes,
+  type XlsxContentTypeTable,
+} from './content-types';
 import { XlsxPartReader } from './part-reader';
 import { parseXlsxRelationships, type XlsxRelationship } from './relationships';
 import type { ResolvedXlsxResourceLimits } from './resource-limits';
@@ -28,6 +31,7 @@ const ACTIVE_OR_BINARY_MAIN_CONTENT_TYPES = new Set([
 type XmlRecord = Record<string, unknown>;
 
 export interface XlsxWorkbookDiscovery {
+  contentTypes: XlsxContentTypeTable;
   dialect: keyof typeof XLSX_SPREADSHEET_NAMESPACES;
   part: string;
   root: XmlLookupValue;
@@ -139,6 +143,7 @@ export async function discoverXlsxWorkbook(
     required: true,
   });
   return {
+    contentTypes,
     dialect: workbookDialect(root, mainRelationship.target),
     part: mainRelationship.target,
     root,

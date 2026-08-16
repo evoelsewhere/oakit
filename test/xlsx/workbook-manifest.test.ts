@@ -1,0 +1,567 @@
+import JSZip from 'jszip';
+import { describe, expect, it } from 'vitest';
+
+import { XlsxParseError } from '../../src/formats/xlsx/errors';
+import { XlsxPartReader } from '../../src/formats/xlsx/internal/part-reader';
+import {
+  defaultXlsxResourceLimits,
+  type ResolvedXlsxResourceLimits,
+  XlsxResourceLimitError,
+} from '../../src/formats/xlsx/internal/resource-limits';
+import { discoverXlsxWorkbook } from '../../src/formats/xlsx/internal/workbook-discovery';
+import { parseXlsxWorkbookManifest } from '../../src/formats/xlsx/internal/workbook-manifest';
+import {
+  createIndependentXlsx,
+  independentWorkbook,
+  XLSX_CONTENT_TYPES_NS,
+  XLSX_OFFICE_REL_NS,
+  XLSX_OFFICE_REL_TYPE,
+  XLSX_PACKAGE_REL_NS,
+  XLSX_SPREADSHEET_NS,
+  type XlsxBlackBoxOverrides,
+} from '../black-box/xlsx-package';
+
+const STRICT_SPREADSHEET_NS = 'http://purl.oclc.org/ooxml/spreadsheetml/main';
+const STRICT_OFFICE_REL_NS =
+  'http://purl.oclc.org/ooxml/officeDocument/relationships';
+const WORKSHEET_CONTENT_TYPE =
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml';
+const CHART_SHEET_CONTENT_TYPE =
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.chartsheet+xml';
+
+function workbookRelationships(entries: string): string {
+  return `<Relationships xmlns="${XLSX_PACKAGE_REL_NS}">${entries}</Relationships>`;
+}
+
+function relationship(
+  id: string,
+  type: string,
+  target: string,
+  mode?: string,
+): string {
+  return `<Relationship Id="${id}" Type="${type}" Target="${target}"${
+    mode === undefined ? '' : ` TargetMode="${mode}"`
+  }/>`;
+}
+
+function contentTypes(entries: string): string {
+  return `<Types xmlns="${XLSX_CONTENT_TYPES_NS}">
+    <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+    <Default Extension="xml" ContentType="application/xml"/>
+    <Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
+    ${entries}
+  </Types>`;
+}
+
+function worksheet(namespace = XLSX_SPREADSHEET_NS): string {
+  return `<worksheet xmlns="${namespace}"><sheetData/></worksheet>`;
+}
+
+function chartSheet(namespace = XLSX_SPREADSHEET_NS): string {
+  return `<chartsheet xmlns="${namespace}"><sheetViews/></chartsheet>`;
+}
+
+async function manifest(
+  overrides: XlsxBlackBoxOverrides = {},
+  limitOverrides: Partial<ResolvedXlsxResourceLimits> = {},
+) {
+  const zip = await JSZip.loadAsync(await createIndependentXlsx(overrides));
+  const limits = { ...defaultXlsxResourceLimits(), ...limitOverrides };
+  const reader = new XlsxPartReader(zip, [], limits);
+  const discovery = await discoverXlsxWorkbook(reader, limits);
+  return parseXlsxWorkbookManifest(discovery, reader, limits);
+}
+
+async function captureManifestError(
+  overrides: XlsxBlackBoxOverrides,
+): Promise<XlsxParseError> {
+  try {
+    await manifest(overrides);
+  } catch (error) {
+    expect(error).toBeInstanceOf(XlsxParseError);
+    return error as XlsxParseError;
+  }
+  throw new Error('Expected workbook manifest parsing to fail');
+}
+
+describe('XLSX workbook manifest', () => {
+  it('returns the conventional worksheet and default workbook properties', async () => {
+    await expect(manifest()).resolves.toEqual({
+      properties: {
+        calculation: {
+          forceFullCalculation: false,
+          fullCalculationOnLoad: false,
+          mode: 'automatic',
+        },
+        dateSystem: '1900',
+        definedNames: [],
+      },
+      sheets: [
+        {
+          columns: [],
+          drawings: [],
+          index: 0,
+          kind: 'worksheet',
+          mergedRanges: [],
+          name: 'Sheet1',
+          payload: 'full-sheet',
+          rows: [],
+          state: 'visible',
+          tables: [],
+        },
+      ],
+    });
+  });
+
+  it('applies property defaults when workbookPr and calcPr are absent', async () => {
+    const result = await manifest({
+      'xl/workbook.xml': `<workbook xmlns="${XLSX_SPREADSHEET_NS}" xmlns:r="${XLSX_OFFICE_REL_NS}">
+        <sheets><sheet name="Defaults" sheetId="1" r:id="rIdSheet1"/></sheets>
+      </workbook>`,
+    });
+
+    expect(result.properties).toEqual({
+      calculation: {
+        forceFullCalculation: false,
+        fullCalculationOnLoad: false,
+        mode: 'automatic',
+      },
+      dateSystem: '1900',
+      definedNames: [],
+    });
+  });
+
+  it('preserves authored order, sheet kinds, states, and calculation flags', async () => {
+    const workbook = `
+      <workbook xmlns="${XLSX_SPREADSHEET_NS}" xmlns:r="${XLSX_OFFICE_REL_NS}">
+        <workbookPr date1904="true"/>
+        <sheets>
+          <sheet name="Visible" sheetId="7" r:id="rId1"/>
+          <sheet name="Chart" sheetId="9" state="hidden" r:id="rId2"/>
+          <sheet name="Archive" sheetId="12" state="veryHidden" r:id="rId3"/>
+        </sheets>
+        <calcPr calcMode="manual" forceFullCalc="1" fullCalcOnLoad="true"/>
+      </workbook>`;
+    const relBase = XLSX_OFFICE_REL_TYPE;
+    const result = await manifest({
+      '[Content_Types].xml': contentTypes(`
+        <Override PartName="/xl/worksheets/visible.xml" ContentType="${WORKSHEET_CONTENT_TYPE}"/>
+        <Override PartName="/xl/chartsheets/chart.xml" ContentType="${CHART_SHEET_CONTENT_TYPE}"/>
+        <Override PartName="/xl/worksheets/archive.xml" ContentType="${WORKSHEET_CONTENT_TYPE}"/>`),
+      'xl/_rels/workbook.xml.rels': workbookRelationships(`
+        ${relationship('rId1', `${relBase}worksheet`, 'worksheets/visible.xml')}
+        ${relationship('rId2', `${relBase}chartsheet`, 'chartsheets/chart.xml')}
+        ${relationship('rId3', `${relBase}worksheet`, 'worksheets/archive.xml')}`),
+      'xl/chartsheets/chart.xml': chartSheet(),
+      'xl/workbook.xml': workbook,
+      'xl/worksheets/archive.xml': worksheet(),
+      'xl/worksheets/sheet1.xml': null,
+      'xl/worksheets/visible.xml': worksheet(),
+    });
+
+    expect(result.properties).toEqual({
+      calculation: {
+        forceFullCalculation: true,
+        fullCalculationOnLoad: true,
+        mode: 'manual',
+      },
+      dateSystem: '1904',
+      definedNames: [],
+    });
+    expect(
+      result.sheets.map(({ index, kind, name, state }) => ({
+        index,
+        kind,
+        name,
+        state,
+      })),
+    ).toEqual([
+      { index: 0, kind: 'worksheet', name: 'Visible', state: 'visible' },
+      { index: 1, kind: 'chart-sheet', name: 'Chart', state: 'hidden' },
+      { index: 2, kind: 'worksheet', name: 'Archive', state: 'very-hidden' },
+    ]);
+  });
+
+  it('parses prefixed Strict workbook and sheet roots', async () => {
+    const strictRelBase = `${STRICT_OFFICE_REL_NS}/`;
+    const strictWorkbook = `<s:workbook xmlns:s="${STRICT_SPREADSHEET_NS}" xmlns:q="${STRICT_OFFICE_REL_NS}">
+      <s:workbookPr date1904="false"/>
+      <s:sheets>
+        <s:sheet name="Strict data" sheetId="1" q:id="sheet"/>
+        <s:sheet name="Strict chart" sheetId="2" q:id="chart"/>
+      </s:sheets>
+      <s:calcPr calcMode="autoNoTable" forceFullCalc="false" fullCalcOnLoad="0"/>
+    </s:workbook>`;
+    const strictSheet = `<s:worksheet xmlns:s="${STRICT_SPREADSHEET_NS}"><s:sheetData/></s:worksheet>`;
+    const strictChart = `<s:chartsheet xmlns:s="${STRICT_SPREADSHEET_NS}"/>`;
+    const result = await manifest({
+      '[Content_Types].xml': contentTypes(`
+        <Override PartName="/xl/worksheets/strict.xml" ContentType="${WORKSHEET_CONTENT_TYPE}"/>
+        <Override PartName="/xl/chartsheets/strict.xml" ContentType="${CHART_SHEET_CONTENT_TYPE}"/>`),
+      '_rels/.rels': `<Relationships xmlns="${XLSX_PACKAGE_REL_NS}">${relationship(
+        'main',
+        `${strictRelBase}officeDocument`,
+        'xl/workbook.xml',
+      )}</Relationships>`,
+      'xl/_rels/workbook.xml.rels': workbookRelationships(`
+        ${relationship('sheet', `${strictRelBase}worksheet`, 'worksheets/strict.xml')}
+        ${relationship('chart', `${strictRelBase}chartsheet`, 'chartsheets/strict.xml')}`),
+      'xl/chartsheets/strict.xml': strictChart,
+      'xl/sharedStrings.xml': null,
+      'xl/styles.xml': null,
+      'xl/workbook.xml': strictWorkbook,
+      'xl/worksheets/sheet1.xml': null,
+      'xl/worksheets/strict.xml': strictSheet,
+    });
+
+    expect(result.properties.calculation.mode).toBe('automatic-except-tables');
+    expect(result.sheets.map((sheet) => sheet.kind)).toEqual([
+      'worksheet',
+      'chart-sheet',
+    ]);
+  });
+
+  it('accepts exactly maxWorksheets and rejects one over', async () => {
+    const workbook = independentWorkbook(`
+      <sheet name="One" sheetId="1" r:id="rId1"/>
+      <sheet name="Two" sheetId="2" r:id="rId2"/>`);
+    const overrides = {
+      '[Content_Types].xml': contentTypes(`
+        <Override PartName="/xl/worksheets/sheet1.xml" ContentType="${WORKSHEET_CONTENT_TYPE}"/>
+        <Override PartName="/xl/worksheets/sheet2.xml" ContentType="${WORKSHEET_CONTENT_TYPE}"/>`),
+      'xl/_rels/workbook.xml.rels': workbookRelationships(`
+        ${relationship('rId1', `${XLSX_OFFICE_REL_TYPE}worksheet`, 'worksheets/sheet1.xml')}
+        ${relationship('rId2', `${XLSX_OFFICE_REL_TYPE}worksheet`, 'worksheets/sheet2.xml')}`),
+      'xl/workbook.xml': workbook,
+      'xl/worksheets/sheet2.xml': worksheet(),
+    };
+
+    await expect(
+      manifest(overrides, { maxWorksheets: 2 }),
+    ).resolves.toMatchObject({
+      sheets: [{ name: 'One' }, { name: 'Two' }],
+    });
+    await expect(
+      manifest(overrides, { maxWorksheets: 1 }),
+    ).rejects.toMatchObject({
+      actual: 2,
+      limit: 1,
+      limitName: 'maxWorksheets',
+      name: 'XlsxResourceLimitError',
+      part: 'xl/workbook.xml',
+    } satisfies Partial<XlsxResourceLimitError>);
+  });
+
+  it.each([
+    'a'.repeat(31),
+    'Space allowed',
+    `High ${String.fromCodePoint(0x80)}`,
+  ])('accepts valid sheet-name boundary %s', async (name) => {
+    const result = await manifest({
+      'xl/workbook.xml': independentWorkbook(
+        `<sheet name="${name}" sheetId="4294967295" state="visible" r:id="rIdSheet1"/>`,
+      ),
+    });
+
+    expect(result.sheets[0]).toMatchObject({ name, state: 'visible' });
+  });
+
+  it.each(['\\', '/', ':', '?', '*', '[', ']', String.fromCodePoint(0x7f)])(
+    'rejects prohibited sheet-name character %#',
+    async (character) => {
+      const error = await captureManifestError({
+        'xl/workbook.xml': independentWorkbook(
+          `<sheet name="Bad${character}name" sheetId="1" r:id="rIdSheet1"/>`,
+        ),
+      });
+
+      expect(error.diagnostic.message).toBe(
+        'Workbook sheet has an invalid name',
+      );
+    },
+  );
+
+  it.each(['01', '+1', '1.0', '4294967296', '9007199254740992'])(
+    'rejects invalid sheetId lexical form %s',
+    async (sheetId) => {
+      const error = await captureManifestError({
+        'xl/workbook.xml': independentWorkbook(
+          `<sheet name="Data" sheetId="${sheetId}" r:id="rIdSheet1"/>`,
+        ),
+      });
+
+      expect(error.diagnostic.message).toBe(
+        'Workbook sheet has an invalid sheetId',
+      );
+    },
+  );
+
+  it.each([
+    [
+      { 'xl/_rels/workbook.xml.rels': null },
+      'Required XLSX part is missing: xl/_rels/workbook.xml.rels',
+      'missing-required-part',
+      'xl/_rels/workbook.xml.rels',
+    ],
+    [
+      { 'xl/workbook.xml': `<workbook xmlns="${XLSX_SPREADSHEET_NS}"/>` },
+      'Workbook sheets collection is missing',
+      'invalid-document-structure',
+      'xl/workbook.xml',
+    ],
+    [
+      {
+        'xl/workbook.xml': `<workbook xmlns="${XLSX_SPREADSHEET_NS}"><sheets/></workbook>`,
+      },
+      'Workbook must contain at least one sheet',
+      'invalid-document-structure',
+      'xl/workbook.xml',
+    ],
+    [
+      {
+        'xl/workbook.xml': `<workbook xmlns="${XLSX_SPREADSHEET_NS}"><sheets><sheet>text</sheet></sheets></workbook>`,
+      },
+      'Workbook must contain at least one sheet',
+      'invalid-document-structure',
+      'xl/workbook.xml',
+    ],
+    [
+      {
+        'xl/workbook.xml': independentWorkbook(
+          '<sheet sheetId="1" r:id="rIdSheet1"/>',
+        ),
+      },
+      'Workbook sheet has an invalid name',
+      'invalid-document-structure',
+      'xl/workbook.xml',
+    ],
+    [
+      {
+        'xl/workbook.xml': independentWorkbook(
+          '<sheet name="" sheetId="1" r:id="rIdSheet1"/>',
+        ),
+      },
+      'Workbook sheet has an invalid name',
+      'invalid-document-structure',
+      'xl/workbook.xml',
+    ],
+    [
+      {
+        'xl/workbook.xml': independentWorkbook(
+          `<sheet name="${'a'.repeat(32)}" sheetId="1" r:id="rIdSheet1"/>`,
+        ),
+      },
+      'Workbook sheet has an invalid name',
+      'invalid-document-structure',
+      'xl/workbook.xml',
+    ],
+    [
+      {
+        'xl/workbook.xml': independentWorkbook(
+          '<sheet name="Bad/name" sheetId="1" r:id="rIdSheet1"/>',
+        ),
+      },
+      'Workbook sheet has an invalid name',
+      'invalid-document-structure',
+      'xl/workbook.xml',
+    ],
+    [
+      {
+        'xl/workbook.xml': independentWorkbook(`
+          <sheet name="Data" sheetId="1" r:id="rIdSheet1"/>
+          <sheet name="data" sheetId="2" r:id="rIdSheet1"/>`),
+      },
+      'Workbook contains duplicate sheet names',
+      'invalid-document-structure',
+      'xl/workbook.xml',
+    ],
+    [
+      {
+        'xl/workbook.xml': independentWorkbook(`
+          <sheet name="σ" sheetId="1" r:id="rIdSheet1"/>
+          <sheet name="ς" sheetId="2" r:id="rIdSheet1"/>`),
+      },
+      'Workbook contains duplicate sheet names',
+      'invalid-document-structure',
+      'xl/workbook.xml',
+    ],
+    [
+      {
+        'xl/workbook.xml': independentWorkbook(
+          '<sheet name="Data" r:id="rIdSheet1"/>',
+        ),
+      },
+      'Workbook sheet has an invalid sheetId',
+      'invalid-document-structure',
+      'xl/workbook.xml',
+    ],
+    [
+      {
+        'xl/workbook.xml': independentWorkbook(
+          '<sheet name="Data" sheetId="1" r:id=""/>',
+        ),
+      },
+      'Workbook sheet has an invalid relationship reference',
+      'invalid-document-structure',
+      'xl/workbook.xml',
+    ],
+    [
+      {
+        'xl/workbook.xml': independentWorkbook(
+          '<sheet name="Data" sheetId="0" r:id="rIdSheet1"/>',
+        ),
+      },
+      'Workbook sheet has an invalid sheetId',
+      'invalid-document-structure',
+      'xl/workbook.xml',
+    ],
+    [
+      {
+        'xl/workbook.xml': independentWorkbook(`
+          <sheet name="One" sheetId="1" r:id="rIdSheet1"/>
+          <sheet name="Two" sheetId="1" r:id="rIdSheet1"/>`),
+      },
+      'Workbook contains duplicate sheetId values',
+      'invalid-document-structure',
+      'xl/workbook.xml',
+    ],
+    [
+      {
+        'xl/workbook.xml': independentWorkbook(
+          '<sheet name="Data" sheetId="1"/>',
+        ),
+      },
+      'Workbook sheet has an invalid relationship reference',
+      'invalid-document-structure',
+      'xl/workbook.xml',
+    ],
+    [
+      {
+        'xl/workbook.xml': independentWorkbook(
+          '<sheet name="Data" sheetId="1" r:id="missing"/>',
+        ),
+      },
+      'Workbook sheet relationship is missing or external',
+      'invalid-document-structure',
+      'xl/workbook.xml',
+    ],
+    [
+      {
+        'xl/_rels/workbook.xml.rels': workbookRelationships(
+          relationship(
+            'rIdSheet1',
+            `${XLSX_OFFICE_REL_TYPE}worksheet`,
+            'https://example.com/sheet.xml',
+            'External',
+          ),
+        ),
+      },
+      'Workbook sheet relationship is missing or external',
+      'invalid-document-structure',
+      'xl/workbook.xml',
+    ],
+    [
+      {
+        'xl/_rels/workbook.xml.rels': workbookRelationships(
+          relationship(
+            'rIdSheet1',
+            `${XLSX_OFFICE_REL_TYPE}dialogsheet`,
+            'worksheets/sheet1.xml',
+          ),
+        ),
+      },
+      'Workbook sheet relationship has an unsupported type',
+      'invalid-document-structure',
+      'xl/workbook.xml',
+    ],
+    [
+      {
+        '[Content_Types].xml': contentTypes(
+          '<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/xml"/>',
+        ),
+      },
+      'Workbook sheet target has the wrong content type',
+      'invalid-document-structure',
+      'xl/worksheets/sheet1.xml',
+    ],
+    [
+      { 'xl/worksheets/sheet1.xml': null },
+      'Required XLSX part is missing: xl/worksheets/sheet1.xml',
+      'missing-required-part',
+      'xl/worksheets/sheet1.xml',
+    ],
+    [
+      { 'xl/worksheets/sheet1.xml': chartSheet() },
+      'worksheet root is missing or has the wrong namespace',
+      'invalid-document-structure',
+      'xl/worksheets/sheet1.xml',
+    ],
+    [
+      { 'xl/worksheets/sheet1.xml': worksheet('urn:wrong') },
+      'worksheet root is missing or has the wrong namespace',
+      'invalid-document-structure',
+      'xl/worksheets/sheet1.xml',
+    ],
+    [
+      {
+        'xl/workbook.xml': independentWorkbook(
+          '<sheet name="Data" sheetId="1" state="shown" r:id="rIdSheet1"/>',
+        ),
+      },
+      'Workbook sheet state is invalid',
+      'invalid-document-structure',
+      'xl/workbook.xml',
+    ],
+    [
+      {
+        'xl/workbook.xml': independentWorkbook(
+          '<sheet name="Data" sheetId="1" r:id="rIdSheet1"/>',
+        ).replace('date1904="0"', 'date1904="yes"'),
+      },
+      'Workbook date1904 flag is invalid',
+      'invalid-document-structure',
+      'xl/workbook.xml',
+    ],
+    [
+      {
+        'xl/workbook.xml': independentWorkbook(
+          '<sheet name="Data" sheetId="1" r:id="rIdSheet1"/>',
+        ).replace('calcMode="auto"', 'calcMode="automatic"'),
+      },
+      'Workbook calculation mode is invalid',
+      'invalid-document-structure',
+      'xl/workbook.xml',
+    ],
+    [
+      {
+        'xl/workbook.xml': independentWorkbook(
+          '<sheet name="Data" sheetId="1" r:id="rIdSheet1"/>',
+        ).replace('forceFullCalc="0"', 'forceFullCalc="yes"'),
+      },
+      'Workbook force-full-calculation flag is invalid',
+      'invalid-document-structure',
+      'xl/workbook.xml',
+    ],
+    [
+      {
+        'xl/workbook.xml': independentWorkbook(
+          '<sheet name="Data" sheetId="1" r:id="rIdSheet1"/>',
+        ).replace('fullCalcOnLoad="0"', 'fullCalcOnLoad="yes"'),
+      },
+      'Workbook full-calculation-on-load flag is invalid',
+      'invalid-document-structure',
+      'xl/workbook.xml',
+    ],
+  ] as const)(
+    'rejects invalid manifest %#',
+    async (overrides, message, code, part) => {
+      const error = await captureManifestError(overrides);
+      expect(error.diagnostic).toEqual({
+        code,
+        message,
+        part,
+        severity: 'error',
+      });
+    },
+  );
+});
