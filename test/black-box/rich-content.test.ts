@@ -74,6 +74,11 @@ const BAR_CHART = `
 describe('PPTX rich content through the public API', () => {
   it('parses adjusted shapes, tables, charts, and transitions together', async () => {
     const input = await createIndependentPptx({
+      'ppt/presentation.xml': `<p:presentation xmlns:p="${PRESENTATION_NS}" xmlns:a="${DRAWING_NS}" xmlns:r="${OFFICE_REL_NS}">
+        <p:sldIdLst><p:sldId id="256" r:id="rIdSlide1"/></p:sldIdLst>
+        <p:sldSz cx="9144000" cy="5143500"/>
+        <p:defaultTextStyle><a:lvl1pPr><a:defRPr sz="2400"/></a:lvl1pPr></p:defaultTextStyle>
+      </p:presentation>`,
       'ppt/slides/slide1.xml': RICH_CONTENT_SLIDE,
       'ppt/slides/_rels/slide1.xml.rels': `
         <Relationships xmlns="${PACKAGE_REL_NS}">
@@ -104,6 +109,7 @@ describe('PPTX rich content through the public API', () => {
       vAlign: 'mid',
     });
     expect(table.data[0]?.[0]?.text).toContain('Quarterly&nbsp;revenue');
+    expect(table.data[0]?.[0]?.text).toContain('font-size: 24pt');
     expect(table.data[0]?.[1]).toMatchObject({ hMerge: 1 });
     expect(table.data[1]?.[1]?.text).toContain('42');
     expect(table.colWidths).toEqual([72, 72]);
