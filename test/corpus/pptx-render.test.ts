@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 
 import { parsePptx, renderPptxDocumentToSvg } from '../../src';
 import { renderPptxDocumentToPng } from '../../src/formats/pptx/node';
+import { findUnsafeSvgFeatures } from './svg-safety';
 
 interface ResolvedCorpusEntry {
   expectedSlides: number;
@@ -67,8 +68,7 @@ describe(`real-world PPTX render corpus v${resolvedManifest.version}`, () => {
         expect(source).toContain(
           `<title>PowerPoint slide ${slideNumbers[index]}</title>`,
         );
-        expect(source).not.toMatch(/<(?:foreignObject|script)\b/i);
-        expect(source).not.toMatch(/(?:blob|file|https):/i);
+        expect(findUnsafeSvgFeatures(source)).toEqual([]);
       }
     });
   }
