@@ -4,6 +4,7 @@ import type { PptxRenderLimits } from './render-types';
 const DEFAULT_LIMITS: Required<PptxRenderLimits> = Object.freeze({
   maxElementsPerSlide: 10_000,
   maxOutputPixels: 32 * 1024 * 1024,
+  maxPngBytes: 256 * 1024 * 1024,
   maxScale: 8,
   maxSlides: 1_000,
   maxSvgBytes: 128 * 1024 * 1024,
@@ -46,6 +47,7 @@ export function resolvePptxRenderLimits(
       'maxOutputPixels',
       resolved.maxOutputPixels,
     ),
+    maxPngBytes: positiveSafeInteger('maxPngBytes', resolved.maxPngBytes),
     maxScale: positiveFiniteNumber('maxScale', resolved.maxScale),
     maxSlides: positiveSafeInteger('maxSlides', resolved.maxSlides),
     maxSvgBytes: positiveSafeInteger('maxSvgBytes', resolved.maxSvgBytes),

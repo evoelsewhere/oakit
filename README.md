@@ -351,6 +351,56 @@ Text is returned as an escaped HTML fragment. Applications that inject
 document HTML into a page should still apply their own sanitizer as defense in
 depth.
 
+### Agent-ready slide previews without Office
+
+OAKit can turn parsed slides into self-contained SVG in Node.js or a browser.
+Node.js callers can also create PNG bytes through the dedicated Node entry
+point. Neither path launches or requires Microsoft Office, LibreOffice, Google
+Slides, a headless browser, or a network service.
+
+```ts
+import { readFile } from 'node:fs/promises';
+import { renderPptxToSvg } from '@evoelsewhere/oakit';
+import { renderPptxToPng } from '@evoelsewhere/oakit/pptx/node';
+
+const input = await readFile('./deck.pptx');
+const svg = await renderPptxToSvg(input, {
+  scale: 1,
+  slideNumbers: [1],
+});
+const png = await renderPptxToPng(input, {
+  scale: 1,
+  slideNumbers: [1],
+});
+
+console.log(svg.slides[0]?.data, png.slides[0]?.data);
+```
+
+Every rendered slide includes bytes, MIME type, dimensions, its one-based slide
+number, and structured warnings for visual approximations. SVG output escapes
+document text, embeds only validated raster data URLs, and never follows an
+external reference. PNG rasterization uses the generated self-contained SVG.
+
+Rendering is a portable visual aid for agents, not a claim of pixel-identical
+PowerPoint layout. Exact `R0` package preservation and preview rendering are
+separate operations: a preview never changes the source package used by the
+portable JSON round trip.
+
+Render limits are validated before work begins or immediately after encoding
+the bounded result:
+
+| Render limit        |    Default |
+| ------------------- | ---------: |
+| Slides per request  |      1,000 |
+| Elements per slide  |     10,000 |
+| Scale               |          8 |
+| Pixels per slide    | 32 MiPixel |
+| SVG bytes per slide |    128 MiB |
+| PNG bytes per slide |    256 MiB |
+
+Callers processing public uploads should lower these limits to their own
+latency and memory budgets.
+
 ## Diagnostics and strict mode
 
 `parsePptx` returns the document directly. `parsePptxWithDiagnostics` returns:

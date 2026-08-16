@@ -14,6 +14,7 @@ describe('PowerPoint render limits', () => {
     expect(first).toEqual({
       maxElementsPerSlide: 10_000,
       maxOutputPixels: 33_554_432,
+      maxPngBytes: 268_435_456,
       maxScale: 8,
       maxSlides: 1_000,
       maxSvgBytes: 134_217_728,
@@ -28,6 +29,7 @@ describe('PowerPoint render limits', () => {
       resolvePptxRenderLimits({
         maxElementsPerSlide: 7,
         maxOutputPixels: 8,
+        maxPngBytes: 10,
         maxScale: 1.5,
         maxSlides: 2,
         maxSvgBytes: 9,
@@ -35,6 +37,7 @@ describe('PowerPoint render limits', () => {
     ).toEqual({
       maxElementsPerSlide: 7,
       maxOutputPixels: 8,
+      maxPngBytes: 10,
       maxScale: 1.5,
       maxSlides: 2,
       maxSvgBytes: 9,
@@ -50,6 +53,7 @@ describe('PowerPoint render limits', () => {
     ['maxElementsPerSlide', 1.5],
     ['maxOutputPixels', -1],
     ['maxOutputPixels', Number.MAX_SAFE_INTEGER + 1],
+    ['maxPngBytes', 1.5],
     ['maxSlides', Number.NaN],
     ['maxSvgBytes', Number.POSITIVE_INFINITY],
   ] as const)('rejects invalid integer limit %s=%s', (name, value) => {

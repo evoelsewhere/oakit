@@ -25,6 +25,8 @@ export interface PptxRenderLimits {
   maxScale?: number;
   /** Maximum output pixels for one slide. */
   maxOutputPixels?: number;
+  /** Maximum encoded PNG bytes for one slide in the Node.js renderer. */
+  maxPngBytes?: number;
   /** Maximum encoded SVG bytes for one slide. */
   maxSvgBytes?: number;
 }

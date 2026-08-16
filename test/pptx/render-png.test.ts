@@ -53,6 +53,28 @@ describe('PowerPoint PNG rendering in Node.js', () => {
     });
   });
 
+  it('accepts the exact PNG byte budget and rejects one byte below it', () => {
+    const exact =
+      renderPptxDocumentToPng(document()).slides[0]?.data.byteLength;
+    if (exact === undefined) throw new Error('Expected one rendered slide');
+
+    expect(
+      renderPptxDocumentToPng(document(), {
+        limits: { maxPngBytes: exact },
+      }).slides[0]?.data.byteLength,
+    ).toBe(exact);
+    expect(() =>
+      renderPptxDocumentToPng(document(), {
+        limits: { maxPngBytes: exact - 1 },
+      }),
+    ).toThrow(
+      new PptxRenderError(
+        'resource-limit-exceeded',
+        `PowerPoint slide 1 PNG exceeds the ${exact - 1} byte limit`,
+      ),
+    );
+  });
+
   it('preserves slide metadata and warnings while rasterizing SVG', () => {
     const warnings = [
       {

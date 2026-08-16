@@ -3,30 +3,25 @@ import { Buffer } from 'node:buffer';
 import { Resvg } from '@resvg/resvg-js';
 
 import { PptxRenderError } from './render-error';
+import { resolvePptxRenderLimits } from './render-limits';
 import { renderPptxDocumentToSvg, renderPptxToSvg } from './render-svg';
 import type {
   PptxInputRenderOptions,
   PptxPngRenderResult,
   PptxRenderedPngSlide,
   PptxRenderedSvgSlide,
+  PptxRenderOptions,
   PptxSvgRenderResult,
 } from './render-types';
 import type { PptxDocument, PptxInput } from './types';
 
-function rasterizeSlide(slide: PptxRenderedSvgSlide): PptxRenderedPngSlide {
+function rasterizeSlide(
+  slide: PptxRenderedSvgSlide,
+  maxPngBytes: number,
+): PptxRenderedPngSlide {
+  let data: Uint8Array;
   try {
-    const data = Uint8Array.from(
-      new Resvg(Buffer.from(slide.data)).render().asPng(),
-    );
-    return {
-      data,
-      format: 'png',
-      height: slide.height,
-      mimeType: 'image/png',
-      slideNumber: slide.slideNumber,
-      warnings: slide.warnings,
-      width: slide.width,
-    };
+    data = Uint8Array.from(new Resvg(Buffer.from(slide.data)).render().asPng());
   } catch (cause) {
     throw new PptxRenderError(
       'rasterization-failed',
@@ -34,13 +29,32 @@ function rasterizeSlide(slide: PptxRenderedSvgSlide): PptxRenderedPngSlide {
       { cause },
     );
   }
+  if (data.byteLength > maxPngBytes) {
+    throw new PptxRenderError(
+      'resource-limit-exceeded',
+      `PowerPoint slide ${slide.slideNumber} PNG exceeds the ${maxPngBytes} byte limit`,
+    );
+  }
+  return {
+    data,
+    format: 'png',
+    height: slide.height,
+    mimeType: 'image/png',
+    slideNumber: slide.slideNumber,
+    warnings: slide.warnings,
+    width: slide.width,
+  };
 }
 
 /** Rasterize self-contained SVG slide bytes into PNG without an Office runtime. */
 export function rasterizePptxSvgResult(
   result: PptxSvgRenderResult,
+  options: PptxRenderOptions = {},
 ): PptxPngRenderResult {
-  return { slides: result.slides.map(rasterizeSlide) };
+  const { maxPngBytes } = resolvePptxRenderLimits(options.limits);
+  return {
+    slides: result.slides.map((slide) => rasterizeSlide(slide, maxPngBytes)),
+  };
 }
 
 /** Render a parsed PowerPoint document into PNG bytes in Node.js. */
@@ -48,7 +62,10 @@ export function renderPptxDocumentToPng(
   document: PptxDocument,
   options: PptxInputRenderOptions = {},
 ): PptxPngRenderResult {
-  return rasterizePptxSvgResult(renderPptxDocumentToSvg(document, options));
+  return rasterizePptxSvgResult(
+    renderPptxDocumentToSvg(document, options),
+    options,
+  );
 }
 
 /** Open and render a PowerPoint package into PNG bytes in Node.js. */
@@ -56,7 +73,7 @@ export async function renderPptxToPng(
   input: PptxInput,
   options: PptxInputRenderOptions = {},
 ): Promise<PptxPngRenderResult> {
-  return rasterizePptxSvgResult(await renderPptxToSvg(input, options));
+  return rasterizePptxSvgResult(await renderPptxToSvg(input, options), options);
 }
 
 export { PptxRenderError } from './render-error';

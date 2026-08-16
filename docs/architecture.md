@@ -167,19 +167,32 @@ must import from `@evoelsewhere/oakit` or `@evoelsewhere/oakit/pptx`.
 
 ## Public API boundary
 
-The root and format-specific entry points expose the same reader:
+The root and format-specific entry points expose the same reader and
+browser-neutral SVG renderer:
 
 ```ts
 export async function parsePptx(
   input: ArrayBuffer | Uint8Array | Blob,
   options?: PptxParseOptions,
 ): Promise<PptxDocument>;
+
+export function renderPptxDocumentToSvg(
+  document: PptxDocument,
+  options?: PptxRenderOptions,
+): PptxSvgRenderResult;
+
+export async function renderPptxToSvg(
+  input: ArrayBuffer | Uint8Array | Blob,
+  options?: PptxInputRenderOptions,
+): Promise<PptxSvgRenderResult>;
 ```
 
 The public contract consists of:
 
 - the `parsePptx` function;
+- the document and package SVG rendering functions;
 - `PptxInput` and `PptxParseOptions`;
+- render options, limits, results, warnings, and typed errors;
 - the `PptxDocument`, slide, element, fill, and supporting types.
 
 Everything else is an implementation detail. In particular, `XmlLookupValue`,
@@ -192,11 +205,26 @@ public exports and executable are:
 ```text
 @evoelsewhere/oakit       -> dist/index.{js,cjs,d.ts}
 @evoelsewhere/oakit/pptx  -> dist/pptx/index.{js,cjs,d.ts}
+@evoelsewhere/oakit/pptx/node -> dist/pptx/node.{js,cjs,d.ts}
 oakit CLI                 -> dist/cli.js
 ```
 
-The CLI is a Node.js boundary layered over the same public PowerPoint API. It
-does not change the browser-neutral contract of either package export.
+The Node-specific subpath rasterizes self-contained SVG through Resvg and
+exposes PNG bytes. It is isolated from the root and `pptx` entry points so their
+dependency graphs stay browser-neutral. Both SVG and PNG paths are in-process,
+deterministic, and require no Office application, headless browser, network
+fetch, or external conversion service.
+
+Rendering traverses only selected slides, rejects shared or cyclic element
+objects, and enforces slide, element, scale, pixel, SVG-byte, and PNG-byte
+limits. Generated SVG escapes untrusted document values and accepts only
+validated embedded GIF, JPEG, PNG, or WebP data URLs. Unsupported visual
+semantics produce structured approximation warnings; they are never presented
+as exact PowerPoint fidelity. Exact package preservation remains a separate
+round-trip pipeline and is not derived from rendered output.
+
+The CLI is a Node.js boundary layered over the public PowerPoint API. It does
+not change the browser-neutral contract of the root or `pptx` package export.
 
 ## OOXML package model
 
@@ -576,12 +604,13 @@ case-consistency checks.
 
 Runtime dependencies have narrow roles:
 
-| Dependency   | Responsibility                            |
-| ------------ | ----------------------------------------- |
-| `jszip`      | Open OPC archives and read package parts. |
-| `saxes`      | Validate XML structure and complexity.    |
-| `txml`       | Parse OOXML strings into a lossless tree. |
-| `tinycolor2` | Apply supported color transformations.    |
+| Dependency        | Responsibility                                       |
+| ----------------- | ---------------------------------------------------- |
+| `@resvg/resvg-js` | Rasterize safe SVG in the Node-only PowerPoint path. |
+| `jszip`           | Open OPC archives and read package parts.            |
+| `saxes`           | Validate XML structure and complexity.               |
+| `txml`            | Parse OOXML strings into a lossless tree.            |
+| `tinycolor2`      | Apply supported color transformations.               |
 
 ### Command-line boundary
 
