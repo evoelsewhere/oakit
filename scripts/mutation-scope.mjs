@@ -42,6 +42,7 @@ export const mutatedFiles = [
   'src/formats/pptx/parser.ts',
   'src/formats/pptx/roundtrip/canonical-json.ts',
   'src/formats/pptx/roundtrip/consistency.ts',
+  'src/formats/pptx/roundtrip/data-tree.ts',
   'src/formats/pptx/roundtrip/digest.ts',
   'src/formats/pptx/roundtrip/preview.ts',
   'src/formats/pptx/roundtrip/read.ts',
