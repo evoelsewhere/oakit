@@ -39,6 +39,14 @@ export class XlsxPartReader {
 
   async readXml(
     part: string,
+    options: { required: true },
+  ): Promise<XmlLookupValue>;
+  async readXml(
+    part: string,
+    options?: ReadXmlOptions,
+  ): Promise<XmlLookupValue | null>;
+  async readXml(
+    part: string,
     options: ReadXmlOptions = {},
   ): Promise<XmlLookupValue | null> {
     let result = this.xmlCache.get(part);

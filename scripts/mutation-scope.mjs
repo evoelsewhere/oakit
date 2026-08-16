@@ -75,6 +75,7 @@ export const mutatedFiles = [
   'src/formats/xlsx/internal/part-reader.ts',
   'src/formats/xlsx/internal/relationships.ts',
   'src/formats/xlsx/internal/resource-limits.ts',
+  'src/formats/xlsx/internal/workbook-discovery.ts',
 ];
 
 export const pendingMutationFiles = [];
