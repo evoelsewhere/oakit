@@ -50,6 +50,8 @@ export const mutatedFiles = [
   'src/formats/pptx/roundtrip/source.ts',
   'src/formats/pptx/roundtrip/validate.ts',
   'src/formats/pptx/roundtrip/write.ts',
+  'src/formats/pptx/render-error.ts',
+  'src/formats/pptx/render-limits.ts',
   'src/formats/pptx/scene-validation.ts',
   'src/formats/pptx/write-error.ts',
   'src/formats/pptx/writer/archive.ts',
@@ -90,6 +92,11 @@ export const excludedMutationFiles = [
   {
     file: 'src/formats/pptx/scene-types.ts',
     reason: 'Compile-time-only scene model interfaces and type aliases.',
+  },
+  {
+    file: 'src/formats/pptx/render-types.ts',
+    reason:
+      'Compile-time-only rendering result, option, warning, and error contracts.',
   },
   {
     file: 'src/formats/pptx/roundtrip/types.ts',
