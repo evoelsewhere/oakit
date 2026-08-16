@@ -48,7 +48,12 @@ import { getChartInfo } from './internal/chart';
 import { getVerticalAlign, getTextAutoFit } from './internal/paragraph';
 import { getTextInsets } from './internal/text-insets';
 import { getPosition, getSize } from './internal/position';
-import { genTextBody, getTextNodeValue } from './internal/text';
+import {
+  genTextBody,
+  getListLevel,
+  getListType,
+  getTextNodeValue,
+} from './internal/text';
 import {
   getCustomShapePath,
   identifyShape,
@@ -718,7 +723,50 @@ function getHyperlinkFromCNvPr(
 }
 
 function getNote(noteContent: XmlLookupValue): string {
-  let text = '';
+  type NoteListType = 'ol' | 'ul';
+
+  function closeLists(openLists: NoteListType[]): string {
+    return openLists
+      .splice(0)
+      .reverse()
+      .map((listType) => `</li></${listType}>`)
+      .join('');
+  }
+
+  function renderText(paragraph: XmlLookupValue): string {
+    const content = [
+      ...asArray(nodeAt(paragraph, ['a:r'])).map((node) => ({
+        kind: 'text' as const,
+        node,
+      })),
+      ...asArray(nodeAt(paragraph, ['a:fld'])).map((node) => ({
+        kind: 'text' as const,
+        node,
+      })),
+      ...asArray(nodeAt(paragraph, ['a:br'])).map((node) => ({
+        kind: 'break' as const,
+        node,
+      })),
+    ].sort(
+      (left, right) =>
+        (getXmlNodeOrder(left.node) ?? Number.MAX_SAFE_INTEGER) -
+        (getXmlNodeOrder(right.node) ?? Number.MAX_SAFE_INTEGER),
+    );
+
+    return content
+      .map(({ kind, node }) => {
+        if (kind === 'break') return '<br>';
+        const value = getTextNodeValue(nodeAt(node, ['a:t']));
+        return value
+          ? escapeHtml(decodeXmlEntities(value))
+              .replace(/\t/g, '&nbsp;&nbsp;&nbsp;&nbsp;')
+              .replace(/\s/g, '&nbsp;')
+          : '';
+      })
+      .join('');
+  }
+
+  let html = '';
   const shapeNodes = asArray(
     nodeAt(noteContent, ['p:notes', 'p:cSld', 'p:spTree', 'p:sp']),
   );
@@ -733,73 +781,53 @@ function getNote(noteContent: XmlLookupValue): string {
     if (placeholderType !== 'body') continue;
 
     const textBody = nodeAt(shapeNode, ['p:txBody']);
-    if (!textBody) continue;
-
-    const listTypes: (string | undefined)[] = [];
+    const openLists: NoteListType[] = [];
     for (const paragraph of asArray(nodeAt(textBody, ['a:p']))) {
       const paragraphProperties = nodeAt(paragraph, ['a:pPr']);
       const alignment = textAt(paragraphProperties, ['attrs', 'algn']);
-      let align = 'left';
-      if (alignment) {
-        switch (alignment) {
-          case 'r':
-            align = 'right';
-            break;
-          case 'ctr':
-            align = 'center';
-            break;
-          case 'just':
-          case 'dist':
-            align = 'justify';
-            break;
-          default:
-            break;
-        }
-      }
-
-      let listType = '';
-      if (nodeAt(paragraphProperties, ['a:buChar'])) listType = 'ul';
-      else if (nodeAt(paragraphProperties, ['a:buAutoNum'])) listType = 'ol';
-      const level = textAt(paragraphProperties, ['attrs', 'lvl']);
-      const listLevel = level === undefined ? 0 : Number.parseInt(level);
+      const align =
+        alignment === 'r'
+          ? 'right'
+          : alignment === 'ctr'
+            ? 'center'
+            : alignment === 'just' || alignment === 'dist'
+              ? 'justify'
+              : 'left';
+      const listType = getListType(paragraph);
+      const listLevel = getListLevel(paragraph);
 
       if (listType) {
-        while (listTypes.length > listLevel + 1) {
-          text += `</${listTypes.pop()}>`;
+        const targetLevel = Math.min(listLevel, openLists.length);
+        html += openLists
+          .splice(targetLevel + 1)
+          .reverse()
+          .map((closedList) => `</li></${closedList}>`)
+          .join('');
+
+        if (openLists.length === targetLevel) {
+          html += `<${listType}>`;
+          openLists.push(listType);
+        } else {
+          html += '</li>';
+          const currentList = openLists[targetLevel];
+          if (currentList !== listType) {
+            html += `</${currentList}>`;
+            html += `<${listType}>`;
+            openLists[targetLevel] = listType;
+          }
         }
-        if (listTypes[listLevel] === undefined) {
-          text += `<${listType}>`;
-          listTypes[listLevel] = listType;
-        } else if (listTypes[listLevel] !== listType) {
-          text += `</${listTypes[listLevel]}>`;
-          text += `<${listType}>`;
-          listTypes[listLevel] = listType;
-        }
-        text += `<li><p style="text-align:${align};">`;
+        html += `<li><p style="text-align:${align};">`;
       } else {
-        while (listTypes.length > 0) {
-          text += `</${listTypes.pop()}>`;
-        }
-        text += `<p style="text-align:${align};">`;
+        html += closeLists(openLists);
+        html += `<p style="text-align:${align};">`;
       }
 
-      for (const run of asArray(nodeAt(paragraph, ['a:r']))) {
-        const value = getTextNodeValue(nodeAt(run, ['a:t']));
-        if (value) {
-          text += escapeHtml(decodeXmlEntities(value))
-            .replace(/\t/g, '&nbsp;&nbsp;&nbsp;&nbsp;')
-            .replace(/\s/g, '&nbsp;');
-        }
-      }
-
-      if (listType) text += '</p></li>';
-      else text += '</p>';
+      html += renderText(paragraph);
+      html += '</p>';
     }
-    while (listTypes.length > 0) {
-      text += `</${listTypes.pop()}>`;
-    }
+    html += closeLists(openLists);
   }
-  return text;
+  return html;
 }
 
 async function getLayoutElements(
