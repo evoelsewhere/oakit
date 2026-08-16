@@ -1268,16 +1268,20 @@ async function genShape(
   const customGeometry = nodeAt(node, ['p:spPr', 'a:custGeom']);
 
   const keypoints: Record<string, number> = {};
-  if (shapeType) {
-    const adjustmentNodes = asArray(
-      nodeAt(node, ['p:spPr', 'a:prstGeom', 'a:avLst', 'a:gd']),
-    );
-    for (const adjustment of adjustmentNodes) {
-      const adjustmentName = textAt(adjustment, ['attrs', 'name']);
-      const formula = textAt(adjustment, ['attrs', 'fmla']);
-      if (adjustmentName && formula?.startsWith('val ')) {
-        keypoints[adjustmentName] = Number(formula.slice(4)) / 50_000;
-      }
+  const adjustmentNodes = asArray(
+    nodeAt(node, ['p:spPr', 'a:prstGeom', 'a:avLst', 'a:gd']),
+  );
+  for (const adjustment of adjustmentNodes) {
+    const adjustmentName = textAt(adjustment, ['attrs', 'name']);
+    const formula = textAt(adjustment, ['attrs', 'fmla'])?.trim();
+    const match = formula?.match(/^val\s+([+-]?\d+)$/);
+    const adjustmentValue = match ? Number(match[1]) : undefined;
+    if (
+      adjustmentName &&
+      adjustmentValue !== undefined &&
+      Number.isSafeInteger(adjustmentValue)
+    ) {
+      keypoints[adjustmentName] = adjustmentValue / 50_000;
     }
   }
 
@@ -1304,17 +1308,17 @@ async function genShape(
     ? angleToDegrees(textRotationValue) + 90
     : rotate;
 
-  let content = '';
   const textBody = nodeAt(node, ['p:txBody']);
-  if (textBody)
-    content = genTextBody(
-      textBody,
-      node,
-      slideLayoutSpNode,
-      slideMasterSpNode,
-      type ?? '',
-      warpObj,
-    );
+  const content = textBody
+    ? genTextBody(
+        textBody,
+        node,
+        slideLayoutSpNode,
+        slideMasterSpNode,
+        type ?? String(),
+        warpObj,
+      )
+    : '';
 
   const {
     borderColor,
