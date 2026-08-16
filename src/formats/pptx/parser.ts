@@ -1626,7 +1626,7 @@ async function processGraphicFrameNode(
     case 'http://schemas.openxmlformats.org/drawingml/2006/table':
       return genTable(node, warpObj);
     case 'http://schemas.openxmlformats.org/drawingml/2006/chart':
-      return await genChart(node, warpObj);
+      return await genChart(node, warpObj, source);
     case 'http://schemas.openxmlformats.org/drawingml/2006/diagram':
       return await genDiagram(node, warpObj);
     case 'http://schemas.openxmlformats.org/presentationml/2006/ole': {
@@ -1807,7 +1807,14 @@ function genTable(
 async function genChart(
   node: XmlLookupValue,
   warpObj: PptxParserContext,
+  source: string,
 ): Promise<ElementDraft | null> {
+  const relationships =
+    source === 'slideMasterBg'
+      ? warpObj.masterResObj
+      : source === 'slideLayoutBg'
+        ? warpObj.layoutResObj
+        : warpObj.slideResObj;
   const order = getXmlNodeOrder(node) ?? 0;
   const xfrmNode = nodeAt(node, ['p:xfrm']);
   const { top, left } = getPosition(xfrmNode, undefined, undefined);
@@ -1821,9 +1828,7 @@ async function genChart(
     'r:id',
   ]);
   const referenceName = relationshipId
-    ? (warpObj.slideResObj[relationshipId]?.target ??
-      warpObj.layoutResObj[relationshipId]?.target ??
-      warpObj.masterResObj[relationshipId]?.target)
+    ? relationships[relationshipId]?.target
     : undefined;
   if (!referenceName) return null;
 

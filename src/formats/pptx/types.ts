@@ -262,6 +262,7 @@ export interface ScatterChart {
   data: ScatterChartData;
   colors: string[];
   chartType: 'scatterChart' | 'bubbleChart';
+  style?: string;
   order: number;
 }
 export type Chart = CommonChart | ScatterChart;
