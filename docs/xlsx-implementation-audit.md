@@ -199,6 +199,30 @@ rewrite, reference/dependency, and validation-pass budgets.
 
 No round-trip security mode or writer limit currently has XLSX evidence.
 
+## Portable rendering and offline runtime
+
+The implementation has an additional user requirement beyond the two source
+plans: a machine with no Microsoft Office, LibreOffice, Open XML SDK, Java,
+COM automation, or producer-specific executable installed must retain the
+complete supported XLSX reader, writer, round-trip, and rendering surface.
+Producer applications are independent conformance oracles only; they are never
+runtime dependencies, fallback renderers, or feature gates.
+
+| Requirement                         | Required evidence                                                                                                              | Status  |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ | ------- |
+| Office-free reader and round-trip   | Node and browser tests run with an executable-deny harness and no Office/LibreOffice discovery, spawn, shell, COM, or RPC path | Missing |
+| Portable worksheet rendering        | Deterministic in-process rendering for cells, styles, merges, dimensions, panes, print layout, drawings, images, and charts    | Missing |
+| Node/browser render parity          | Equivalent semantic render tree and stable SVG/HTML output in supported Node versions and Chromium                             | Missing |
+| Render security and resource limits | No external fetch, formula execution, scriptable output, unbounded layout/grid allocation, or unbounded embedded media decode  | Missing |
+| Visual producer evidence            | Versioned corpus comparisons against Excel/Calc/Sheets where available, without making those producers required at runtime     | Missing |
+
+The renderer may declare bounded visual-fidelity profiles, but a supported
+feature cannot silently invoke an installed office application. Unsupported
+visual semantics must produce structured capability/error evidence rather than
+environment-dependent output. Pixel identity across producer versions remains
+outside the reader contract; deterministic authored-semantic rendering is the
+portable contract.
+
 ## Shared dependency audit
 
 The following dependencies are already used by PPTX and may be consumed by
@@ -218,7 +242,9 @@ XLSX without changing their current contract:
 No new runtime dependency is approved by this audit. A formula tokenizer,
 formatting engine, or spreadsheet library would require the browser, bundle,
 maintenance, security, license, state, and independent-oracle review specified
-by the reader plan before installation.
+by the reader plan before installation. Office applications, headless office
+processes, COM automation, Open XML SDK executables, and remote conversion
+services are explicitly prohibited runtime dependencies.
 
 ## Deferred shared integration
 
@@ -255,11 +281,14 @@ Completion requires all of the following authoritative evidence:
 4. Sequential/concurrent determinism, input immutability, selection scale,
    early abort, peak memory/RSS, elapsed-time, browser startup, and bundle-size
    baselines.
-5. Node.js 20/22/24 and Chromium reader plus round-trip gates.
+5. Node.js 20/22/24 and Chromium reader, round-trip, and portable render gates,
+   including a no-Office executable-deny run.
 6. A complete mutation audit with no XLSX `Survived` or `NoCoverage` result and
    unchanged 100% thresholds/scope integrity.
 7. Package ESM/CJS/declarations/subpath and CLI smoke tests.
-8. A final requirement-by-requirement review of this audit in which no row is
+8. Deterministic semantic render and SVG/HTML evidence for the complete
+   supported feature matrix without an installed office environment.
+9. A final requirement-by-requirement review of this audit in which no row is
    missing, indirect, or supported only by a narrower check.
 
 Until all rows are proven, README and architecture capability text must not
