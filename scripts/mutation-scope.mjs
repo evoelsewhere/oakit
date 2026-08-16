@@ -38,6 +38,7 @@ export const mutatedFiles = [
   'src/formats/pptx/internal/xml-reader.ts',
   'src/formats/pptx/parser.ts',
   'src/formats/pptx/scene-validation.ts',
+  'src/formats/pptx/writer/xml.ts',
 ];
 
 export const pendingMutationFiles = [];
