@@ -15,6 +15,10 @@ import {
 import { discoverXlsxWorkbook } from './internal/workbook-discovery';
 import { parseXlsxWorkbookManifest } from './internal/workbook-manifest';
 import { loadXlsxSharedStrings } from './internal/workbook-tables';
+import {
+  createXlsxWorksheetBudget,
+  parseXlsxWorksheetPart,
+} from './internal/worksheet';
 import type {
   XlsxDiagnostic,
   XlsxDocument,
@@ -115,9 +119,10 @@ export async function parseXlsxWithDiagnostics(
   const reader = new XlsxPartReader(zip, diagnostics, limits);
   let discovery: Awaited<ReturnType<typeof discoverXlsxWorkbook>>;
   let manifest: Awaited<ReturnType<typeof parseXlsxWorkbookManifest>>;
+  let sharedStrings: Awaited<ReturnType<typeof loadXlsxSharedStrings>>;
   try {
     discovery = await discoverXlsxWorkbook(reader, limits);
-    await loadXlsxSharedStrings(discovery, reader, limits);
+    sharedStrings = await loadXlsxSharedStrings(discovery, reader, limits);
     manifest = await parseXlsxWorkbookManifest(discovery, reader, limits);
   } catch (error) {
     if (error instanceof XlsxResourceLimitError) {
@@ -125,8 +130,32 @@ export async function parseXlsxWithDiagnostics(
     }
     throw error;
   }
+  const budget = createXlsxWorksheetBudget(sharedStrings);
+  const sheets = [];
+  try {
+    for (const [index, sheet] of manifest.sheets.entries()) {
+      if (sheet.kind === 'chart-sheet') {
+        sheets.push(sheet);
+        continue;
+      }
+      const payload = await parseXlsxWorksheetPart(
+        manifest.sheetParts[index]!,
+        discovery.dialect,
+        reader,
+        limits,
+        sharedStrings,
+        budget,
+      );
+      sheets.push({ ...sheet, rows: payload.rows });
+    }
+  } catch (error) {
+    if (error instanceof XlsxResourceLimitError) {
+      failResource(error, diagnostics);
+    }
+    throw error;
+  }
   const document: XlsxDocument = {
-    sheets: manifest.sheets,
+    sheets,
     styles: [],
     workbook: manifest.properties,
   };

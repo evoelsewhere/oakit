@@ -31,7 +31,47 @@ describe('public XLSX parser', () => {
             mergedRanges: [],
             name: 'Sheet1',
             payload: 'full-sheet',
-            rows: [],
+            rows: [
+              {
+                cells: [
+                  {
+                    address: 'A1',
+                    column: 1,
+                    content: {
+                      kind: 'value',
+                      value: { kind: 'text', text: 'Black box' },
+                    },
+                  },
+                ],
+                index: 1,
+              },
+              {
+                cells: [
+                  {
+                    address: 'B2',
+                    column: 2,
+                    content: {
+                      kind: 'value',
+                      value: { kind: 'number', value: 42 },
+                    },
+                  },
+                ],
+                index: 2,
+              },
+              {
+                cells: [
+                  {
+                    address: 'C3',
+                    column: 3,
+                    content: {
+                      kind: 'value',
+                      value: { kind: 'boolean', value: true },
+                    },
+                  },
+                ],
+                index: 3,
+              },
+            ],
             state: 'visible',
             tables: [],
           },
@@ -203,6 +243,113 @@ describe('public XLSX parser', () => {
         code: 'invalid-document-structure',
         message: 'Shared-string element has an unsupported namespace',
         part: 'xl/sharedStrings.xml',
+        severity: 'error',
+      },
+      name: 'XlsxParseError',
+    });
+  });
+
+  it.each([
+    [
+      null,
+      'missing-required-part',
+      'Required XLSX part is missing: xl/worksheets/sheet1.xml',
+    ],
+    [
+      '<chartsheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"/>',
+      'invalid-document-structure',
+      'Worksheet root is missing',
+    ],
+    [
+      '<worksheet xmlns="urn:wrong"><sheetData/></worksheet>',
+      'invalid-document-structure',
+      'Worksheet element has an unsupported namespace',
+    ],
+    [
+      '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"/>',
+      'invalid-document-structure',
+      'Worksheet sheetData is missing',
+    ],
+  ] as const)(
+    'validates streamed worksheet payload %#',
+    async (worksheetXml, code, message) => {
+      const bytes = await createIndependentXlsx({
+        'xl/worksheets/sheet1.xml': worksheetXml,
+      });
+      await expect(parseXlsx(bytes)).rejects.toMatchObject({
+        diagnostic: {
+          code,
+          message,
+          part: 'xl/worksheets/sheet1.xml',
+          severity: 'error',
+        },
+        name: 'XlsxParseError',
+      });
+    },
+  );
+
+  it('maps aggregate streamed-cell limits to structured public errors', async () => {
+    const bytes = await createIndependentXlsx();
+    await expect(
+      parseXlsx(bytes, { limits: { maxReturnedCells: 2 } }),
+    ).rejects.toMatchObject({
+      cause: {
+        actual: 3,
+        limit: 2,
+        limitName: 'maxReturnedCells',
+        name: 'XlsxResourceLimitError',
+        part: 'xl/worksheets/sheet1.xml',
+      },
+      diagnostic: {
+        actual: 3,
+        code: 'resource-limit-exceeded',
+        limit: 2,
+        limitName: 'maxReturnedCells',
+        part: 'xl/worksheets/sheet1.xml',
+        severity: 'error',
+      },
+      name: 'XlsxParseError',
+    });
+  });
+
+  it('counts serialized shared-string expansion in the text budget', async () => {
+    const bytes = await createIndependentXlsx();
+    await expect(
+      parseXlsx(bytes, { limits: { maxTextCharacters: 18 } }),
+    ).resolves.toMatchObject({ sheets: [{ name: 'Sheet1' }] });
+    await expect(
+      parseXlsx(bytes, { limits: { maxTextCharacters: 17 } }),
+    ).rejects.toMatchObject({
+      cause: {
+        actual: 18,
+        limit: 17,
+        limitName: 'maxTextCharacters',
+        name: 'XlsxResourceLimitError',
+      },
+      diagnostic: {
+        actual: 18,
+        code: 'resource-limit-exceeded',
+        limit: 17,
+        limitName: 'maxTextCharacters',
+        severity: 'error',
+      },
+      name: 'XlsxParseError',
+    });
+  });
+
+  it('preserves worksheet cell diagnostics through the public parser', async () => {
+    const bytes = await createIndependentXlsx({
+      'xl/worksheets/sheet1.xml': `
+        <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+          <sheetData><row><c t="b"><v>2</v></c></row></sheetData>
+        </worksheet>`,
+    });
+    await expect(parseXlsx(bytes)).rejects.toMatchObject({
+      diagnostic: {
+        cell: 'A1',
+        code: 'invalid-document-value',
+        message: 'Cell boolean is invalid',
+        part: 'xl/worksheets/sheet1.xml',
         severity: 'error',
       },
       name: 'XlsxParseError',

@@ -32,6 +32,7 @@ type XmlRecord = Record<string, unknown>;
 
 export interface XlsxWorkbookManifest {
   properties: XlsxWorkbookProperties;
+  sheetParts: string[];
   sheets: XlsxSheet[];
 }
 
@@ -223,6 +224,7 @@ export async function parseXlsxWorkbookManifest(
 
   const names = new Set<string>();
   const sheetIds = new Set<number>();
+  const sheetParts: string[] = [];
   const sheets: XlsxSheet[] = [];
   const relationshipBase = RELATIONSHIP_BASE[discovery.dialect];
   for (const [index, sheetNode] of sheetNodes.entries()) {
@@ -285,15 +287,17 @@ export async function parseXlsxWorkbookManifest(
       );
     }
 
-    const sheetXml = await reader.readXml(relationship.target, {
-      required: true,
-    });
-    assertPartRoot(
-      sheetXml,
-      kind === 'worksheet' ? 'worksheet' : 'chartsheet',
-      discovery.dialect,
-      relationship.target,
-    );
+    if (kind === 'chart-sheet') {
+      const sheetXml = await reader.readXml(relationship.target, {
+        required: true,
+      });
+      assertPartRoot(
+        sheetXml,
+        'chartsheet',
+        discovery.dialect,
+        relationship.target,
+      );
+    }
     const base = {
       index,
       name: attrs.name,
@@ -315,10 +319,12 @@ export async function parseXlsxWorkbookManifest(
       const chartSheet: XlsxChartSheet = { ...base, kind };
       sheets.push(chartSheet);
     }
+    sheetParts.push(relationship.target);
   }
 
   return {
     properties: parseProperties(root, prefix, discovery.part),
+    sheetParts,
     sheets,
   };
 }
