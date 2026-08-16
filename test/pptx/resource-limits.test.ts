@@ -15,17 +15,22 @@ describe('PPTX resource limits', () => {
   it('rejects input larger than the configured maximum', async () => {
     const input = await createMinimalPptx();
 
-    const result = parsePptx(input, {
-      limits: { maxInputBytes: input.byteLength - 1 },
-    });
-
-    await expect(result).rejects.toBeInstanceOf(PptxParseError);
-    await expect(result).rejects.toMatchObject({
-      diagnostic: {
+    try {
+      await parsePptx(input, {
+        limits: { maxInputBytes: input.byteLength - 1 },
+      });
+      throw new Error('Expected the input limit to reject');
+    } catch (caught) {
+      expect(caught).toBeInstanceOf(PptxParseError);
+      if (!(caught instanceof PptxParseError)) throw caught;
+      expect(caught.diagnostic).toMatchObject({
         code: 'resource-limit-exceeded',
         severity: 'error',
-      },
-    });
+      });
+      expect(caught.cause).toBeInstanceOf(PptxResourceLimitError);
+      if (!(caught.cause instanceof PptxResourceLimitError)) throw caught;
+      expect(caught.cause.limitName).toBe('maxInputBytes');
+    }
   });
 
   it('rejects packages with too many entries', async () => {
