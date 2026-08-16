@@ -2,6 +2,7 @@ export {
   parsePptx,
   parsePptxWithDiagnostics,
   PptxParseError,
+  validatePptxScene,
 } from './formats/pptx/index';
 export type {
   PptxDocument,
@@ -37,5 +38,9 @@ export type {
   PptxSceneTheme,
   PptxSceneTransform,
   PptxSceneUnsupportedElement,
+  PptxSceneValidationCode,
+  PptxSceneValidationIssue,
+  PptxSceneValidationOptions,
+  PptxSceneValidationResult,
   PptxSlide,
 } from './formats/pptx/index';

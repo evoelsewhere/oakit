@@ -6,6 +6,8 @@ import type {
   PptxParseResult,
 } from './types';
 
+export { validatePptxScene } from './scene-validation';
+
 export { PptxParseError } from './errors';
 
 /** Parse a PowerPoint Open XML package into the current structured JSON model. */

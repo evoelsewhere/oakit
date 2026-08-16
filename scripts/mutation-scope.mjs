@@ -37,6 +37,7 @@ export const mutatedFiles = [
   'src/formats/pptx/internal/text-insets.ts',
   'src/formats/pptx/internal/xml-reader.ts',
   'src/formats/pptx/parser.ts',
+  'src/formats/pptx/scene-validation.ts',
 ];
 
 export const pendingMutationFiles = [];
