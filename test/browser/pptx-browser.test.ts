@@ -6,6 +6,7 @@ import {
   parsePptxRoundTripJson,
   parsePptxWithDiagnostics,
   readPptxRoundTrip,
+  renderPptxToSvg,
   serializePptxRoundTripJson,
   writePptxRoundTrip,
   type PptxSceneDocument,
@@ -69,6 +70,55 @@ async function createImagePackage(imageBytes: Uint8Array): Promise<Uint8Array> {
 }
 
 describe('PPTX public API in browsers', () => {
+  it('renders self-contained SVG bytes that the browser can display', async () => {
+    const bytes = await createIndependentPptx({
+      'ppt/slides/slide1.xml': independentTextSlide('Browser SVG preview'),
+    });
+    const inputBuffer = exactArrayBuffer(bytes);
+    const result = await renderPptxToSvg(new Blob([inputBuffer]), {
+      scale: 0.5,
+      slideNumbers: [1],
+    });
+    const slide = result.slides[0];
+    if (!slide) throw new Error('Expected one browser SVG slide');
+    const source = new TextDecoder().decode(slide.data);
+    const parsed = new DOMParser().parseFromString(source, 'image/svg+xml');
+
+    expect(slide).toMatchObject({
+      format: 'svg',
+      height: 203,
+      mimeType: 'image/svg+xml',
+      slideNumber: 1,
+      width: 360,
+    });
+    expect(parsed.querySelector('parsererror')).toBeNull();
+    expect(parsed.querySelector('title')?.textContent).toBe(
+      'PowerPoint slide 1',
+    );
+    expect(parsed.querySelector('tspan')?.textContent).toBe(
+      'Browser\u00a0SVG\u00a0preview',
+    );
+    expect(source).not.toContain('<foreignObject');
+    expect(source).not.toMatch(/(?:blob|file|https):/i);
+
+    const url = URL.createObjectURL(
+      new Blob([exactArrayBuffer(slide.data)], { type: slide.mimeType }),
+    );
+    try {
+      const image = new Image();
+      const loaded = new Promise<void>((resolve, reject) => {
+        image.onload = () => resolve();
+        image.onerror = () => reject(new Error('Browser could not load SVG'));
+      });
+      image.src = url;
+      await loaded;
+      expect(image.naturalWidth).toBe(360);
+      expect(image.naturalHeight).toBe(203);
+    } finally {
+      URL.revokeObjectURL(url);
+    }
+  });
+
   it('preserves exact package bytes through a portable JSON agent hand-off', async () => {
     const bytes = await createIndependentPptx({
       'customXml/browser-agent.xml':
