@@ -76,6 +76,7 @@ const smokeDirectory = await mkdtemp(
 try {
   const inputPath = path.join(smokeDirectory, 'smoke.pptx');
   const outputPath = path.join(smokeDirectory, 'smoke.json');
+  const renderOutputPath = path.join(smokeDirectory, 'previews');
   const inputBytes = await createSmokePptx();
   await writeFile(inputPath, inputBytes);
 
@@ -108,6 +109,44 @@ try {
   assert.equal(fileResult.stderr, '');
   const filePayload = JSON.parse(await readFile(outputPath, 'utf8'));
   assert.equal(filePayload.document.slides.length, 1);
+
+  const renderResult = await execFileAsync(process.execPath, [
+    cliPath,
+    'render',
+    inputPath,
+    '--output',
+    renderOutputPath,
+    '--render-format',
+    'png',
+    '--slides',
+    '1',
+    '--scale',
+    '0.5',
+  ]);
+  assert.equal(renderResult.stdout, '');
+  assert.equal(renderResult.stderr, '');
+  const renderedPng = await readFile(
+    path.join(renderOutputPath, 'slide-1.png'),
+  );
+  assert.deepEqual(
+    Array.from(renderedPng.subarray(0, 8)),
+    [137, 80, 78, 71, 13, 10, 26, 10],
+  );
+  const renderManifest = JSON.parse(
+    await readFile(path.join(renderOutputPath, 'manifest.json'), 'utf8'),
+  );
+  assert.equal(renderManifest.format, 'pptx-render');
+  assert.equal(renderManifest.renderFormat, 'png');
+  assert.deepEqual(renderManifest.slides[0], {
+    byteLength: renderedPng.byteLength,
+    file: 'slide-1.png',
+    format: 'png',
+    height: 203,
+    mimeType: 'image/png',
+    slideNumber: 1,
+    warnings: [],
+    width: 360,
+  });
 } finally {
   await rm(smokeDirectory, { force: true, recursive: true });
 }
