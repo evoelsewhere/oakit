@@ -159,6 +159,7 @@ export type PptxSceneValidationCode =
   | 'invalid-hierarchy-reference'
   | 'invalid-numeric-value'
   | 'invalid-office-text-escape'
+  | 'resource-limit-exceeded'
   | 'invalid-scene-document'
   | 'unsupported-feature'
   | 'unsupported-schema-version';

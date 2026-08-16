@@ -8,6 +8,7 @@ import {
   isSupportedPowerPointCreationSlideCount,
   MAX_POWERPOINT_CREATION_SLIDES,
 } from './creation-limits';
+import { validatePowerPointCreationResources } from './creation-resource-validation';
 
 type JsonObject = Record<string, unknown>;
 
@@ -1025,6 +1026,9 @@ export function validatePptxScene(
         'Reference points to an unknown public key',
       );
     }
+  }
+  if (profile === 'create-text-v1' && issues.length === 0) {
+    issues.push(...validatePowerPointCreationResources(document));
   }
 
   return { issues, valid: issues.length === 0 };

@@ -375,4 +375,43 @@ describe('PowerPoint creation scene validation', () => {
       valid: false,
     });
   });
+
+  it('rejects an oversized element graph only in the creation profile', () => {
+    const scene = creationScene();
+    const slides = scene.slides as Record<string, unknown>[];
+    const firstSlide = slides[0];
+    if (firstSlide) firstSlide.elements = new Array(5_001);
+
+    expect(validatePptxScene(scene)).toEqual({ issues: [], valid: true });
+    expect(validateCreation(scene)).toEqual({
+      issues: [
+        {
+          code: 'resource-limit-exceeded',
+          message:
+            'Creation profile create-text-v1 supports at most 5000 elements',
+          path: '$.slides',
+        },
+      ],
+      valid: false,
+    });
+  });
+
+  it('does not traverse creation resources after structural validation fails', () => {
+    const scene = creationScene();
+    scene.schemaVersion = 1;
+    const slides = scene.slides as Record<string, unknown>[];
+    const firstSlide = slides[0];
+    if (firstSlide) firstSlide.elements = new Array(5_001);
+
+    expect(validateCreation(scene)).toEqual({
+      issues: [
+        {
+          code: 'unsupported-schema-version',
+          message: 'Only PowerPoint scene schema version 2 is supported',
+          path: '$.schemaVersion',
+        },
+      ],
+      valid: false,
+    });
+  });
 });
