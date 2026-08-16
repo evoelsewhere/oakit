@@ -68,6 +68,8 @@ export const mutatedFiles = [
   'src/formats/pptx/writer/xml.ts',
   'src/formats/pptx/writer/units.ts',
   'src/formats/pptx/writer/verify.ts',
+  'src/formats/xlsx/errors.ts',
+  'src/formats/xlsx/internal/resource-limits.ts',
 ];
 
 export const pendingMutationFiles = [];
@@ -106,6 +108,15 @@ export const excludedMutationFiles = [
   {
     file: 'src/formats/pptx/write-types.ts',
     reason: 'Compile-time-only writer result, report, and error contracts.',
+  },
+  {
+    file: 'src/formats/xlsx/index.ts',
+    reason:
+      'Pure XLSX public re-export barrel with no runtime decisions or values.',
+  },
+  {
+    file: 'src/formats/xlsx/types.ts',
+    reason: 'Compile-time-only XLSX public interfaces and type aliases.',
   },
   {
     file: 'src/index.ts',
