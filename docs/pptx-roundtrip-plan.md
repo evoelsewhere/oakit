@@ -113,15 +113,16 @@ claim it.
 | Level | Meaning                                                                                                                                                                                |
 | ----- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `C1`  | Source-free creation. The output is package-valid and reparses to the normalized supported semantic input.                                                                             |
-| `C2`  | Verified creation. In addition to C1, rendering and producer-open checks pass for every feature used by the document.                                                                  |
+| `C2`  | Semantically and visually verified creation. In addition to C1, a fresh strict parse and Office-free render prove the declared semantics and visual invariants.                        |
+| `C3`  | Producer-verified creation. In addition to C2, the output opens without repair and survives controlled save/reopen in every producer declared by the capability row.                   |
 | `R0`  | Exact no-op. There are no edits and the returned bytes are identical to the verified source bytes.                                                                                     |
 | `R1`  | Part-preserving edit. Every untouched part's uncompressed payload is copied exactly; all dirty parts belong to supported operation paths and pass graph validation.                    |
 | `R2`  | Semantic edit verification. In addition to R1, a fresh strict parse proves the requested semantic changes and required invariants.                                                     |
 | `R3`  | Producer-verified edit. In addition to R2, the output opens without repair and preserves declared behavior in the supported PowerPoint, LibreOffice Impress, and Google Slides matrix. |
 
-`R0` is an exact terminal class, not a lower-quality edited output. `C1` and
-`C2` apply only to newly created packages and must never be described as source
-preservation.
+`R0` is an exact terminal class, not a lower-quality edited output. `C1`, `C2`,
+and `C3` apply only to newly created packages and must never be described as
+source preservation.
 
 The initial implementation may ship one supported domain at a time. General
 PPTX editing must not be advertised until the public support matrix and the
@@ -1350,11 +1351,11 @@ The writer validates:
 interface PptxWriteResult {
   data: Uint8Array;
   report: {
-    level: 'C1' | 'C2' | 'R0' | 'R1' | 'R2' | 'R3';
+    level: 'C1' | 'C2' | 'C3' | 'R0' | 'R1' | 'R2' | 'R3';
     supportProfile: {
       id: string;
       version: string;
-      effectiveLevel: 'C1' | 'C2' | 'R0' | 'R1' | 'R2' | 'R3';
+      effectiveLevel: 'C1' | 'C2' | 'C3' | 'R0' | 'R1' | 'R2' | 'R3';
       producerMatrix: string[];
     };
     operations: PptxOperationEvidence[];
@@ -1538,7 +1539,7 @@ domain
 Each resulting row is classified as:
 
 ```text
-unsupported | preservation-only | create-C1 | create-C2
+unsupported | preservation-only | create-C1 | create-C2 | create-C3
 edited-R1 | edited-R2 | edited-R3
 ```
 
@@ -1691,7 +1692,7 @@ The corpus must include native authoring rather than only synthetic XML:
 - comments, hyperlinks, external relationships, custom XML, and extensions;
 - large but valid boundary documents.
 
-R3 evidence requires open without repair, controlled save/reopen, semantic
+C3/R3 evidence requires open without repair, controlled save/reopen, semantic
 inspection, and retained producer/version artifacts. Google Slides verification
 may use controlled import/export fixtures rather than network access inside
 core tests.
@@ -1703,7 +1704,7 @@ as a reason to require structurally identical post-save packages.
 
 ### Visual verification
 
-For C2 and visual R3 rows:
+For C2/C3 and visual R3 rows:
 
 - render source and output with the selected producer or controlled renderer;
 - compare source and edited output with the same renderer/environment before
@@ -1806,7 +1807,7 @@ to the change. The existing PPTX reader remains releasable throughout.
 
 ### 1. Freeze terminology and support reporting
 
-- document C1/C2 and R0-R3;
+- document C1-C3 and R0-R3;
 - define the multidimensional capability-manifest schema;
 - define unsupported versus preservation-only behavior;
 - add public-contract tests that forbid unearned capability claims.
@@ -2006,7 +2007,7 @@ fuzz and mutation.
 - enforce small/normal/large runtime and portable memory budgets;
 - retain capability/version/evidence artifacts for release classification.
 
-Gate: C2/R3 evidence, zero unexplained repair, declared visual thresholds,
+Gate: C3/R3 evidence, zero unexplained repair, declared visual thresholds,
 Node/browser budgets, and complete critical mutation scope.
 
 ### 20. Integrate packaging, CLI, CI, and documentation
@@ -2136,7 +2137,7 @@ An operation/domain row advances only when all applicable gates pass:
 7. real Chromium tests;
 8. Node 20/22/24 package matrix;
 9. native PowerPoint, LibreOffice Impress, and Google Slides corpus evidence for
-   R3/C2 claims;
+   R3/C3 claims;
 10. Open XML SDK validation and producer repair-log evidence for applicable
     profiles;
 11. same-renderer visual verification and descendant rendering for shared-owner
@@ -2192,10 +2193,22 @@ level, package matrix, and browser verification.
 
 - every feature used by the document has passing visual evidence where
   applicable;
-- the declared PowerPoint/LibreOffice/Google Slides matrix opens without repair;
+- the generated package passes a fresh strict semantic parse independent of the
+  creation writer state;
 - documents using shared masters, layouts, themes, placeholders, or fonts render
   representative descendant slides correctly;
+- SVG output is self-contained and PNG output is independently decoded without
+  requiring an Office application, headless browser, or conversion service;
+- semantic, package, and visual assertions agree so a tolerant image threshold
+  cannot hide structural corruption.
+
+### Source-free creation is complete at C3 when
+
+- C1 and C2 are complete;
+- every feature used by the document passes the declared
+  PowerPoint/LibreOffice/Google Slides producer matrix without repair;
 - controlled save/reopen preserves required semantics;
+- visual behavior remains within the declared same-producer thresholds;
 - producer versions and artifacts are retained with the release evidence.
 
 ### R0 exact no-op is complete when
