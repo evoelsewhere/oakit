@@ -7,13 +7,13 @@ const PRESENTATION_NAMESPACE =
   'http://schemas.openxmlformats.org/presentationml/2006/main';
 const RELATIONSHIPS_NAMESPACE =
   'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
-const MAX_SLIDE_COUNT = 10_000;
+export const MAX_POWERPOINT_SLIDE_COUNT = 10_000;
 
-function assertSlideCount(slideCount: number): void {
+export function assertPowerPointSlideCount(slideCount: number): void {
   if (
     !Number.isSafeInteger(slideCount) ||
     slideCount < 0 ||
-    slideCount > MAX_SLIDE_COUNT
+    slideCount > MAX_POWERPOINT_SLIDE_COUNT
   ) {
     throw new RangeError(
       'PowerPoint presentation slide count must be an integer from 0 through 10000',
@@ -34,7 +34,7 @@ export function serializePresentation(
   size: PptxSceneSize,
   slideCount: number,
 ): string {
-  assertSlideCount(slideCount);
+  assertPowerPointSlideCount(slideCount);
   const slideIds = serializeSlideIds(slideCount);
   return (
     '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
