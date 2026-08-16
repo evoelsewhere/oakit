@@ -1,5 +1,5 @@
 import type { PptxSceneDocument } from '../scene-types';
-import type { PptxParseOptions, PptxResourceLimits } from '../types';
+import type { PptxResourceLimits } from '../types';
 import type { PptxWriteSupportProfile } from '../write-types';
 
 export type PptxRoundTripConformance = 'strict' | 'transitional' | 'unknown';
@@ -51,7 +51,9 @@ export interface PptxRoundTripPortableJson {
   supportProfile: PptxWriteSupportProfile;
 }
 
-export type PptxRoundTripReadOptions = PptxParseOptions;
+export interface PptxRoundTripReadOptions {
+  limits?: PptxResourceLimits;
+}
 
 export interface PptxRoundTripWriteOptions {
   limits?: PptxResourceLimits;

@@ -4,6 +4,7 @@ export {
   parsePptxWithDiagnostics,
   PptxParseError,
   PptxWriteError,
+  readPptxRoundTrip,
   validatePptxScene,
 } from './formats/pptx/index';
 export type {

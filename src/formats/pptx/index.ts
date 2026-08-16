@@ -8,6 +8,7 @@ import type {
 
 export { validatePptxScene } from './scene-validation';
 export { createPptx } from './creator';
+export { readPptxRoundTrip } from './roundtrip/read';
 
 export { PptxParseError } from './errors';
 export { PptxWriteError } from './write-error';

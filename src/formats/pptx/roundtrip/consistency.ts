@@ -71,7 +71,11 @@ export async function createPptxSnapshotConsistency(
         format: 'pptx',
         keyManifest: keyManifest(input.document),
         schemaVersion: 1,
-        source: input.source,
+        source: {
+          byteLength: input.source.byteLength,
+          conformance: input.source.conformance,
+          sha256: input.source.sha256,
+        },
         supportProfile: input.supportProfile,
       }),
       canonicalSha256(input.document),
