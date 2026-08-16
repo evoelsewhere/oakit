@@ -67,7 +67,7 @@ describe('PPTX slide order', () => {
       'ppt/slides/_rels/slide3.xml.rels': SLIDE_RELATIONSHIPS,
     });
 
-    const result = await parsePptx(input);
+    const result = await parsePptx(input, { limits: { maxSlides: 2 } });
 
     expect(result.slides).toHaveLength(2);
     const second = result.slides[0]?.elements[0];

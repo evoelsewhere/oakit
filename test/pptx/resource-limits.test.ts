@@ -36,9 +36,17 @@ describe('PPTX resource limits', () => {
   it('rejects packages with too many entries', async () => {
     const input = await createMinimalPptx();
 
-    await expect(
-      parsePptx(input, { limits: { maxEntries: 1 } }),
-    ).rejects.toThrow('maxEntries');
+    try {
+      await parsePptx(input, { limits: { maxEntries: 1 } });
+      throw new Error('Expected the archive entry limit to reject');
+    } catch (caught) {
+      expect(caught).toBeInstanceOf(PptxParseError);
+      if (!(caught instanceof PptxParseError)) throw caught;
+      expect(caught.diagnostic.code).toBe('resource-limit-exceeded');
+      expect(caught.cause).toBeInstanceOf(PptxResourceLimitError);
+      if (!(caught.cause instanceof PptxResourceLimitError)) throw caught;
+      expect(caught.cause.limitName).toBe('maxEntries');
+    }
   });
 
   it('rejects a package part larger than the configured maximum', async () => {
