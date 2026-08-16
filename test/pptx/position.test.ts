@@ -4,7 +4,7 @@ import type { XmlLookupValue } from '../../src/common';
 import { getPosition, getSize } from '../../src/formats/pptx/internal/position';
 
 function transform(
-  values: Record<string, string>,
+  values: Record<string, unknown>,
   kind: 'a:ext' | 'a:off',
 ): XmlLookupValue {
   return { [kind]: { attrs: values } } as unknown as XmlLookupValue;
@@ -23,6 +23,14 @@ describe('PPTX position and size normalization', () => {
     expect(getSize(transform({ cx: '914400', cy: '457200' }, 'a:ext'))).toEqual(
       { height: 36, width: 72 },
     );
+    expect(getPosition(transform({ x: '+12700', y: '-0' }, 'a:off'))).toEqual({
+      left: 1,
+      top: 0,
+    });
+    expect(getSize(transform({ cx: '+12700', cy: '0' }, 'a:ext'))).toEqual({
+      height: 0,
+      width: 1,
+    });
   });
 
   it('prefers slide values over layout and master values', () => {
@@ -75,17 +83,45 @@ describe('PPTX position and size normalization', () => {
       height: 2,
       width: 0,
     });
+    expect(getPosition(transform({ x: null, y: undefined }, 'a:off'))).toEqual({
+      left: 0,
+      top: 0,
+    });
+    expect(getSize(transform({ cx: null, cy: undefined }, 'a:ext'))).toEqual({
+      height: 0,
+      width: 0,
+    });
   });
 
   it.each([
-    ['not-a-number', '12700x'],
-    ['Infinity', '-Infinity'],
-  ])('exposes malformed geometry %s and %s to validation', (first, second) => {
-    const position = getPosition(transform({ x: first, y: second }, 'a:off'));
-    const size = getSize(transform({ cx: first, cy: second }, 'a:ext'));
+    '',
+    ' ',
+    'not-a-number',
+    '12700x',
+    'Infinity',
+    '-Infinity',
+    '1.5',
+    '1e3',
+    '01',
+    '9007199254740992',
+  ])('exposes malformed geometry %j to validation', (value) => {
+    const position = getPosition(transform({ x: value, y: value }, 'a:off'));
+    const size = getSize(transform({ cx: value, cy: value }, 'a:ext'));
 
     expect(Number.isFinite(position.left)).toBe(false);
     expect(Number.isFinite(position.top)).toBe(false);
+    expect(Number.isFinite(size.width)).toBe(false);
+    expect(Number.isFinite(size.height)).toBe(false);
+  });
+
+  it('exposes negative sizes while preserving negative positions', () => {
+    expect(
+      getPosition(transform({ x: '-12700', y: '-25400' }, 'a:off')),
+    ).toEqual({
+      left: -1,
+      top: -2,
+    });
+    const size = getSize(transform({ cx: '-12700', cy: '-25400' }, 'a:ext'));
     expect(Number.isFinite(size.width)).toBe(false);
     expect(Number.isFinite(size.height)).toBe(false);
   });
