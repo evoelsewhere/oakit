@@ -1,21 +1,15 @@
 import process from 'node:process';
 
+import { mutationShardEnvironment } from './scripts/mutation-shard-environment.mjs';
 import baseConfig from './stryker.config.mjs';
 
-const mutate = (process.env.MUTATION_FILES ?? '')
-  .split(',')
-  .filter((file) => file.length > 0);
-const reportPath = process.env.MUTATION_REPORT;
-
-if (mutate.length === 0) {
-  throw new Error('MUTATION_FILES must select at least one source file');
-}
-if (reportPath === undefined || reportPath.length === 0) {
-  throw new Error('MUTATION_REPORT must select a JSON report path');
-}
+const { excludedMutations, mutate, reportPath } = mutationShardEnvironment(
+  process.env,
+);
 
 export default {
   ...baseConfig,
+  excludedMutations,
   incremental: false,
   jsonReporter: { fileName: reportPath },
   mutate,

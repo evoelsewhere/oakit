@@ -115,13 +115,13 @@ jobs:
       - run: pnpm test:corpus:large
 
   mutation:
-    name: PowerPoint mutation shard ${{ matrix.shard }} of 8
+    name: PowerPoint file mutation shard ${{ matrix.shard }} of 8
     runs-on: ubuntu-latest
     timeout-minutes: 120
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4, 5, 6, 7, 8]
+        shard: [2, 3, 4, 5, 6, 7, 8]
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -145,9 +145,43 @@ jobs:
           path: reports/mutation/shard-${{ matrix.shard }}.json
           if-no-files-found: error
 
+  shape-mutation:
+    name: PowerPoint shape mutation job ${{ matrix.job }} of 10
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        job: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Run forced shape mutation job
+        run: |
+          selection="$(node scripts/shape-path-mutation-jobs.mjs '${{ matrix.job }}')"
+          mutate_files="$(jq --raw-output '.mutate' <<< "$selection")"
+          excluded_mutations="$(jq --raw-output '.excludedMutations | join(",")' <<< "$selection")"
+          MUTATION_FILES="$mutate_files" \
+          MUTATION_EXCLUDED="$excluded_mutations" \
+          MUTATION_REPORT="reports/mutation/shape-${{ matrix.job }}.json" \
+            pnpm exec stryker run stryker.shard.config.mjs --force
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mutation-shape-${{ matrix.job }}
+          path: reports/mutation/shape-${{ matrix.job }}.json
+          if-no-files-found: error
+
   mutation-audit:
     name: Complete PowerPoint mutation audit
-    needs: mutation
+    needs: [mutation, shape-mutation]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -162,7 +196,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - uses: actions/download-artifact@v4
         with:
-          pattern: mutation-shard-*
+          pattern: mutation-*
           path: reports/mutation/shards
       - run: node scripts/merge-mutation-reports.mjs
       - run: pnpm test:mutation:audit

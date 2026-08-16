@@ -4,6 +4,7 @@ import {
   mergeMutationReports,
   reportMutantFingerprint,
 } from '../../scripts/merge-mutation-reports.mjs';
+import { mutationShardEnvironment } from '../../scripts/mutation-shard-environment.mjs';
 import { mutatedFiles } from '../../scripts/mutation-scope.mjs';
 import { createMutationShards } from '../../scripts/mutation-shards.mjs';
 import {
@@ -53,6 +54,29 @@ function reportMutant({
 }
 
 describe('mutation report sharding', () => {
+  it('parses an explicit shard selection and optional mutator exclusions', () => {
+    expect(
+      mutationShardEnvironment({
+        MUTATION_EXCLUDED: 'StringLiteral,BlockStatement',
+        MUTATION_FILES: 'a.ts,b.ts:1-20',
+        MUTATION_REPORT: 'report.json',
+      }),
+    ).toEqual({
+      excludedMutations: ['StringLiteral', 'BlockStatement'],
+      mutate: ['a.ts', 'b.ts:1-20'],
+      reportPath: 'report.json',
+    });
+  });
+
+  it('rejects an empty shard selection or report path', () => {
+    expect(() =>
+      mutationShardEnvironment({ MUTATION_REPORT: 'report.json' }),
+    ).toThrow('MUTATION_FILES must select at least one source file');
+    expect(() => mutationShardEnvironment({ MUTATION_FILES: 'a.ts' })).toThrow(
+      'MUTATION_REPORT must select a JSON report path',
+    );
+  });
+
   it('assigns every configured source to exactly one balanced shard', () => {
     const weights = new Map(
       mutatedFiles.map((file, index) => [file, index + 1]),
