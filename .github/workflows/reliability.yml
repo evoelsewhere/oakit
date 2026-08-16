@@ -27,9 +27,9 @@ jobs:
       - run: pnpm test:corpus:large
 
   mutation:
-    name: Core mutation score
+    name: Complete PowerPoint mutation suite
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
