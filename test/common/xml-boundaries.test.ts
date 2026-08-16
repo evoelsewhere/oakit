@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   assertXmlComplexity,
+  getXmlNodeOrder,
   readXmlFileResult,
   simplifyLossless,
   XmlComplexityLimitError,
@@ -71,24 +72,46 @@ describe('XML error contracts', () => {
 });
 
 describe('lossless XML normalization boundaries', () => {
+  it.each([
+    [0, 0],
+    [12, 12],
+    ['0', 0],
+    ['12', 12],
+  ])('accepts canonical legacy document order %j', (order, expected) => {
+    expect(getXmlNodeOrder({ attrs: { order } })).toBe(expected);
+  });
+
+  it.each([
+    -1,
+    1.5,
+    Number.POSITIVE_INFINITY,
+    true,
+    '+1',
+    '01',
+    '1.0',
+    '9007199254740992',
+  ])('rejects non-canonical legacy document order %j', (order) => {
+    expect(getXmlNodeOrder({ attrs: { order } })).toBeUndefined();
+  });
+
   it.each(CANONICAL_NAMESPACES)(
     'normalizes namespace %s to prefix %s',
     (namespace, prefix) => {
       const tagName = prefix ? `${prefix}:node` : 'node';
+      const normalized = simplifyLossless([
+        {
+          attributes: { 'xmlns:source': namespace },
+          children: [],
+          tagName: 'source:node',
+        },
+      ]) as Record<string, unknown>;
 
-      expect(
-        simplifyLossless([
-          {
-            attributes: { 'xmlns:source': namespace },
-            children: [],
-            tagName: 'source:node',
-          },
-        ]),
-      ).toEqual({
+      expect(normalized).toEqual({
         [tagName]: {
-          attrs: { order: 0, 'xmlns:source': namespace },
+          attrs: { 'xmlns:source': namespace },
         },
       });
+      expect(getXmlNodeOrder(normalized[tagName])).toBe(0);
     },
   );
 
@@ -109,49 +132,57 @@ describe('lossless XML normalization boundaries', () => {
 
   it('preserves text values together with parent attributes and order', () => {
     expect(simplifyLossless(['content'])).toBe('content');
-    expect(simplifyLossless(['content'], { lang: 'en-US' })).toEqual({
-      attrs: { lang: 'en-US', order: 0 },
+    const normalized = simplifyLossless(['content'], {
+      lang: 'en-US',
+    });
+    expect(normalized).toEqual({
+      attrs: { lang: 'en-US' },
       value: 'content',
     });
+    expect(getXmlNodeOrder(normalized)).toBe(0);
   });
 
   it('advances document order after an attributed text element', () => {
-    expect(
-      simplifyLossless([
-        {
-          attributes: { lang: 'en-US' },
-          children: ['first'],
-          tagName: 'text',
-        },
-        { children: [], tagName: 'next' },
-      ]),
-    ).toEqual({
-      next: { attrs: { order: 2 } },
+    const normalized = simplifyLossless([
+      {
+        attributes: { lang: 'en-US' },
+        children: ['first'],
+        tagName: 'text',
+      },
+      { children: [], tagName: 'next' },
+    ]) as Record<string, unknown>;
+
+    expect(normalized).toEqual({
+      next: { attrs: {} },
       text: {
-        attrs: { lang: 'en-US', order: 0 },
+        attrs: { lang: 'en-US' },
         value: 'first',
       },
     });
+    expect(getXmlNodeOrder(normalized.text)).toBe(0);
+    expect(getXmlNodeOrder(normalized.next)).toBe(1);
   });
 
   it('preserves repeated empty elements and their document order', () => {
-    expect(
-      simplifyLossless([
-        { children: [], tagName: 'item' },
-        { children: [], tagName: 'item' },
-      ]),
-    ).toEqual({
-      item: [{ attrs: { order: 0 } }, { attrs: { order: 1 } }],
+    const normalized = simplifyLossless([
+      { children: [], tagName: 'item' },
+      { children: [], tagName: 'item' },
+    ]) as { item: unknown[] };
+
+    expect(normalized).toEqual({
+      item: [{ attrs: {} }, { attrs: {} }],
     });
+    expect(normalized.item.map(getXmlNodeOrder)).toEqual([0, 1]);
   });
 
   it('treats absent children as empty and ignores the XML declaration node', () => {
-    expect(
-      simplifyLossless([
-        { children: [], tagName: '?xml' },
-        { tagName: 'leaf' },
-      ]),
-    ).toEqual({ leaf: { attrs: { order: 0 } } });
+    const normalized = simplifyLossless([
+      { children: [], tagName: '?xml' },
+      { tagName: 'leaf' },
+    ]) as { leaf: unknown };
+
+    expect(normalized).toEqual({ leaf: { attrs: {} } });
+    expect(getXmlNodeOrder(normalized.leaf)).toBe(0);
   });
 
   it('does not silently discard visible mixed text', () => {
@@ -161,72 +192,99 @@ describe('lossless XML normalization boundaries', () => {
   });
 
   it('ignores formatting whitespace around child elements', () => {
-    expect(
-      simplifyLossless([' \n\t ', { children: [], tagName: 'child' }]),
-    ).toEqual({ child: { attrs: { order: 0 } } });
+    const normalized = simplifyLossless([
+      ' \n\t ',
+      { children: [], tagName: 'child' },
+    ]) as { child: unknown };
+
+    expect(normalized).toEqual({ child: { attrs: {} } });
+    expect(getXmlNodeOrder(normalized.child)).toBe(0);
   });
 
   it('applies a canonical default namespace only to element names', () => {
-    expect(
-      simplifyLossless([
-        {
-          attributes: { id: '7', xmlns: DRAWING_NAMESPACE },
-          children: [],
-          tagName: 'shape',
-        },
-      ]),
-    ).toEqual({
+    const normalized = simplifyLossless([
+      {
+        attributes: { id: '7', xmlns: DRAWING_NAMESPACE },
+        children: [],
+        tagName: 'shape',
+      },
+    ]) as Record<string, unknown>;
+
+    expect(normalized).toEqual({
       'a:shape': {
-        attrs: { id: '7', order: 0, xmlns: DRAWING_NAMESPACE },
+        attrs: { id: '7', xmlns: DRAWING_NAMESPACE },
       },
     });
+    expect(getXmlNodeOrder(normalized['a:shape'])).toBe(0);
   });
 
   it('does not interpret ordinary attributes as namespace bindings', () => {
-    expect(
-      simplifyLossless([
-        {
-          attributes: {
-            source: DRAWING_NAMESPACE,
-            'xmlns:roo': DRAWING_NAMESPACE,
-          },
-          children: [],
-          tagName: 'root',
+    const normalized = simplifyLossless([
+      {
+        attributes: {
+          source: DRAWING_NAMESPACE,
+          'xmlns:roo': DRAWING_NAMESPACE,
         },
-      ]),
-    ).toEqual({
+        children: [],
+        tagName: 'root',
+      },
+    ]) as { root: unknown };
+
+    expect(normalized).toEqual({
       root: {
         attrs: {
-          order: 0,
           source: DRAWING_NAMESPACE,
           'xmlns:roo': DRAWING_NAMESPACE,
         },
       },
     });
+    expect(getXmlNodeOrder(normalized.root)).toBe(0);
   });
 
   it('protects reserved canonical prefixes bound to unknown namespaces', () => {
-    expect(
-      simplifyLossless([
-        {
-          attributes: { 'xmlns:a': 'urn:custom-drawing' },
-          children: [],
-          tagName: 'a:shape',
-        },
-        {
-          attributes: { 'xmlns:q': 'urn:custom-drawing' },
-          children: [],
-          tagName: 'q:shape',
-        },
-      ]),
-    ).toEqual({
+    const normalized = simplifyLossless([
+      {
+        attributes: { 'xmlns:a': 'urn:custom-drawing' },
+        children: [],
+        tagName: 'a:shape',
+      },
+      {
+        attributes: { 'xmlns:q': 'urn:custom-drawing' },
+        children: [],
+        tagName: 'q:shape',
+      },
+    ]) as Record<string, unknown>;
+
+    expect(normalized).toEqual({
       'ns_a:shape': {
-        attrs: { order: 0, 'xmlns:a': 'urn:custom-drawing' },
+        attrs: { 'xmlns:a': 'urn:custom-drawing' },
       },
       'q:shape': {
-        attrs: { order: 1, 'xmlns:q': 'urn:custom-drawing' },
+        attrs: { 'xmlns:q': 'urn:custom-drawing' },
       },
     });
+    expect(getXmlNodeOrder(normalized['ns_a:shape'])).toBe(0);
+    expect(getXmlNodeOrder(normalized['q:shape'])).toBe(1);
+  });
+
+  it('keeps an authored order attribute separate from document order', () => {
+    const normalized = simplifyLossless([
+      {
+        attributes: { order: '99' },
+        children: [],
+        tagName: 'first',
+      },
+      { children: [], tagName: 'second' },
+    ]) as {
+      first: { attrs: Record<string, string> };
+      second: { attrs: Record<string, string> };
+    };
+
+    expect(normalized.first.attrs.order).toBe('99');
+    expect(normalized.second.attrs.order).toBeUndefined();
+    expect(getXmlNodeOrder(normalized.first)).toBe(0);
+    expect(getXmlNodeOrder(normalized.second)).toBe(1);
+    expect(JSON.stringify(normalized.second)).not.toContain('order');
   });
 
   it('reports the exact duplicate expanded attribute', () => {

@@ -15,17 +15,17 @@ const MIXED_ELEMENT_SLIDE = `<?xml version="1.0" encoding="UTF-8"?>
   <p:sld xmlns:p="${PRESENTATION_NS}" xmlns:a="${DRAWING_NS}" xmlns:r="${OFFICE_REL_NS}">
     <p:cSld>
       <p:spTree>
-        <p:sp>
+        <p:sp order="900">
           <p:nvSpPr><p:cNvPr id="2" name="Back"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr>
           <p:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="100" cy="100"/></a:xfrm></p:spPr>
           <p:txBody><a:bodyPr/><a:lstStyle/><a:p><a:r><a:t>Back</a:t></a:r></a:p></p:txBody>
         </p:sp>
-        <p:pic>
+        <p:pic order="1">
           <p:nvPicPr><p:cNvPr id="3" name="Middle"/><p:cNvPicPr/><p:nvPr/></p:nvPicPr>
           <p:blipFill><a:blip r:embed="rIdImage"/><a:stretch><a:fillRect/></a:stretch></p:blipFill>
           <p:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="100" cy="100"/></a:xfrm></p:spPr>
         </p:pic>
-        <p:sp>
+        <p:sp order="0">
           <p:nvSpPr><p:cNvPr id="4" name="Front"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr>
           <p:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="100" cy="100"/></a:xfrm></p:spPr>
           <p:txBody><a:bodyPr/><a:lstStyle/><a:p><a:r><a:t>Front</a:t></a:r></a:p></p:txBody>
@@ -35,7 +35,7 @@ const MIXED_ELEMENT_SLIDE = `<?xml version="1.0" encoding="UTF-8"?>
   </p:sld>`;
 
 describe('PPTX public API adversarial cases', () => {
-  it('preserves authored z-order across different element node types', async () => {
+  it('preserves element z-order without trusting an authored order attribute', async () => {
     const input = await createIndependentPptx({
       'ppt/slides/slide1.xml': MIXED_ELEMENT_SLIDE,
       'ppt/slides/_rels/slide1.xml.rels': `

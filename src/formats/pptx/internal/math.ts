@@ -1,6 +1,6 @@
 import type { XmlLookupValue } from '../../../common';
 
-import { getTextByPathList } from '../../../common';
+import { getTextByPathList, getXmlNodeOrder } from '../../../common';
 
 interface MathPart {
   key: string;
@@ -173,19 +173,19 @@ export function parseBox(box: XmlLookupValue): string {
 }
 
 function partOrder(part: MathPart): number {
-  const directOrder = getTextByPathList<string>(part.value, [
+  const directRunProperties = getTextByPathList<XmlLookupValue>(part.value, [
     'a:rPr',
-    'attrs',
-    'order',
   ]);
-  const controlOrder = getTextByPathList<string>(part.value, [
+  const controlRunProperties = getTextByPathList<XmlLookupValue>(part.value, [
     `${part.key}Pr`,
     'm:ctrlPr',
     'a:rPr',
-    'attrs',
-    'order',
   ]);
-  return Number(directOrder ?? controlOrder ?? 0);
+  return (
+    getXmlNodeOrder(directRunProperties) ??
+    getXmlNodeOrder(controlRunProperties) ??
+    0
+  );
 }
 
 function parseMathPart({ key, value }: MathPart): string {

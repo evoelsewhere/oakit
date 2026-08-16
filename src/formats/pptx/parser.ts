@@ -62,6 +62,7 @@ import {
   isVideoLink,
   escapeHtml,
   getRelationshipPartUri,
+  getXmlNodeOrder,
   hasValidText,
   numberToFixed,
   sanitizeHyperlink,
@@ -976,7 +977,7 @@ async function processMathNode(
 ): Promise<Draft<MathElement> | null> {
   const choice = nodeAt(node, ['mc:Choice']);
   const fallback = nodeAt(node, ['mc:Fallback']);
-  const order = Number(attributes(node).order ?? 0);
+  const order = getXmlNodeOrder(node) ?? 0;
   const xfrmNode = nodeAt(choice, ['p:sp', 'p:spPr', 'a:xfrm']);
   const { top, left } = getPosition(xfrmNode, undefined, undefined);
   const { width, height } = getSize(xfrmNode, undefined, undefined);
@@ -1019,7 +1020,7 @@ async function processGroupSpNode(
   source: string,
   parentGroupHierarchy: XmlLookupValue[] = [],
 ): Promise<Draft<Group> | null> {
-  const order = Number(attributes(node).order ?? 0);
+  const order = getXmlNodeOrder(node) ?? 0;
   const xfrmNode = nodeAt(node, ['p:grpSpPr', 'a:xfrm']);
   if (!xfrmNode) return null;
   const x =
@@ -1142,7 +1143,7 @@ async function processSpNode(
   const name = textAt(nonVisualProperties, ['attrs', 'name']) ?? '';
   const index = textAt(node, ['p:nvSpPr', 'p:nvPr', 'p:ph', 'attrs', 'idx']);
   let type = textAt(node, ['p:nvSpPr', 'p:nvPr', 'p:ph', 'attrs', 'type']);
-  const order = Number(textAt(node, ['attrs', 'order']) ?? 0);
+  const order = getXmlNodeOrder(node) ?? 0;
 
   let slideLayoutSpNode: XmlLookupValue | undefined;
   let slideMasterSpNode: XmlLookupValue | undefined;
@@ -1216,7 +1217,7 @@ async function processCxnSpNode(
   const nonVisualProperties = nodeAt(node, ['p:nvCxnSpPr', 'p:cNvPr']);
   const name = textAt(nonVisualProperties, ['attrs', 'name']) ?? '';
   const type = textAt(node, ['p:nvCxnSpPr', 'p:nvPr', 'p:ph', 'attrs', 'type']);
-  const order = Number(textAt(node, ['attrs', 'order']) ?? 0);
+  const order = getXmlNodeOrder(node) ?? 0;
   const link = getHyperlinkFromCNvPr(nonVisualProperties, warpObj);
 
   return await genShape(
@@ -1438,7 +1439,7 @@ async function processPicNode(
         : warpObj.slideResObj;
   const nonVisualProperties = nodeAt(node, ['p:nvPicPr', 'p:cNvPr']);
   const link = getHyperlinkFromCNvPr(nonVisualProperties, warpObj);
-  const order = Number(textAt(node, ['attrs', 'order']) ?? 0);
+  const order = getXmlNodeOrder(node) ?? 0;
   const relationshipId = textAt(node, [
     'p:blipFill',
     'a:blip',
@@ -1641,7 +1642,7 @@ function genTable(
   node: XmlLookupValue,
   warpObj: PptxParserContext,
 ): Draft<Table> {
-  const order = Number(textAt(node, ['attrs', 'order']) ?? 0);
+  const order = getXmlNodeOrder(node) ?? 0;
   const tableNode = nodeAt(node, ['a:graphic', 'a:graphicData', 'a:tbl']);
   const xfrmNode = nodeAt(node, ['p:xfrm']);
   const { top, left } = getPosition(xfrmNode, undefined, undefined);
@@ -1804,7 +1805,7 @@ async function genChart(
   node: XmlLookupValue,
   warpObj: PptxParserContext,
 ): Promise<ElementDraft | null> {
-  const order = Number(textAt(node, ['attrs', 'order']) ?? 0);
+  const order = getXmlNodeOrder(node) ?? 0;
   const xfrmNode = nodeAt(node, ['p:xfrm']);
   const { top, left } = getPosition(xfrmNode, undefined, undefined);
   const { width, height } = getSize(xfrmNode, undefined, undefined);
@@ -1853,7 +1854,7 @@ async function genDiagram(
   node: XmlLookupValue,
   warpObj: PptxParserContext,
 ): Promise<Draft<Diagram>> {
-  const order = Number(textAt(node, ['attrs', 'order']) ?? 0);
+  const order = getXmlNodeOrder(node) ?? 0;
   const xfrmNode = nodeAt(node, ['p:xfrm']);
   const { left, top } = getPosition(xfrmNode, undefined, undefined);
   const { width, height } = getSize(xfrmNode, undefined, undefined);

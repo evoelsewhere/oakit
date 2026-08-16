@@ -5,6 +5,7 @@ import {
   decodeXmlEntities,
   escapeHtml,
   getTextByPathList,
+  getXmlNodeOrder,
   sanitizeHyperlink,
 } from '../../../common';
 import {
@@ -57,10 +58,7 @@ function asArray(value: XmlLookupValue | undefined): XmlLookupValue[] {
 }
 
 function runOrder(node: XmlLookupValue): number {
-  const order = Number(
-    textAt(node, ['attrs', 'order']) ?? Number.MAX_SAFE_INTEGER,
-  );
-  return Number.isFinite(order) ? order : Number.MAX_SAFE_INTEGER;
+  return getXmlNodeOrder(node) ?? Number.MAX_SAFE_INTEGER;
 }
 
 function textToHtml(value: string): string {

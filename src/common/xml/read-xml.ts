@@ -16,6 +16,7 @@ import {
 import { assertXmlComplexity, decodeXmlBytes } from './validate';
 
 export { simplifyLossless } from './normalize';
+export { getXmlNodeOrder } from './tree';
 export { XmlComplexityLimitError, XmlStructureError } from './types';
 export type { XmlNode, XmlReadLimits, XmlReadResult, XmlValue } from './types';
 export { assertXmlComplexity } from './validate';

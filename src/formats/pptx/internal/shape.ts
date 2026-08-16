@@ -1,6 +1,6 @@
 import type { XmlLookupValue } from '../../../common';
 
-import { getTextByPathList } from '../../../common';
+import { getTextByPathList, getXmlNodeOrder } from '../../../common';
 import {
   createDrawingGuideResolver,
   type DrawingGuideResolver,
@@ -94,7 +94,7 @@ function resolvedPointsFromNode(
 }
 
 function commandOrder(node: XmlLookupValue | undefined): number {
-  return Number(attributes(node).order ?? 0);
+  return getXmlNodeOrder(node) ?? 0;
 }
 
 function collectPointCommands(
@@ -445,9 +445,7 @@ function extractPathCommands(
   if (
     orderedCommands[0]?.type !== 'moveTo' ||
     orderedCommands.slice(1).some((command) => command.type === 'moveTo') ||
-    orderedCommands
-      .slice(0, -1)
-      .some((command) => command.type === 'close') ||
+    orderedCommands.slice(0, -1).some((command) => command.type === 'close') ||
     orderedCommands.some(
       (command) =>
         command.type === 'arcTo' &&

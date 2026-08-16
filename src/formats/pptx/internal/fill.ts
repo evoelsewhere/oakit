@@ -9,6 +9,7 @@ import {
   base64ArrayBuffer,
   getMimeType,
   getTextByPathList,
+  getXmlNodeOrder,
   toHex,
 } from '../../../common';
 import {
@@ -150,9 +151,7 @@ function authoredColorTransformations(
       authored.push({
         ...descriptor,
         amount,
-        order:
-          finiteNumber(textAt(transformNode, ['attrs', 'order'])) ??
-          Number.MAX_SAFE_INTEGER,
+        order: getXmlNodeOrder(transformNode) ?? Number.MAX_SAFE_INTEGER,
       });
     }
   }
@@ -530,7 +529,7 @@ function orderedThemeBackgroundFills(
     for (const child of asArray(value)) {
       fills.push({
         node: wrapChild(key, child),
-        order: finiteNumber(attributes(child).order) ?? Number.MAX_SAFE_INTEGER,
+        order: getXmlNodeOrder(child) ?? Number.MAX_SAFE_INTEGER,
       });
     }
   }

@@ -16,5 +16,5 @@ export {
   hasValidText,
   sanitizeHyperlink,
 } from './text/html';
-export { eachElement, getTextByPathList } from './xml/tree';
+export { eachElement, getTextByPathList, getXmlNodeOrder } from './xml/tree';
 export type { XmlLookupValue } from './xml/tree';

@@ -1,4 +1,5 @@
 import { type XmlNode, XmlStructureError, type XmlValue } from './types';
+import { getXmlNodeOrder, setXmlNodeOrder } from './tree';
 
 interface TxmlNode {
   attributes?: Record<string, string>;
@@ -123,12 +124,13 @@ function simplifyLosslessWithState(
   const output: XmlNode = {};
 
   if (children.length === 1 && typeof children[0] === 'string') {
-    return Object.keys(parentAttributes).length > 0
-      ? {
-          attrs: { order: state.documentOrder++, ...parentAttributes },
-          value: children[0],
-        }
-      : children[0];
+    if (Object.keys(parentAttributes).length === 0) return children[0];
+    const textNode: XmlNode = {
+      attrs: { ...parentAttributes },
+      value: children[0],
+    };
+    setXmlNodeOrder(textNode, state.documentOrder++);
+    return textNode;
   }
 
   for (const child of children) {
@@ -157,8 +159,10 @@ function simplifyLosslessWithState(
 
     if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
       const attrs = value.attrs;
+      if (getXmlNodeOrder(value) === undefined) {
+        setXmlNodeOrder(value, state.documentOrder++);
+      }
       value.attrs = {
-        order: state.documentOrder++,
         ...(typeof attrs === 'object' && !Array.isArray(attrs) ? attrs : {}),
         ...childAttributes,
       };
