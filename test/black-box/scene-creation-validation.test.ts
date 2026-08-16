@@ -357,4 +357,22 @@ describe('PowerPoint creation scene validation', () => {
 
     expect(validateCreation(scene)).toEqual({ issues: [], valid: true });
   });
+
+  it('rejects a scene beyond the bounded creation slide count', () => {
+    const scene = creationScene();
+    scene.slides = new Array(10_001);
+
+    expect(validatePptxScene(scene)).toEqual({ issues: [], valid: true });
+    expect(validateCreation(scene)).toEqual({
+      issues: [
+        {
+          code: 'unsupported-feature',
+          message:
+            'Creation profile create-text-v1 supports at most 10000 slides',
+          path: '$.slides',
+        },
+      ],
+      valid: false,
+    });
+  });
 });

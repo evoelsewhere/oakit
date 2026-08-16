@@ -15,6 +15,7 @@ export const mutatedFiles = [
   'src/common/xml/tree.ts',
   'src/common/xml/types.ts',
   'src/common/xml/validate.ts',
+  'src/formats/pptx/creation-limits.ts',
   'src/formats/pptx/errors.ts',
   'src/formats/pptx/internal/animation.ts',
   'src/formats/pptx/internal/border.ts',

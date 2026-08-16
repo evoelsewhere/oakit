@@ -4,6 +4,10 @@ import type {
   PptxSceneValidationOptions,
   PptxSceneValidationResult,
 } from './scene-types';
+import {
+  isSupportedPowerPointCreationSlideCount,
+  MAX_POWERPOINT_CREATION_SLIDES,
+} from './creation-limits';
 
 type JsonObject = Record<string, unknown>;
 
@@ -885,6 +889,18 @@ export function validatePptxScene(
   });
 
   const slides = requireArray(document.slides, '$.slides', issues);
+  if (
+    profile === 'create-text-v1' &&
+    slides &&
+    !isSupportedPowerPointCreationSlideCount(slides.length)
+  ) {
+    addIssue(
+      issues,
+      'unsupported-feature',
+      '$.slides',
+      `Creation profile create-text-v1 supports at most ${MAX_POWERPOINT_CREATION_SLIDES} slides`,
+    );
+  }
   slides?.forEach((value, index) => {
     const path = `$.slides[${index}]`;
     const slide = requireObject(value, path, issues);

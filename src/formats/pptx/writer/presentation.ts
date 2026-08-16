@@ -1,4 +1,5 @@
 import type { PptxSceneSize } from '../scene-types';
+import { isSupportedPowerPointCreationSlideCount } from '../creation-limits';
 import { pointsToEmu } from './units';
 
 const DRAWING_NAMESPACE =
@@ -7,14 +8,8 @@ const PRESENTATION_NAMESPACE =
   'http://schemas.openxmlformats.org/presentationml/2006/main';
 const RELATIONSHIPS_NAMESPACE =
   'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
-export const MAX_POWERPOINT_SLIDE_COUNT = 10_000;
-
 export function assertPowerPointSlideCount(slideCount: number): void {
-  if (
-    !Number.isSafeInteger(slideCount) ||
-    slideCount < 0 ||
-    slideCount > MAX_POWERPOINT_SLIDE_COUNT
-  ) {
+  if (!isSupportedPowerPointCreationSlideCount(slideCount)) {
     throw new RangeError(
       'PowerPoint presentation slide count must be an integer from 0 through 10000',
     );
