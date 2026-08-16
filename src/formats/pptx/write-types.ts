@@ -1,6 +1,6 @@
 import type { PptxSceneValidationIssue } from './scene-types';
 
-export type PptxFidelityLevel = 'C1' | 'C2' | 'R0' | 'R1' | 'R2' | 'R3';
+export type PptxFidelityLevel = 'C1' | 'C2' | 'C3' | 'R0' | 'R1' | 'R2' | 'R3';
 
 export type PptxWriteErrorCode =
   | 'invalid-scene'

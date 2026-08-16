@@ -6,6 +6,7 @@ import {
   parsePptx,
   PptxWriteError,
   type PptxElement,
+  type PptxFidelityLevel,
   type PptxSceneDocument,
   type PptxSceneSlide,
 } from '../../src';
@@ -64,6 +65,12 @@ function creationScene(): PptxSceneDocument {
 }
 
 describe('PowerPoint creation through the public API', () => {
+  it('exposes producer-verified creation as a distinct fidelity level', () => {
+    const level: PptxFidelityLevel = 'C3';
+
+    expect(level).toBe('C3');
+  });
+
   it('creates a strict-readable text presentation with an explicit C1 report', async () => {
     const result = await createPptx(creationScene());
     const parsed = await parsePptx(result.data, {
