@@ -1,5 +1,5 @@
 import type JSZip from 'jszip';
-import { parse } from 'txml';
+import { parse } from 'txml/txml';
 
 import {
   readZipEntryBytes,
