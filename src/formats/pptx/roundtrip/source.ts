@@ -27,6 +27,11 @@ export interface NormalizedPptxRoundTripInput {
   sha256: string;
 }
 
+export interface PptxRoundTripPackageInspection {
+  conformance: PptxRoundTripConformance;
+  partCount: number;
+}
+
 interface ParsedXmlNode {
   attributes: object;
   children: Array<ParsedXmlNode | string>;
@@ -85,15 +90,18 @@ function localName(qualifiedName: string): string {
   return qualifiedName.slice(qualifiedName.indexOf(':') + 1);
 }
 
-export async function detectPptxRoundTripConformance(
+export async function inspectPptxRoundTripPackage(
   bytes: Uint8Array,
   limits: ResolvedPptxResourceLimits,
-): Promise<PptxRoundTripConformance> {
+): Promise<PptxRoundTripPackageInspection> {
   assertPptxInputWithinLimits(bytes, limits);
   const archive = await JSZip.loadAsync(bytes);
   assertPptxArchiveWithinLimits(archive, limits);
+  const partCount = Object.values(archive.files).filter(
+    (part) => !part.dir,
+  ).length;
   const presentation = archive.file(PRESENTATION_PART);
-  if (presentation === null) return 'unknown';
+  if (presentation === null) return { conformance: 'unknown', partCount };
 
   const xmlBytes = await readZipEntryBytes(presentation, limits.maxXmlBytes);
   const xml = decodeXmlBytes(xmlBytes);
@@ -103,15 +111,27 @@ export async function detectPptxRoundTripConformance(
   });
   const root = firstElement(parseXml(xml));
   if (root === undefined || localName(root.tagName) !== 'presentation') {
-    return 'unknown';
+    return { conformance: 'unknown', partCount };
   }
 
+  let conformance: PptxRoundTripConformance;
   switch (rootNamespace(root)) {
     case STRICT_PRESENTATION_NAMESPACE:
-      return 'strict';
+      conformance = 'strict';
+      break;
     case TRANSITIONAL_PRESENTATION_NAMESPACE:
-      return 'transitional';
+      conformance = 'transitional';
+      break;
     default:
-      return 'unknown';
+      conformance = 'unknown';
   }
+  return { conformance, partCount };
+}
+
+export async function detectPptxRoundTripConformance(
+  bytes: Uint8Array,
+  limits: ResolvedPptxResourceLimits,
+): Promise<PptxRoundTripConformance> {
+  const inspection = await inspectPptxRoundTripPackage(bytes, limits);
+  return inspection.conformance;
 }

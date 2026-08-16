@@ -7,6 +7,7 @@ import { ZipEntrySizeLimitError } from '../../src/common/archive/read-entry';
 import { resolvePptxResourceLimits } from '../../src/formats/pptx/internal/resource-limits';
 import {
   detectPptxRoundTripConformance,
+  inspectPptxRoundTripPackage,
   normalizePptxRoundTripInput,
 } from '../../src/formats/pptx/roundtrip/source';
 
@@ -114,6 +115,21 @@ describe('PowerPoint round-trip conformance detection', () => {
     await expect(
       detectPptxRoundTripConformance(bytes, resolvePptxResourceLimits()),
     ).resolves.toBe('unknown');
+  });
+
+  it('reports only non-directory package parts', async () => {
+    const archive = new JSZip();
+    archive.folder('empty-directory');
+    archive.file(
+      'ppt/presentation.xml',
+      `<p:presentation xmlns:p="${STRICT_NAMESPACE}"/>`,
+    );
+    archive.file('docProps/core.xml', '<core/>');
+    const bytes = await archive.generateAsync({ type: 'uint8array' });
+
+    await expect(
+      inspectPptxRoundTripPackage(bytes, resolvePptxResourceLimits()),
+    ).resolves.toEqual({ conformance: 'strict', partCount: 2 });
   });
 
   it('bounds presentation XML decompression', async () => {
