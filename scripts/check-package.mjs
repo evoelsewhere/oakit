@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { Buffer } from 'node:buffer';
 import { execFile } from 'node:child_process';
-import { readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { createRequire } from 'node:module';
@@ -13,6 +13,45 @@ import JSZip from 'jszip';
 const execFileAsync = promisify(execFile);
 const require = createRequire(import.meta.url);
 const projectRoot = path.resolve(import.meta.dirname, '..');
+
+async function installPackedArtifact(directory) {
+  const packDirectory = path.join(directory, 'pack');
+  const consumerDirectory = path.join(directory, 'consumer');
+  await Promise.all([
+    mkdir(packDirectory, { recursive: true }),
+    mkdir(consumerDirectory, { recursive: true }),
+  ]);
+  const packed = await execFileAsync(
+    'npm',
+    ['pack', '--ignore-scripts', '--json', '--pack-destination', packDirectory],
+    { cwd: projectRoot, maxBuffer: 1024 * 1024 },
+  );
+  const packResult = JSON.parse(packed.stdout);
+  assert.equal(packResult.length, 1);
+  const filename = packResult[0]?.filename;
+  assert.equal(typeof filename, 'string');
+  const tarballPath = path.join(packDirectory, filename);
+  await writeFile(
+    path.join(consumerDirectory, 'package.json'),
+    `${JSON.stringify({ private: true, type: 'module' }, null, 2)}\n`,
+  );
+  await execFileAsync(
+    'npm',
+    ['install', '--ignore-scripts', '--no-audit', '--no-fund', tarballPath],
+    { cwd: consumerDirectory, maxBuffer: 1024 * 1024 },
+  );
+  return {
+    cliPath: path.join(
+      consumerDirectory,
+      'node_modules',
+      '@evoelsewhere',
+      'oakit',
+      'dist',
+      'cli.js',
+    ),
+    consumerDirectory,
+  };
+}
 
 async function createSmokePptx() {
   const zip = new JSZip();
@@ -65,9 +104,9 @@ assert.equal(typeof cjsPptx.parsePptxWithDiagnostics, 'function');
 assert.equal(typeof esmPptxNode.renderPptxToPng, 'function');
 assert.equal(typeof cjsPptxNode.renderPptxDocumentToPng, 'function');
 
-const cliPath = path.join(projectRoot, 'dist/cli.js');
+const builtCliPath = path.join(projectRoot, 'dist/cli.js');
 assert.equal(
-  (await readFile(cliPath, 'utf8')).startsWith('#!/usr/bin/env node\n'),
+  (await readFile(builtCliPath, 'utf8')).startsWith('#!/usr/bin/env node\n'),
   true,
 );
 
@@ -75,6 +114,19 @@ const smokeDirectory = await mkdtemp(
   path.join(tmpdir(), 'oakit-package-smoke-'),
 );
 try {
+  const installed = await installPackedArtifact(smokeDirectory);
+  const cliPath = installed.cliPath;
+  assert.equal(
+    (await readFile(cliPath, 'utf8')).startsWith('#!/usr/bin/env node\n'),
+    true,
+  );
+  const versionResult = await execFileAsync(process.execPath, [
+    cliPath,
+    '--version',
+  ]);
+  assert.equal(versionResult.stdout, `oakit ${metadata.version}\n`);
+  assert.equal(versionResult.stderr, '');
+
   const inputPath = path.join(smokeDirectory, 'smoke.pptx');
   const outputPath = path.join(smokeDirectory, 'smoke.json');
   const portablePath = path.join(smokeDirectory, 'smoke.portable.json');
@@ -182,8 +234,44 @@ try {
     warnings: [],
     width: 360,
   });
+
+  const consumerPath = path.join(installed.consumerDirectory, 'consumer.mjs');
+  await writeFile(
+    consumerPath,
+    `import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+import { createRequire } from 'node:module';
+import { parsePptx } from '@evoelsewhere/oakit';
+import { parsePptxWithDiagnostics } from '@evoelsewhere/oakit/pptx';
+import { renderPptxToPng } from '@evoelsewhere/oakit/pptx/node';
+
+const input = new Uint8Array(await readFile(process.argv[2]));
+assert.equal((await parsePptx(input)).slides.length, 1);
+assert.equal((await parsePptxWithDiagnostics(input)).document.slides.length, 1);
+assert.equal((await renderPptxToPng(input)).slides.length, 1);
+const require = createRequire(import.meta.url);
+assert.equal(typeof require('@evoelsewhere/oakit').parsePptx, 'function');
+assert.equal(
+  typeof require('@evoelsewhere/oakit/pptx').parsePptxWithDiagnostics,
+  'function',
+);
+assert.equal(
+  typeof require('@evoelsewhere/oakit/pptx/node').renderPptxToPng,
+  'function',
+);
+`,
+  );
+  const consumerResult = await execFileAsync(
+    process.execPath,
+    [consumerPath, restoredPath],
+    { cwd: installed.consumerDirectory },
+  );
+  assert.equal(consumerResult.stdout, '');
+  assert.equal(consumerResult.stderr, '');
 } finally {
   await rm(smokeDirectory, { force: true, recursive: true });
 }
 
-console.log('Package smoke passed: ESM, CJS, subpath exports, and oakit CLI.');
+console.log(
+  'Package smoke passed: packed install, ESM, CJS, subpath exports, and oakit CLI.',
+);
