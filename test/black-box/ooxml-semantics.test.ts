@@ -34,11 +34,13 @@ describe('PPTX semantic validity at the public boundary', () => {
       });
 
       const tolerant = await parsePptxWithDiagnostics(input);
+      const message = `Presentation size must contain positive integer cx and cy coordinates; received cx=${width}, cy=${height}`;
 
       expect(tolerant.document.size).toEqual({ width: 0, height: 0 });
       expect(tolerant.diagnostics).toContainEqual(
         expect.objectContaining({
           code: 'invalid-document-value',
+          message,
           part: 'ppt/presentation.xml',
           severity: 'error',
         }),
@@ -48,6 +50,7 @@ describe('PPTX semantic validity at the public boundary', () => {
       ).rejects.toMatchObject({
         diagnostic: {
           code: 'invalid-document-value',
+          message,
           part: 'ppt/presentation.xml',
         },
       });
@@ -106,6 +109,8 @@ describe('PPTX semantic validity at the public boundary', () => {
     expect(tolerant.diagnostics).toContainEqual(
       expect.objectContaining({
         code: 'invalid-document-value',
+        message:
+          'Presentation size must contain positive integer cx and cy coordinates; received cx=(missing), cy=(missing)',
         part: 'ppt/presentation.xml',
       }),
     );
