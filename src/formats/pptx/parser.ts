@@ -234,7 +234,11 @@ export async function parse(
       diagnostics,
     );
   }
-  const slideFilenames = await getPresentationSlides(xmlReader, contentTypes);
+  const slideFilenames = await getPresentationSlides(
+    xmlReader,
+    contentTypes,
+    presentation,
+  );
   if (slideFilenames.length > limits.maxSlides) {
     throwResourceLimit(
       new PptxResourceLimitError(
@@ -245,13 +249,13 @@ export async function parse(
       diagnostics,
     );
   }
-  const { width, height, defaultTextStyle } = await getSlideInfo(
-    xmlReader,
+  const { width, height, defaultTextStyle } = getSlideInfo(
+    presentation,
     parseOptions.errorMode,
     diagnostics,
   );
   const { themeContent, themeColors } = await getTheme(xmlReader);
-  const usedFonts = await getUsedFonts(xmlReader);
+  const usedFonts = getUsedFonts(presentation);
 
   for (const filename of slideFilenames) {
     const singleSlide = await processSingleSlide(
@@ -336,11 +340,9 @@ async function getContentTypes(
 async function getPresentationSlides(
   xmlReader: PptxXmlReader,
   declaredSlides: ReadonlySet<string>,
+  presentation: XmlLookupValue,
 ): Promise<string[]> {
   const presentationPart = 'ppt/presentation.xml';
-  const presentation = await xmlReader.read(presentationPart, {
-    required: true,
-  });
   const slideTargets = new Map<string, string>();
 
   for (const relationship of await getRelationships(
@@ -378,10 +380,7 @@ async function getPresentationSlides(
   return slides;
 }
 
-async function getUsedFonts(xmlReader: PptxXmlReader): Promise<string[]> {
-  const content = await xmlReader.read('ppt/presentation.xml', {
-    required: true,
-  });
+function getUsedFonts(content: XmlLookupValue): string[] {
   const embeddedFonts = asArray(
     nodeAt(content, ['p:presentation', 'p:embeddedFontLst', 'p:embeddedFont']),
   );
@@ -394,14 +393,11 @@ async function getUsedFonts(xmlReader: PptxXmlReader): Promise<string[]> {
   return usedFonts;
 }
 
-async function getSlideInfo(
-  xmlReader: PptxXmlReader,
+function getSlideInfo(
+  content: XmlLookupValue,
   errorMode: PptxErrorMode,
   diagnostics: PptxDiagnostic[],
 ) {
-  const content = await xmlReader.read('ppt/presentation.xml', {
-    required: true,
-  });
   const presentation = nodeAt(content, ['p:presentation']);
   if (!presentation) {
     return {
