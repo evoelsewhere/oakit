@@ -43,6 +43,7 @@ export const mutatedFiles = [
   'src/formats/pptx/writer/hierarchy.ts',
   'src/formats/pptx/writer/identifiers.ts',
   'src/formats/pptx/writer/paragraph.ts',
+  'src/formats/pptx/writer/presentation.ts',
   'src/formats/pptx/writer/relationships.ts',
   'src/formats/pptx/writer/slide.ts',
   'src/formats/pptx/writer/text-body.ts',
