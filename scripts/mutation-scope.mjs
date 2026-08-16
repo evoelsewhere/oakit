@@ -76,6 +76,7 @@ export const mutatedFiles = [
   'src/formats/xlsx/internal/content-types.ts',
   'src/formats/xlsx/internal/date-system.ts',
   'src/formats/xlsx/internal/formula.ts',
+  'src/formats/xlsx/internal/number-format.ts',
   'src/formats/xlsx/internal/package-identity.ts',
   'src/formats/xlsx/internal/part-reader.ts',
   'src/formats/xlsx/internal/relationships.ts',
