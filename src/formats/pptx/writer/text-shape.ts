@@ -1,7 +1,4 @@
-import type {
-  PptxSceneTextElement,
-  PptxSceneTransform,
-} from '../scene-types';
+import type { PptxSceneTextElement, PptxSceneTransform } from '../scene-types';
 import { serializeTextBody } from './text-body';
 import type { PptxTextSerializationContext } from './text-node';
 import { degreesToAngle, pointsToEmu } from './units';
@@ -11,9 +8,7 @@ function booleanAttribute(value: boolean): string {
   return value ? '1' : '0';
 }
 
-export function serializeShapeTransform(
-  transform: PptxSceneTransform,
-): string {
+export function serializeShapeTransform(transform: PptxSceneTransform): string {
   const attributes: string[] = [];
   if (transform.rotation !== undefined) {
     attributes.push(`rot="${degreesToAngle(transform.rotation)}"`);
