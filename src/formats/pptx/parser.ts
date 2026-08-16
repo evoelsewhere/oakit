@@ -135,9 +135,10 @@ function reportDocumentDiagnostic(
 }
 
 function positiveCoordinate(value: string | undefined): number | null {
-  if (!value || !/^\+?[1-9]\d*$/.test(value)) return null;
   const coordinate = Number(value);
-  return Number.isSafeInteger(coordinate) ? coordinate : null;
+  if (!Number.isSafeInteger(coordinate) || coordinate <= 0) return null;
+  const canonical = String(coordinate);
+  return value === canonical || value === `+${canonical}` ? coordinate : null;
 }
 
 function sanitizeNonFiniteNumbers(value: unknown): boolean {

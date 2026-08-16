@@ -18,7 +18,12 @@ function presentationWithSize(width: string, height: string): string {
 describe('PPTX semantic validity at the public boundary', () => {
   it.each([
     ['non-numeric', 'not-a-number', '5143500'],
+    ['numeric suffix', '9144000px', '5143500'],
+    ['leading zero', '09144000', '5143500'],
+    ['surrounding whitespace', ' 9144000 ', '5143500'],
+    ['decimal notation', '9144000.0', '5143500'],
     ['non-finite', '1e309', '5143500'],
+    ['unsafe integer', '9007199254740992', '5143500'],
     ['zero', '0', '5143500'],
     ['negative', '-9144000', '5143500'],
   ])(
@@ -48,6 +53,16 @@ describe('PPTX semantic validity at the public boundary', () => {
       });
     },
   );
+
+  it('accepts canonical positive coordinates with an optional plus sign', async () => {
+    const input = await createIndependentPptx({
+      'ppt/presentation.xml': presentationWithSize('+9144000', '+5143500'),
+    });
+
+    const document = await parsePptx(input, { errorMode: 'strict' });
+
+    expect(document.size).toEqual({ width: 720, height: 405 });
+  });
 
   it('reports a valid XML part with the wrong presentation root', async () => {
     const input = await createIndependentPptx({
