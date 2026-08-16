@@ -393,6 +393,47 @@ describe('public XLSX parser', () => {
     });
   });
 
+  it('returns shared formula expressions and cached state through the public API', async () => {
+    const bytes = await createIndependentXlsx({
+      'xl/worksheets/sheet1.xml': `
+        <worksheet xmlns="${XLSX_SPREADSHEET_NS}">
+          <sheetData><row>
+            <c r="A1"><f t="shared" si="0" ref="A1:B1">A1+1</f><v>2</v></c>
+            <c r="B1"><f t="shared" si="0"/></c>
+          </row></sheetData>
+        </worksheet>`,
+    });
+
+    await expect(parseXlsx(bytes)).resolves.toMatchObject({
+      sheets: [
+        {
+          rows: [
+            {
+              cells: [
+                {
+                  address: 'A1',
+                  content: {
+                    cached: { kind: 'number', value: 2 },
+                    formula: { expression: 'A1+1', kind: 'normal' },
+                    kind: 'formula',
+                  },
+                },
+                {
+                  address: 'B1',
+                  content: {
+                    cached: { kind: 'missing' },
+                    formula: { expression: 'B1+1', kind: 'normal' },
+                    kind: 'formula',
+                  },
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+  });
+
   it('returns sparse selected ranges with explicit payload metadata', async () => {
     const bytes = await createIndependentXlsx();
     const document = await parseXlsx(bytes, {

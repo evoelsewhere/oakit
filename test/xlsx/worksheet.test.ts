@@ -357,6 +357,8 @@ describe('XLSX worksheet streaming', () => {
     };
 
     expect(createXlsxWorksheetBudget(table)).toEqual({
+      formulaCharacters: 0,
+      formulaGroups: 0,
       returnedCells: 0,
       richTextRuns: 4,
       scannedCells: 0,
@@ -398,6 +400,8 @@ describe('XLSX worksheet streaming', () => {
     });
 
     expect(budget).toEqual({
+      formulaCharacters: 0,
+      formulaGroups: 0,
       returnedCells: 2,
       richTextRuns: 0,
       scannedCells: 2,
@@ -449,6 +453,8 @@ describe('XLSX worksheet streaming', () => {
       ],
     });
     expect(budget).toEqual({
+      formulaCharacters: 0,
+      formulaGroups: 0,
       returnedCells: 1,
       richTextRuns: 0,
       scannedCells: 3,
@@ -801,18 +807,367 @@ describe('XLSX worksheet streaming', () => {
     },
   );
 
-  it('reports formulas as structured unsupported content without evaluating them', async () => {
-    const error = await captureParseError(
-      worksheet(
-        '<sheetData><row><c r="B1"><f>1+1</f><v>2</v></c></row></sheetData>',
+  it('parses normal formulas with typed cached and missing results without evaluating them', async () => {
+    await expect(
+      parse(
+        worksheet(`<sheetData><row>
+          <c r="A1"><f>1+2</f><v>3</v></c>
+          <c r="B1" t="str"><f>UNKNOWN(A1)</f><v>cached</v></c>
+          <c r="C1" t="b"><f>TRUE()</f><v>1</v></c>
+          <c r="D1" t="e"><f>1/0</f><v>#DIV/0!</v></c>
+          <c r="E1" t="d"><f>DATE(2024,1,2)</f><v>2024-01-02</v></c>
+          <c r="F1"><f>NOW()</f></c>
+        </row></sheetData>`),
       ),
+    ).resolves.toEqual({
+      rows: [
+        {
+          cells: [
+            {
+              address: 'A1',
+              column: 1,
+              content: {
+                cached: { kind: 'number', value: 3 },
+                formula: { expression: '1+2', kind: 'normal' },
+                kind: 'formula',
+              },
+            },
+            {
+              address: 'B1',
+              column: 2,
+              content: {
+                cached: { kind: 'text', text: 'cached' },
+                formula: { expression: 'UNKNOWN(A1)', kind: 'normal' },
+                kind: 'formula',
+              },
+            },
+            {
+              address: 'C1',
+              column: 3,
+              content: {
+                cached: { kind: 'boolean', value: true },
+                formula: { expression: 'TRUE()', kind: 'normal' },
+                kind: 'formula',
+              },
+            },
+            {
+              address: 'D1',
+              column: 4,
+              content: {
+                cached: { code: '#DIV/0!', kind: 'error' },
+                formula: { expression: '1/0', kind: 'normal' },
+                kind: 'formula',
+              },
+            },
+            {
+              address: 'E1',
+              column: 5,
+              content: {
+                cached: {
+                  kind: 'date',
+                  normalized: '2024-01-02',
+                  precision: 'date',
+                  source: { kind: 'iso', value: '2024-01-02' },
+                },
+                formula: { expression: 'DATE(2024,1,2)', kind: 'normal' },
+                kind: 'formula',
+              },
+            },
+            {
+              address: 'F1',
+              column: 6,
+              content: {
+                cached: { kind: 'missing' },
+                formula: { expression: 'NOW()', kind: 'normal' },
+                kind: 'formula',
+              },
+            },
+          ],
+          index: 1,
+        },
+      ],
+    });
+  });
+
+  it('expands shared formulas while retaining a master outside selection', async () => {
+    const selection: XlsxResolvedSheetSelection = {
+      endRowPrefix: [2],
+      kind: 'selected-ranges',
+      ranges: [
+        {
+          end: { column: 2, row: 2 },
+          reference: 'B2',
+          start: { column: 2, row: 2 },
+        },
+      ],
+    };
+    const budget = createXlsxWorksheetBudget(EMPTY_STRINGS);
+    const result = await parse(
+      worksheet(`<sheetData>
+        <row r="1">
+          <c r="A1"><f t="shared" si="7" ref="A1:B2">A1+$B$1+"A1"</f><v>1</v></c>
+          <c r="B1"><f t="shared" si="7"/><v>2</v></c>
+        </row>
+        <row r="2">
+          <c r="A2"><f t="shared" si="7"/><v>3</v></c>
+          <c r="B2"><f t="shared" si="7"/><v>4</v></c>
+        </row>
+      </sheetData>`),
+      { budget, selection },
+    );
+
+    expect(result).toEqual({
+      rows: [
+        {
+          cells: [
+            {
+              address: 'B2',
+              column: 2,
+              content: {
+                cached: { kind: 'number', value: 4 },
+                formula: {
+                  expression: 'B2+$B$1+"A1"',
+                  kind: 'normal',
+                },
+                kind: 'formula',
+              },
+            },
+          ],
+          index: 2,
+        },
+      ],
+    });
+    expect(budget.formulaGroups).toBe(1);
+    expect(budget.formulaCharacters).toBe(48);
+  });
+
+  it('parses array and data-table formula groups with explicit ranges', async () => {
+    const result = await parse(
+      worksheet(`<sheetData><row>
+        <c r="A1"><f t="array" ref="A1:B2">SUM(C1:C2)</f><v>3</v></c>
+        <c r="C1"><f t="dataTable" ref="C1:D2"/></c>
+      </row></sheetData>`),
+    );
+
+    expect(result.rows[0]!.cells.map((cell) => cell.content)).toEqual([
+      {
+        cached: { kind: 'number', value: 3 },
+        formula: {
+          expression: 'SUM(C1:C2)',
+          kind: 'array',
+          range: {
+            end: { column: 2, row: 2 },
+            reference: 'A1:B2',
+            start: { column: 1, row: 1 },
+          },
+        },
+        kind: 'formula',
+      },
+      {
+        cached: { kind: 'missing' },
+        formula: {
+          expression: '',
+          kind: 'data-table',
+          range: {
+            end: { column: 4, row: 2 },
+            reference: 'C1:D2',
+            start: { column: 3, row: 1 },
+          },
+        },
+        kind: 'formula',
+      },
+    ]);
+  });
+
+  it.each([
+    ['<f t="future">A1</f>', 'Formula type is invalid'],
+    ['<f/>', 'Normal formula is invalid'],
+    ['<f ref="A1">A1</f>', 'Normal formula is invalid'],
+    ['<f si="1">A1</f>', 'Normal formula is invalid'],
+    ['<f>=A1</f>', 'Formula expression must not include a leading equals sign'],
+    ['<f t="array" ref="A1"/>', 'Array formula is empty'],
+    ['<f t="array">A1</f>', 'Formula range is invalid'],
+    [
+      '<f t="array" ref="B1">A1</f>',
+      'Grouped formula must start at its owning cell',
+    ],
+    [
+      '<f t="array" ref="A2">A1</f>',
+      'Grouped formula must start at its owning cell',
+    ],
+    [
+      '<f t="array" ref="A1" si="1">A1</f>',
+      'Grouped formula shared index is invalid',
+    ],
+    ['<f t="dataTable"/>', 'Formula range is invalid'],
+    ['<f t="shared">A1</f>', 'Shared formula index is invalid'],
+    ['<f t="shared" si="-1">A1</f>', 'Shared formula index is invalid'],
+    ['<f t="shared" si="4294967296">A1</f>', 'Shared formula index is invalid'],
+    ['<f t="shared" si="1" ref="A1"/>', 'Shared formula master is invalid'],
+    [
+      '<f t="shared" si="1" ref="B1">A1</f>',
+      'Shared formula master must start at its owning cell',
+    ],
+    [
+      '<f t="shared" si="1" ref="A2">A1</f>',
+      'Shared formula master must start at its owning cell',
+    ],
+  ])('rejects invalid formula %#', async (formula, message) => {
+    const error = await captureParseError(
+      worksheet(`<sheetData><row><c>${formula}</c></row></sheetData>`),
     );
     expect(error.diagnostic).toEqual({
-      cell: 'B1',
-      code: 'unsupported-feature',
-      message: 'XLSX formula cells are not supported yet',
+      cell: 'A1',
+      code: 'invalid-formula',
+      message,
       part: PART,
       severity: 'error',
+    });
+  });
+
+  it.each([
+    [
+      '<c><f t="shared" si="1" ref="A1:B1">A1</f></c><c><f t="shared" si="1" ref="B1">B1</f></c>',
+      'Shared formula master is invalid',
+      'B1',
+    ],
+    [
+      '<c><f t="shared" si="1">A1</f></c>',
+      'Shared formula dependent contains an expression',
+      'A1',
+    ],
+    [
+      '<c><f t="shared" si="1"/></c>',
+      'Shared formula master is missing or does not own the cell',
+      'A1',
+    ],
+    [
+      '<c><f t="shared" si="1" ref="A1:A1">A1</f></c><c><f t="shared" si="1"/></c>',
+      'Shared formula master is missing or does not own the cell',
+      'B1',
+    ],
+    [
+      '<c><f t="shared" si="1" ref="A1:A1">A1</f></c></row><row><c><f t="shared" si="1"/></c>',
+      'Shared formula master is missing or does not own the cell',
+      'A2',
+    ],
+    [
+      '<c><f t="shared" si="1" ref="A1:B1">XFD1</f></c><c><f t="shared" si="1"/></c>',
+      'Shared formula translation is outside the worksheet grid',
+      'B1',
+    ],
+  ])(
+    'rejects invalid shared formula group %#',
+    async (cells, message, cell) => {
+      const error = await captureParseError(
+        worksheet(`<sheetData><row>${cells}</row></sheetData>`),
+      );
+      expect(error.diagnostic).toMatchObject({
+        cell,
+        code: 'invalid-formula',
+        message,
+      });
+    },
+  );
+
+  it.each([
+    ['<c><v>1</v><f>A1</f></c>', 'Worksheet formula structure is invalid'],
+    ['<c><f>A1</f><f>B1</f></c>', 'Worksheet formula structure is invalid'],
+    [
+      '<c t="inlineStr"><f>A1</f></c>',
+      'Worksheet formula structure is invalid',
+    ],
+    ['<c t="s"><f>A1</f></c>', 'Worksheet formula structure is invalid'],
+    ['<c><f><v>A1</v></f></c>', 'Worksheet element nesting is invalid'],
+  ])('rejects invalid formula cell structure %#', async (cellXml, message) => {
+    const error = await captureParseError(
+      worksheet(`<sheetData><row>${cellXml}</row></sheetData>`),
+    );
+    expect(error.diagnostic).toMatchObject({
+      cell: 'A1',
+      code: 'invalid-document-structure',
+      message,
+    });
+  });
+
+  it('enforces per-formula, aggregate-formula, and group limits at exact boundaries', async () => {
+    const formulas = worksheet(
+      '<sheetData><row><c><f>AB</f></c><c><f>CD</f></c></row></sheetData>',
+    );
+    await expect(
+      parse(formulas, {
+        limits: { maxFormulaCharacters: 2, maxTotalFormulaCharacters: 4 },
+      }),
+    ).resolves.toMatchObject({ rows: [{ cells: [{}, {}] }] });
+    await expect(
+      parse(formulas, {
+        limits: { maxFormulaCharacters: 1, maxTotalFormulaCharacters: 4 },
+      }),
+    ).rejects.toMatchObject({
+      actual: 2,
+      limit: 1,
+      limitName: 'maxFormulaCharacters',
+    });
+    await expect(
+      parse(formulas, {
+        limits: { maxFormulaCharacters: 2, maxTotalFormulaCharacters: 3 },
+      }),
+    ).rejects.toMatchObject({
+      actual: 4,
+      limit: 3,
+      limitName: 'maxTotalFormulaCharacters',
+    });
+
+    const groups = worksheet(
+      '<sheetData><row><c><f t="array" ref="A1">A</f></c><c><f t="array" ref="B1">B</f></c></row></sheetData>',
+    );
+    await expect(
+      parse(groups, { limits: { maxFormulaGroups: 2 } }),
+    ).resolves.toMatchObject({ rows: [{ cells: [{}, {}] }] });
+    await expect(
+      parse(groups, { limits: { maxFormulaGroups: 1 } }),
+    ).rejects.toMatchObject({
+      actual: 2,
+      limit: 1,
+      limitName: 'maxFormulaGroups',
+    });
+  });
+
+  it('accepts the maximum shared formula index', async () => {
+    await expect(
+      parse(
+        worksheet(
+          '<sheetData><row><c><f t="shared" si="4294967295" ref="A1">A1</f></c></row></sheetData>',
+        ),
+      ),
+    ).resolves.toMatchObject({
+      rows: [
+        {
+          cells: [
+            {
+              content: {
+                formula: { expression: 'A1', kind: 'normal' },
+              },
+            },
+          ],
+        },
+      ],
+    });
+  });
+
+  it('charges selected formula cached text to the returned text budget', async () => {
+    const xml = worksheet(
+      '<sheetData><row><c t="str"><f>TEXT(A1)</f><v>AB</v></c></row></sheetData>',
+    );
+    await expect(
+      parse(xml, { limits: { maxTextCharacters: 2 } }),
+    ).resolves.toMatchObject({ rows: [{ cells: [{ address: 'A1' }] }] });
+    await expect(
+      parse(xml, { limits: { maxTextCharacters: 1 } }),
+    ).rejects.toMatchObject({
+      actual: 2,
+      limit: 1,
+      limitName: 'maxTextCharacters',
     });
   });
 

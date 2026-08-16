@@ -2,14 +2,21 @@ import { XlsxParseError } from '../errors';
 import type {
   XlsxCell,
   XlsxCellValue,
+  XlsxFormula,
+  XlsxRange,
   XlsxRichTextRun,
   XlsxRow,
 } from '../types';
-import { parseXlsxCellReference, xlsxColumnName } from './cell-reference';
+import {
+  parseXlsxCellReference,
+  parseXlsxRangeReference,
+  xlsxColumnName,
+} from './cell-reference';
 import {
   parseXlsxScalarCellValue,
   type XlsxScalarCellType,
 } from './cell-value';
+import { translateXlsxSharedFormula } from './formula';
 import { XlsxPartReader } from './part-reader';
 import {
   type ResolvedXlsxResourceLimits,
@@ -32,11 +39,19 @@ const UNSIGNED_INTEGER_PATTERN = /^(?:0|[1-9]\d*)$/u;
 const NONNEGATIVE_DECIMAL_PATTERN = /^(?:\d+(?:\.\d*)?|\.\d+)$/u;
 
 type CellType = XlsxScalarCellType | 'inlineStr';
-type TextCapture = 'inline' | 'value' | null;
+type TextCapture = 'formula' | 'inline' | 'value' | null;
+
+interface PendingFormula {
+  reference?: string;
+  sharedIndex?: string;
+  text: string;
+  type: 'array' | 'dataTable' | 'normal' | 'shared';
+}
 
 interface PendingCell {
   address: string;
   column: number;
+  formula?: PendingFormula;
   hasInlineString: boolean;
   hasValue: boolean;
   inlineMode: 'plain' | 'rich' | 'unset';
@@ -54,10 +69,19 @@ interface PendingInlineRun {
 }
 
 export interface XlsxWorksheetBudget {
+  formulaCharacters: number;
+  formulaGroups: number;
   returnedCells: number;
   richTextRuns: number;
   scannedCells: number;
   textCharacters: number;
+}
+
+interface SharedFormulaMaster {
+  column: number;
+  expression: string;
+  range: XlsxRange;
+  row: number;
 }
 
 export interface XlsxWorksheetPayload {
@@ -92,11 +116,11 @@ function valueFailure(
   });
 }
 
-function unsupportedFormula(part: string, cell: string): never {
+function formulaFailure(part: string, cell: string, message: string): never {
   throw new XlsxParseError({
     cell,
-    code: 'unsupported-feature',
-    message: 'XLSX formula cells are not supported yet',
+    code: 'invalid-formula',
+    message,
     part,
     severity: 'error',
   });
@@ -190,6 +214,7 @@ function consume(
   key: keyof XlsxWorksheetBudget,
   amount: number,
   limitName:
+    | 'maxFormulaGroups'
     | 'maxReturnedCells'
     | 'maxRichTextRuns'
     | 'maxScannedCells'
@@ -222,7 +247,14 @@ export function createXlsxWorksheetBudget(
       richTextRuns += 1;
     }
   }
-  return { returnedCells: 0, richTextRuns, scannedCells: 0, textCharacters };
+  return {
+    formulaCharacters: 0,
+    formulaGroups: 0,
+    returnedCells: 0,
+    richTextRuns,
+    scannedCells: 0,
+    textCharacters,
+  };
 }
 
 class WorksheetSink implements XlsxXmlEventSink {
@@ -237,6 +269,10 @@ class WorksheetSink implements XlsxXmlEventSink {
   private sheetDataSeen = false;
   private readonly stack: XlsxXmlElement[] = [];
   private readonly rows: XlsxRow[] = [];
+  private readonly sharedFormulaMasters = new Map<
+    number,
+    SharedFormulaMaster
+  >();
 
   constructor(
     private readonly part: string,
@@ -290,6 +326,10 @@ class WorksheetSink implements XlsxXmlEventSink {
     if (this.ignoredDepth > 0) return;
     if (this.capture === 'value') {
       this.currentCell!.valueText += value;
+      return;
+    }
+    if (this.capture === 'formula') {
+      this.currentCell!.formula!.text += value;
       return;
     }
     if (this.capture === 'inline') {
@@ -349,7 +389,8 @@ class WorksheetSink implements XlsxXmlEventSink {
     }
     if (parent === 'c') {
       if (element.localName === 'f') {
-        unsupportedFormula(this.part, this.currentCell!.address);
+        this.openFormula(element);
+        return;
       }
       if (element.localName === 'v') {
         this.openValue();
@@ -553,6 +594,42 @@ class WorksheetSink implements XlsxXmlEventSink {
     this.capture = 'value';
   }
 
+  private openFormula(element: XlsxXmlElement): void {
+    const cell = this.currentCell!;
+    if (
+      cell.formula !== undefined ||
+      cell.hasValue ||
+      cell.hasInlineString ||
+      cell.type === 'inlineStr' ||
+      cell.type === 's'
+    ) {
+      structureFailure(
+        this.part,
+        cell.address,
+        'Worksheet formula structure is invalid',
+      );
+    }
+    const sourceType = attribute(element, 't');
+    const type = sourceType ?? 'normal';
+    if (
+      type !== 'normal' &&
+      type !== 'shared' &&
+      type !== 'array' &&
+      type !== 'dataTable'
+    ) {
+      formulaFailure(this.part, cell.address, 'Formula type is invalid');
+    }
+    const reference = attribute(element, 'ref');
+    const sharedIndex = attribute(element, 'si');
+    cell.formula = {
+      ...(reference === undefined ? {} : { reference }),
+      ...(sharedIndex === undefined ? {} : { sharedIndex }),
+      text: '',
+      type,
+    };
+    this.capture = 'formula';
+  }
+
   private openInlineString(): void {
     const cell = this.currentCell!;
     if (cell.hasValue || cell.hasInlineString || cell.type !== 'inlineStr') {
@@ -631,7 +708,22 @@ class WorksheetSink implements XlsxXmlEventSink {
   private closeCell(): void {
     const cell = this.currentCell!;
     let content: XlsxCell['content'];
-    if (!cell.hasValue && !cell.hasInlineString) {
+    if (cell.formula !== undefined) {
+      const formula = this.resolveFormula(cell);
+      const cached = cell.hasValue
+        ? parseXlsxScalarCellValue(
+            cell.type as XlsxScalarCellType,
+            cell.valueText,
+            this.sharedStrings,
+            this.part,
+            cell.address,
+          )
+        : ({ kind: 'missing' } as const);
+      if (cell.selected && cached.kind !== 'missing') {
+        this.consumeReturnedText(cached);
+      }
+      content = { cached, formula, kind: 'formula' };
+    } else if (!cell.hasValue && !cell.hasInlineString) {
       content = { kind: 'blank' };
     } else if (cell.hasInlineString) {
       const value: XlsxCellValue = {
@@ -663,6 +755,8 @@ class WorksheetSink implements XlsxXmlEventSink {
     };
     if (content.kind === 'blank') {
       this.currentRow!.cells.push({ ...base, content: { kind: 'blank' } });
+    } else if (content.kind === 'formula') {
+      this.currentRow!.cells.push({ ...base, content });
     } else {
       this.currentRow!.cells.push({
         ...base,
@@ -670,6 +764,203 @@ class WorksheetSink implements XlsxXmlEventSink {
       });
     }
     this.currentCell = undefined;
+  }
+
+  private resolveFormula(cell: PendingCell): XlsxFormula {
+    const pending = cell.formula!;
+    if (pending.text.startsWith('=')) {
+      formulaFailure(
+        this.part,
+        cell.address,
+        'Formula expression must not include a leading equals sign',
+      );
+    }
+    if (pending.type === 'normal') {
+      if (
+        pending.text.length === 0 ||
+        pending.reference !== undefined ||
+        pending.sharedIndex !== undefined
+      ) {
+        formulaFailure(this.part, cell.address, 'Normal formula is invalid');
+      }
+      this.consumeFormulaCharacters(pending.text);
+      return { expression: pending.text, kind: 'normal' };
+    }
+    if (pending.type === 'shared') return this.resolveSharedFormula(cell);
+
+    if (pending.sharedIndex !== undefined) {
+      formulaFailure(
+        this.part,
+        cell.address,
+        'Grouped formula shared index is invalid',
+      );
+    }
+    const range = this.formulaRange(pending.reference, cell);
+    if (
+      range.start.row !== this.currentRow!.index ||
+      range.start.column !== cell.column
+    ) {
+      formulaFailure(
+        this.part,
+        cell.address,
+        'Grouped formula must start at its owning cell',
+      );
+    }
+    if (pending.type === 'array' && pending.text.length === 0) {
+      formulaFailure(this.part, cell.address, 'Array formula is empty');
+    }
+    this.consumeFormulaGroup();
+    this.consumeFormulaCharacters(pending.text);
+    return {
+      expression: pending.text,
+      kind: pending.type === 'array' ? 'array' : 'data-table',
+      range,
+    };
+  }
+
+  private resolveSharedFormula(cell: PendingCell): XlsxFormula {
+    const pending = cell.formula!;
+    const sharedIndex = this.formulaSharedIndex(pending.sharedIndex, cell);
+    if (pending.reference !== undefined) {
+      if (
+        pending.text.length === 0 ||
+        this.sharedFormulaMasters.has(sharedIndex)
+      ) {
+        formulaFailure(
+          this.part,
+          cell.address,
+          'Shared formula master is invalid',
+        );
+      }
+      const range = this.formulaRange(pending.reference, cell);
+      if (
+        range.start.row !== this.currentRow!.index ||
+        range.start.column !== cell.column
+      ) {
+        formulaFailure(
+          this.part,
+          cell.address,
+          'Shared formula master must start at its owning cell',
+        );
+      }
+      this.consumeFormulaGroup();
+      this.sharedFormulaMasters.set(sharedIndex, {
+        column: cell.column,
+        expression: pending.text,
+        range,
+        row: this.currentRow!.index,
+      });
+      this.consumeFormulaCharacters(pending.text);
+      return { expression: pending.text, kind: 'normal' };
+    }
+    if (pending.text.length !== 0) {
+      formulaFailure(
+        this.part,
+        cell.address,
+        'Shared formula dependent contains an expression',
+      );
+    }
+    const master = this.sharedFormulaMasters.get(sharedIndex);
+    if (
+      master === undefined ||
+      !this.rangeContains(master.range, this.currentRow!.index, cell.column)
+    ) {
+      formulaFailure(
+        this.part,
+        cell.address,
+        'Shared formula master is missing or does not own the cell',
+      );
+    }
+    const expression = translateXlsxSharedFormula(
+      master.expression,
+      { column: master.column, row: master.row },
+      { column: cell.column, row: this.currentRow!.index },
+    );
+    if (expression === undefined) {
+      formulaFailure(
+        this.part,
+        cell.address,
+        'Shared formula translation is outside the worksheet grid',
+      );
+    }
+    this.consumeFormulaCharacters(expression);
+    return { expression, kind: 'normal' };
+  }
+
+  private formulaRange(
+    value: string | undefined,
+    cell: PendingCell,
+  ): XlsxRange {
+    const range = parseXlsxRangeReference(value);
+    if (!range) {
+      formulaFailure(this.part, cell.address, 'Formula range is invalid');
+    }
+    return range;
+  }
+
+  private formulaSharedIndex(
+    value: string | undefined,
+    cell: PendingCell,
+  ): number {
+    if (value === undefined || !UNSIGNED_INTEGER_PATTERN.test(value)) {
+      formulaFailure(
+        this.part,
+        cell.address,
+        'Shared formula index is invalid',
+      );
+    }
+    const parsed = Number(value);
+    if (!Number.isSafeInteger(parsed) || parsed > 0xffff_ffff) {
+      formulaFailure(
+        this.part,
+        cell.address,
+        'Shared formula index is invalid',
+      );
+    }
+    return parsed;
+  }
+
+  private rangeContains(
+    range: XlsxRange,
+    row: number,
+    column: number,
+  ): boolean {
+    return row <= range.end.row && column <= range.end.column;
+  }
+
+  private consumeFormulaGroup(): void {
+    consume(
+      this.budget,
+      'formulaGroups',
+      1,
+      'maxFormulaGroups',
+      this.limits,
+      this.part,
+    );
+  }
+
+  private consumeFormulaCharacters(expression: string): void {
+    if (expression.length > this.limits.maxFormulaCharacters) {
+      throw new XlsxResourceLimitError(
+        'maxFormulaCharacters',
+        expression.length,
+        this.limits.maxFormulaCharacters,
+        this.part,
+      );
+    }
+    const actual = this.budget.formulaCharacters + expression.length;
+    if (
+      !Number.isSafeInteger(actual) ||
+      actual > this.limits.maxTotalFormulaCharacters
+    ) {
+      throw new XlsxResourceLimitError(
+        'maxTotalFormulaCharacters',
+        actual,
+        this.limits.maxTotalFormulaCharacters,
+        this.part,
+      );
+    }
+    this.budget.formulaCharacters = actual;
   }
 
   private consumeTextCharacters(value: string): void {
