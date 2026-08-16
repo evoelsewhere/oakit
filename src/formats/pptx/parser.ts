@@ -1668,9 +1668,10 @@ function genTable(
       'a:gridCol',
     ]),
   );
-  const colWidths = columnNodes.map(
-    (column) => Number(textAt(column, ['attrs', 'w']) ?? 0) * RATIO_EMUs_Points,
-  );
+  const colWidths = columnNodes.map((column) => {
+    const widthEmus = positiveCoordinate(textAt(column, ['attrs', 'w']));
+    return (widthEmus ?? 0) * RATIO_EMUs_Points;
+  });
 
   const tablePropertyAttributes = attributes(tableProperties);
   const tableStyleAttributes = {
@@ -1714,9 +1715,8 @@ function genTable(
   const data: TableCell[][] = [];
   const rowHeights: number[] = [];
   for (const [rowIndex, rowNode] of rowNodes.entries()) {
-    rowHeights.push(
-      Number(textAt(rowNode, ['attrs', 'h']) ?? 0) * RATIO_EMUs_Points,
-    );
+    const heightEmus = positiveCoordinate(textAt(rowNode, ['attrs', 'h']));
+    rowHeights.push((heightEmus ?? 0) * RATIO_EMUs_Points);
 
     const { fillColor, fontColor, fontBold } = getTableRowParams(
       rowNodes,
