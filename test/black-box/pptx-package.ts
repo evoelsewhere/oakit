@@ -3,6 +3,10 @@ import JSZip from 'jszip';
 export type BlackBoxPart = string | Uint8Array | null;
 export type BlackBoxOverrides = Record<string, BlackBoxPart>;
 
+export interface BlackBoxPackageOptions {
+  compression?: 'DEFLATE' | 'STORE';
+}
+
 export const PRESENTATION_NS =
   'http://schemas.openxmlformats.org/presentationml/2006/main';
 export const DRAWING_NS =
@@ -106,6 +110,7 @@ const BASE_PARTS: Readonly<Record<string, string>> = {
 
 export async function createIndependentPptx(
   overrides: BlackBoxOverrides = {},
+  options: BlackBoxPackageOptions = {},
 ): Promise<Uint8Array> {
   const zip = new JSZip();
   const parts: Record<string, BlackBoxPart> = {
@@ -116,5 +121,8 @@ export async function createIndependentPptx(
   for (const [name, content] of Object.entries(parts)) {
     if (content !== null) zip.file(name, content);
   }
-  return zip.generateAsync({ compression: 'DEFLATE', type: 'uint8array' });
+  return zip.generateAsync({
+    compression: options.compression ?? 'DEFLATE',
+    type: 'uint8array',
+  });
 }

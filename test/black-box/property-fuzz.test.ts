@@ -59,9 +59,12 @@ describe('PPTX seeded public-boundary properties', () => {
 
     await fc.assert(
       fc.asyncProperty(invalidWidth, async (width) => {
-        const input = await createIndependentPptx({
-          'ppt/presentation.xml': presentationWithWidth(width),
-        });
+        const input = await createIndependentPptx(
+          {
+            'ppt/presentation.xml': presentationWithWidth(width),
+          },
+          { compression: 'STORE' },
+        );
 
         await expect(
           parsePptx(input, { errorMode: 'strict' }),
@@ -83,12 +86,15 @@ describe('PPTX seeded public-boundary properties', () => {
         fc.constantFrom('/', '\\'),
         async (depth, separator) => {
           const target = `${`..${separator}`.repeat(depth)}outside.xml`;
-          const input = await createIndependentPptx({
-            'ppt/_rels/presentation.xml.rels': `
+          const input = await createIndependentPptx(
+            {
+              'ppt/_rels/presentation.xml.rels': `
               <Relationships xmlns="${PACKAGE_REL_NS}">
                 <Relationship Id="rIdSlide1" Type="${OFFICE_REL_TYPE}slide" Target="${target}"/>
               </Relationships>`,
-          });
+            },
+            { compression: 'STORE' },
+          );
 
           await expect(
             parsePptx(input, { errorMode: 'strict' }),
@@ -111,12 +117,15 @@ describe('PPTX seeded public-boundary properties', () => {
         fc.integer({ min: 0, max: 8 }),
         async (leadingDots, internalDots) => {
           const target = `${'./'.repeat(leadingDots)}slides/${'folder/../'.repeat(internalDots)}slide1.xml`;
-          const input = await createIndependentPptx({
-            'ppt/_rels/presentation.xml.rels': `
+          const input = await createIndependentPptx(
+            {
+              'ppt/_rels/presentation.xml.rels': `
               <Relationships xmlns="${PACKAGE_REL_NS}">
                 <Relationship Id="rIdSlide1" Type="${OFFICE_REL_TYPE}slide" Target="${target}"/>
               </Relationships>`,
-          });
+            },
+            { compression: 'STORE' },
+          );
 
           const document = await parsePptx(input, { errorMode: 'strict' });
 
@@ -137,12 +146,15 @@ describe('PPTX seeded public-boundary properties', () => {
         externalTarget,
         fc.constantFrom('External', 'external', 'EXTERNAL'),
         async (target, targetMode) => {
-          const input = await createIndependentPptx({
-            'ppt/_rels/presentation.xml.rels': `
+          const input = await createIndependentPptx(
+            {
+              'ppt/_rels/presentation.xml.rels': `
               <Relationships xmlns="${PACKAGE_REL_NS}">
                 <Relationship Id="rIdSlide1" Type="${OFFICE_REL_TYPE}slide" Target="${target}" TargetMode="${targetMode}"/>
               </Relationships>`,
-          });
+            },
+            { compression: 'STORE' },
+          );
 
           const document = await parsePptx(input, { errorMode: 'strict' });
 
@@ -158,12 +170,15 @@ describe('PPTX seeded public-boundary properties', () => {
 
     await fc.assert(
       fc.asyncProperty(localName, async (name) => {
-        const input = await createIndependentPptx({
-          'ppt/presentation.xml': presentationWithWidth('9144000').replace(
-            '</p:sldIdLst>',
-            `</p:${name}>`,
-          ),
-        });
+        const input = await createIndependentPptx(
+          {
+            'ppt/presentation.xml': presentationWithWidth('9144000').replace(
+              '</p:sldIdLst>',
+              `</p:${name}>`,
+            ),
+          },
+          { compression: 'STORE' },
+        );
 
         await expect(
           parsePptx(input, { errorMode: 'strict' }),
