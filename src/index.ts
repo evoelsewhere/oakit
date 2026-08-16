@@ -2,6 +2,7 @@ export {
   parsePptx,
   parsePptxWithDiagnostics,
   PptxParseError,
+  PptxWriteError,
   validatePptxScene,
 } from './formats/pptx/index';
 export type {
@@ -14,6 +15,8 @@ export type {
   PptxParseOptions,
   PptxParseResult,
   PptxResourceLimits,
+  PptxFidelityLevel,
+  PptxOperationEvidence,
   PptxSceneAuthoredElement,
   PptxSceneDocument,
   PptxSceneElement,
@@ -43,4 +46,10 @@ export type {
   PptxSceneValidationOptions,
   PptxSceneValidationResult,
   PptxSlide,
+  PptxWriteDiagnostic,
+  PptxWriteErrorCode,
+  PptxWriteErrorOptions,
+  PptxWriteReport,
+  PptxWriteResult,
+  PptxWriteSupportProfile,
 } from './formats/pptx/index';

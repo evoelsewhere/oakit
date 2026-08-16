@@ -38,6 +38,7 @@ export const mutatedFiles = [
   'src/formats/pptx/internal/xml-reader.ts',
   'src/formats/pptx/parser.ts',
   'src/formats/pptx/scene-validation.ts',
+  'src/formats/pptx/write-error.ts',
   'src/formats/pptx/writer/xml.ts',
   'src/formats/pptx/writer/units.ts',
 ];
@@ -70,6 +71,10 @@ export const excludedMutationFiles = [
   {
     file: 'src/formats/pptx/types.ts',
     reason: 'Compile-time-only interfaces and type aliases.',
+  },
+  {
+    file: 'src/formats/pptx/write-types.ts',
+    reason: 'Compile-time-only writer result, report, and error contracts.',
   },
   {
     file: 'src/index.ts',

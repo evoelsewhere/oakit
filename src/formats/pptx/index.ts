@@ -9,6 +9,7 @@ import type {
 export { validatePptxScene } from './scene-validation';
 
 export { PptxParseError } from './errors';
+export { PptxWriteError } from './write-error';
 
 /** Parse a PowerPoint Open XML package into the current structured JSON model. */
 export async function parsePptx(
@@ -30,3 +31,4 @@ export async function parsePptxWithDiagnostics(
 
 export type * from './types';
 export type * from './scene-types';
+export type * from './write-types';
