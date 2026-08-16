@@ -876,38 +876,21 @@ async function getLayoutElements(
 }
 
 function indexNodes(content: XmlLookupValue): PptxNodeIndex {
-  const rootKey = Object.keys(content)[0];
-  const shapeTree = rootKey
-    ? nodeAt(content, [rootKey, 'p:cSld', 'p:spTree'])
-    : undefined;
-  const idTable: Record<string, XmlLookupValue> = {};
+  const shapeTree =
+    nodeAt(content, ['p:sldLayout', 'p:cSld', 'p:spTree']) ??
+    nodeAt(content, ['p:sldMaster', 'p:cSld', 'p:spTree']);
   const idxTable: Record<string, XmlLookupValue> = {};
   const typeTable: Record<string, XmlLookupValue> = {};
 
-  for (const key of Object.keys(shapeTree ?? {})) {
-    if (key === 'p:nvGrpSpPr' || key === 'p:grpSpPr') continue;
-    for (const targetNode of asArray(nodeAt(shapeTree, [key]))) {
-      const nonVisualProperties = nodeAt(targetNode, ['p:nvSpPr']);
-      const id = textAt(nonVisualProperties, ['p:cNvPr', 'attrs', 'id']);
-      const index = textAt(nonVisualProperties, [
-        'p:nvPr',
-        'p:ph',
-        'attrs',
-        'idx',
-      ]);
-      const type = textAt(nonVisualProperties, [
-        'p:nvPr',
-        'p:ph',
-        'attrs',
-        'type',
-      ]);
-      if (id) idTable[id] = targetNode;
-      if (index) idxTable[index] = targetNode;
-      if (type && !typeTable[type]) typeTable[type] = targetNode;
-    }
+  for (const targetNode of asArray(nodeAt(shapeTree, ['p:sp']))) {
+    const placeholder = nodeAt(targetNode, ['p:nvSpPr', 'p:nvPr', 'p:ph']);
+    const index = textAt(placeholder, ['attrs', 'idx']);
+    const type = textAt(placeholder, ['attrs', 'type']);
+    if (index) idxTable[index] = targetNode;
+    if (type && !typeTable[type]) typeTable[type] = targetNode;
   }
 
-  return { idTable, idxTable, typeTable };
+  return { idxTable, typeTable };
 }
 
 async function processNodesInSlide(

@@ -26,7 +26,6 @@ export interface PptxMediaData {
 }
 
 export interface PptxNodeIndex {
-  idTable: Record<string, XmlLookupValue>;
   idxTable: Record<string, XmlLookupValue>;
   typeTable: Record<string, XmlLookupValue>;
 }

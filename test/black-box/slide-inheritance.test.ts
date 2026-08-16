@@ -213,6 +213,155 @@ describe('PowerPoint slide inheritance through the public API', () => {
     });
   });
 
+  it('accepts only safe shape-level hyperlink relationships', async () => {
+    const linkedShape = (id: string, relationshipId: string, left: number) => `
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="${id}" name="Linked ${id}"><a:hlinkClick r:id="${relationshipId}"/></p:cNvPr>
+          <p:cNvSpPr/><p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm><a:off x="${left}" y="0"/><a:ext cx="457200" cy="457200"/></a:xfrm>
+          <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+          <a:solidFill><a:srgbClr val="4472C4"/></a:solidFill>
+        </p:spPr>
+      </p:sp>`;
+    const input = await createIndependentPptx({
+      'ppt/slides/slide1.xml': `
+        <p:sld xmlns:p="${PRESENTATION_NS}" xmlns:a="${DRAWING_NS}" xmlns:r="${OFFICE_REL_NS}">
+          <p:cSld><p:spTree>
+            <p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr>
+            <p:grpSpPr/>
+            ${linkedShape('60', 'rIdSafeShape', 0)}
+            ${linkedShape('61', 'rIdWrongType', 457200)}
+            ${linkedShape('62', 'rIdUnsafeShape', 914400)}
+            ${linkedShape('63', 'rIdMissingShape', 1371600)}
+          </p:spTree></p:cSld>
+        </p:sld>`,
+      'ppt/slides/_rels/slide1.xml.rels': `
+        <Relationships xmlns="${PACKAGE_REL_NS}">
+          <Relationship Id="rIdLayout" Type="${OFFICE_REL_TYPE}slideLayout" Target="../slideLayouts/slideLayout1.xml"/>
+          <Relationship Id="rIdSafeShape" Type="${OFFICE_REL_TYPE}hyperlink" Target="https://example.com/shape?a=1&amp;b=2" TargetMode="External"/>
+          <Relationship Id="rIdWrongType" Type="${OFFICE_REL_TYPE}image" Target="https://example.com/not-a-hyperlink" TargetMode="External"/>
+          <Relationship Id="rIdUnsafeShape" Type="${OFFICE_REL_TYPE}hyperlink" Target="javascript:alert(1)" TargetMode="External"/>
+        </Relationships>`,
+    });
+
+    const result = await parsePptx(input, { errorMode: 'strict' });
+    const byId = Object.fromEntries(
+      (result.slides[0]?.elements ?? []).map((element) => [
+        element.id,
+        element,
+      ]),
+    );
+
+    expect(byId['60']).toMatchObject({
+      id: '60',
+      link: 'https://example.com/shape?a=1&b=2',
+    });
+    expect(byId['61']).not.toHaveProperty('link');
+    expect(byId['62']).not.toHaveProperty('link');
+    expect(byId['63']).not.toHaveProperty('link');
+  });
+
+  it('matches inherited placeholders by index before their shared type', async () => {
+    const placeholder = (
+      id: string,
+      index: string,
+      left: number,
+      width: number,
+      fill = '',
+    ) => `
+      <p:sp>
+        <p:nvSpPr><p:cNvPr id="${id}" name="Placeholder ${index}"/><p:cNvSpPr/><p:nvPr><p:ph type="body" idx="${index}"/></p:nvPr></p:nvSpPr>
+        <p:spPr>
+          <a:xfrm><a:off x="${left}" y="0"/><a:ext cx="${width}" cy="914400"/></a:xfrm>
+          ${fill}
+        </p:spPr>
+      </p:sp>`;
+    const slidePlaceholder = (id: string, index: string | undefined) => `
+      <p:sp>
+        <p:nvSpPr><p:cNvPr id="${id}" name="Slide ${id}"/><p:cNvSpPr/><p:nvPr><p:ph type="body"${index ? ` idx="${index}"` : ''}/></p:nvPr></p:nvSpPr>
+        <p:spPr/>
+        <p:txBody><a:bodyPr/><a:lstStyle/><a:p><a:r><a:t>Slide ${id}</a:t></a:r></a:p></p:txBody>
+      </p:sp>`;
+    const input = await createIndependentPptx({
+      'ppt/slides/slide1.xml': `
+        <p:sld xmlns:p="${PRESENTATION_NS}" xmlns:a="${DRAWING_NS}">
+          <p:cSld><p:spTree>
+            <p:nvGrpSpPr/><p:grpSpPr/>
+            ${slidePlaceholder('80', '7')}
+            ${slidePlaceholder('81', undefined)}
+          </p:spTree></p:cSld>
+        </p:sld>`,
+      'ppt/slideLayouts/slideLayout1.xml': `
+        <p:sldLayout xmlns:p="${PRESENTATION_NS}" xmlns:a="${DRAWING_NS}">
+          <p:cSld><p:spTree><p:nvGrpSpPr/><p:grpSpPr/>
+            ${placeholder('70', '8', 0, 457200)}
+            ${placeholder('71', '7', 914400, 1828800)}
+          </p:spTree></p:cSld>
+        </p:sldLayout>`,
+      'ppt/slideMasters/slideMaster1.xml': `
+        <p:sldMaster xmlns:p="${PRESENTATION_NS}" xmlns:a="${DRAWING_NS}">
+          <p:cSld><p:spTree><p:nvGrpSpPr/><p:grpSpPr/>
+            ${placeholder('72', '8', 2743200, 2743200, '<a:solidFill><a:srgbClr val="112233"/></a:solidFill>')}
+            ${placeholder('73', '7', 3657600, 3657600, '<a:solidFill><a:srgbClr val="AABBCC"/></a:solidFill>')}
+          </p:spTree></p:cSld>
+          <p:clrMap accent1="accent1" bg1="lt1" tx1="dk1"/>
+        </p:sldMaster>`,
+    });
+
+    const result = await parsePptx(input, { errorMode: 'strict' });
+    const indexed = result.slides[0]?.elements.find(
+      (element) => element.id === '80',
+    );
+    const typed = result.slides[0]?.elements.find(
+      (element) => element.id === '81',
+    );
+
+    expect(indexed).toMatchObject({
+      left: 72,
+      width: 144,
+      fill: { type: 'color', value: '#AABBCC' },
+    });
+    expect(typed).toMatchObject({
+      left: 0,
+      width: 36,
+      fill: { type: 'color', value: '#112233' },
+    });
+    expect(result.slides[0]?.layoutElements).toEqual([]);
+  });
+
+  it('hides master shapes when the layout disables them', async () => {
+    const input = await createIndependentPptx({
+      'ppt/slideLayouts/slideLayout1.xml': `
+        <p:sldLayout xmlns:p="${PRESENTATION_NS}" xmlns:a="${DRAWING_NS}" showMasterSp="0">
+          <p:cSld><p:spTree><p:nvGrpSpPr/><p:grpSpPr/>
+            <p:sp>
+              <p:nvSpPr><p:cNvPr id="90" name="Layout shape"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr>
+              <p:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="457200" cy="457200"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom><a:solidFill><a:srgbClr val="123456"/></a:solidFill></p:spPr>
+            </p:sp>
+          </p:spTree></p:cSld>
+        </p:sldLayout>`,
+      'ppt/slideMasters/slideMaster1.xml': `
+        <p:sldMaster xmlns:p="${PRESENTATION_NS}" xmlns:a="${DRAWING_NS}">
+          <p:cSld><p:spTree><p:nvGrpSpPr/><p:grpSpPr/>
+            <p:sp>
+              <p:nvSpPr><p:cNvPr id="91" name="Hidden master shape"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr>
+              <p:spPr><a:xfrm><a:off x="457200" y="0"/><a:ext cx="457200" cy="457200"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom><a:solidFill><a:srgbClr val="654321"/></a:solidFill></p:spPr>
+            </p:sp>
+          </p:spTree></p:cSld>
+          <p:clrMap accent1="accent1" bg1="lt1" tx1="dk1"/>
+        </p:sldMaster>`,
+    });
+
+    const result = await parsePptx(input, { errorMode: 'strict' });
+
+    expect(
+      result.slides[0]?.layoutElements.map((element) => element.id),
+    ).toEqual(['90']);
+  });
+
   it('uses the slide master theme before the presentation theme', async () => {
     const input = await createIndependentPptx({
       'ppt/theme/theme1.xml': themeWithMinorFont(
