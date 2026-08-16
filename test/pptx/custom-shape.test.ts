@@ -89,9 +89,15 @@ function curvePath(options: {
   if (cubicEndpoints.length > 0) {
     path['a:cubicBezTo'] = cubicEndpoints.map((endpoint) => ({
       'a:pt': [
-        pointNode({ x: endpoint.x / 3, y: endpoint.y / 3 }, order++),
         pointNode(
-          { x: (endpoint.x * 2) / 3, y: (endpoint.y * 2) / 3 },
+          { x: Math.round(endpoint.x / 3), y: Math.round(endpoint.y / 3) },
+          order++,
+        ),
+        pointNode(
+          {
+            x: Math.round((endpoint.x * 2) / 3),
+            y: Math.round((endpoint.y * 2) / 3),
+          },
           order++,
         ),
         pointNode(endpoint, order++),
@@ -132,6 +138,9 @@ describe('PowerPoint custom shape classification', () => {
       'custom',
     );
     expect(
+      identifyShape(xml({ 'a:pathLst': { 'a:path': [undefined] } })),
+    ).toBe('custom');
+    expect(
       identifyShape(
         xml({
           'a:pathLst': {
@@ -164,6 +173,237 @@ describe('PowerPoint custom shape classification', () => {
         ]),
       ),
     ).toBe('custom');
+  });
+
+  it('resolves custom geometry guides before classifying a shape', () => {
+    const guidedPoint = (x: string, y: string, order: number) => ({
+      attrs: { x, y },
+      order,
+    });
+    const geometry = xml({
+      'a:gdLst': {
+        'a:gd': [
+          { attrs: { fmla: 'val r', name: 'right' } },
+          { attrs: { fmla: 'val b', name: 'bottom' } },
+        ],
+      },
+      'a:pathLst': {
+        'a:path': {
+          attrs: { h: '100', w: '200' },
+          'a:moveTo': {
+            attrs: { order: '1' },
+            'a:pt': guidedPoint('l', 't', 11),
+          },
+          'a:lnTo': [
+            {
+              attrs: { order: '2' },
+              'a:pt': guidedPoint('right', 't', 21),
+            },
+            {
+              attrs: { order: '3' },
+              'a:pt': guidedPoint('right', 'bottom', 31),
+            },
+            {
+              attrs: { order: '4' },
+              'a:pt': guidedPoint('l', 'bottom', 41),
+            },
+          ],
+          'a:close': { attrs: { order: '5' } },
+        },
+      },
+    });
+
+    expect(identifyShape(geometry)).toBe('rect');
+  });
+
+  it.each([
+    ['missing x', { y: '0' }],
+    ['missing y', { x: '10' }],
+    ['partially numeric x', { x: '10px', y: '0' }],
+    ['partially numeric y', { x: '10', y: '10px' }],
+    ['unresolved x', { x: 'unknown', y: '0' }],
+    ['unresolved y', { x: '10', y: 'unknown' }],
+  ] as const)('keeps a path with %s custom', (_name, malformedPoint) => {
+    const geometry = polygon([
+      { x: 0, y: 0 },
+      { x: 10, y: 0 },
+      { x: 10, y: 10 },
+      { x: 0, y: 10 },
+    ]) as unknown as Record<string, unknown>;
+    const pathList = geometry['a:pathLst'] as Record<string, unknown>;
+    const path = pathList['a:path'] as Record<string, unknown>;
+    const lines = path['a:lnTo'] as Array<Record<string, unknown>>;
+    const firstLine = lines[0];
+    if (!firstLine) throw new Error('Expected a line command');
+    firstLine['a:pt'] = { attrs: malformedPoint };
+
+    expect(identifyShape(xml(geometry))).toBe('custom');
+  });
+
+  it.each([
+    ['missing width', { h: '1000' }],
+    ['missing height', { w: '1000' }],
+    ['zero width', { h: '1000', w: '0' }],
+    ['zero height', { h: '0', w: '1000' }],
+    ['fractional width', { h: '1000', w: '1.5' }],
+    ['fractional height', { h: '1.5', w: '1000' }],
+    ['unsafe width', { h: '1000', w: '9007199254740992' }],
+    ['unsafe height', { h: '9007199254740992', w: '1000' }],
+  ] as const)('keeps a polygon with %s custom', (_name, attrs) => {
+    const geometry = polygon([
+      { x: 0, y: 0 },
+      { x: 1000, y: 0 },
+      { x: 1000, y: 1000 },
+      { x: 0, y: 1000 },
+    ]) as unknown as Record<string, unknown>;
+    const pathList = geometry['a:pathLst'] as Record<string, unknown>;
+    const path = pathList['a:path'] as Record<string, unknown>;
+    path.attrs = attrs;
+
+    expect(identifyShape(xml(geometry))).toBe('custom');
+  });
+
+  it('does not classify compound custom geometry as a single preset shape', () => {
+    const rectangle = polygon([
+      { x: 0, y: 0 },
+      { x: 1000, y: 0 },
+      { x: 1000, y: 1000 },
+      { x: 0, y: 1000 },
+    ]) as unknown as Record<string, unknown>;
+    const pathList = rectangle['a:pathLst'] as Record<string, unknown>;
+    const path = pathList['a:path'];
+    pathList['a:path'] = [path, path];
+
+    expect(identifyShape(xml(rectangle))).toBe('custom');
+  });
+
+  it.each([
+    [
+      'a line before its move command',
+      {
+        'a:moveTo': {
+          attrs: { order: '2' },
+          'a:pt': pointNode({ x: 0, y: 0 }, 21),
+        },
+        'a:lnTo': [
+          {
+            attrs: { order: '1' },
+            'a:pt': pointNode({ x: 10, y: 0 }, 11),
+          },
+          {
+            attrs: { order: '3' },
+            'a:pt': pointNode({ x: 10, y: 10 }, 31),
+          },
+          {
+            attrs: { order: '4' },
+            'a:pt': pointNode({ x: 0, y: 10 }, 41),
+          },
+        ],
+        'a:close': { attrs: { order: '5' } },
+      },
+    ],
+    [
+      'a second move command',
+      {
+        'a:moveTo': [
+          {
+            attrs: { order: '1' },
+            'a:pt': pointNode({ x: 0, y: 0 }, 11),
+          },
+          {
+            attrs: { order: '3' },
+            'a:pt': pointNode({ x: 10, y: 10 }, 31),
+          },
+        ],
+        'a:lnTo': [
+          {
+            attrs: { order: '2' },
+            'a:pt': pointNode({ x: 10, y: 0 }, 21),
+          },
+          {
+            attrs: { order: '4' },
+            'a:pt': pointNode({ x: 0, y: 10 }, 41),
+          },
+        ],
+        'a:close': { attrs: { order: '5' } },
+      },
+    ],
+    [
+      'a close command before its final line',
+      {
+        'a:moveTo': {
+          attrs: { order: '1' },
+          'a:pt': pointNode({ x: 0, y: 0 }, 11),
+        },
+        'a:lnTo': [
+          {
+            attrs: { order: '2' },
+            'a:pt': pointNode({ x: 10, y: 0 }, 21),
+          },
+          {
+            attrs: { order: '3' },
+            'a:pt': pointNode({ x: 10, y: 10 }, 31),
+          },
+          {
+            attrs: { order: '5' },
+            'a:pt': pointNode({ x: 0, y: 10 }, 51),
+          },
+        ],
+        'a:close': { attrs: { order: '4' } },
+      },
+    ],
+  ] as const)('keeps a path with %s custom', (_name, pathCommands) => {
+    expect(
+      identifyShape(
+        xml({
+          'a:pathLst': {
+            'a:path': {
+              attrs: { h: '10', w: '10' },
+              ...pathCommands,
+            },
+          },
+        }),
+      ),
+    ).toBe('custom');
+  });
+
+  it('keeps paths without a move or with repeated closes custom', () => {
+    const lines = [
+      { x: 0, y: 0 },
+      { x: 10, y: 0 },
+      { x: 10, y: 10 },
+      { x: 0, y: 10 },
+    ].map((point, index) => ({
+      attrs: { order: String(index + 1) },
+      'a:pt': pointNode(point, index + 11),
+    }));
+    expect(
+      identifyShape(
+        xml({
+          'a:pathLst': {
+            'a:path': {
+              attrs: { h: '10', w: '10' },
+              'a:lnTo': lines,
+              'a:close': { attrs: { order: '5' } },
+            },
+          },
+        }),
+      ),
+    ).toBe('custom');
+
+    const rectangle = polygon([
+      { x: 0, y: 0 },
+      { x: 10, y: 0 },
+      { x: 10, y: 10 },
+      { x: 0, y: 10 },
+    ]) as unknown as Record<string, unknown>;
+    const pathList = rectangle['a:pathLst'] as Record<string, unknown>;
+    const path = pathList['a:path'] as Record<string, unknown>;
+    path['a:close'] = [
+      { attrs: { order: '4' } },
+      { attrs: { order: '5' } },
+    ];
+    expect(identifyShape(xml(rectangle))).toBe('custom');
   });
 
   it.each([
@@ -522,11 +762,15 @@ describe('PowerPoint custom shape classification', () => {
           'a:pathLst': {
             'a:path': {
               attrs: { h: '1000', w: '1000' },
+              'a:moveTo': {
+                attrs: { order: '1' },
+                'a:pt': pointNode({ x: 1000, y: 500 }, 11),
+              },
               'a:arcTo': [
                 {
                   attrs: {
                     hR: '500',
-                    order: '1',
+                    order: '2',
                     stAng: '0',
                     swAng: '10800000',
                     wR: '500',
@@ -535,14 +779,14 @@ describe('PowerPoint custom shape classification', () => {
                 {
                   attrs: {
                     hR: '500',
-                    order: '2',
+                    order: '3',
                     stAng: '10800000',
                     swAng: '10800000',
                     wR: '500',
                   },
                 },
               ],
-              'a:close': { attrs: { order: '3' } },
+              'a:close': { attrs: { order: '4' } },
             },
           },
         }),
@@ -595,6 +839,32 @@ describe('PowerPoint custom shape classification', () => {
     expect(
       identifyShape(xml({ 'a:pathLst': { 'a:path': curvedTriangle } })),
     ).toBe('custom');
+  });
+
+  it.each([
+    ['zero horizontal radius', { wR: '0' }],
+    ['negative horizontal radius', { wR: '-1' }],
+    ['zero vertical radius', { hR: '0' }],
+    ['negative vertical radius', { hR: '-1' }],
+    ['zero sweep', { swAng: '0' }],
+    ['missing radius', { wR: undefined }],
+    ['unresolved radius', { wR: 'missing' }],
+  ] as const)('keeps paired arcs with %s custom', (_name, replacement) => {
+    const geometry = curvePath({ arcCount: 2 }) as unknown as Record<
+      string,
+      unknown
+    >;
+    const pathList = geometry['a:pathLst'] as Record<string, unknown>;
+    const path = pathList['a:path'] as Record<string, unknown>;
+    const arcs = path['a:arcTo'] as Array<{ attrs: Record<string, string> }>;
+    const firstArc = arcs[0];
+    if (!firstArc) throw new Error('Expected a generated arc');
+    for (const [name, value] of Object.entries(replacement)) {
+      if (value === undefined) delete firstArc.attrs[name];
+      else firstArc.attrs[name] = value;
+    }
+
+    expect(identifyShape(xml(geometry))).toBe('custom');
   });
 
   it.each([
@@ -665,7 +935,7 @@ describe('PowerPoint custom shape classification', () => {
     expect(identifyShape(malformed('a:quadBezTo'))).toBe('custom');
   });
 
-  it('does not count malformed curves beside a valid curved polygon', () => {
+  it('keeps a curved polygon with malformed commands custom', () => {
     const geometry = (elementName: 'a:cubicBezTo' | 'a:quadBezTo') => {
       const result = curvePath({ lineCount: 3, quadraticCount: 3 });
       const pathList = result as unknown as Record<string, unknown>;
@@ -684,8 +954,8 @@ describe('PowerPoint custom shape classification', () => {
       return result;
     };
 
-    expect(identifyShape(geometry('a:cubicBezTo'))).toBe('triangle');
-    expect(identifyShape(geometry('a:quadBezTo'))).toBe('triangle');
+    expect(identifyShape(geometry('a:cubicBezTo'))).toBe('custom');
+    expect(identifyShape(geometry('a:quadBezTo'))).toBe('custom');
   });
 
   it('recognizes rhombi with horizontal or vertical sides', () => {

@@ -71,18 +71,6 @@ function attributes(node: unknown): Record<string, string> {
   return getTextByPathList<Record<string, string>>(node, ['attrs']) ?? {};
 }
 
-function pointFromNode(node: XmlLookupValue): Point {
-  const attrs = attributes(node);
-  return {
-    x: Number.parseInt(attrs.x ?? '0'),
-    y: Number.parseInt(attrs.y ?? '0'),
-  };
-}
-
-function pointsFromNode(node: XmlLookupValue | undefined): Point[] {
-  return asArray(node).map(pointFromNode);
-}
-
 function resolvedPointFromNode(
   node: XmlLookupValue,
   resolve: DrawingGuideResolver,
@@ -429,30 +417,59 @@ export function isStrokeOnlyCustomGeometry(
   );
 }
 
-function extractPathCommands(path: XmlLookupValue): PathCommand[] {
-  const commands: PathCommand[] = [];
-  const moveTo = nodeAt(path, ['a:moveTo', 'a:pt']);
-  if (moveTo)
-    commands.push({ type: 'moveTo', points: [pointFromNode(moveTo)] });
+function extractPathCommands(
+  path: XmlLookupValue,
+  resolve: DrawingGuideResolver,
+): PathCommand[] | undefined {
+  const sourceCommandCount = [
+    'a:moveTo',
+    'a:lnTo',
+    'a:cubicBezTo',
+    'a:quadBezTo',
+    'a:arcTo',
+    'a:close',
+  ].reduce(
+    (count, elementName) => count + asArray(nodeAt(path, [elementName])).length,
+    0,
+  );
+  const orderedCommands: OrderedCustomCommand[] = [
+    ...collectPointCommands(path, 'a:moveTo', 'moveTo', resolve),
+    ...collectPointCommands(path, 'a:lnTo', 'lineTo', resolve),
+    ...collectBezierCommands(path, 'a:cubicBezTo', 'cubicBezTo', resolve),
+    ...collectBezierCommands(path, 'a:quadBezTo', 'quadBezTo', resolve),
+    ...collectArcCommands(path, resolve),
+    ...collectCloseCommands(path),
+  ].sort((left, right) => left.order - right.order);
 
-  for (const line of asArray(nodeAt(path, ['a:lnTo']))) {
-    const point = nodeAt(line, ['a:pt']);
-    if (point)
-      commands.push({ type: 'lineTo', points: [pointFromNode(point)] });
+  if (orderedCommands.length !== sourceCommandCount) return undefined;
+  if (
+    orderedCommands[0]?.type !== 'moveTo' ||
+    orderedCommands.slice(1).some((command) => command.type === 'moveTo') ||
+    orderedCommands
+      .slice(0, -1)
+      .some((command) => command.type === 'close') ||
+    orderedCommands.some(
+      (command) =>
+        command.type === 'arcTo' &&
+        (command.wR <= 0 || command.hR <= 0 || command.swAng === 0),
+    )
+  ) {
+    return undefined;
   }
-  for (const cubic of asArray(nodeAt(path, ['a:cubicBezTo']))) {
-    const points = pointsFromNode(nodeAt(cubic, ['a:pt']));
-    if (points.length === 3) commands.push({ type: 'cubicBezTo', points });
-  }
-  for (const quadratic of asArray(nodeAt(path, ['a:quadBezTo']))) {
-    const points = pointsFromNode(nodeAt(quadratic, ['a:pt']));
-    if (points.length === 2) commands.push({ type: 'quadBezTo' });
-  }
-  asArray(nodeAt(path, ['a:arcTo'])).forEach(() => {
-    commands.push({ type: 'arcTo' });
+
+  return orderedCommands.map((command): PathCommand => {
+    switch (command.type) {
+      case 'moveTo':
+      case 'lineTo':
+        return { type: command.type, points: [command.point] };
+      case 'cubicBezTo':
+        return { type: command.type, points: [...command.points] };
+      case 'quadBezTo':
+      case 'arcTo':
+      case 'close':
+        return { type: command.type };
+    }
   });
-  if (nodeAt(path, ['a:close'])) commands.push({ type: 'close' });
-  return commands;
 }
 
 function analyzePathCommands(
@@ -639,11 +656,28 @@ function matchShape(analysis: PathAnalysis): string {
 }
 
 export function identifyShape(shapeData: XmlLookupValue): string {
-  const path = asArray(nodeAt(shapeData, ['a:pathLst', 'a:path']))[0];
+  const paths = asArray(nodeAt(shapeData, ['a:pathLst', 'a:path']));
+  if (paths.length !== 1) return 'custom';
+  const path = paths[0];
   if (!path) return 'custom';
   const attrs = attributes(path);
-  const commands = extractPathCommands(path);
-  return matchShape(
-    analyzePathCommands(commands, Number(attrs.w), Number(attrs.h)),
+  const width = Number(attrs.w);
+  const height = Number(attrs.h);
+  if (
+    !Number.isSafeInteger(width) ||
+    !Number.isSafeInteger(height) ||
+    width <= 0 ||
+    height <= 0
+  ) {
+    return 'custom';
+  }
+  const resolve = createDrawingGuideResolver(
+    width,
+    height,
+    collectGuideFormulas(shapeData),
   );
+  const commands = extractPathCommands(path, resolve);
+  return commands
+    ? matchShape(analyzePathCommands(commands, width, height))
+    : 'custom';
 }
