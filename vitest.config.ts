@@ -7,6 +7,7 @@ export default defineConfig({
       '.stryker-tmp/**',
       '**/test/browser/**',
       '**/test/corpus/**',
+      '**/test/fuzz/**',
     ],
   },
 });
