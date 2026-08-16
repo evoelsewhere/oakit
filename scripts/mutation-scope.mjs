@@ -40,6 +40,7 @@ export const mutatedFiles = [
   'src/formats/pptx/scene-validation.ts',
   'src/formats/pptx/write-error.ts',
   'src/formats/pptx/writer/paragraph.ts',
+  'src/formats/pptx/writer/text-body.ts',
   'src/formats/pptx/writer/text-node.ts',
   'src/formats/pptx/writer/xml.ts',
   'src/formats/pptx/writer/units.ts',
