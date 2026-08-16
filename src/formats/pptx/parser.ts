@@ -1701,9 +1701,7 @@ function genTable(
     ? getTableBorders(borderStyle, warpObj)
     : {};
 
-  const backgroundFill =
-    nodeAt(tableStyle, ['a:tblBg', 'a:fillRef']) ??
-    nodeAt(tableStyle, ['a:wholeTbl', 'a:tcStyle', 'a:fill', 'a:solidFill']);
+  const backgroundFill = nodeAt(tableStyle, ['a:tblBg', 'a:fillRef']);
   const tableBackground = getSolidFill(
     backgroundFill,
     undefined,
@@ -1727,6 +1725,7 @@ function genTable(
     );
     const cells: TableCell[] = [];
     const cellNodes = asArray(nodeAt(rowNode, ['a:tc']));
+    const firstBandColumn = tableStyleAttributes.isFrstColAttr === 1 ? 1 : 0;
     for (const [columnIndex, cellNode] of cellNodes.entries()) {
       let cellSource: string | undefined;
       const isFirstColumn = columnIndex === 0;
@@ -1735,33 +1734,32 @@ function genTable(
       const isLastRow = rowIndex === rowNodes.length - 1;
       if (isFirstColumn && tableStyleAttributes.isFrstColAttr === 1) {
         cellSource = 'a:firstCol';
-        if (isLastRow && nodeAt(tableStyle, ['a:seCell']))
-          cellSource = 'a:seCell';
-        else if (isFirstRow && nodeAt(tableStyle, ['a:neCell']))
-          cellSource = 'a:neCell';
-      } else if (
-        columnIndex > 0 &&
-        tableStyleAttributes.isBandColAttr === 1 &&
-        !isLastColumn
-      ) {
-        cellSource =
-          columnIndex % 2 === 0 && nodeAt(tableStyle, ['a:band1V'])
-            ? 'a:band1V'
-            : nodeAt(tableStyle, ['a:band2V'])
-              ? 'a:band2V'
-              : undefined;
-      }
-      if (isLastColumn && tableStyleAttributes.isLstColAttr === 1) {
-        cellSource = 'a:lastCol';
-        if (isLastRow && nodeAt(tableStyle, ['a:swCell']))
+        if (isLastRow && tableStyleAttributes.isLstRowAttr === 1)
           cellSource = 'a:swCell';
-        else if (isFirstRow && nodeAt(tableStyle, ['a:nwCell']))
+        else if (isFirstRow && tableStyleAttributes.isFrstRowAttr === 1)
           cellSource = 'a:nwCell';
+      } else if (isLastColumn && tableStyleAttributes.isLstColAttr === 1) {
+        cellSource = 'a:lastCol';
+        if (isLastRow && tableStyleAttributes.isLstRowAttr === 1)
+          cellSource = 'a:seCell';
+        else if (isFirstRow && tableStyleAttributes.isFrstRowAttr === 1)
+          cellSource = 'a:neCell';
+      } else if (tableStyleAttributes.isBandColAttr === 1) {
+        const usesFirstBand =
+          firstBandColumn === 0 ? columnIndex % 2 === 0 : columnIndex % 2 === 1;
+        cellSource = usesFirstBand ? 'a:band1V' : 'a:band2V';
       }
 
       const textBody = nodeAt(cellNode, ['a:txBody']);
       const text = textBody
-        ? genTextBody(textBody, cellNode, undefined, undefined, '', warpObj)
+        ? genTextBody(
+            textBody,
+            cellNode,
+            undefined,
+            undefined,
+            String(),
+            warpObj,
+          )
         : '';
       const cell = getTableCellParams(
         cellNode,
