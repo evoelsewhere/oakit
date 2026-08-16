@@ -59,6 +59,7 @@
     "test:package": "node scripts/check-package.mjs",
     "test:portable:memory": "pnpm build && node --expose-gc scripts/reliability/check-pptx-portable-memory.mjs",
     "test:render:e2e": "pnpm build && node scripts/reliability/check-pptx-render-e2e.mjs",
+    "test:render:memory": "pnpm build && node --expose-gc scripts/reliability/check-pptx-render-memory.mjs",
     "test:watch": "vitest",
     "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test:mutation:scope:complete && pnpm test && pnpm test:fuzz && pnpm build && pnpm test:package",
     "prepack": "pnpm build"
