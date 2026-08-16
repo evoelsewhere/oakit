@@ -162,6 +162,13 @@ function positiveCoordinate(value: string | undefined): number | null {
   return value === canonical || value === `+${canonical}` ? coordinate : null;
 }
 
+function cropPercentage(value: string | undefined): number | undefined {
+  const match = value?.match(/^[+-]?\d+$/);
+  if (!match) return undefined;
+  const integer = Number(match[0]);
+  return Number.isSafeInteger(integer) ? integer / 1000 : undefined;
+}
+
 function sanitizeNonFiniteNumbers(value: unknown): boolean {
   if (!value || typeof value !== 'object') return false;
 
@@ -1550,14 +1557,16 @@ async function processPicNode(
     'a:srcRect',
     'attrs',
   ]);
-  const rect: Image['rect'] | undefined = sourceRectangle
-    ? {
-        ...(sourceRectangle.t ? { t: Number(sourceRectangle.t) / 1000 } : {}),
-        ...(sourceRectangle.b ? { b: Number(sourceRectangle.b) / 1000 } : {}),
-        ...(sourceRectangle.l ? { l: Number(sourceRectangle.l) / 1000 } : {}),
-        ...(sourceRectangle.r ? { r: Number(sourceRectangle.r) / 1000 } : {}),
-      }
-    : undefined;
+  const cropTop = cropPercentage(sourceRectangle?.t);
+  const cropBottom = cropPercentage(sourceRectangle?.b);
+  const cropLeft = cropPercentage(sourceRectangle?.l);
+  const cropRight = cropPercentage(sourceRectangle?.r);
+  const rect: Image['rect'] = {
+    ...(cropTop !== undefined ? { t: cropTop } : {}),
+    ...(cropBottom !== undefined ? { b: cropBottom } : {}),
+    ...(cropLeft !== undefined ? { l: cropLeft } : {}),
+    ...(cropRight !== undefined ? { r: cropRight } : {}),
+  };
   let geom = 'rect';
   const presetGeometry = textAt(node, [
     'p:spPr',
@@ -1594,7 +1603,7 @@ async function processPicNode(
     isFlipV,
     isFlipH,
     order,
-    ...(rect && Object.keys(rect).length > 0 ? { rect } : {}),
+    ...(Object.keys(rect).length > 0 ? { rect } : {}),
     geom,
     borderColor,
     borderWidth,
