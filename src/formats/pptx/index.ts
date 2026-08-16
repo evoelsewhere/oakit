@@ -27,3 +27,4 @@ export async function parsePptxWithDiagnostics(
 }
 
 export type * from './types';
+export type * from './scene-types';
