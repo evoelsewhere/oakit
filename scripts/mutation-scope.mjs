@@ -48,6 +48,7 @@ export const mutatedFiles = [
   'src/formats/pptx/roundtrip/read.ts',
   'src/formats/pptx/roundtrip/source.ts',
   'src/formats/pptx/roundtrip/validate.ts',
+  'src/formats/pptx/roundtrip/write.ts',
   'src/formats/pptx/scene-validation.ts',
   'src/formats/pptx/write-error.ts',
   'src/formats/pptx/writer/archive.ts',

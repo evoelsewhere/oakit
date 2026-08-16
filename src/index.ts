@@ -6,6 +6,7 @@ export {
   PptxWriteError,
   readPptxRoundTrip,
   validatePptxScene,
+  writePptxRoundTrip,
 } from './formats/pptx/index';
 export type {
   PptxDocument,
