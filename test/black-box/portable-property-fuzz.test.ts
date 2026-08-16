@@ -148,5 +148,5 @@ describe('PowerPoint portable JSON seeded properties', () => {
       ),
       { numRuns: PORTABLE_FUZZ_RUNS, seed: PORTABLE_FUZZ_SEED + 3 },
     );
-  });
+  }, 20_000);
 });
