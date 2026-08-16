@@ -619,12 +619,20 @@ defaults to tolerant parsing, omits binary media, and writes a deterministic
 JSON envelope containing `format`, `document`, and `diagnostics`. Input may
 come from a file or stdin; output may go to stdout or a separate file.
 
-Command parsing and conversion live in `cli/run.ts` behind the injected
-`OakitCliIo` contract. This keeps argument behavior independently testable and
-confines direct filesystem and process access to `cli/node-io.ts` and
-`cli.ts`. Usage errors exit with status 2; read, parse, and write failures exit
-with status 1 and emit structured JSON to stderr. The CLI refuses an output
-path that resolves to the input path.
+`oakit render <input.pptx|-> --output <directory>` runs the strict package
+reader and the same SVG or Node-only PNG renderer exposed by the programmatic
+entry points. It writes deterministic slide filenames and a JSON manifest with
+dimensions, MIME types, byte lengths, slide numbers, and approximation
+warnings. Multi-slide binary output is directory-only so files are never
+ambiguously concatenated on stdout.
+
+Command parsing, conversion, and render orchestration live in `cli/run.ts`
+behind the injected `OakitCliIo` contract. The contract separates UTF-8 and
+binary writes and exposes recursive directory creation. This keeps argument
+behavior independently testable and confines direct filesystem and process
+access to `cli/node-io.ts` and `cli.ts`. Usage errors exit with status 2; read,
+parse, render, and write failures exit with status 1 and emit structured JSON
+to stderr. The CLI refuses an output path that resolves to the input path.
 
 Strict compiler and lint settings are architecture constraints. Compatibility
 work should add local guards and explicit types rather than disable rules or

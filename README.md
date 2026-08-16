@@ -122,6 +122,29 @@ oakit convert deck.pptx --output deck.json --pretty
 Both command forms are equivalent. OAKit refuses to overwrite the input document
 with JSON output.
 
+### Render slides for an agent
+
+Render one or more slides as PNG files plus a structured manifest:
+
+```bash
+oakit render deck.pptx \
+  --output previews \
+  --render-format png \
+  --slides 1,3 \
+  --scale 1
+```
+
+Use `--render-format svg` for self-contained vector output. The output directory
+contains deterministic `slide-N.png` or `slide-N.svg` files and
+`manifest.json`. The manifest records each filename, byte length, MIME type,
+dimensions, source slide number, and approximation warnings so an agent can
+inspect the preview without inferring metadata from filenames.
+
+Rendering runs in-process and does not require Microsoft Office, LibreOffice,
+Google Slides, a headless browser, or a conversion service. PNG rendering is a
+Node.js CLI capability; SVG rendering uses the same browser-neutral renderer
+exposed by the public API.
+
 ### Read from stdin
 
 Use `-` as the input path and provide the format explicitly:
@@ -137,14 +160,23 @@ from which to infer the format.
 
 ```text
 Usage: oakit [convert] <input.pptx|-> [options]
+       oakit render <input.pptx|-> --output <directory> [options]
 
-Options:
+Convert options:
   -o, --output <file>          Write JSON to a file instead of stdout
-      --format <pptx>          Input format; required when reading stdin
       --strict                 Reject malformed optional OOXML content
       --pretty                 Format JSON with two-space indentation
       --document-only          Omit format metadata and diagnostics
       --image-mode <mode>      Image output: none (default) or base64
+
+Render options:
+  -o, --output <directory>     Write slide files and manifest.json
+      --render-format <format> png (default) or svg
+      --slides <list>          One-based comma-separated slide numbers
+      --scale <number>         Positive decimal output scale (default: 1)
+
+Shared options:
+      --format <pptx>          Input format; required when reading stdin
   -h, --help                   Show help
   -v, --version                Show the installed OAKit version
 ```
