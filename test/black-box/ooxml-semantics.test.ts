@@ -75,6 +75,8 @@ describe('PPTX semantic validity at the public boundary', () => {
     expect(tolerant.diagnostics).toContainEqual(
       expect.objectContaining({
         code: 'invalid-document-structure',
+        message:
+          'Required OOXML root p:presentation is missing from ppt/presentation.xml',
         part: 'ppt/presentation.xml',
         severity: 'error',
       }),
@@ -84,6 +86,8 @@ describe('PPTX semantic validity at the public boundary', () => {
     ).rejects.toMatchObject({
       diagnostic: {
         code: 'invalid-document-structure',
+        message:
+          'Required OOXML root p:presentation is missing from ppt/presentation.xml',
         part: 'ppt/presentation.xml',
       },
     });
@@ -122,6 +126,8 @@ describe('PPTX semantic validity at the public boundary', () => {
     expect(tolerant.diagnostics).toContainEqual(
       expect.objectContaining({
         code: 'invalid-document-value',
+        message:
+          'Non-finite numeric values were replaced while parsing ppt/slides/slide1.xml',
         part: 'ppt/slides/slide1.xml',
       }),
     );
@@ -130,6 +136,8 @@ describe('PPTX semantic validity at the public boundary', () => {
     ).rejects.toMatchObject({
       diagnostic: {
         code: 'invalid-document-value',
+        message:
+          'Non-finite numeric values were replaced while parsing ppt/slides/slide1.xml',
         part: 'ppt/slides/slide1.xml',
       },
     });
