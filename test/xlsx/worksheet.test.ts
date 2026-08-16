@@ -9,6 +9,7 @@ import {
   XlsxResourceLimitError,
 } from '../../src/formats/xlsx/internal/resource-limits';
 import type { XlsxSharedStringTable } from '../../src/formats/xlsx/internal/shared-strings';
+import type { XlsxResolvedSheetSelection } from '../../src/formats/xlsx/internal/selection';
 import {
   createXlsxWorksheetBudget,
   parseXlsxWorksheetPart,
@@ -48,6 +49,7 @@ async function parse(
     dialect?: 'strict' | 'transitional';
     limits?: Partial<ResolvedXlsxResourceLimits>;
     part?: string;
+    selection?: XlsxResolvedSheetSelection;
     strings?: XlsxSharedStringTable;
   } = {},
 ) {
@@ -64,6 +66,7 @@ async function parse(
     resolved,
     strings,
     options.budget ?? createXlsxWorksheetBudget(strings),
+    options.selection,
   );
 }
 
@@ -399,6 +402,189 @@ describe('XLSX worksheet streaming', () => {
       richTextRuns: 0,
       scannedCells: 2,
       textCharacters: 3,
+    });
+  });
+
+  it('emits selected cells and authored row metadata without post-filtering', async () => {
+    const budget = createXlsxWorksheetBudget(EMPTY_STRINGS);
+    const selection: XlsxResolvedSheetSelection = {
+      endRowPrefix: [2],
+      kind: 'selected-ranges',
+      ranges: [
+        {
+          end: { column: 2, row: 2 },
+          reference: 'B1:B2',
+          start: { column: 2, row: 1 },
+        },
+      ],
+    };
+    const result = await parse(
+      worksheet(`<sheetData>
+        <row r="1" hidden="true">
+          <c r="A1" t="inlineStr"><is><t>outside</t></is></c>
+          <c r="B1" t="inlineStr"><is><t>inside</t></is></c>
+        </row>
+        <row r="2" ht="12"><c r="A2"><v>7</v></c></row>
+      </sheetData>`),
+      { budget, selection },
+    );
+
+    expect(result).toEqual({
+      rows: [
+        {
+          cells: [
+            {
+              address: 'B1',
+              column: 2,
+              content: {
+                kind: 'value',
+                value: { kind: 'text', text: 'inside' },
+              },
+            },
+          ],
+          hidden: true,
+          index: 1,
+        },
+        { cells: [], height: 12, index: 2 },
+      ],
+    });
+    expect(budget).toEqual({
+      returnedCells: 1,
+      richTextRuns: 0,
+      scannedCells: 3,
+      textCharacters: 6,
+    });
+  });
+
+  it('validates unreturned cells and charges scanned work independently', async () => {
+    const selection: XlsxResolvedSheetSelection = {
+      endRowPrefix: [1],
+      kind: 'selected-ranges',
+      ranges: [
+        {
+          end: { column: 1, row: 1 },
+          reference: 'A1',
+          start: { column: 1, row: 1 },
+        },
+      ],
+    };
+    const valid = worksheet(
+      '<sheetData><row><c><v>1</v></c><c><v>2</v></c></row></sheetData>',
+    );
+    const budget = createXlsxWorksheetBudget(EMPTY_STRINGS);
+    await expect(
+      parse(valid, {
+        budget,
+        limits: { maxReturnedCells: 1, maxScannedCells: 2 },
+        selection,
+      }),
+    ).resolves.toMatchObject({ rows: [{ cells: [{ address: 'A1' }] }] });
+    expect(budget.returnedCells).toBe(1);
+    expect(budget.scannedCells).toBe(2);
+
+    await expect(
+      parse(valid, {
+        limits: { maxReturnedCells: 1, maxScannedCells: 1 },
+        selection,
+      }),
+    ).rejects.toMatchObject({
+      actual: 2,
+      limit: 1,
+      limitName: 'maxScannedCells',
+      name: 'XlsxResourceLimitError',
+      part: PART,
+    } satisfies Partial<XlsxResourceLimitError>);
+
+    const invalid = worksheet(
+      '<sheetData><row><c><v>1</v></c><c t="b"><v>2</v></c></row></sheetData>',
+    );
+    await expect(parse(invalid, { selection })).rejects.toMatchObject({
+      diagnostic: {
+        cell: 'B1',
+        code: 'invalid-document-value',
+        message: 'Cell boolean is invalid',
+        part: PART,
+      },
+      name: 'XlsxParseError',
+    });
+  });
+
+  it('bounds selected output separately from unreturned inline resources', async () => {
+    const oneCell: XlsxResolvedSheetSelection = {
+      endRowPrefix: [1],
+      kind: 'selected-ranges',
+      ranges: [
+        {
+          end: { column: 1, row: 1 },
+          reference: 'A1',
+          start: { column: 1, row: 1 },
+        },
+      ],
+    };
+    const bothCells: XlsxResolvedSheetSelection = {
+      endRowPrefix: [1],
+      kind: 'selected-ranges',
+      ranges: [
+        {
+          end: { column: 2, row: 1 },
+          reference: 'A1:B1',
+          start: { column: 1, row: 1 },
+        },
+      ],
+    };
+    const cells = worksheet(
+      '<sheetData><row><c/><c t="inlineStr"><is><r><t>A</t></r><r><t>B</t></r></is></c></row></sheetData>',
+    );
+
+    await expect(
+      parse(cells, {
+        limits: { maxReturnedCells: 1, maxRichTextRuns: 2 },
+        selection: oneCell,
+      }),
+    ).resolves.toEqual({
+      rows: [
+        {
+          cells: [{ address: 'A1', column: 1, content: { kind: 'blank' } }],
+          index: 1,
+        },
+      ],
+    });
+    await expect(
+      parse(cells, {
+        limits: { maxReturnedCells: 1, maxRichTextRuns: 2 },
+        selection: bothCells,
+      }),
+    ).rejects.toMatchObject({
+      actual: 2,
+      limit: 1,
+      limitName: 'maxReturnedCells',
+    });
+    await expect(
+      parse(cells, {
+        limits: { maxReturnedCells: 1, maxRichTextRuns: 1 },
+        selection: oneCell,
+      }),
+    ).rejects.toMatchObject({
+      actual: 2,
+      limit: 1,
+      limitName: 'maxRichTextRuns',
+    });
+
+    const scalarText = worksheet(
+      '<sheetData><row><c/><c t="str"><v>outside</v></c></row></sheetData>',
+    );
+    await expect(
+      parse(scalarText, {
+        limits: { maxReturnedCells: 1, maxTextCharacters: 1 },
+        selection: oneCell,
+      }),
+    ).resolves.toEqual({
+      rows: [
+        {
+          cells: [{ address: 'A1', column: 1, content: { kind: 'blank' } }],
+          index: 1,
+        },
+      ],
     });
   });
 

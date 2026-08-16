@@ -231,6 +231,33 @@ describe('XLSX workbook manifest', () => {
     ]);
   });
 
+  it('describes chart sheets without reading their unselected payloads', async () => {
+    const result = await manifest({
+      '[Content_Types].xml': contentTypes(
+        `<Override PartName="/xl/chartsheets/chart.xml" ContentType="${CHART_SHEET_CONTENT_TYPE}"/>`,
+      ),
+      'xl/_rels/workbook.xml.rels': workbookRelationships(
+        relationship(
+          'rIdSheet1',
+          `${XLSX_OFFICE_REL_TYPE}chartsheet`,
+          'chartsheets/chart.xml',
+        ),
+      ),
+      'xl/chartsheets/chart.xml': null,
+    });
+
+    expect(result.sheets).toEqual([
+      {
+        index: 0,
+        kind: 'chart-sheet',
+        name: 'Sheet1',
+        payload: 'full-sheet',
+        state: 'visible',
+      },
+    ]);
+    expect(result.sheetParts).toEqual(['xl/chartsheets/chart.xml']);
+  });
+
   it('accepts exactly maxWorksheets and rejects one over', async () => {
     const workbook = independentWorkbook(`
       <sheet name="One" sheetId="1" r:id="rId1"/>
@@ -493,60 +520,6 @@ describe('XLSX workbook manifest', () => {
       'Workbook sheet target has the wrong content type',
       'invalid-document-structure',
       'xl/worksheets/sheet1.xml',
-    ],
-    [
-      {
-        '[Content_Types].xml': contentTypes(
-          `<Override PartName="/xl/chartsheets/chart.xml" ContentType="${CHART_SHEET_CONTENT_TYPE}"/>`,
-        ),
-        'xl/_rels/workbook.xml.rels': workbookRelationships(
-          relationship(
-            'rIdSheet1',
-            `${XLSX_OFFICE_REL_TYPE}chartsheet`,
-            'chartsheets/chart.xml',
-          ),
-        ),
-        'xl/chartsheets/chart.xml': null,
-      },
-      'Required XLSX part is missing: xl/chartsheets/chart.xml',
-      'missing-required-part',
-      'xl/chartsheets/chart.xml',
-    ],
-    [
-      {
-        '[Content_Types].xml': contentTypes(
-          `<Override PartName="/xl/chartsheets/chart.xml" ContentType="${CHART_SHEET_CONTENT_TYPE}"/>`,
-        ),
-        'xl/_rels/workbook.xml.rels': workbookRelationships(
-          relationship(
-            'rIdSheet1',
-            `${XLSX_OFFICE_REL_TYPE}chartsheet`,
-            'chartsheets/chart.xml',
-          ),
-        ),
-        'xl/chartsheets/chart.xml': worksheet(),
-      },
-      'chartsheet root is missing or has the wrong namespace',
-      'invalid-document-structure',
-      'xl/chartsheets/chart.xml',
-    ],
-    [
-      {
-        '[Content_Types].xml': contentTypes(
-          `<Override PartName="/xl/chartsheets/chart.xml" ContentType="${CHART_SHEET_CONTENT_TYPE}"/>`,
-        ),
-        'xl/_rels/workbook.xml.rels': workbookRelationships(
-          relationship(
-            'rIdSheet1',
-            `${XLSX_OFFICE_REL_TYPE}chartsheet`,
-            'chartsheets/chart.xml',
-          ),
-        ),
-        'xl/chartsheets/chart.xml': chartSheet('urn:wrong'),
-      },
-      'chartsheet root is missing or has the wrong namespace',
-      'invalid-document-structure',
-      'xl/chartsheets/chart.xml',
     ],
     [
       {

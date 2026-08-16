@@ -6,12 +6,14 @@ import {
   assertXlsxInputWithinLimits,
   copyXlsxInputBytes,
 } from './internal/archive';
+import { validateXlsxChartSheetPart } from './internal/chart-sheet';
 import { XlsxPartReader } from './internal/part-reader';
 import {
   resolveXlsxResourceLimits,
   resourceLimitDiagnostic,
   XlsxResourceLimitError,
 } from './internal/resource-limits';
+import { resolveXlsxSelection } from './internal/selection';
 import { discoverXlsxWorkbook } from './internal/workbook-discovery';
 import { parseXlsxWorkbookManifest } from './internal/workbook-manifest';
 import { loadXlsxSharedStrings } from './internal/workbook-tables';
@@ -120,10 +122,16 @@ export async function parseXlsxWithDiagnostics(
   let discovery: Awaited<ReturnType<typeof discoverXlsxWorkbook>>;
   let manifest: Awaited<ReturnType<typeof parseXlsxWorkbookManifest>>;
   let sharedStrings: Awaited<ReturnType<typeof loadXlsxSharedStrings>>;
+  let selections: ReturnType<typeof resolveXlsxSelection>;
   try {
     discovery = await discoverXlsxWorkbook(reader, limits);
-    sharedStrings = await loadXlsxSharedStrings(discovery, reader, limits);
     manifest = await parseXlsxWorkbookManifest(discovery, reader, limits);
+    selections = resolveXlsxSelection(
+      options.selection,
+      manifest.sheets,
+      limits,
+    );
+    sharedStrings = await loadXlsxSharedStrings(discovery, reader, limits);
   } catch (error) {
     if (error instanceof XlsxResourceLimitError) {
       failResource(error, diagnostics);
@@ -131,11 +139,27 @@ export async function parseXlsxWithDiagnostics(
     throw error;
   }
   const budget = createXlsxWorksheetBudget(sharedStrings);
-  const sheets = [];
+  const sheets: XlsxDocument['sheets'] = [];
   try {
     for (const [index, sheet] of manifest.sheets.entries()) {
+      const selection = selections[index]!;
       if (sheet.kind === 'chart-sheet') {
-        sheets.push(sheet);
+        if (selection.kind === 'full-sheet') {
+          await validateXlsxChartSheetPart(
+            manifest.sheetParts[index]!,
+            discovery.dialect,
+            reader,
+          );
+        }
+        sheets.push({
+          ...sheet,
+          payload:
+            selection.kind === 'full-sheet' ? 'full-sheet' : 'not-selected',
+        });
+        continue;
+      }
+      if (selection.kind === 'not-selected') {
+        sheets.push({ ...sheet, payload: 'not-selected', rows: [] });
         continue;
       }
       const payload = await parseXlsxWorksheetPart(
@@ -145,8 +169,14 @@ export async function parseXlsxWithDiagnostics(
         limits,
         sharedStrings,
         budget,
+        selection,
       );
-      sheets.push({ ...sheet, rows: payload.rows });
+      sheets.push({
+        ...sheet,
+        payload:
+          selection.kind === 'full-sheet' ? 'full-sheet' : 'selected-ranges',
+        rows: payload.rows,
+      });
     }
   } catch (error) {
     if (error instanceof XlsxResourceLimitError) {

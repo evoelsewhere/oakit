@@ -15,6 +15,11 @@ import {
   type ResolvedXlsxResourceLimits,
   XlsxResourceLimitError,
 } from './resource-limits';
+import {
+  type XlsxResolvedSheetSelection,
+  xlsxSelectionIncludesCell,
+  xlsxSelectionIncludesRow,
+} from './selection';
 import type { XlsxSharedStringTable } from './shared-strings';
 import type { XlsxXmlElement, XlsxXmlEventSink } from './streaming-xml';
 import {
@@ -37,6 +42,7 @@ interface PendingCell {
   inlineMode: 'plain' | 'rich' | 'unset';
   inlineRuns: XlsxRichTextRun[];
   inlineText: string;
+  selected: boolean;
   style?: number;
   type: CellType;
   valueText: string;
@@ -224,6 +230,7 @@ class WorksheetSink implements XlsxXmlEventSink {
   private currentCell: PendingCell | undefined;
   private currentInlineRun: PendingInlineRun | undefined;
   private currentRow: XlsxRow | undefined;
+  private currentRowSelected!: boolean;
   private ignoredDepth = 0;
   private lastCellColumn = 0;
   private lastRow = 0;
@@ -237,6 +244,7 @@ class WorksheetSink implements XlsxXmlEventSink {
     private readonly sharedStrings: XlsxSharedStringTable,
     private readonly budget: XlsxWorksheetBudget,
     private readonly limits: ResolvedXlsxResourceLimits,
+    private readonly selection: XlsxResolvedSheetSelection,
   ) {}
 
   openElement(element: XlsxXmlElement): void {
@@ -432,12 +440,13 @@ class WorksheetSink implements XlsxXmlEventSink {
       index,
       ...(outlineLevel === undefined ? {} : { outlineLevel }),
     };
+    this.currentRowSelected = xlsxSelectionIncludesRow(this.selection, index);
     this.lastCellColumn = 0;
     this.lastRow = index;
   }
 
   private closeRow(): void {
-    this.rows.push(this.currentRow!);
+    if (this.currentRowSelected) this.rows.push(this.currentRow!);
     this.currentRow = undefined;
   }
 
@@ -500,14 +509,21 @@ class WorksheetSink implements XlsxXmlEventSink {
       this.limits,
       this.part,
     );
-    consume(
-      this.budget,
-      'returnedCells',
-      1,
-      'maxReturnedCells',
-      this.limits,
-      this.part,
+    const selected = xlsxSelectionIncludesCell(
+      this.selection,
+      this.currentRow!.index,
+      column,
     );
+    if (selected) {
+      consume(
+        this.budget,
+        'returnedCells',
+        1,
+        'maxReturnedCells',
+        this.limits,
+        this.part,
+      );
+    }
     this.currentCell = {
       address,
       column,
@@ -516,6 +532,7 @@ class WorksheetSink implements XlsxXmlEventSink {
       inlineMode: 'unset',
       inlineRuns: [],
       inlineText: '',
+      selected,
       ...(style === undefined ? {} : { style }),
       type: cellType(attribute(element, 't'), this.part, address),
       valueText: '',
@@ -622,7 +639,7 @@ class WorksheetSink implements XlsxXmlEventSink {
         ...(cell.inlineMode === 'rich' ? { runs: cell.inlineRuns } : {}),
         text: cell.inlineText,
       };
-      this.consumeTextCharacters(value.text);
+      if (cell.selected) this.consumeTextCharacters(value.text);
       content = { kind: 'value', value };
     } else {
       const value = parseXlsxScalarCellValue(
@@ -632,8 +649,12 @@ class WorksheetSink implements XlsxXmlEventSink {
         this.part,
         cell.address,
       );
-      this.consumeReturnedText(value);
+      if (cell.selected) this.consumeReturnedText(value);
       content = { kind: 'value', value };
+    }
+    if (!cell.selected) {
+      this.currentCell = undefined;
+      return;
     }
     const base = {
       address: cell.address,
@@ -685,6 +706,7 @@ export async function parseXlsxWorksheetPart(
   limits: ResolvedXlsxResourceLimits,
   sharedStrings: XlsxSharedStringTable,
   budget: XlsxWorksheetBudget,
+  selection: XlsxResolvedSheetSelection = { kind: 'full-sheet' },
 ): Promise<XlsxWorksheetPayload> {
   const sink = new WorksheetSink(
     part,
@@ -692,6 +714,7 @@ export async function parseXlsxWorksheetPart(
     sharedStrings,
     budget,
     limits,
+    selection,
   );
   await reader.streamXml(part, sink, { required: true });
   return sink.result();

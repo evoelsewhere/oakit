@@ -5,13 +5,50 @@ import {
   parseXlsxWithDiagnostics,
   XlsxParseError,
 } from '../../src/formats/xlsx';
-import { createIndependentXlsx } from '../black-box/xlsx-package';
+import {
+  createIndependentXlsx,
+  independentWorkbook,
+  XLSX_CONTENT_TYPES_NS,
+  XLSX_OFFICE_REL_TYPE,
+  XLSX_PACKAGE_REL_NS,
+  XLSX_SPREADSHEET_NS,
+} from '../black-box/xlsx-package';
 
 function arrayBuffer(bytes: Uint8Array): ArrayBuffer {
   return bytes.buffer.slice(
     bytes.byteOffset,
     bytes.byteOffset + bytes.byteLength,
   ) as ArrayBuffer;
+}
+
+async function createChartWorkbook(
+  chart: string | null,
+  worksheet: string | null | undefined = undefined,
+): Promise<Uint8Array> {
+  return createIndependentXlsx({
+    '[Content_Types].xml': `<Types xmlns="${XLSX_CONTENT_TYPES_NS}">
+      <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+      <Default Extension="xml" ContentType="application/xml"/>
+      <Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
+      <Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
+      <Override PartName="/xl/chartsheets/chart1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.chartsheet+xml"/>
+      <Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>
+      <Override PartName="/xl/sharedStrings.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sharedStrings+xml"/>
+    </Types>`,
+    'xl/_rels/workbook.xml.rels': `<Relationships xmlns="${XLSX_PACKAGE_REL_NS}">
+      <Relationship Id="rIdSheet1" Type="${XLSX_OFFICE_REL_TYPE}worksheet" Target="worksheets/sheet1.xml"/>
+      <Relationship Id="rIdChart1" Type="${XLSX_OFFICE_REL_TYPE}chartsheet" Target="chartsheets/chart1.xml"/>
+      <Relationship Id="rIdStyles" Type="${XLSX_OFFICE_REL_TYPE}styles" Target="styles.xml"/>
+      <Relationship Id="rIdSharedStrings" Type="${XLSX_OFFICE_REL_TYPE}sharedStrings" Target="sharedStrings.xml"/>
+    </Relationships>`,
+    'xl/chartsheets/chart1.xml': chart,
+    'xl/workbook.xml': independentWorkbook(`
+      <sheet name="Sheet1" sheetId="1" r:id="rIdSheet1"/>
+      <sheet name="Chart" sheetId="2" state="hidden" r:id="rIdChart1"/>`),
+    ...(worksheet === undefined
+      ? {}
+      : { 'xl/worksheets/sheet1.xml': worksheet }),
+  });
 }
 
 describe('public XLSX parser', () => {
@@ -351,6 +388,239 @@ describe('public XLSX parser', () => {
         message: 'Cell boolean is invalid',
         part: 'xl/worksheets/sheet1.xml',
         severity: 'error',
+      },
+      name: 'XlsxParseError',
+    });
+  });
+
+  it('returns sparse selected ranges with explicit payload metadata', async () => {
+    const bytes = await createIndependentXlsx();
+    const document = await parseXlsx(bytes, {
+      selection: { ranges: { sheet1: ['B2:C3'] } },
+    });
+
+    expect(document.sheets).toEqual([
+      {
+        columns: [],
+        drawings: [],
+        index: 0,
+        kind: 'worksheet',
+        mergedRanges: [],
+        name: 'Sheet1',
+        payload: 'selected-ranges',
+        rows: [
+          {
+            cells: [
+              {
+                address: 'B2',
+                column: 2,
+                content: {
+                  kind: 'value',
+                  value: { kind: 'number', value: 42 },
+                },
+              },
+            ],
+            index: 2,
+          },
+          {
+            cells: [
+              {
+                address: 'C3',
+                column: 3,
+                content: {
+                  kind: 'value',
+                  value: { kind: 'boolean', value: true },
+                },
+              },
+            ],
+            index: 3,
+          },
+        ],
+        state: 'visible',
+        tables: [],
+      },
+    ]);
+  });
+
+  it('lets a whole-sheet selection win over validated ranges', async () => {
+    const bytes = await createIndependentXlsx();
+    const selected = await parseXlsx(bytes, {
+      selection: {
+        ranges: { SHEET1: ['B2'] },
+        sheetNames: ['sheet1'],
+      },
+    });
+
+    expect(selected.sheets[0]).toMatchObject({
+      payload: 'full-sheet',
+      rows: [{ index: 1 }, { index: 2 }, { index: 3 }],
+    });
+  });
+
+  it('preserves unselected sheet metadata without reading its worksheet part', async () => {
+    const bytes = await createIndependentXlsx({
+      'xl/worksheets/sheet1.xml': null,
+    });
+
+    await expect(parseXlsx(bytes, { selection: {} })).resolves.toMatchObject({
+      sheets: [
+        {
+          kind: 'worksheet',
+          name: 'Sheet1',
+          payload: 'not-selected',
+          rows: [],
+        },
+      ],
+    });
+  });
+
+  it('reads only selected worksheet and chart-sheet payloads', async () => {
+    const chart = `<chartsheet xmlns="${XLSX_SPREADSHEET_NS}"/>`;
+    const chartOnly = await createChartWorkbook(chart, null);
+    await expect(
+      parseXlsx(chartOnly, { selection: { sheetNames: ['chart'] } }),
+    ).resolves.toMatchObject({
+      sheets: [
+        {
+          kind: 'worksheet',
+          name: 'Sheet1',
+          payload: 'not-selected',
+          rows: [],
+        },
+        { kind: 'chart-sheet', name: 'Chart', payload: 'full-sheet' },
+      ],
+    });
+
+    const noPayloads = await createChartWorkbook(null, null);
+    await expect(
+      parseXlsx(noPayloads, { selection: {} }),
+    ).resolves.toMatchObject({
+      sheets: [
+        { kind: 'worksheet', payload: 'not-selected', rows: [] },
+        { kind: 'chart-sheet', payload: 'not-selected' },
+      ],
+    });
+
+    const missingChart = await createChartWorkbook(null);
+    await expect(parseXlsx(missingChart)).rejects.toMatchObject({
+      diagnostic: {
+        code: 'missing-required-part',
+        message: 'Required XLSX part is missing: xl/chartsheets/chart1.xml',
+        part: 'xl/chartsheets/chart1.xml',
+      },
+      name: 'XlsxParseError',
+    });
+  });
+
+  it('rejects range selection on chart sheets before reading their payload', async () => {
+    const bytes = await createChartWorkbook(null, null);
+    await expect(
+      parseXlsx(bytes, { selection: { ranges: { Chart: ['A1'] } } }),
+    ).rejects.toMatchObject({
+      diagnostic: {
+        code: 'invalid-selection',
+        message: 'XLSX selection ranges require a worksheet',
+        severity: 'error',
+      },
+      name: 'XlsxParseError',
+    });
+  });
+
+  it.each([
+    [{ sheetNames: ['Missing'] }, 'XLSX selection references an unknown sheet'],
+    [
+      { ranges: { Sheet1: ['Sheet1!A1'] } },
+      'XLSX selection contains an invalid range',
+    ],
+  ] as const)(
+    'reports invalid public selection %#',
+    async (selection, message) => {
+      const bytes = await createIndependentXlsx();
+      await expect(parseXlsx(bytes, { selection })).rejects.toMatchObject({
+        diagnostic: {
+          code: 'invalid-selection',
+          message,
+          severity: 'error',
+        },
+        name: 'XlsxParseError',
+      });
+    },
+  );
+
+  it('accounts scanned and returned cells independently through the public parser', async () => {
+    const bytes = await createIndependentXlsx();
+    const selection = { ranges: { Sheet1: ['B2'] } } as const;
+
+    await expect(
+      parseXlsx(bytes, {
+        limits: { maxReturnedCells: 1, maxScannedCells: 3 },
+        selection,
+      }),
+    ).resolves.toMatchObject({
+      sheets: [{ payload: 'selected-ranges', rows: [{ index: 2 }] }],
+    });
+    await expect(
+      parseXlsx(bytes, {
+        limits: { maxReturnedCells: 1, maxScannedCells: 2 },
+        selection,
+      }),
+    ).rejects.toMatchObject({
+      cause: {
+        actual: 3,
+        limit: 2,
+        limitName: 'maxScannedCells',
+        part: 'xl/worksheets/sheet1.xml',
+      },
+      diagnostic: {
+        actual: 3,
+        code: 'resource-limit-exceeded',
+        limit: 2,
+        limitName: 'maxScannedCells',
+        part: 'xl/worksheets/sheet1.xml',
+      },
+      name: 'XlsxParseError',
+    });
+    await expect(
+      parseXlsx(bytes, {
+        limits: { maxReturnedCells: 1, maxScannedCells: 3 },
+        selection: { ranges: { Sheet1: ['B2:C3'] } },
+      }),
+    ).rejects.toMatchObject({
+      cause: {
+        actual: 2,
+        limit: 1,
+        limitName: 'maxReturnedCells',
+        part: 'xl/worksheets/sheet1.xml',
+      },
+      diagnostic: {
+        actual: 2,
+        code: 'resource-limit-exceeded',
+        limit: 1,
+        limitName: 'maxReturnedCells',
+        part: 'xl/worksheets/sheet1.xml',
+      },
+      name: 'XlsxParseError',
+    });
+  });
+
+  it('validates unreturned worksheet cells before discarding their values', async () => {
+    const bytes = await createIndependentXlsx({
+      'xl/worksheets/sheet1.xml': `
+        <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+          <sheetData><row><c><v>1</v></c><c t="b"><v>2</v></c></row></sheetData>
+        </worksheet>`,
+    });
+
+    await expect(
+      parseXlsx(bytes, {
+        selection: { ranges: { Sheet1: ['A1'] } },
+      }),
+    ).rejects.toMatchObject({
+      diagnostic: {
+        cell: 'B1',
+        code: 'invalid-document-value',
+        message: 'Cell boolean is invalid',
+        part: 'xl/worksheets/sheet1.xml',
       },
       name: 'XlsxParseError',
     });

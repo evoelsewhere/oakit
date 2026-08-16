@@ -13,15 +13,8 @@ import {
   type ResolvedXlsxResourceLimits,
   XlsxResourceLimitError,
 } from './resource-limits';
-import {
-  type XlsxWorkbookDiscovery,
-  XLSX_SPREADSHEET_NAMESPACES,
-} from './workbook-discovery';
+import type { XlsxWorkbookDiscovery } from './workbook-discovery';
 
-const WORKSHEET_CONTENT_TYPE =
-  'application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml';
-const CHART_SHEET_CONTENT_TYPE =
-  'application/vnd.openxmlformats-officedocument.spreadsheetml.chartsheet+xml';
 const RELATIONSHIP_BASE = {
   strict: 'http://purl.oclc.org/ooxml/officeDocument/relationships',
   transitional:
@@ -29,6 +22,12 @@ const RELATIONSHIP_BASE = {
 } as const;
 
 type XmlRecord = Record<string, unknown>;
+
+function expectedSheetContentType(kind: XlsxSheet['kind']): string {
+  return kind === 'worksheet'
+    ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml'
+    : 'application/vnd.openxmlformats-officedocument.spreadsheetml.chartsheet+xml';
+}
 
 export interface XlsxWorkbookManifest {
   properties: XlsxWorkbookProperties;
@@ -174,23 +173,6 @@ function positiveSheetId(value: unknown): number | undefined {
     : undefined;
 }
 
-function assertPartRoot(
-  value: XmlLookupValue,
-  localName: 'chartsheet' | 'worksheet',
-  dialect: XlsxWorkbookDiscovery['dialect'],
-  part: string,
-): void {
-  const document = value as unknown as XmlRecord;
-  for (const [qualifiedName, candidate] of Object.entries(document)) {
-    const [first, second] = qualifiedName.split(':') as [string, string?];
-    if ((second ?? first) !== localName) continue;
-    const attrs = attributes(candidate as XmlRecord);
-    const namespace = attrs[second === undefined ? 'xmlns' : `xmlns:${first}`];
-    if (namespace === XLSX_SPREADSHEET_NAMESPACES[dialect]) return;
-  }
-  fail(`${localName} root is missing or has the wrong namespace`, part);
-}
-
 export async function parseXlsxWorkbookManifest(
   discovery: XlsxWorkbookDiscovery,
   reader: XlsxPartReader,
@@ -275,8 +257,7 @@ export async function parseXlsxWorkbookManifest(
         discovery.part,
       );
     }
-    const expectedContentType =
-      kind === 'worksheet' ? WORKSHEET_CONTENT_TYPE : CHART_SHEET_CONTENT_TYPE;
+    const expectedContentType = expectedSheetContentType(kind);
     if (
       discovery.contentTypes.contentTypeFor(relationship.target) !==
       expectedContentType
@@ -287,17 +268,6 @@ export async function parseXlsxWorkbookManifest(
       );
     }
 
-    if (kind === 'chart-sheet') {
-      const sheetXml = await reader.readXml(relationship.target, {
-        required: true,
-      });
-      assertPartRoot(
-        sheetXml,
-        'chartsheet',
-        discovery.dialect,
-        relationship.target,
-      );
-    }
     const base = {
       index,
       name: attrs.name,
