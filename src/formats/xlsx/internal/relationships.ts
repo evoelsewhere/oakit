@@ -1,5 +1,8 @@
 import { XlsxParseError } from '../errors';
-import { resolveXlsxPartTarget } from './package-identity';
+import {
+  resolveXlsxPartTarget,
+  resolveXlsxRootTarget,
+} from './package-identity';
 import { XlsxResourceLimitError } from './resource-limits';
 
 export const XLSX_RELATIONSHIPS_NAMESPACE =
@@ -53,13 +56,14 @@ function validToken(value: unknown): value is string {
 
 export function parseXlsxRelationships(
   value: unknown,
-  ownerPart: string,
+  ownerPart: string | null,
   maxRelationships: number,
 ): ReadonlyMap<string, XlsxRelationship> {
+  const relationshipPart = ownerPart ?? '_rels/.rels';
   const root = record(record(value)?.Relationships);
   if (!root || attributes(root).xmlns !== XLSX_RELATIONSHIPS_NAMESPACE) {
     relationshipFailure(
-      ownerPart,
+      relationshipPart,
       'Relationship root is missing or has the wrong namespace',
       'invalid-document-structure',
     );
@@ -67,7 +71,7 @@ export function parseXlsxRelationships(
   const relationshipNodes = records(root.Relationship);
   if (!relationshipNodes) {
     relationshipFailure(
-      ownerPart,
+      relationshipPart,
       'Relationships contain an invalid entry collection',
       'invalid-document-structure',
     );
@@ -77,7 +81,7 @@ export function parseXlsxRelationships(
       'maxRelationships',
       relationshipNodes.length,
       maxRelationships,
-      ownerPart,
+      relationshipPart,
     );
   }
 
@@ -86,21 +90,21 @@ export function parseXlsxRelationships(
     const attrs = attributes(relationshipNode);
     if (!validToken(attrs.Id)) {
       relationshipFailure(
-        ownerPart,
+        relationshipPart,
         'Relationship has an invalid ID',
         'invalid-document-structure',
       );
     }
     if (!validToken(attrs.Type)) {
       relationshipFailure(
-        ownerPart,
+        relationshipPart,
         'Relationship has an invalid type',
         'invalid-document-structure',
       );
     }
     if (relationships.has(attrs.Id)) {
       relationshipFailure(
-        ownerPart,
+        relationshipPart,
         'Relationships contain a duplicate ID',
         'invalid-document-structure',
       );
@@ -110,17 +114,20 @@ export function parseXlsxRelationships(
     if (attrs.TargetMode === undefined) {
       if (typeof attrs.Target !== 'string') {
         relationshipFailure(
-          ownerPart,
+          relationshipPart,
           'Relationship has an invalid internal target',
           'invalid-relationship-target',
         );
       }
       let target: string;
       try {
-        target = resolveXlsxPartTarget(ownerPart, attrs.Target);
+        target =
+          ownerPart === null
+            ? resolveXlsxRootTarget(attrs.Target)
+            : resolveXlsxPartTarget(ownerPart, attrs.Target);
       } catch (cause) {
         relationshipFailure(
-          ownerPart,
+          relationshipPart,
           'Relationship has an invalid internal target',
           'invalid-relationship-target',
           cause,
@@ -135,7 +142,7 @@ export function parseXlsxRelationships(
     } else if (attrs.TargetMode === 'External') {
       if (!validToken(attrs.Target)) {
         relationshipFailure(
-          ownerPart,
+          relationshipPart,
           'Relationship has an invalid external target',
           'invalid-relationship-target',
         );
@@ -148,7 +155,7 @@ export function parseXlsxRelationships(
       };
     } else {
       relationshipFailure(
-        ownerPart,
+        relationshipPart,
         'Relationship has an invalid TargetMode',
         'invalid-document-structure',
       );

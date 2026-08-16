@@ -97,6 +97,16 @@ export function resolveXlsxPartTarget(
   return resolved.join('/');
 }
 
+/** Resolve an internal package relationship target against the package root. */
+export function resolveXlsxRootTarget(target: string): string {
+  if (!target || target !== target.trim()) {
+    invalidPartName('empty or padded relationship target');
+  }
+  if (URI_SCHEME.test(target)) invalidPartName('external URI scheme');
+  if (target.startsWith('//')) invalidPartName('network-path reference');
+  return canonicalizeXlsxPartName(target);
+}
+
 /** Return the relationship part owned by an XLSX package part. */
 export function getXlsxRelationshipPartName(ownerPart: string): string {
   const canonicalOwner = canonicalizeXlsxPartName(ownerPart);

@@ -5,6 +5,7 @@ import {
   canonicalizeXlsxPartName,
   getXlsxRelationshipPartName,
   resolveXlsxPartTarget,
+  resolveXlsxRootTarget,
 } from '../../src/formats/xlsx/internal/package-identity';
 
 function captureError(action: () => unknown): TypeError {
@@ -112,6 +113,26 @@ describe('XLSX package part identity', () => {
       () => resolveXlsxPartTarget('xl/workbook.xml', target),
       reason,
     );
+  });
+
+  it.each([
+    ['xl/workbook.xml', 'xl/workbook.xml'],
+    ['/custom/books/workbook.xml', 'custom/books/workbook.xml'],
+    ['xl/My%20Workbook.xml', 'xl/My Workbook.xml'],
+  ])('resolves package-root target %s', (target, expected) => {
+    expect(resolveXlsxRootTarget(target)).toBe(expected);
+  });
+
+  it.each([
+    ['', 'empty or padded relationship target'],
+    [' xl/workbook.xml', 'empty or padded relationship target'],
+    ['xl/workbook.xml ', 'empty or padded relationship target'],
+    ['../workbook.xml', 'dot segment'],
+    ['https://example.com/book.xml', 'external URI scheme'],
+    ['//server/share.xml', 'network-path reference'],
+    ['xl%2fworkbook.xml', 'encoded path delimiter'],
+  ])('rejects unsafe package-root target %s', (target, reason) => {
+    expectIdentityError(() => resolveXlsxRootTarget(target), reason);
   });
 
   it('derives owner-scoped relationship part names', () => {

@@ -267,6 +267,42 @@ describe('XLSX content types', () => {
 });
 
 describe('XLSX owner-scoped relationships', () => {
+  it('resolves package-root relationships and reports their relationship part', () => {
+    const table = parseXlsxRelationships(
+      relationships([
+        {
+          Id: 'rIdWorkbook',
+          Type: 'urn:type:office-document',
+          Target: '/custom/books/workbook.xml',
+        },
+      ]),
+      null,
+      1,
+    );
+
+    expect(table.get('rIdWorkbook')).toEqual({
+      id: 'rIdWorkbook',
+      mode: 'internal',
+      target: 'custom/books/workbook.xml',
+      type: 'urn:type:office-document',
+    });
+
+    const error = captureParseError(() =>
+      parseXlsxRelationships(
+        relationships([
+          { Id: 'rIdWorkbook', Type: 'urn:type', Target: '../book.xml' },
+        ]),
+        null,
+        1,
+      ),
+    );
+    expect(error.diagnostic).toMatchObject({
+      code: 'invalid-relationship-target',
+      part: '_rels/.rels',
+      severity: 'error',
+    });
+  });
+
   it('resolves internal targets and preserves explicit external targets', () => {
     const table = parseXlsxRelationships(
       relationships([
