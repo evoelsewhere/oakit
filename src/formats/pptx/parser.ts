@@ -109,6 +109,10 @@ function attributes(node: unknown): Record<string, string> {
   return getTextByPathList<Record<string, string>>(node, ['attrs']) ?? {};
 }
 
+function shapePlaceholderAttributes(node: unknown): Record<string, string> {
+  return attributes(nodeAt(node, ['p:nvSpPr', 'p:nvPr', 'p:ph']));
+}
+
 function asArray(value: XmlLookupValue | undefined): XmlLookupValue[] {
   if (!value) return [];
   return Array.isArray(value) ? value : [value];
@@ -1170,8 +1174,9 @@ async function processSpNode(
 ): Promise<Draft<Shape> | Draft<Text>> {
   const nonVisualProperties = nodeAt(node, ['p:nvSpPr', 'p:cNvPr']);
   const name = textAt(nonVisualProperties, ['attrs', 'name']) ?? '';
-  const index = textAt(node, ['p:nvSpPr', 'p:nvPr', 'p:ph', 'attrs', 'idx']);
-  let type = textAt(node, ['p:nvSpPr', 'p:nvPr', 'p:ph', 'attrs', 'type']);
+  const placeholder = shapePlaceholderAttributes(node);
+  const index = placeholder.idx;
+  let type = placeholder.type;
   const order = getXmlNodeOrder(node) ?? 0;
 
   let slideLayoutSpNode: XmlLookupValue | undefined;
@@ -1198,26 +1203,10 @@ async function processSpNode(
     const textBox = textAt(node, ['p:nvSpPr', 'p:cNvSpPr', 'attrs', 'txBox']);
     if (textBox === '1') type = 'text';
   }
-  if (!type)
-    type = textAt(slideLayoutSpNode, [
-      'p:nvSpPr',
-      'p:nvPr',
-      'p:ph',
-      'attrs',
-      'type',
-    ]);
-  if (!type)
-    type = textAt(slideMasterSpNode, [
-      'p:nvSpPr',
-      'p:nvPr',
-      'p:ph',
-      'attrs',
-      'type',
-    ]);
+  if (!type) type = shapePlaceholderAttributes(slideLayoutSpNode).type;
+  if (!type) type = shapePlaceholderAttributes(slideMasterSpNode).type;
   if (!slideMasterSpNode && type === 'ctrTitle')
     slideMasterSpNode = warpObj.slideMasterTables.typeTable.title;
-
-  if (!type) type = 'obj';
 
   const link = getHyperlinkFromCNvPr(nonVisualProperties, warpObj);
 
@@ -1242,7 +1231,6 @@ async function processCxnSpNode(
 ): Promise<Draft<Shape> | Draft<Text>> {
   const nonVisualProperties = nodeAt(node, ['p:nvCxnSpPr', 'p:cNvPr']);
   const name = textAt(nonVisualProperties, ['attrs', 'name']) ?? '';
-  const type = textAt(node, ['p:nvCxnSpPr', 'p:nvPr', 'p:ph', 'attrs', 'type']);
   const order = getXmlNodeOrder(node) ?? 0;
   const link = getHyperlinkFromCNvPr(nonVisualProperties, warpObj);
 
@@ -1251,7 +1239,7 @@ async function processCxnSpNode(
     undefined,
     undefined,
     name,
-    type,
+    undefined,
     order,
     warpObj,
     source,
