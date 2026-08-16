@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 
 import {
   base64ArrayBuffer,
+  decodeBase64,
+  decodedBase64ByteLength,
   encodeBase64,
 } from '../../src/common/binary/base64';
 
@@ -38,5 +40,63 @@ describe('runtime-neutral base64 encoding', () => {
     const bytes = Uint8Array.from([1, 2, 3, 4]);
     expect(base64ArrayBuffer(bytes)).toBe(encodeBase64(bytes));
     expect(base64ArrayBuffer).toBe(encodeBase64);
+  });
+
+  it.each([
+    ['', []],
+    ['AA==', [0]],
+    ['/w==', [255]],
+    ['AAE=', [0, 1]],
+    ['//4=', [255, 254]],
+    ['AAEC', [0, 1, 2]],
+    ['SGVsbG8=', [72, 101, 108, 108, 111]],
+    ['AAEC/f7/', [0, 1, 2, 253, 254, 255]],
+  ])('decodes canonical %s exactly', (encoded, expected) => {
+    expect(decodedBase64ByteLength(encoded)).toBe(expected.length);
+    expect(Array.from(decodeBase64(encoded))).toEqual(expected);
+  });
+
+  it.each([
+    'A',
+    'AA',
+    'AAA',
+    ' AAE=',
+    'AAE= ',
+    'AA\nE=',
+    'AA-E',
+    'AA_E',
+    '=AAA',
+    'A=AA',
+    'AA=A',
+    'AA===',
+    'AAAA=',
+    'AAAAx',
+    'xAAAA',
+  ])('rejects malformed Base64 %j', (encoded) => {
+    expect(() => decodedBase64ByteLength(encoded)).toThrow(
+      'Invalid canonical Base64 encoding',
+    );
+    expect(() => decodeBase64(encoded)).toThrow(
+      'Invalid canonical Base64 encoding',
+    );
+  });
+
+  it.each(['AB==', 'A/==', 'AAF=', 'AA/=', '//9='])(
+    'rejects non-canonical padding bits in %s',
+    (encoded) => {
+      expect(() => decodedBase64ByteLength(encoded)).toThrow(
+        'Invalid canonical Base64 encoding',
+      );
+    },
+  );
+
+  it('round-trips every byte value without sharing output storage', () => {
+    const input = Uint8Array.from({ length: 256 }, (_value, index) => index);
+    const decoded = decodeBase64(encodeBase64(input));
+
+    expect(decoded).toEqual(input);
+    expect(decoded).not.toBe(input);
+    decoded.fill(0);
+    expect(input[255]).toBe(255);
   });
 });
