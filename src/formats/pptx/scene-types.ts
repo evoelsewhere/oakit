@@ -153,3 +153,27 @@ export interface PptxSceneDocument {
   slides: PptxSceneSlide[];
   themes: PptxSceneTheme[];
 }
+
+export type PptxSceneValidationCode =
+  | 'duplicate-public-key'
+  | 'invalid-hierarchy-reference'
+  | 'invalid-numeric-value'
+  | 'invalid-office-text-escape'
+  | 'invalid-scene-document'
+  | 'unsupported-feature'
+  | 'unsupported-schema-version';
+
+export interface PptxSceneValidationIssue {
+  code: PptxSceneValidationCode;
+  message: string;
+  path: string;
+}
+
+export interface PptxSceneValidationOptions {
+  profile?: 'create-text-v1' | 'scene';
+}
+
+export interface PptxSceneValidationResult {
+  issues: PptxSceneValidationIssue[];
+  valid: boolean;
+}
