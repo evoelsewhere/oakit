@@ -1,11 +1,17 @@
 import path from 'node:path';
 
 import {
+  parsePptxRoundTripJson,
   parsePptxWithDiagnostics,
   PptxParseError,
   PptxRenderError,
+  PptxRoundTripPortableLimitError,
+  PptxWriteError,
+  readPptxRoundTrip,
   renderPptxToSvg,
+  serializePptxRoundTripJson,
   type PptxDiagnostic,
+  writePptxRoundTrip,
 } from '../formats/pptx';
 import { renderPptxToPng } from '../formats/pptx/node';
 
@@ -43,19 +49,46 @@ interface RenderCommand {
   slideNumbers?: readonly number[];
 }
 
+interface SnapshotCommand {
+  action: 'snapshot';
+  format: OakitCliFormat;
+  input: string;
+  output?: string;
+  pretty: boolean;
+}
+
+interface RestoreCommand {
+  action: 'restore';
+  input: string;
+  output: string;
+}
+
 type CliCommand =
-  ConvertCommand | RenderCommand | { action: 'help' } | { action: 'version' };
+  | ConvertCommand
+  | RenderCommand
+  | RestoreCommand
+  | SnapshotCommand
+  | { action: 'help' }
+  | { action: 'version' };
 
 export interface OakitCliOperations {
+  parseRoundTripJson: typeof parsePptxRoundTripJson;
   parsePptx: typeof parsePptxWithDiagnostics;
+  readRoundTrip: typeof readPptxRoundTrip;
   renderPng: typeof renderPptxToPng;
   renderSvg: typeof renderPptxToSvg;
+  serializeRoundTripJson: typeof serializePptxRoundTripJson;
+  writeRoundTrip: typeof writePptxRoundTrip;
 }
 
 const DEFAULT_OPERATIONS: OakitCliOperations = {
+  parseRoundTripJson: parsePptxRoundTripJson,
   parsePptx: parsePptxWithDiagnostics,
+  readRoundTrip: readPptxRoundTrip,
   renderPng: renderPptxToPng,
   renderSvg: renderPptxToSvg,
+  serializeRoundTripJson: serializePptxRoundTripJson,
+  writeRoundTrip: writePptxRoundTrip,
 };
 
 class CliUsageError extends Error {
@@ -69,9 +102,12 @@ class CliUsageError extends Error {
 
 const HELP = `Usage: oakit [convert] <input.pptx|-> [options]
        oakit render <input.pptx|-> --output <directory> [options]
+       oakit snapshot <input.pptx|-> [--output <file>]
+       oakit restore <input.json|-> --output <file.pptx>
 
 Convert a PowerPoint Open XML presentation into deterministic JSON.
 Render agent-readable SVG or PNG slide previews without an Office runtime.
+Preserve and restore byte-exact PowerPoint packages through portable JSON.
 
 Convert options:
   -o, --output <file>          Write JSON to a file instead of stdout
@@ -85,6 +121,13 @@ Render options:
       --render-format <format> png (default) or svg
       --slides <list>          One-based comma-separated slide numbers
       --scale <number>         Positive decimal output scale (default: 1)
+
+Snapshot options:
+  -o, --output <file>          Write portable JSON instead of stdout
+      --pretty                 Format portable JSON with two-space indentation
+
+Restore options:
+  -o, --output <file>          Required PowerPoint output path
 
 Shared options:
       --format <pptx>          Input format; required when reading stdin
@@ -185,9 +228,17 @@ function parseCommand(args: readonly string[]): CliCommand {
     return { action: 'version' };
   }
 
-  const action = args[0] === 'render' ? 'render' : 'convert';
+  const action =
+    args[0] === 'render' || args[0] === 'restore' || args[0] === 'snapshot'
+      ? args[0]
+      : 'convert';
   const values =
-    args[0] === 'convert' || args[0] === 'render' ? args.slice(1) : [...args];
+    args[0] === 'convert' ||
+    args[0] === 'render' ||
+    args[0] === 'restore' ||
+    args[0] === 'snapshot'
+      ? args.slice(1)
+      : [...args];
   const inputs: string[] = [];
   let documentOnly = false;
   let explicitFormat: string | undefined;
@@ -205,11 +256,14 @@ function parseCommand(args: readonly string[]): CliCommand {
       documentOnly = true;
     } else if (value === '--strict' && action === 'convert') {
       strict = true;
-    } else if (value === '--pretty' && action === 'convert') {
+    } else if (
+      value === '--pretty' &&
+      (action === 'convert' || action === 'snapshot')
+    ) {
       pretty = true;
     } else if (value === '--output' || value === '-o') {
       output = optionValue(iterator, value);
-    } else if (value === '--format') {
+    } else if (value === '--format' && action !== 'restore') {
       explicitFormat = optionValue(iterator, value);
     } else if (value === '--image-mode' && action === 'convert') {
       const selectedMode = optionValue(iterator, value);
@@ -235,7 +289,12 @@ function parseCommand(args: readonly string[]): CliCommand {
 
   const [input, ...additionalInputs] = inputs;
   if (input === undefined) {
-    throw new CliUsageError('input-required', 'A PPTX input path is required');
+    throw new CliUsageError(
+      'input-required',
+      action === 'restore'
+        ? 'A portable JSON input path is required'
+        : 'A PPTX input path is required',
+    );
   }
   if (additionalInputs.length > 0) {
     throw new CliUsageError(
@@ -254,8 +313,20 @@ function parseCommand(args: readonly string[]): CliCommand {
       'output-overwrites-input',
       action === 'render'
         ? 'The render output directory must not overwrite the input document'
-        : 'The JSON output path must not overwrite the input document',
+        : action === 'restore'
+          ? 'The PowerPoint output path must not overwrite the portable JSON input'
+          : 'The JSON output path must not overwrite the input document',
     );
+  }
+
+  if (action === 'restore') {
+    if (output === undefined || output === '-') {
+      throw new CliUsageError(
+        'restore-output-required',
+        'Restoring requires a PowerPoint output file',
+      );
+    }
+    return { action, input, output };
   }
 
   const format = inferFormat(input, explicitFormat);
@@ -277,6 +348,16 @@ function parseCommand(args: readonly string[]): CliCommand {
     };
   }
 
+  if (action === 'snapshot') {
+    return {
+      action,
+      format,
+      input,
+      ...(output === undefined ? {} : { output }),
+      pretty,
+    };
+  }
+
   return {
     action: 'convert',
     documentOnly,
@@ -292,13 +373,20 @@ function parseCommand(args: readonly string[]): CliCommand {
 function errorJson(
   code: string,
   message: string,
-  diagnostic?: PptxDiagnostic,
+  diagnostic?:
+    | PptxDiagnostic
+    | {
+        actual: number;
+        limit: number;
+        limitName: string;
+      },
 ): string {
-  const error: { code: string; diagnostic?: PptxDiagnostic; message: string } =
-    {
-      code,
-      message,
-    };
+  const error: {
+    code: string;
+    diagnostic?:
+      PptxDiagnostic | { actual: number; limit: number; limitName: string };
+    message: string;
+  } = { code, message };
   if (diagnostic !== undefined) error.diagnostic = diagnostic;
   return `${JSON.stringify({ error })}\n`;
 }
@@ -450,6 +538,132 @@ async function renderSlides(
   }
 }
 
+function portableLimitJson(error: PptxRoundTripPortableLimitError): string {
+  return errorJson('portable-limit-exceeded', error.message, {
+    actual: error.actual,
+    limit: error.limit,
+    limitName: error.limitName,
+  });
+}
+
+async function snapshotPortableJson(
+  command: SnapshotCommand,
+  io: OakitCliIo,
+  operations: OakitCliOperations,
+): Promise<number> {
+  let input: Uint8Array;
+  try {
+    input =
+      command.input === '-'
+        ? await io.readStdin()
+        : await io.readFile(command.input);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    io.writeStderr(errorJson('input-read-failed', message));
+    return 1;
+  }
+
+  let json: string;
+  try {
+    const runtime = await operations.readRoundTrip(input);
+    const portable = await operations.serializeRoundTripJson(runtime);
+    json = `${JSON.stringify(portable, null, command.pretty ? 2 : undefined)}\n`;
+  } catch (error) {
+    if (error instanceof PptxParseError) {
+      io.writeStderr(
+        errorJson(error.diagnostic.code, error.message, error.diagnostic),
+      );
+    } else if (error instanceof PptxRoundTripPortableLimitError) {
+      io.writeStderr(portableLimitJson(error));
+    } else if (error instanceof PptxWriteError) {
+      io.writeStderr(errorJson(error.code, error.message));
+    } else {
+      const message = error instanceof Error ? error.message : String(error);
+      io.writeStderr(errorJson('snapshot-failed', message));
+    }
+    return 1;
+  }
+
+  try {
+    if (command.output === undefined || command.output === '-') {
+      io.writeStdout(json);
+    } else {
+      await io.writeFile(command.output, json);
+    }
+    return 0;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    io.writeStderr(errorJson('output-write-failed', message));
+    return 1;
+  }
+}
+
+async function restorePortableJson(
+  command: RestoreCommand,
+  io: OakitCliIo,
+  operations: OakitCliOperations,
+): Promise<number> {
+  let input: Uint8Array;
+  try {
+    input =
+      command.input === '-'
+        ? await io.readStdin()
+        : await io.readFile(command.input);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    io.writeStderr(errorJson('input-read-failed', message));
+    return 1;
+  }
+
+  let source: string;
+  try {
+    source = new TextDecoder('utf-8', { fatal: true }).decode(input);
+  } catch {
+    io.writeStderr(
+      errorJson(
+        'invalid-portable-json',
+        'Portable JSON input must be valid UTF-8',
+      ),
+    );
+    return 1;
+  }
+
+  let wireValue: unknown;
+  try {
+    wireValue = JSON.parse(source) as unknown;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    io.writeStderr(errorJson('invalid-portable-json', message));
+    return 1;
+  }
+
+  let output: Uint8Array;
+  try {
+    const runtime = await operations.parseRoundTripJson(wireValue);
+    const result = await operations.writeRoundTrip(runtime);
+    output = result.data;
+  } catch (error) {
+    if (error instanceof PptxRoundTripPortableLimitError) {
+      io.writeStderr(portableLimitJson(error));
+    } else if (error instanceof PptxWriteError) {
+      io.writeStderr(errorJson(error.code, error.message));
+    } else {
+      const message = error instanceof Error ? error.message : String(error);
+      io.writeStderr(errorJson('restore-failed', message));
+    }
+    return 1;
+  }
+
+  try {
+    await io.writeBinaryFile(command.output, output);
+    return 0;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    io.writeStderr(errorJson('output-write-failed', message));
+    return 1;
+  }
+}
+
 export async function runOakitCli(
   args: readonly string[],
   io: OakitCliIo,
@@ -474,7 +688,14 @@ export async function runOakitCli(
     io.writeStdout(`oakit ${version}\n`);
     return 0;
   }
-  return command.action === 'render'
-    ? renderSlides(command, io, operations)
-    : convert(command, io, operations);
+  if (command.action === 'render') {
+    return renderSlides(command, io, operations);
+  }
+  if (command.action === 'restore') {
+    return restorePortableJson(command, io, operations);
+  }
+  if (command.action === 'snapshot') {
+    return snapshotPortableJson(command, io, operations);
+  }
+  return convert(command, io, operations);
 }
