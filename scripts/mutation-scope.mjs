@@ -69,7 +69,9 @@ export const mutatedFiles = [
   'src/formats/pptx/writer/units.ts',
   'src/formats/pptx/writer/verify.ts',
   'src/formats/xlsx/errors.ts',
+  'src/formats/xlsx/internal/content-types.ts',
   'src/formats/xlsx/internal/package-identity.ts',
+  'src/formats/xlsx/internal/relationships.ts',
   'src/formats/xlsx/internal/resource-limits.ts',
 ];
 
