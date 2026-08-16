@@ -44,6 +44,175 @@ function masterWithTransition(transition: string): string {
 }
 
 describe('PowerPoint slide inheritance through the public API', () => {
+  it('parses slide content without an optional layout relationship', async () => {
+    const input = await createIndependentPptx({
+      'ppt/slides/_rels/slide1.xml.rels': `
+        <Relationships xmlns="${PACKAGE_REL_NS}"/>`,
+    });
+
+    const result = await parsePptx(input, { errorMode: 'strict' });
+
+    expect(result.slides[0]).toMatchObject({
+      fill: { type: 'color', value: '#fff' },
+      layoutElements: [],
+      note: '',
+      transition: null,
+    });
+    expect(result.slides[0]?.elements).toHaveLength(1);
+    expect(result.slides[0]?.elements[0]?.type).toBe('text');
+  });
+
+  it('resolves picture resources owned by the slide layout', async () => {
+    const input = await createIndependentPptx({
+      'ppt/slideLayouts/slideLayout1.xml': `
+        <p:sldLayout xmlns:p="${PRESENTATION_NS}" xmlns:a="${DRAWING_NS}" xmlns:r="${OFFICE_REL_NS}">
+          <p:cSld><p:spTree>
+            <p:nvGrpSpPr/><p:grpSpPr/>
+            <p:pic>
+              <p:nvPicPr><p:cNvPr id="30" name="Layout badge"/><p:cNvPicPr/><p:nvPr/></p:nvPicPr>
+              <p:blipFill><a:blip r:embed="rIdLayoutImage"/><a:stretch><a:fillRect/></a:stretch></p:blipFill>
+              <p:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="457200" cy="457200"/></a:xfrm></p:spPr>
+            </p:pic>
+          </p:spTree></p:cSld>
+        </p:sldLayout>`,
+      'ppt/slideLayouts/_rels/slideLayout1.xml.rels': `
+        <Relationships xmlns="${PACKAGE_REL_NS}">
+          <Relationship Id="rIdMaster" Type="${OFFICE_REL_TYPE}slideMaster" Target="../slideMasters/slideMaster1.xml"/>
+          <Relationship Id="rIdLayoutImage" Type="${OFFICE_REL_TYPE}image" Target="../media/layout-badge.png"/>
+        </Relationships>`,
+    });
+
+    const result = await parsePptx(input, {
+      errorMode: 'strict',
+      imageMode: 'none',
+    });
+
+    expect(result.slides[0]?.layoutElements).toContainEqual(
+      expect.objectContaining({
+        type: 'image',
+        id: '30',
+        ref: 'ppt/media/layout-badge.png',
+      }),
+    );
+  });
+
+  it('inherits freeform text styling from the slide master', async () => {
+    const input = await createIndependentPptx({
+      'ppt/slideMasters/slideMaster1.xml': `
+        <p:sldMaster xmlns:p="${PRESENTATION_NS}" xmlns:a="${DRAWING_NS}">
+          <p:cSld><p:spTree><p:nvGrpSpPr/><p:grpSpPr/></p:spTree></p:cSld>
+          <p:clrMap accent1="accent1" bg1="lt1" tx1="dk1"/>
+          <p:txStyles>
+            <p:otherStyle>
+              <a:lvl1pPr><a:defRPr sz="3100"><a:solidFill><a:srgbClr val="A12345"/></a:solidFill></a:defRPr></a:lvl1pPr>
+            </p:otherStyle>
+          </p:txStyles>
+        </p:sldMaster>`,
+    });
+
+    const result = await parsePptx(input, { errorMode: 'strict' });
+    const element = result.slides[0]?.elements[0];
+
+    expect(element?.type).toBe('text');
+    if (element?.type !== 'text') throw new Error('Expected a text element');
+    expect(element.content).toContain('font-size: 31pt;');
+    expect(element.content).toContain('color: #A12345;');
+  });
+
+  it('applies the referenced package-level table style', async () => {
+    const input = await createIndependentPptx({
+      'ppt/slides/slide1.xml': `
+        <p:sld xmlns:p="${PRESENTATION_NS}" xmlns:a="${DRAWING_NS}">
+          <p:cSld><p:spTree>
+            <p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr>
+            <p:grpSpPr/>
+            <p:graphicFrame>
+              <p:nvGraphicFramePr><p:cNvPr id="40" name="Styled table"/><p:cNvGraphicFramePr/><p:nvPr/></p:nvGraphicFramePr>
+              <p:xfrm><a:off x="0" y="0"/><a:ext cx="914400" cy="457200"/></p:xfrm>
+              <a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/table">
+                <a:tbl>
+                  <a:tblPr><a:tableStyleId>{OAKIT-STYLE}</a:tableStyleId></a:tblPr>
+                  <a:tblGrid><a:gridCol w="914400"/></a:tblGrid>
+                  <a:tr h="457200"><a:tc><a:txBody><a:bodyPr/><a:lstStyle/><a:p><a:r><a:t>Styled</a:t></a:r></a:p></a:txBody><a:tcPr/></a:tc></a:tr>
+                </a:tbl>
+              </a:graphicData></a:graphic>
+            </p:graphicFrame>
+          </p:spTree></p:cSld>
+        </p:sld>`,
+      'ppt/tableStyles.xml': `
+        <a:tblStyleLst xmlns:a="${DRAWING_NS}">
+          <a:tblStyle styleId="{OAKIT-STYLE}" styleName="OAKit">
+            <a:wholeTbl>
+              <a:tcTxStyle b="1"><a:solidFill><a:srgbClr val="445566"/></a:solidFill></a:tcTxStyle>
+              <a:tcStyle>
+                <a:tcBdr><a:top><a:ln w="25400"><a:solidFill><a:srgbClr val="112233"/></a:solidFill></a:ln></a:top></a:tcBdr>
+                <a:fill><a:solidFill><a:srgbClr val="DDEEFF"/></a:solidFill></a:fill>
+              </a:tcStyle>
+            </a:wholeTbl>
+          </a:tblStyle>
+        </a:tblStyleLst>`,
+    });
+
+    const result = await parsePptx(input, { errorMode: 'strict' });
+    const table = result.slides[0]?.elements[0];
+
+    expect(table?.type).toBe('table');
+    if (table?.type !== 'table') throw new Error('Expected a table element');
+    expect(table.borders.top).toMatchObject({
+      borderColor: '#112233',
+      borderWidth: 2,
+    });
+    expect(table.data[0]?.[0]).toMatchObject({
+      fillColor: '#DDEEFF',
+      fontBold: true,
+      fontColor: '#445566',
+    });
+  });
+
+  it('resolves picture fills owned directly by the slide', async () => {
+    const input = await createIndependentPptx({
+      'ppt/slides/slide1.xml': `
+        <p:sld xmlns:p="${PRESENTATION_NS}" xmlns:a="${DRAWING_NS}" xmlns:r="${OFFICE_REL_NS}">
+          <p:cSld><p:spTree>
+            <p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr>
+            <p:grpSpPr/>
+            <p:sp>
+              <p:nvSpPr><p:cNvPr id="50" name="Photo fill"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr>
+              <p:spPr>
+                <a:xfrm><a:off x="0" y="0"/><a:ext cx="914400" cy="914400"/></a:xfrm>
+                <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+                <a:blipFill><a:blip r:embed="rIdSlideFill"/><a:stretch><a:fillRect/></a:stretch></a:blipFill>
+              </p:spPr>
+            </p:sp>
+          </p:spTree></p:cSld>
+        </p:sld>`,
+      'ppt/slides/_rels/slide1.xml.rels': `
+        <Relationships xmlns="${PACKAGE_REL_NS}">
+          <Relationship Id="rIdLayout" Type="${OFFICE_REL_TYPE}slideLayout" Target="../slideLayouts/slideLayout1.xml"/>
+          <Relationship Id="rIdSlideFill" Type="${OFFICE_REL_TYPE}image" Target="../media/slide-fill.png"/>
+        </Relationships>`,
+    });
+
+    const result = await parsePptx(input, {
+      errorMode: 'strict',
+      imageMode: 'none',
+    });
+
+    expect(result.slides[0]?.elements[0]).toMatchObject({
+      type: 'shape',
+      id: '50',
+      fill: {
+        type: 'image',
+        value: {
+          ref: 'ppt/media/slide-fill.png',
+          base64: '',
+          blob: '',
+          opacity: 1,
+        },
+      },
+    });
+  });
+
   it('uses the slide master theme before the presentation theme', async () => {
     const input = await createIndependentPptx({
       'ppt/theme/theme1.xml': themeWithMinorFont(

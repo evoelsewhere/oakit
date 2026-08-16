@@ -530,9 +530,9 @@ async function processSingleSlide(
 ): Promise<Slide> {
   const slideRelationships = await getRelationships(xmlReader, slideFilename);
 
-  let noteFilename = '';
-  let layoutFilename = '';
-  let masterFilename = '';
+  let noteFilename: string | undefined;
+  let layoutFilename: string | undefined;
+  let masterFilename: string | undefined;
   let themeFilename = presentationThemeFilename;
   const slideResObj: PptxRelationshipMap = {};
   const layoutResObj: PptxRelationshipMap = {};
@@ -561,57 +561,57 @@ async function processSingleSlide(
     : emptyXmlNode();
   const note = getNote(slideNotesContent);
 
-  const slideLayoutContent = await xmlReader.read(layoutFilename);
+  const slideLayoutContent = layoutFilename
+    ? await xmlReader.read(layoutFilename)
+    : emptyXmlNode();
   const slideLayoutTables = indexNodes(slideLayoutContent);
-  const slideLayoutResFilename = layoutFilename
-    ? getRelationshipPartUri(layoutFilename)
-    : '';
-  const slideLayoutResContent = await xmlReader.read(slideLayoutResFilename);
-  const layoutRelationships = asArray(
-    nodeAt(slideLayoutResContent, ['Relationships', 'Relationship']),
-  );
-  for (const relationship of layoutRelationships) {
-    const values = attributes(relationship);
-    if (!values.Target || !values.Type) continue;
-    const target = xmlReader.resolveRelationshipTarget(
+  if (layoutFilename) {
+    for (const relationship of await getRelationships(
+      xmlReader,
       layoutFilename,
-      values.Target,
-      values.TargetMode,
-    );
-    if (!target) continue;
-    if (isRelationshipType(values.Type, 'slideMaster')) {
-      masterFilename = target;
-    } else {
-      addRelationship(layoutResObj, relationship, target);
+    )) {
+      const values = attributes(relationship);
+      if (!values.Target || !values.Type) continue;
+      const target = xmlReader.resolveRelationshipTarget(
+        layoutFilename,
+        values.Target,
+        values.TargetMode,
+      );
+      if (!target) continue;
+      if (isRelationshipType(values.Type, 'slideMaster')) {
+        masterFilename = target;
+      } else {
+        addRelationship(layoutResObj, relationship, target);
+      }
     }
   }
 
-  const slideMasterContent = await xmlReader.read(masterFilename);
+  const slideMasterContent = masterFilename
+    ? await xmlReader.read(masterFilename)
+    : emptyXmlNode();
   const slideMasterTextStyles = getTextByPathList(slideMasterContent, [
     'p:sldMaster',
     'p:txStyles',
   ]);
   const slideMasterTables = indexNodes(slideMasterContent);
-  const slideMasterResFilename = masterFilename
-    ? getRelationshipPartUri(masterFilename)
-    : '';
-  const slideMasterResContent = await xmlReader.read(slideMasterResFilename);
-  const masterRelationships = asArray(
-    nodeAt(slideMasterResContent, ['Relationships', 'Relationship']),
-  );
-  for (const relationship of masterRelationships) {
-    const values = attributes(relationship);
-    if (!values.Target || !values.Type) continue;
-    const target = xmlReader.resolveRelationshipTarget(
+  if (masterFilename) {
+    for (const relationship of await getRelationships(
+      xmlReader,
       masterFilename,
-      values.Target,
-      values.TargetMode,
-    );
-    if (!target) continue;
-    if (isRelationshipType(values.Type, 'theme')) {
-      themeFilename = target;
-    } else {
-      addRelationship(masterResObj, relationship, target);
+    )) {
+      const values = attributes(relationship);
+      if (!values.Target || !values.Type) continue;
+      const target = xmlReader.resolveRelationshipTarget(
+        masterFilename,
+        values.Target,
+        values.TargetMode,
+      );
+      if (!target) continue;
+      if (isRelationshipType(values.Type, 'theme')) {
+        themeFilename = target;
+      } else {
+        addRelationship(masterResObj, relationship, target);
+      }
     }
   }
 
