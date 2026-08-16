@@ -259,4 +259,102 @@ describe('PowerPoint creation scene validation', () => {
       valid: false,
     });
   });
+
+  it.each([
+    [
+      '$.size.width',
+      (scene: Record<string, unknown>) => {
+        scene.size = { height: 540, width: 0.000_039 };
+      },
+    ],
+    [
+      '$.size.height',
+      (scene: Record<string, unknown>) => {
+        scene.size = { height: 0.000_039, width: 960 };
+      },
+    ],
+    [
+      '$.slides[0].elements[0].authored.transform.width',
+      (scene: Record<string, unknown>) => {
+        const authored = element(scene).authored as Record<string, unknown>;
+        const transform = authored.transform as Record<string, unknown>;
+        transform.width = 0.000_039;
+      },
+    ],
+    [
+      '$.slides[0].elements[0].authored.transform.height',
+      (scene: Record<string, unknown>) => {
+        const authored = element(scene).authored as Record<string, unknown>;
+        const transform = authored.transform as Record<string, unknown>;
+        transform.height = 0.000_039;
+      },
+    ],
+    [
+      '$.slides[0].elements[0].resolved.transform.width',
+      (scene: Record<string, unknown>) => {
+        element(scene).resolved = {
+          hidden: false,
+          transform: {
+            height: 80,
+            width: 0.000_039,
+            x: 20,
+            y: 30,
+          },
+        };
+      },
+    ],
+    [
+      '$.slides[0].elements[0].text.paragraphs[0].children[0].properties.fontSize',
+      (scene: Record<string, unknown>) => {
+        const text = element(scene).text as Record<string, unknown>;
+        const paragraphs = text.paragraphs as Record<string, unknown>[];
+        const paragraph = paragraphs[0] as Record<string, unknown>;
+        const children = paragraph.children as Record<string, unknown>[];
+        const run = children[0] as Record<string, unknown>;
+        run.properties = { fontSize: 0.004 };
+      },
+    ],
+  ] as const)(
+    'rejects a positive value that quantizes to zero at %s',
+    (path, mutate) => {
+      const scene = creationScene();
+      mutate(scene);
+
+      expect(validatePptxScene(scene)).toEqual({ issues: [], valid: true });
+      expect(validateCreation(scene).issues).toContainEqual({
+        code: 'invalid-numeric-value',
+        message: 'Value must round to a positive OOXML integer',
+        path,
+      });
+    },
+  );
+
+  it('accepts the smallest positive values that quantize to one', () => {
+    const scene = creationScene();
+    scene.size = { height: 0.000_04, width: 0.000_04 };
+    const authored = element(scene).authored as Record<string, unknown>;
+    const transform = authored.transform as Record<string, unknown>;
+    transform.height = 0.000_04;
+    transform.width = 0.000_04;
+    const text = element(scene).text as Record<string, unknown>;
+    const paragraphs = text.paragraphs as Record<string, unknown>[];
+    const paragraph = paragraphs[0] as Record<string, unknown>;
+    paragraph.endProperties = { fontSize: 0.006 };
+
+    expect(validateCreation(scene)).toEqual({ issues: [], valid: true });
+  });
+
+  it('accepts signed positions and rotation in the creation profile', () => {
+    const scene = creationScene();
+    const authored = element(scene).authored as Record<string, unknown>;
+    authored.transform = {
+      height: 80,
+      rotation: -45,
+      width: 300,
+      x: -20,
+      y: -0.000_04,
+    };
+
+    expect(validateCreation(scene)).toEqual({ issues: [], valid: true });
+  });
 });

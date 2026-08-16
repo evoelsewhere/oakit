@@ -126,15 +126,25 @@ function requireSerializableInteger(
   multiplier: number,
   path: string,
   issues: PptxSceneValidationIssue[],
+  positive: boolean,
 ): void {
   if (typeof value !== 'number' || !Number.isFinite(value)) return;
-  if (Number.isSafeInteger(Math.round(value * multiplier))) return;
-  addIssue(
-    issues,
-    'invalid-numeric-value',
-    path,
-    'Value exceeds the safe OOXML integer range',
-  );
+  const result = Math.round(value * multiplier);
+  if (!Number.isSafeInteger(result)) {
+    addIssue(
+      issues,
+      'invalid-numeric-value',
+      path,
+      'Value exceeds the safe OOXML integer range',
+    );
+  } else if (positive && result <= 0) {
+    addIssue(
+      issues,
+      'invalid-numeric-value',
+      path,
+      'Value must round to a positive OOXML integer',
+    );
+  }
 }
 
 function validateSize(
@@ -154,12 +164,14 @@ function validateSize(
       EMUS_PER_POINT,
       `${path}.width`,
       issues,
+      true,
     );
     requireSerializableInteger(
       size.height,
       EMUS_PER_POINT,
       `${path}.height`,
       issues,
+      true,
     );
   }
 }
@@ -188,12 +200,22 @@ function validateTransform(
   optionalBoolean(transform, 'flipHorizontal', path, issues);
   optionalBoolean(transform, 'flipVertical', path, issues);
   if (profile === 'create-text-v1') {
-    for (const key of ['height', 'width', 'x', 'y'] as const) {
+    for (const key of ['x', 'y'] as const) {
       requireSerializableInteger(
         transform[key],
         EMUS_PER_POINT,
         `${path}.${key}`,
         issues,
+        false,
+      );
+    }
+    for (const key of ['height', 'width'] as const) {
+      requireSerializableInteger(
+        transform[key],
+        EMUS_PER_POINT,
+        `${path}.${key}`,
+        issues,
+        true,
       );
     }
     requireSerializableInteger(
@@ -201,6 +223,7 @@ function validateTransform(
       ANGLE_UNITS_PER_DEGREE,
       `${path}.rotation`,
       issues,
+      false,
     );
   }
 }
@@ -295,6 +318,7 @@ function validateRunProperties(
         FONT_SIZE_UNITS_PER_POINT,
         `${path}.fontSize`,
         issues,
+        true,
       );
     }
   }
