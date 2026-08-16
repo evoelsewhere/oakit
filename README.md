@@ -145,12 +145,40 @@ Google Slides, a headless browser, or a conversion service. PNG rendering is a
 Node.js CLI capability; SVG rendering uses the same browser-neutral renderer
 exposed by the public API.
 
+### Preserve a byte-exact agent hand-off
+
+Create portable JSON that carries the strict semantic preview, integrity
+metadata, and complete source package:
+
+```bash
+oakit snapshot deck.pptx --output deck.oakit.json --pretty
+```
+
+Restore it only after its JSON shape, canonical Base64, source hash, semantic
+preview, and consistency metadata have been verified:
+
+```bash
+oakit restore deck.oakit.json --output restored.pptx
+```
+
+A successful restore is an `R0` hand-off: `restored.pptx` is byte-for-byte
+identical to `deck.pptx`, including package parts OAKit does not interpret.
+The portable document preview is integrity-bound to the source. Editing that
+preview directly is rejected; semantic edit operations are not part of the
+current portable contract.
+
+Both commands run in-process without Office software or a conversion service.
+`snapshot` can write JSON to stdout. `restore` requires an output file so
+binary data is never mixed with terminal text.
+
 ### Read from stdin
 
 Use `-` as the input path and provide the format explicitly:
 
 ```bash
 cat deck.pptx | oakit - --format pptx --document-only > deck.json
+cat deck.pptx | oakit snapshot - --format pptx > deck.oakit.json
+cat deck.oakit.json | oakit restore - --output restored.pptx
 ```
 
 `--format pptx` is required for stdin because there is no filename extension
@@ -161,6 +189,8 @@ from which to infer the format.
 ```text
 Usage: oakit [convert] <input.pptx|-> [options]
        oakit render <input.pptx|-> --output <directory> [options]
+       oakit snapshot <input.pptx|-> [--output <file>]
+       oakit restore <input.json|-> --output <file.pptx>
 
 Convert options:
   -o, --output <file>          Write JSON to a file instead of stdout
@@ -175,14 +205,23 @@ Render options:
       --slides <list>          One-based comma-separated slide numbers
       --scale <number>         Positive decimal output scale (default: 1)
 
-Shared options:
+Snapshot options:
+  -o, --output <file>          Write portable JSON instead of stdout
+      --pretty                 Format portable JSON with two-space indentation
+
+Restore options:
+  -o, --output <file>          Required PowerPoint output path
+
+PPTX input options:
       --format <pptx>          Input format; required when reading stdin
   -h, --help                   Show help
   -v, --version                Show the installed OAKit version
 ```
 
-The default output is an envelope that keeps format and recovery information
-available to automation:
+### Convert output
+
+The default `convert` output is an envelope that keeps format and recovery
+information available to automation:
 
 ```json
 {
@@ -213,11 +252,11 @@ Errors are written as single-line JSON to stderr without a stack trace:
 }
 ```
 
-| Exit code | Meaning                                         |
-| --------- | ----------------------------------------------- |
-| `0`       | Conversion, help, or version completed normally |
-| `1`       | Input read or document conversion failed        |
-| `2`       | Invalid command-line usage                      |
+| Exit code | Meaning                                                |
+| --------- | ------------------------------------------------------ |
+| `0`       | Requested conversion, hand-off, render, or help passed |
+| `1`       | Input, validation, rendering, or output failed         |
+| `2`       | Invalid command-line usage                             |
 
 The CLI processes one document per invocation. Resource-limit failures remain
 fatal in tolerant mode, matching the programmatic API's security boundary.
@@ -412,6 +451,30 @@ Every rendered slide includes bytes, MIME type, dimensions, its one-based slide
 number, and structured warnings for visual approximations. SVG output escapes
 document text, embeds only validated raster data URLs, and never follows an
 external reference. PNG rasterization uses the generated self-contained SVG.
+
+For a JSON-safe, byte-exact agent hand-off, use the separate round-trip API:
+
+```ts
+import {
+  parsePptxRoundTripJson,
+  readPptxRoundTrip,
+  serializePptxRoundTripJson,
+  writePptxRoundTrip,
+} from '@evoelsewhere/oakit';
+
+const runtime = await readPptxRoundTrip(input);
+const portable = await serializePptxRoundTripJson(runtime);
+const wireValue: unknown = JSON.parse(JSON.stringify(portable));
+const restored = await parsePptxRoundTripJson(wireValue);
+const output = await writePptxRoundTrip(restored);
+
+console.log(output.report.level); // R0
+```
+
+The portable envelope validates its exact shape, canonical Base64, source
+digest, package inventory, semantic preview, and consistency hashes. Its
+`operations` array is currently required to remain empty; changing preview
+fields directly is detected as tampering rather than treated as an edit.
 
 Rendering is a portable visual aid for agents, not a claim of pixel-identical
 PowerPoint layout. Exact `R0` package preservation and preview rendering are

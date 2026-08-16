@@ -4,14 +4,18 @@ This document describes the architecture implemented by OAKit (Office Agent Kit)
 today, the boundaries contributors must preserve, and the intended path from a
 PowerPoint reader to a multi-format Office document toolkit.
 
-The current production path is:
+The implemented PowerPoint production paths are:
 
 ```text
-.pptx package -> normalized, typed PowerPoint JSON
+.pptx package ──parse──────────> normalized typed JSON + diagnostics
+.pptx package ──snapshot───────> portable integrity-bound JSON ──restore──> byte-identical .pptx
+scene JSON──── ──create─────────> bounded source-free .pptx
+.pptx/model─── ──render─────────> self-contained SVG or Node-only PNG + warnings
 ```
 
-JSON-to-PowerPoint, Excel, and Word are future capabilities. They are part of
-the product direction, not capabilities of the current implementation.
+PowerPoint is the implemented format. Excel and Word entry points remain future
+work; package metadata must not be interpreted as evidence that those parsers
+or writers already exist.
 
 ## Design goals
 
@@ -29,11 +33,17 @@ The architecture optimizes for the following goals:
    style parts should not make an otherwise readable package unusable.
 6. **Fixture-driven compatibility.** Every fidelity correction should be tied
    to the smallest reproducible OOXML structure and a public-output assertion.
+7. **Explicit fidelity contracts.** Normalized reading, source-free creation,
+   exact package preservation, and visual preview report different guarantees
+   and never borrow claims from one another.
 
-The current parser does not attempt byte-for-byte preservation, streaming ZIP
-processing, schema validation, macro execution, or package repair. “Lossless”
-round-tripping is a long-term direction and must not be inferred from the
-current normalized reader model.
+The normalized parser does not attempt byte-for-byte preservation. Exact `R0`
+preservation is implemented by a separate round-trip snapshot that owns the
+source package, hashes its bound semantic preview and package inventory, and
+allows no edit operations. Source-free creation currently accepts a bounded
+text profile and reports `C1`; arbitrary semantic editing, streaming ZIP
+processing, full XSD validation, macro execution, and package repair are not
+implemented.
 
 ## System context
 
@@ -45,7 +55,12 @@ flowchart LR
     ZIP["OPC ZIP package"]
     XML["OOXML parts and relationships"]
     Model["Typed PptxDocument"]
-    Renderer["Renderer, indexer, or analyzer"]
+    Snapshot["Portable R0 snapshot"]
+    Scene["Validated scene JSON"]
+    Writer["R0 restore or C1 creator"]
+    PackageOutput["Verified PPTX bytes"]
+    Preview["Safe SVG or PNG preview"]
+    ConsumerOutput["Indexer, analyzer, or agent"]
 
     Consumer -->|"ArrayBuffer, Uint8Array, or Blob"| API
     Consumer -->|"File path or stdin"| CLI
@@ -53,11 +68,20 @@ flowchart LR
     API --> ZIP
     ZIP --> XML
     XML -->|"resolve, inherit, normalize"| Model
-    Model --> Renderer
+    XML -->|"bind source bytes and hashes"| Snapshot
+    Snapshot -->|"verify and copy exact bytes"| Writer
+    Consumer -->|"source-free scene"| Scene
+    Scene -->|"strict C1 serialization"| Writer
+    Writer --> PackageOutput
+    PackageOutput --> ConsumerOutput
+    Model --> Preview
+    Model --> ConsumerOutput
+    Preview --> ConsumerOutput
 ```
 
-The package boundary is deliberately narrow: callers provide binary input and
-receive a typed document. Package traversal, XML representation, relationship
+The package boundary is deliberately narrow: callers provide binary or bounded
+scene input and receive a typed document, portable JSON, verified package
+bytes, or render bytes. Package traversal, XML representation, relationship
 maps, caches, and inheritance state remain internal.
 
 ## Source layout
@@ -93,6 +117,13 @@ src/
         ├── types.ts                 Public PowerPoint document model
         ├── parser.ts                Package and slide orchestration
         ├── errors.ts                Typed public parse failures
+        ├── render-*.ts              Safe SVG rendering and render limits
+        ├── node.ts                  Node-only PNG rasterization
+        ├── scene-types.ts           Source-free and round-trip scene model
+        ├── scene-validation.ts      Profile and resource validation
+        ├── creator.ts               Strict source-free creation entry point
+        ├── roundtrip/               R0 read, portable JSON, consistency, write
+        ├── writer/                  Deterministic C1 OOXML serialization
         └── internal/
             ├── context.ts           Per-slide parser state and caches
             ├── animation.ts         Slide transition parsing
@@ -189,11 +220,14 @@ export async function renderPptxToSvg(
 
 The public contract consists of:
 
-- the `parsePptx` function;
-- the document and package SVG rendering functions;
+- normalized parse functions and their diagnostics;
+- `readPptxRoundTrip`, portable JSON serialization/parsing, and
+  `writePptxRoundTrip`;
+- `createPptx` and the bounded scene validation contract;
+- document/package SVG rendering and the Node-only PNG subpath;
 - `PptxInput` and `PptxParseOptions`;
-- render options, limits, results, warnings, and typed errors;
-- the `PptxDocument`, slide, element, fill, and supporting types.
+- parse, write, portable, creation, and render limits and typed errors;
+- normalized document, scene, snapshot, report, and render result types.
 
 Everything else is an implementation detail. In particular, `XmlLookupValue`,
 `PptxParserContext`, relationship maps, and domain-parser functions are not
@@ -589,6 +623,13 @@ is the most expensive image mode because it retains both data URLs and object
 URLs. A future streaming or lazy-media API would require a new public ownership
 model and should not be hidden behind the existing `parsePptx` signature.
 
+Portable snapshots temporarily retain source bytes, Base64 text, the semantic
+preview, and consistency state. PNG output also retains self-contained SVG
+until rasterization completes. Dedicated child-process reliability probes
+measure 1-, 25-, and 100-slide tiers with Office commands removed from `PATH`;
+their JSON reports record stage RSS, byte counts, digests, dimensions, warnings,
+and caller-input isolation.
+
 Parallel slide parsing is not currently safe to assume. Shared caches and the
 document-order compatibility field would need explicit concurrency semantics
 before that change.
@@ -626,7 +667,17 @@ dimensions, MIME types, byte lengths, slide numbers, and approximation
 warnings. Multi-slide binary output is directory-only so files are never
 ambiguously concatenated on stdout.
 
-Command parsing, conversion, and render orchestration live in `cli/run.ts`
+`oakit snapshot <input.pptx|->` strict-reads a package and serializes the `R0`
+runtime snapshot into ordinary JSON. The portable envelope contains canonical
+Base64 source bytes plus the source hash, package conformance, semantic preview,
+support profile, and consistency hashes. The `restore` command accepts a JSON
+file or stdin and requires an explicit PowerPoint output path. It applies fatal
+UTF-8 decoding, strict JSON/envelope validation, bounded Base64 decoding,
+source/hash verification, and consistency verification before writing
+byte-identical package data. It never interprets a modified preview as an
+authorized edit.
+
+Command parsing, conversion, hand-off, and render orchestration live in `cli/run.ts`
 behind the injected `OakitCliIo` contract. The contract separates UTF-8 and
 binary writes and exposes recursive directory creation. This keeps argument
 behavior independently testable and confines direct filesystem and process
@@ -660,14 +711,16 @@ Add a binary fixture only when the behavior cannot be represented reliably as
 a small package or when compatibility with a real producer is itself the test.
 Keep binary fixtures minimal and document their origin and expected feature.
 
-Reliability is split into four gates with different cost and purpose:
+Reliability is split into complementary gates with different cost and purpose:
 
-| Gate             | Detects                                                           |
-| ---------------- | ----------------------------------------------------------------- |
-| Fast Vitest      | Regressions and seeded ZIP/XML/path/number properties             |
-| Browser Vitest   | Browser `Blob`, object-URL, bundling, and runtime incompatibility |
-| Producer corpus  | PowerPoint, LibreOffice, and Google Slides compatibility          |
-| Mutation testing | Assertions that execute code but fail to distinguish bad logic    |
+| Gate                      | Detects                                                            |
+| ------------------------- | ------------------------------------------------------------------ |
+| Fast Vitest               | Regressions and seeded ZIP/XML/path/number properties              |
+| Dedicated renderer fuzz   | Unsafe SVG, nondeterminism, native PNG failures, and mutation      |
+| Browser Vitest            | Browser `Blob`, object-URL, bundling, and runtime incompatibility  |
+| Producer corpus           | PowerPoint, LibreOffice, and Google Slides compatibility           |
+| Mutation testing          | Assertions that execute code but fail to distinguish bad logic     |
+| Package/reliability smoke | Broken exports, CLI hand-offs, Office dependence, and memory drift |
 
 The producer corpus is downloaded into an ignored cache. Stable files are
 pinned by whole-file SHA-256. Google Slides reconstructs exported ZIP/media
@@ -676,9 +729,11 @@ maximum download size. The corpus asserts both structural invariants and
 minimum semantic element counts; merely returning an empty document cannot
 pass it.
 
-The mutation gate targets shared archive, XML, relationship, text-sanitization,
-and resource-limit boundaries. Its report is retained as a CI artifact so
-surviving mutants can be converted into focused public-contract tests.
+The mutation gate targets every production source file unless a line-specific
+exclusion is justified and audited. Fresh reports fail on survived,
+no-coverage, or timeout outcomes; killed and TypeScript compile-error mutants
+are accepted evidence. Reports are retained as CI artifacts so every miss can
+be converted into a focused public-contract test.
 
 Every change must pass:
 
@@ -687,7 +742,8 @@ pnpm check
 ```
 
 That command checks formatting, type-aware linting, strict TypeScript, Vitest,
-and both package builds on Node.js 20, 22, and 24. Chromium, producer-corpus,
+seeded renderer fuzzing, both package builds, and the packed CLI smoke test.
+CI repeats the supported gates on Node.js 20, 22, and 24. Chromium, producer-corpus,
 and mutation gates have dedicated commands because they require external
 runtimes or are intentionally slower.
 
@@ -758,30 +814,33 @@ format-only consumers isolated:
 
 ## Reader and writer separation
 
-A future JSON-to-Office writer should not reverse the current parser function
-step by step. Reading is tolerant and normalizing; writing must be strict and
-package-valid.
-
-The expected format architecture is:
+Writing does not reverse parser functions. The normalized reader may recover
+optional malformed content, while both implemented writers are strict and
+package-valid. The current format architecture is:
 
 ```text
-format public API
-├── reader orchestration
-├── writer orchestration
-├── public semantic model
-└── shared format-domain rules
+PowerPoint public API
+├── normalized reader -> PptxDocument + optional diagnostics
+├── round-trip reader -> source-bound R0 runtime snapshot
+├── portable codec -> bounded JSON transport with canonical Base64
+├── round-trip writer -> verified byte-identical R0 package
+├── creation writer -> deterministic C1 text-profile package
+├── preview renderer -> approximate SVG/PNG with warnings
+└── shared scene, package, and format-domain rules
 ```
 
-A writer will need explicit decisions for IDs, relationship allocation,
-content types, XML serialization, unsupported fields, media ownership, and
-package validation. If exact round-trip preservation becomes a requirement, it
-will also need an extension mechanism for source XML that the normalized model
-does not represent today.
+The creation writer owns deterministic IDs, relationships, content types, XML
+escaping, archive generation, limits, and strict reparse verification. The
+round-trip writer instead verifies the complete bound state and returns an
+owned copy of the original package; this is how unknown parts remain exact
+without leaking raw OOXML into the normalized model. `operations` is currently
+required to be empty, so `R1+` semantic edits and broader creation profiles
+remain future work rather than implied capabilities.
 
 ## Stability and migration policy
 
-The package is currently `0.0.0`, so the public model is pre-stable. Even during
-this phase, changes should be deliberate:
+The package is pre-1.0, so the public model may still evolve. Even during this
+phase, changes should be deliberate:
 
 - prefer additive optional fields for new fidelity;
 - accompany renamed or corrected fields with a documented migration;

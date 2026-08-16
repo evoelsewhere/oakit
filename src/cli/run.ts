@@ -129,7 +129,7 @@ Snapshot options:
 Restore options:
   -o, --output <file>          Required PowerPoint output path
 
-Shared options:
+PPTX input options:
       --format <pptx>          Input format; required when reading stdin
   -h, --help                   Show this help
   -v, --version                Show the installed OAKit version

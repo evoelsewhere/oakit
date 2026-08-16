@@ -3,6 +3,41 @@ import { describe, expect, it } from 'vitest';
 
 import { type OakitCliIo, runOakitCli } from '../../src/cli/run';
 
+const EXPECTED_HELP = `Usage: oakit [convert] <input.pptx|-> [options]
+       oakit render <input.pptx|-> --output <directory> [options]
+       oakit snapshot <input.pptx|-> [--output <file>]
+       oakit restore <input.json|-> --output <file.pptx>
+
+Convert a PowerPoint Open XML presentation into deterministic JSON.
+Render agent-readable SVG or PNG slide previews without an Office runtime.
+Preserve and restore byte-exact PowerPoint packages through portable JSON.
+
+Convert options:
+  -o, --output <file>          Write JSON to a file instead of stdout
+      --strict                 Reject malformed optional OOXML content
+      --pretty                 Format JSON with two-space indentation
+      --document-only          Omit format metadata and diagnostics
+      --image-mode <mode>      Image output: none (default) or base64
+
+Render options:
+  -o, --output <directory>     Write slide files and manifest.json
+      --render-format <format> png (default) or svg
+      --slides <list>          One-based comma-separated slide numbers
+      --scale <number>         Positive decimal output scale (default: 1)
+
+Snapshot options:
+  -o, --output <file>          Write portable JSON instead of stdout
+      --pretty                 Format portable JSON with two-space indentation
+
+Restore options:
+  -o, --output <file>          Required PowerPoint output path
+
+PPTX input options:
+      --format <pptx>          Input format; required when reading stdin
+  -h, --help                   Show this help
+  -v, --version                Show the installed OAKit version
+`;
+
 const CONTENT_TYPES_NAMESPACE =
   'http://schemas.openxmlformats.org/package/2006/content-types';
 const OFFICE_RELATIONSHIPS_NAMESPACE =
@@ -341,7 +376,7 @@ describe('oakit CLI contract', () => {
   it('prints stable help and version output', async () => {
     const helpIo = new MemoryCliIo();
     await expect(runOakitCli(['--help'], helpIo, '1.2.3')).resolves.toBe(0);
-    expect(helpIo.stdout).toContain('Usage: oakit');
+    expect(helpIo.stdout).toBe(EXPECTED_HELP);
     expect(helpIo.stderr).toBe('');
 
     const versionIo = new MemoryCliIo();
@@ -352,7 +387,7 @@ describe('oakit CLI contract', () => {
 
     const shortHelpIo = new MemoryCliIo();
     await expect(runOakitCli(['-h'], shortHelpIo, '1.2.3')).resolves.toBe(0);
-    expect(shortHelpIo.stdout).toContain('Usage: oakit');
+    expect(shortHelpIo.stdout).toBe(EXPECTED_HELP);
 
     const shortVersionIo = new MemoryCliIo();
     await expect(runOakitCli(['-v'], shortVersionIo, '1.2.3')).resolves.toBe(0);
