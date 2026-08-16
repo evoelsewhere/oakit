@@ -88,14 +88,27 @@ const DIAGRAM_DATA = `
 
 const DIAGRAM_DRAWING = `
   <dsp:drawing xmlns:dsp="${DIAGRAM_DRAWING_NS}" xmlns:a="${DRAWING_NS}">
-    <dsp:spTree><dsp:sp>
-      <dsp:nvSpPr><dsp:cNvPr id="20" name="Rendered node"/><dsp:cNvSpPr/><dsp:nvPr/></dsp:nvSpPr>
-      <dsp:spPr>
-        <a:xfrm><a:off x="0" y="0"/><a:ext cx="914400" cy="457200"/></a:xfrm>
-        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
-        <a:solidFill><a:srgbClr val="70AD47"/></a:solidFill>
-      </dsp:spPr>
-    </dsp:sp></dsp:spTree>
+    <dsp:spTree>
+      <dsp:sp>
+        <dsp:nvSpPr><dsp:cNvPr id="20" name="Rendered node"/><dsp:cNvSpPr/><dsp:nvPr/></dsp:nvSpPr>
+        <dsp:spPr>
+          <a:xfrm><a:off x="0" y="0"/><a:ext cx="914400" cy="457200"/></a:xfrm>
+          <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+          <a:solidFill><a:srgbClr val="70AD47"/></a:solidFill>
+        </dsp:spPr>
+      </dsp:sp>
+      <dsp:sp>
+        <dsp:nvSpPr><dsp:cNvPr id="21" name="Custom rendered node"/><dsp:cNvSpPr/><dsp:nvPr/></dsp:nvSpPr>
+        <dsp:spPr>
+          <a:xfrm><a:off x="914400" y="0"/><a:ext cx="914400" cy="457200"/></a:xfrm>
+          <a:custGeom><a:avLst/><a:pathLst><a:path w="100" h="100">
+            <a:moveTo><a:pt x="0" y="100"/></a:moveTo>
+            <a:lnTo><a:pt x="50" y="0"/></a:lnTo>
+            <a:lnTo><a:pt x="100" y="100"/></a:lnTo><a:close/>
+          </a:path></a:pathLst></a:custGeom>
+        </dsp:spPr>
+      </dsp:sp>
+    </dsp:spTree>
   </dsp:drawing>`;
 
 describe('PPTX diagram, media, and grouped custom shapes', () => {
@@ -146,10 +159,16 @@ describe('PPTX diagram, media, and grouped custom shapes', () => {
     expect(diagram?.type).toBe('diagram');
     if (diagram?.type !== 'diagram') throw new Error('Expected a diagram');
     expect(diagram.textList).toEqual(['Plan', 'Build']);
-    expect(diagram.elements).toHaveLength(1);
+    expect(diagram.elements).toHaveLength(2);
     expect(diagram.elements[0]).toMatchObject({
       id: '20',
       shapType: 'rect',
+      type: 'shape',
+    });
+    expect(diagram.elements[1]).toMatchObject({
+      id: '21',
+      path: ' M0,36 L36,0 L72,36z',
+      shapType: 'custom',
       type: 'shape',
     });
     expect(video).toMatchObject({

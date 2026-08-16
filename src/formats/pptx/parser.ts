@@ -1217,10 +1217,7 @@ async function processSpNode(
   if (!slideMasterSpNode && type === 'ctrTitle')
     slideMasterSpNode = warpObj.slideMasterTables.typeTable.title;
 
-  if (!type) {
-    if (source === 'diagramBg') type = 'diagram';
-    else type = 'obj';
-  }
+  if (!type) type = 'obj';
 
   const link = getHyperlinkFromCNvPr(nonVisualProperties, warpObj);
 
@@ -1383,7 +1380,7 @@ async function genShape(
   };
 
   const hasText = Boolean(content && hasValidText(content));
-  if (customGeometry && type !== 'diagram') {
+  if (customGeometry) {
     const extension = attributes(nodeAt(slideXfrmNode, ['a:ext']));
     const customWidth = Number(extension.cx ?? 0) * RATIO_EMUs_Points;
     const customHeight = Number(extension.cy ?? 0) * RATIO_EMUs_Points;
