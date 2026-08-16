@@ -127,12 +127,8 @@ describe('PowerPoint package part serialization', () => {
     const first = partByPath(parts, 'ppt/slides/slide1.xml').xml;
     const second = partByPath(parts, 'ppt/slides/slide2.xml').xml;
 
-    expect(first).toContain(
-      'id="{00000000-0000-0000-0000-000000000001}"',
-    );
-    expect(second).toContain(
-      'id="{00000000-0000-0000-0000-000000000002}"',
-    );
+    expect(first).toContain('id="{00000000-0000-0000-0000-000000000001}"');
+    expect(second).toContain('id="{00000000-0000-0000-0000-000000000002}"');
   });
 
   it('produces deterministic XML without sharing allocator state', () => {

@@ -52,8 +52,9 @@ describe('PowerPoint archive serialization', () => {
       await serializePowerPointArchive(PARTS),
     );
 
-    await expect(archive.file('[Content_Types].xml')?.async('string')).resolves
-      .toBe(PARTS[0]?.xml);
+    await expect(
+      archive.file('[Content_Types].xml')?.async('string'),
+    ).resolves.toBe(PARTS[0]?.xml);
     await expect(archive.file('_rels/.rels')?.async('string')).resolves.toBe(
       PARTS[1]?.xml,
     );
