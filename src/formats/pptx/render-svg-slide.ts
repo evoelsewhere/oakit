@@ -1,6 +1,7 @@
 import type { Element, Fill, Image, PptxSlide, Shape, Text } from './types';
 import { escapeSvgText, plainTextFromPowerPointHtml } from './render-text';
 import type { PptxRenderWarning } from './render-types';
+import { renderPptxSvgRichElement } from './render-svg-rich';
 import {
   embeddedRasterDataUri,
   svgBox,
@@ -269,7 +270,12 @@ function renderElement(element: Element, context: RenderContext): string {
         .join('');
       return `<g transform="${localTransform(box, element.rotate, element.isFlipH, element.isFlipV)}">${children}</g>`;
     }
-    default:
+    default: {
+      const rich = renderPptxSvgRichElement(element, box);
+      if (rich !== null) {
+        warning(context, rich.warningCode, rich.warningMessage, element);
+        return `<g transform="${localTransform(box, 0, false, false)}">${rich.body}</g>`;
+      }
       warning(
         context,
         'approximate-shape',
@@ -277,6 +283,7 @@ function renderElement(element: Element, context: RenderContext): string {
         element,
       );
       return `<g transform="${localTransform(box, 0, false, false)}">${boxPlaceholder(box, element.type)}</g>`;
+    }
   }
 }
 

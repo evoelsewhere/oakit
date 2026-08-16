@@ -1,8 +1,11 @@
 export type PptxRenderWarningCode =
   | 'approximate-chart'
+  | 'approximate-diagram'
   | 'approximate-fill'
+  | 'approximate-math'
   | 'approximate-media'
   | 'approximate-shape'
+  | 'approximate-table'
   | 'font-substitution'
   | 'missing-media';
 

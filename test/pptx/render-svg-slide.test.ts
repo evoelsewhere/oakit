@@ -457,7 +457,7 @@ describe('PowerPoint SVG slide source', () => {
     ]);
   });
 
-  it('uses a labeled placeholder for a complex element', () => {
+  it('delegates charts to the rich portable renderer', () => {
     const result = render(
       slide([
         {
@@ -473,14 +473,43 @@ describe('PowerPoint SVG slide source', () => {
       ]),
     );
 
-    expect(result.source).toContain('>chart</text>');
+    expect(result.source).toContain('>Chart data unavailable</text>');
     expect(result.source).toContain('<g transform="translate(1 2)"><rect');
     expect(result.warnings).toEqual([
       {
-        code: 'approximate-shape',
+        code: 'approximate-chart',
         elementId: 'chart-1',
         message:
-          'The preview represents PowerPoint element chart as a placeholder.',
+          'The preview visualizes chart values with simplified portable bars.',
+        slideNumber: 2,
+      },
+    ]);
+  });
+
+  it('uses a safe placeholder for an unknown runtime element type', () => {
+    const result = render(
+      slide([
+        {
+          height: 20,
+          id: 'widget-1',
+          left: 1,
+          order: 0,
+          top: 2,
+          type: 'widget',
+          width: 30,
+        } as unknown as Element,
+      ]),
+    );
+
+    expect(result.source).toContain('>widget</text>');
+    expect(result.source).toContain('<g transform="translate(1 2)"><rect');
+    expect(result.source).not.toContain('scale(');
+    expect(result.warnings).toEqual([
+      {
+        code: 'approximate-shape',
+        elementId: 'widget-1',
+        message:
+          'The preview represents PowerPoint element widget as a placeholder.',
         slideNumber: 2,
       },
     ]);
