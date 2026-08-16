@@ -6,9 +6,12 @@ import { describe, expect, it } from 'vitest';
 import { parsePptxWithDiagnostics } from '../../src';
 
 interface ResolvedCorpusEntry {
+  expectedDiagnosticCodes?: string[];
+  expectedSlides: number;
   id: string;
   minimumElementCounts?: Record<string, number>;
-  minimumSlides: number;
+  minimumNotes?: number;
+  minimumTransitions?: number;
   path: string;
   producer: string;
   tier: 'curated' | 'large';
@@ -57,9 +60,7 @@ describe(`real-world PPTX corpus v${resolvedManifest.version}`, () => {
         limits: { maxInputBytes: 150 * 1024 * 1024 },
       });
 
-      expect(result.document.slides.length).toBeGreaterThanOrEqual(
-        entry.minimumSlides,
-      );
+      expect(result.document.slides).toHaveLength(entry.expectedSlides);
       expect(result.document.size.width).toBeGreaterThan(0);
       expect(result.document.size.height).toBeGreaterThan(0);
       expectFiniteNumbers(result.document);
@@ -77,12 +78,15 @@ describe(`real-world PPTX corpus v${resolvedManifest.version}`, () => {
         ).toBeGreaterThanOrEqual(minimum);
       }
       expect(
-        result.diagnostics.some((diagnostic) =>
-          /^(?:invalid-package|invalid-document-structure|missing-required-part)$/.test(
-            diagnostic.code,
-          ),
-        ),
-      ).toBe(false);
+        result.document.slides.filter((slide) => slide.note.length > 0).length,
+      ).toBeGreaterThanOrEqual(entry.minimumNotes ?? 0);
+      expect(
+        result.document.slides.filter((slide) => Boolean(slide.transition))
+          .length,
+      ).toBeGreaterThanOrEqual(entry.minimumTransitions ?? 0);
+      expect(result.diagnostics.map((diagnostic) => diagnostic.code)).toEqual(
+        entry.expectedDiagnosticCodes ?? [],
+      );
     });
   }
 });

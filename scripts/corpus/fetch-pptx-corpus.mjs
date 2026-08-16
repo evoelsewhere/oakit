@@ -134,8 +134,9 @@ const roundTripSource = resolvedEntries.find(
 if (roundTripSource) {
   const path = await createLibreOfficeRoundTrip(roundTripSource.path);
   resolvedEntries.push({
+    expectedSlides: 1,
     id: 'libreoffice-roundtrip',
-    minimumSlides: 1,
+    minimumTransitions: 1,
     path,
     producer: 'LibreOffice headless round-trip',
     tier: 'curated',
