@@ -3,6 +3,13 @@ import { describe, expect, it } from 'vitest';
 import { mergeMutationReports } from '../../scripts/merge-mutation-reports.mjs';
 import { mutatedFiles } from '../../scripts/mutation-scope.mjs';
 import { createMutationShards } from '../../scripts/mutation-shards.mjs';
+import {
+  createShapePathMutationJobs,
+  instrumentShapePathMutants,
+  mutationFingerprint,
+  selectShapePathJobMutants,
+  verifyShapePathMutationJobs,
+} from '../../scripts/shape-path-mutation-jobs.mjs';
 
 function report(files, schemaVersion = '1.0') {
   return {
@@ -91,5 +98,81 @@ describe('mutation report sharding', () => {
     expect(() =>
       mergeMutationReports([report({ 'b.ts': {} })], ['a.ts']),
     ).toThrow('Unexpected mutation report file: b.ts');
+  });
+});
+
+describe('shape path mutation workload', () => {
+  it('partitions every instrumented mutant into ten bounded jobs', async () => {
+    const mutants = await instrumentShapePathMutants();
+    const jobs = createShapePathMutationJobs(mutants);
+    const verification = verifyShapePathMutationJobs(mutants, jobs);
+
+    expect(mutants).toHaveLength(8195);
+    expect(new Set(mutants.map(mutationFingerprint)).size).toBe(mutants.length);
+    expect(jobs).toHaveLength(10);
+    expect(verification.coveredMutants).toBe(mutants.length);
+    expect(Math.max(...verification.workloads)).toBeLessThanOrEqual(1100);
+    expect(verification.workloads.every((count) => count > 0)).toBe(true);
+  }, 15_000);
+
+  it('keeps range jobs within their declared mutator family and lines', () => {
+    const mutants = [
+      {
+        location: {
+          end: { column: 4, line: 2 },
+          start: { column: 1, line: 2 },
+        },
+        mutatorName: 'ArithmeticOperator',
+        replacement: 'left - right',
+      },
+      {
+        location: {
+          end: { column: 4, line: 8 },
+          start: { column: 1, line: 8 },
+        },
+        mutatorName: 'StringLiteral',
+        replacement: '""',
+      },
+    ];
+    const job = {
+      allowedMutations: ['ArithmeticOperator'],
+      excludedMutations: ['StringLiteral'],
+      id: 'arithmetic-test',
+      mutate: 'source.ts:3-3',
+      range: { endLine: 3, startLine: 3 },
+    };
+
+    expect(selectShapePathJobMutants(mutants, job)).toEqual([mutants[0]]);
+  });
+
+  it('rejects empty, incomplete, and duplicate mutation workloads', () => {
+    expect(() => createShapePathMutationJobs([])).toThrow(
+      'Shape path mutation jobs require at least one mutant',
+    );
+    const duplicate = {
+      location: {
+        end: { column: 2, line: 0 },
+        start: { column: 1, line: 0 },
+      },
+      mutatorName: 'ArithmeticOperator',
+      replacement: '-',
+    };
+    expect(() =>
+      verifyShapePathMutationJobs([duplicate, duplicate], []),
+    ).toThrow('Shape path instrumentation produced duplicate mutants');
+    expect(() =>
+      verifyShapePathMutationJobs(
+        [duplicate],
+        [
+          {
+            allowedMutations: ['StringLiteral'],
+            excludedMutations: ['ArithmeticOperator'],
+            id: 'missing',
+            mutate: 'source.ts',
+            range: null,
+          },
+        ],
+      ),
+    ).toThrow('Shape path mutation jobs cover 0 of 1 mutants');
   });
 });
