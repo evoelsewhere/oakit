@@ -324,7 +324,10 @@ async function getContentTypes(
 
   for (const item of overrides) {
     const itemAttributes = attributes(item);
-    const partName = itemAttributes.PartName?.replace(/^\//, '');
+    const declaredPartName = itemAttributes.PartName;
+    const partName = declaredPartName?.startsWith('/')
+      ? declaredPartName.slice(1)
+      : null;
     if (!partName) continue;
     switch (itemAttributes.ContentType) {
       case 'application/vnd.openxmlformats-officedocument.presentationml.slide+xml':

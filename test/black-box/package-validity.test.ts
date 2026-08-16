@@ -35,6 +35,8 @@ describe('PPTX package validity at the public boundary', () => {
     expect(tolerant.diagnostics).toContainEqual(
       expect.objectContaining({
         code: 'invalid-document-structure',
+        message:
+          'Required OOXML root Types is missing from [Content_Types].xml',
         part: '[Content_Types].xml',
         severity: 'error',
       }),
@@ -44,9 +46,23 @@ describe('PPTX package validity at the public boundary', () => {
     ).rejects.toMatchObject({
       diagnostic: {
         code: 'invalid-document-structure',
+        message:
+          'Required OOXML root Types is missing from [Content_Types].xml',
         part: '[Content_Types].xml',
       },
     });
+  });
+
+  it('ignores a slide override whose OPC part name is not absolute', async () => {
+    const input = await createIndependentPptx({
+      '[Content_Types].xml': `<Types>
+        <Override PartName="xppt/slides/slide1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slide+xml"/>
+      </Types>`,
+    });
+
+    const document = await parsePptx(input, { errorMode: 'strict' });
+
+    expect(document.slides).toEqual([]);
   });
 
   it('reports a missing presentation as a missing required part', async () => {
