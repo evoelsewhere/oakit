@@ -6,7 +6,19 @@ import type {
 } from '../scene-types';
 import type { PptxDocument, PptxElement } from '../types';
 
-function resolvedTransform(element: PptxElement): PptxSceneTransform {
+function resolvedTransform(
+  element: PptxElement,
+): PptxSceneTransform | undefined {
+  if (
+    !Number.isFinite(element.left) ||
+    !Number.isFinite(element.top) ||
+    !Number.isFinite(element.width) ||
+    element.width <= 0 ||
+    !Number.isFinite(element.height) ||
+    element.height <= 0
+  ) {
+    return undefined;
+  }
   return {
     height: element.height,
     width: element.width,
@@ -28,12 +40,16 @@ function sceneElement(
   elementIndex: number,
 ): PptxSceneUnsupportedElement {
   const text = previewText(element);
+  const transform = resolvedTransform(element);
   return {
     authored: {},
     feature: element.type,
     key: `slide-${slideIndex + 1}-element-${elementIndex + 1}`,
     ...(text === undefined ? {} : { previewText: text }),
-    resolved: { hidden: false, transform: resolvedTransform(element) },
+    resolved: {
+      hidden: false,
+      ...(transform === undefined ? {} : { transform }),
+    },
     type: 'unsupported',
   };
 }

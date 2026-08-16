@@ -104,4 +104,29 @@ describe('PowerPoint round-trip semantic preview', () => {
 
     expect(parsed).toEqual(before);
   });
+
+  it.each([
+    ['left', Number.NaN],
+    ['top', Number.POSITIVE_INFINITY],
+    ['width', Number.NaN],
+    ['width', 0],
+    ['height', Number.NEGATIVE_INFINITY],
+    ['height', 0],
+  ] as const)(
+    'omits a transform with non-rendering %s %s from the portable preview',
+    async (property, value) => {
+      const source = await createPptx(sourceScene());
+      const parsed = await parse(source.data, { imageMode: 'none' });
+      const element = parsed.slides[0]?.elements[0];
+      if (!element) throw new Error('Expected a parsed preview element');
+      element[property] = value;
+
+      const preview = createPowerPointRoundTripPreview(parsed);
+
+      expect(preview.slides[0]?.elements[0]?.resolved).toEqual({
+        hidden: false,
+      });
+      expect(validatePptxScene(preview)).toEqual({ issues: [], valid: true });
+    },
+  );
 });
