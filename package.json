@@ -51,6 +51,7 @@
     "test:mutation:scope": "node scripts/check-mutation-scope.mjs",
     "test:mutation:scope:complete": "node scripts/check-mutation-scope.mjs --complete",
     "test:package": "node scripts/check-package.mjs",
+    "test:portable:memory": "pnpm build && node --expose-gc scripts/reliability/check-pptx-portable-memory.mjs",
     "test:watch": "vitest",
     "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test:mutation:scope:complete && pnpm test && pnpm build && pnpm test:package",
     "prepack": "pnpm build"

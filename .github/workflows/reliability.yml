@@ -9,6 +9,28 @@ permissions:
   contents: read
 
 jobs:
+  portable-memory:
+    name: Portable PowerPoint memory budgets
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test:portable:memory
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: portable-powerpoint-memory-report
+          path: reports/reliability/pptx-portable-memory.json
+          if-no-files-found: error
+
   corpus:
     name: PowerPoint, LibreOffice, and Google Slides corpus
     runs-on: ubuntu-latest
