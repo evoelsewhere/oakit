@@ -459,15 +459,13 @@ async function getTheme(xmlReader: PptxXmlReader) {
     'a:themeElements',
     'a:clrScheme',
   ]);
-  if (colorScheme) {
-    for (let i = 1; i <= 6; i++) {
-      const accent = nodeAt(colorScheme, [`a:accent${i}`]);
-      if (!accent) break;
-      const color = normalizeHexColor(
-        textAt(accent, ['a:srgbClr', 'attrs', 'val']) ?? '',
-      );
-      if (color) themeColors.push(color);
-    }
+  for (let i = 1; i <= 6; i++) {
+    const accent = nodeAt(colorScheme, [`a:accent${i}`]);
+    if (!accent) break;
+    const rawColor = textAt(accent, ['a:srgbClr', 'attrs', 'val']);
+    if (!rawColor) continue;
+    const color = normalizeHexColor(rawColor);
+    if (color) themeColors.push(color);
   }
 
   return { themeContent, themeColors };
@@ -478,8 +476,7 @@ const STANDARD_RELATIONSHIP_PREFIX =
 const STRICT_RELATIONSHIP_PREFIX =
   'http://purl.oclc.org/ooxml/officeDocument/relationships/';
 
-function relationshipTypeName(type: string | undefined): string {
-  if (!type) return '';
+function relationshipTypeName(type: string): string {
   if (type.startsWith(STANDARD_RELATIONSHIP_PREFIX)) {
     return type.slice(STANDARD_RELATIONSHIP_PREFIX.length);
   }
@@ -490,14 +487,13 @@ function relationshipTypeName(type: string | undefined): string {
 }
 
 function isRelationshipType(type: string | undefined, name: string): boolean {
-  return relationshipTypeName(type) === name;
+  return type !== undefined && relationshipTypeName(type) === name;
 }
 
 async function getRelationships(
   xmlReader: PptxXmlReader,
   ownerPart: string,
 ): Promise<XmlLookupValue[]> {
-  if (!ownerPart) return [];
   const content = await xmlReader.read(getRelationshipPartUri(ownerPart));
   return asArray(nodeAt(content, ['Relationships', 'Relationship']));
 }

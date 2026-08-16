@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { parsePptx } from '../../src';
 import {
   createIndependentPptx,
+  DRAWING_NS,
   OFFICE_REL_TYPE,
   PACKAGE_REL_NS,
 } from './pptx-package';
@@ -15,6 +16,7 @@ const STRICT_PRESENTATION_NS = 'http://purl.oclc.org/ooxml/presentationml/main';
 const STRICT_OFFICE_REL_NS =
   'http://purl.oclc.org/ooxml/officeDocument/relationships';
 const STRICT_OFFICE_REL_TYPE = `${STRICT_OFFICE_REL_NS}/`;
+const UNKNOWN_THEME_LIKE_REL_TYPE = `${'x'.repeat(STRICT_OFFICE_REL_TYPE.length)}theme`;
 
 describe('PPTX package compatibility invariants', () => {
   it('accepts canonical package namespaces behind arbitrary prefixes', async () => {
@@ -74,6 +76,29 @@ describe('PPTX package compatibility invariants', () => {
     expect(actual).toEqual(expected);
   });
 
+  it('does not reinterpret an unknown relationship type by its suffix', async () => {
+    const input = await createIndependentPptx({
+      'ppt/_rels/presentation.xml.rels': `
+        <Relationships xmlns="${PACKAGE_REL_NS}">
+          <Relationship Id="rIdDecoy" Type="${UNKNOWN_THEME_LIKE_REL_TYPE}" Target="theme/theme2.xml"/>
+          <Relationship Id="rIdTheme" Type="${OFFICE_REL_TYPE}theme" Target="theme/theme1.xml"/>
+          <Relationship Id="rIdSlide1" Type="${OFFICE_REL_TYPE}slide" Target="slides/slide1.xml"/>
+        </Relationships>`,
+      'ppt/theme/theme2.xml': `
+        <a:theme xmlns:a="${DRAWING_NS}" name="Decoy Theme">
+          <a:themeElements>
+            <a:clrScheme name="Decoy">
+              <a:accent1><a:srgbClr val="FF0000"/></a:accent1>
+            </a:clrScheme>
+          </a:themeElements>
+        </a:theme>`,
+    });
+
+    const result = await parsePptx(input, { errorMode: 'strict' });
+
+    expect(result.themeColors).toEqual(['#4472C4']);
+  });
+
   it('resolves internal relationship targets without query or fragment suffixes', async () => {
     const input = await createIndependentPptx({
       'ppt/_rels/presentation.xml.rels': `
@@ -87,5 +112,40 @@ describe('PPTX package compatibility invariants', () => {
 
     expect(result.slides).toHaveLength(1);
     expect(result.themeColors).toEqual(['#4472C4']);
+  });
+
+  it('stops the ordered theme palette at the first missing accent', async () => {
+    const input = await createIndependentPptx({
+      'ppt/theme/theme1.xml': `
+        <a:theme xmlns:a="${DRAWING_NS}" name="Gapped Theme">
+          <a:themeElements>
+            <a:clrScheme name="Gapped">
+              <a:accent2><a:srgbClr val="ED7D31"/></a:accent2>
+            </a:clrScheme>
+          </a:themeElements>
+        </a:theme>`,
+    });
+
+    const result = await parsePptx(input, { errorMode: 'strict' });
+
+    expect(result.themeColors).toEqual([]);
+  });
+
+  it('skips an uncolored theme accent without discarding later colors', async () => {
+    const input = await createIndependentPptx({
+      'ppt/theme/theme1.xml': `
+        <a:theme xmlns:a="${DRAWING_NS}" name="Partial Theme">
+          <a:themeElements>
+            <a:clrScheme name="Partial">
+              <a:accent1><a:srgbClr/></a:accent1>
+              <a:accent2><a:srgbClr val="ED7D31"/></a:accent2>
+            </a:clrScheme>
+          </a:themeElements>
+        </a:theme>`,
+    });
+
+    const result = await parsePptx(input, { errorMode: 'strict' });
+
+    expect(result.themeColors).toEqual(['#ED7D31']);
   });
 });
