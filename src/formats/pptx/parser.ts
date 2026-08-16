@@ -893,6 +893,61 @@ function indexNodes(content: XmlLookupValue): PptxNodeIndex {
   return { idxTable, typeTable };
 }
 
+const CONNECTOR_ID_PATH = ['p:nvCxnSpPr', 'p:cNvPr', 'attrs', 'id'] as const;
+const GRAPHIC_FRAME_ID_PATH = [
+  'p:nvGraphicFramePr',
+  'p:cNvPr',
+  'attrs',
+  'id',
+] as const;
+const GROUP_ID_PATH = ['p:nvGrpSpPr', 'p:cNvPr', 'attrs', 'id'] as const;
+const PICTURE_ID_PATH = ['p:nvPicPr', 'p:cNvPr', 'attrs', 'id'] as const;
+const SHAPE_ID_PATH = ['p:nvSpPr', 'p:cNvPr', 'attrs', 'id'] as const;
+
+function getElementId(
+  nodeKey: string,
+  node: XmlLookupValue,
+  directPath: readonly string[],
+): string {
+  if (nodeKey === 'mc:AlternateContent') {
+    const fallbackIsGroup = Boolean(
+      nodeAt(node, ['mc:Fallback', 'p:grpSpPr', 'a:xfrm']),
+    );
+    if (fallbackIsGroup) {
+      return (
+        textAt(node, [
+          'mc:Fallback',
+          'p:nvGrpSpPr',
+          'p:cNvPr',
+          'attrs',
+          'id',
+        ]) ?? ''
+      );
+    }
+    return (
+      textAt(node, [
+        'mc:Choice',
+        'p:sp',
+        'p:nvSpPr',
+        'p:cNvPr',
+        'attrs',
+        'id',
+      ]) ??
+      textAt(node, [
+        'mc:Fallback',
+        'p:sp',
+        'p:nvSpPr',
+        'p:cNvPr',
+        'attrs',
+        'id',
+      ]) ??
+      ''
+    );
+  }
+
+  return textAt(node, directPath) ?? '';
+}
+
 async function processNodesInSlide(
   nodeKey: string,
   nodeValue: XmlLookupValue,
@@ -901,21 +956,26 @@ async function processNodesInSlide(
   groupHierarchy: XmlLookupValue[] = [],
 ): Promise<Element | null> {
   let json: ElementDraft | null = null;
+  let idPath: readonly string[] = SHAPE_ID_PATH;
 
   switch (nodeKey) {
     case 'p:sp': // Shape, Text
       json = await processSpNode(nodeValue, warpObj, source, groupHierarchy);
       break;
     case 'p:cxnSp': // Shape, Text
+      idPath = CONNECTOR_ID_PATH;
       json = await processCxnSpNode(nodeValue, warpObj, source);
       break;
     case 'p:pic': // Image, Video, Audio
+      idPath = PICTURE_ID_PATH;
       json = await processPicNode(nodeValue, warpObj, source);
       break;
     case 'p:graphicFrame': // Chart, Diagram, Table
+      idPath = GRAPHIC_FRAME_ID_PATH;
       json = await processGraphicFrameNode(nodeValue, warpObj, source);
       break;
     case 'p:grpSp':
+      idPath = GROUP_ID_PATH;
       json = await processGroupSpNode(
         nodeValue,
         warpObj,
@@ -933,7 +993,7 @@ async function processNodesInSlide(
           source,
           groupHierarchy,
         );
-      } else if (nodeAt(nodeValue, ['mc:Choice'])) {
+      } else {
         json = await processMathNode(nodeValue, warpObj, source);
       }
       break;
@@ -941,42 +1001,7 @@ async function processNodesInSlide(
   }
 
   if (json && !json.id) {
-    const id =
-      getTextByPathList(nodeValue, ['p:nvSpPr', 'p:cNvPr', 'attrs', 'id']) ||
-      getTextByPathList(nodeValue, ['p:nvPicPr', 'p:cNvPr', 'attrs', 'id']) ||
-      getTextByPathList(nodeValue, ['p:nvCxnSpPr', 'p:cNvPr', 'attrs', 'id']) ||
-      getTextByPathList(nodeValue, ['p:nvGrpSpPr', 'p:cNvPr', 'attrs', 'id']) ||
-      getTextByPathList(nodeValue, [
-        'p:nvGraphicFramePr',
-        'p:cNvPr',
-        'attrs',
-        'id',
-      ]) ||
-      getTextByPathList(nodeValue, [
-        'mc:Choice',
-        'p:sp',
-        'p:nvSpPr',
-        'p:cNvPr',
-        'attrs',
-        'id',
-      ]) ||
-      getTextByPathList(nodeValue, [
-        'mc:Fallback',
-        'p:sp',
-        'p:nvSpPr',
-        'p:cNvPr',
-        'attrs',
-        'id',
-      ]) ||
-      getTextByPathList(nodeValue, [
-        'mc:Fallback',
-        'p:nvGrpSpPr',
-        'p:cNvPr',
-        'attrs',
-        'id',
-      ]);
-
-    json.id = id || '';
+    json.id = getElementId(nodeKey, nodeValue, idPath);
   }
   return json as Element | null;
 }
@@ -1001,14 +1026,12 @@ async function processMathNode(
   const blipFill = nodeAt(fallback, ['p:sp', 'p:spPr', 'a:blipFill']);
   const picFill = await getPicFill(source, blipFill, warpObj);
 
-  let text = '';
-  if (nodeAt(choice, ['p:sp', 'p:txBody', 'a:p', 'a:r'])) {
-    const sp = nodeAt(choice, ['p:sp']);
-    const textBody = nodeAt(sp, ['p:txBody']);
-    if (sp && textBody) {
-      text = genTextBody(textBody, sp, undefined, undefined, '', warpObj);
-    }
-  }
+  const sp = nodeAt(choice, ['p:sp']);
+  const textBody = nodeAt(sp, ['p:txBody']);
+  const text =
+    sp && textBody
+      ? genTextBody(textBody, sp, undefined, undefined, String(), warpObj)
+      : '';
 
   return {
     type: 'math',

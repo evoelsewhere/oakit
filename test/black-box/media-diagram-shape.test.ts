@@ -164,6 +164,7 @@ describe('PPTX diagram, media, and grouped custom shapes', () => {
     });
     expect(group?.type).toBe('group');
     if (group?.type !== 'group') throw new Error('Expected a group');
+    expect(group.id).toBe('5');
     expect(group.elements).toHaveLength(1);
     expect(group.elements[0]).toMatchObject({
       id: '6',
