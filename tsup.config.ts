@@ -22,6 +22,7 @@ export default defineConfig({
     cli: 'src/cli.ts',
     index: 'src/index.ts',
     'pptx/index': 'src/formats/pptx/index.ts',
+    'pptx/node': 'src/formats/pptx/node.ts',
   },
   format: ['esm', 'cjs'],
   target: 'es2022',

@@ -52,12 +52,27 @@ export interface PptxRenderedSvgSlide {
   width: number;
 }
 
+export interface PptxRenderedPngSlide {
+  data: Uint8Array;
+  format: 'png';
+  height: number;
+  mimeType: 'image/png';
+  slideNumber: number;
+  warnings: readonly PptxRenderWarning[];
+  width: number;
+}
+
 export interface PptxSvgRenderResult {
   slides: readonly PptxRenderedSvgSlide[];
+}
+
+export interface PptxPngRenderResult {
+  slides: readonly PptxRenderedPngSlide[];
 }
 
 export type PptxRenderErrorCode =
   | 'invalid-document'
   | 'invalid-option'
+  | 'rasterization-failed'
   | 'resource-limit-exceeded'
   | 'slide-not-found';

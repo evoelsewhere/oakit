@@ -53,12 +53,16 @@ assert.equal(metadata.bin.oakit, './dist/cli.js');
 
 const esm = await import('@evoelsewhere/oakit');
 const esmPptx = await import('@evoelsewhere/oakit/pptx');
+const esmPptxNode = await import('@evoelsewhere/oakit/pptx/node');
 const cjs = require('@evoelsewhere/oakit');
 const cjsPptx = require('@evoelsewhere/oakit/pptx');
+const cjsPptxNode = require('@evoelsewhere/oakit/pptx/node');
 assert.equal(typeof esm.parsePptx, 'function');
 assert.equal(typeof esmPptx.parsePptxWithDiagnostics, 'function');
 assert.equal(typeof cjs.parsePptx, 'function');
 assert.equal(typeof cjsPptx.parsePptxWithDiagnostics, 'function');
+assert.equal(typeof esmPptxNode.renderPptxToPng, 'function');
+assert.equal(typeof cjsPptxNode.renderPptxDocumentToPng, 'function');
 
 const cliPath = path.join(projectRoot, 'dist/cli.js');
 assert.equal(
@@ -72,7 +76,15 @@ const smokeDirectory = await mkdtemp(
 try {
   const inputPath = path.join(smokeDirectory, 'smoke.pptx');
   const outputPath = path.join(smokeDirectory, 'smoke.json');
-  await writeFile(inputPath, await createSmokePptx());
+  const inputBytes = await createSmokePptx();
+  await writeFile(inputPath, inputBytes);
+
+  const pngResult = await esmPptxNode.renderPptxToPng(inputBytes);
+  assert.equal(pngResult.slides.length, 1);
+  assert.deepEqual(
+    Array.from(pngResult.slides[0].data.subarray(0, 8)),
+    [137, 80, 78, 71, 13, 10, 26, 10],
+  );
 
   const stdoutResult = await execFileAsync(process.execPath, [
     cliPath,

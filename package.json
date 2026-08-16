@@ -33,6 +33,11 @@
       "types": "./dist/pptx/index.d.ts",
       "import": "./dist/pptx/index.js",
       "require": "./dist/pptx/index.cjs"
+    },
+    "./pptx/node": {
+      "types": "./dist/pptx/node.d.ts",
+      "import": "./dist/pptx/node.js",
+      "require": "./dist/pptx/node.cjs"
     }
   },
   "scripts": {
@@ -72,6 +77,7 @@
   },
   "homepage": "https://github.com/evoelsewhere/oakit#readme",
   "dependencies": {
+    "@resvg/resvg-js": "^2.6.2",
     "jszip": "^3.10.1",
     "saxes": "^6.0.0",
     "tinycolor2": "^1.6.0",
