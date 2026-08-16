@@ -52,6 +52,7 @@ export const mutatedFiles = [
   'src/formats/pptx/roundtrip/write.ts',
   'src/formats/pptx/render-error.ts',
   'src/formats/pptx/render-limits.ts',
+  'src/formats/pptx/render-request.ts',
   'src/formats/pptx/render-text.ts',
   'src/formats/pptx/scene-validation.ts',
   'src/formats/pptx/write-error.ts',
