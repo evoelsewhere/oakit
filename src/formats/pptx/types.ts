@@ -399,7 +399,7 @@ export interface Options {
   videoMode?: 'blob' | 'none';
   audioMode?: 'blob' | 'none';
   errorMode?: PptxErrorMode;
-  limits?: PptxResourceLimits;
+  limits?: PptxResourceLimits | undefined;
 }
 
 /** Binary inputs accepted by JSZip in browsers and Node.js. */

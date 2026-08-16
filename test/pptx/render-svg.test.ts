@@ -1,13 +1,25 @@
 import { describe, expect, it } from 'vitest';
 
-import { PptxRenderError, renderPptxDocumentToSvg } from '../../src/index';
+import {
+  PptxRenderError,
+  renderPptxDocumentToSvg,
+  renderPptxToSvg,
+} from '../../src/index';
 import type {
   PptxDocument,
+  PptxInput,
   PptxSlide,
   Text,
 } from '../../src/formats/pptx/types';
+import { createMinimalPptx } from './fixture';
 
 const UTF8_DECODER = new TextDecoder();
+
+const PACKAGE_INPUTS: [string, (bytes: Uint8Array) => PptxInput][] = [
+  ['Uint8Array', (bytes) => bytes],
+  ['ArrayBuffer', (bytes) => Uint8Array.from(bytes).buffer],
+  ['Blob', (bytes) => new Blob([Uint8Array.from(bytes).buffer])],
+];
 
 function text(content: string): Text {
   return {
@@ -116,6 +128,48 @@ describe('PowerPoint document SVG rendering', () => {
         'resource-limit-exceeded',
         `PowerPoint slide 1 SVG exceeds the ${exact - 1} byte limit`,
       ),
+    );
+  });
+});
+
+describe('PowerPoint package SVG rendering', () => {
+  it.each(PACKAGE_INPUTS)(
+    'opens a %s package and renders it without an Office runtime',
+    async (_name, input) => {
+      const bytes = await createMinimalPptx();
+      const result = await renderPptxToSvg(input(bytes), { scale: 2 });
+
+      expect(result.slides).toHaveLength(1);
+      expect(result.slides[0]).toMatchObject({
+        format: 'svg',
+        height: 810,
+        mimeType: 'image/svg+xml',
+        slideNumber: 1,
+        width: 1440,
+      });
+      const source = UTF8_DECODER.decode(result.slides[0]?.data);
+      expect(source).toContain('<title>PowerPoint slide 1</title>');
+      expect(source).toContain('Hello AI');
+    },
+  );
+
+  it('applies package parse limits before producing render output', async () => {
+    const bytes = await createMinimalPptx();
+
+    await expect(
+      renderPptxToSvg(bytes, {
+        parseLimits: { maxInputBytes: bytes.byteLength - 1 },
+      }),
+    ).rejects.toThrow(
+      `PPTX resource limit maxInputBytes exceeded: ${bytes.byteLength} > ${bytes.byteLength - 1}`,
+    );
+  });
+
+  it('applies slide selection after parsing the package', async () => {
+    const bytes = await createMinimalPptx();
+
+    await expect(renderPptxToSvg(bytes, { slideNumbers: [] })).resolves.toEqual(
+      { slides: [] },
     );
   });
 });

@@ -1,12 +1,14 @@
 import { PptxRenderError } from './render-error';
+import { parse } from './parser';
 import { resolvePptxRenderRequest } from './render-request';
 import { renderPptxSvgSlideSource } from './render-svg-slide';
 import type {
+  PptxInputRenderOptions,
   PptxRenderedSvgSlide,
   PptxRenderOptions,
   PptxSvgRenderResult,
 } from './render-types';
-import type { PptxDocument } from './types';
+import type { PptxDocument, PptxInput } from './types';
 
 const UTF8_ENCODER = new TextEncoder();
 
@@ -44,4 +46,19 @@ export function renderPptxDocumentToSvg(
     },
   );
   return { slides };
+}
+
+/** Open and render a PowerPoint package without Microsoft Office or LibreOffice. */
+export async function renderPptxToSvg(
+  input: PptxInput,
+  options: PptxInputRenderOptions = {},
+): Promise<PptxSvgRenderResult> {
+  const document = await parse(input, {
+    audioMode: 'none',
+    errorMode: 'strict',
+    imageMode: 'base64',
+    limits: options.parseLimits,
+    videoMode: 'none',
+  });
+  return renderPptxDocumentToSvg(document, options);
 }

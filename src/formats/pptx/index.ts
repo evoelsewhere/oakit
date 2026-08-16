@@ -8,7 +8,7 @@ import type {
 
 export { validatePptxScene } from './scene-validation';
 export { createPptx } from './creator';
-export { renderPptxDocumentToSvg } from './render-svg';
+export { renderPptxDocumentToSvg, renderPptxToSvg } from './render-svg';
 export {
   defaultPptxRoundTripPortableLimits,
   parsePptxRoundTripJson,

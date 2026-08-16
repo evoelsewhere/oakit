@@ -34,6 +34,11 @@ export interface PptxRenderOptions {
   slideNumbers?: readonly number[];
 }
 
+export interface PptxInputRenderOptions extends PptxRenderOptions {
+  /** Resource limits applied while opening the PowerPoint package. */
+  parseLimits?: import('./types').PptxResourceLimits;
+}
+
 export interface PptxRenderedSvgSlide {
   data: Uint8Array;
   format: 'svg';
