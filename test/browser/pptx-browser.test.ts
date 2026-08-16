@@ -59,7 +59,7 @@ async function createImagePackage(imageBytes: Uint8Array): Promise<Uint8Array> {
   });
 }
 
-describe('PPTX public API in Chromium', () => {
+describe('PPTX public API in browsers', () => {
   it('keeps input forms and concurrent parses deterministic', async () => {
     const [firstBytes, secondBytes] = await Promise.all([
       createIndependentPptx({
@@ -158,7 +158,6 @@ describe('PPTX public API in Chromium', () => {
       );
       const loadedBytes = new Uint8Array(loadedBuffer);
       expect(loadedBytes).toEqual(imageBytes);
-      expect(navigator.userAgent).toContain('Chrome');
     } finally {
       URL.revokeObjectURL(image.blob);
     }
