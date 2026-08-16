@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { parsePptx, parsePptxWithDiagnostics } from '../../src';
+import {
+  createPptx,
+  parsePptx,
+  parsePptxWithDiagnostics,
+  type PptxSceneDocument,
+} from '../../src';
 import {
   createIndependentPptx,
   DRAWING_NS,
@@ -60,6 +65,63 @@ async function createImagePackage(imageBytes: Uint8Array): Promise<Uint8Array> {
 }
 
 describe('PPTX public API in browsers', () => {
+  it('creates deterministic packages and strictly reads them back', async () => {
+    const scene: PptxSceneDocument = {
+      layouts: [],
+      masters: [],
+      media: [],
+      schemaVersion: 2,
+      size: { height: 540, width: 960 },
+      slides: [
+        {
+          elements: [
+            {
+              authored: {
+                transform: { height: 60, width: 240, x: 20, y: 30 },
+              },
+              key: 'browser-text',
+              resolved: { hidden: false },
+              text: {
+                body: {},
+                paragraphs: [
+                  {
+                    children: [
+                      {
+                        key: 'browser-run',
+                        text: 'Created in browser',
+                        type: 'run',
+                      },
+                    ],
+                    key: 'browser-paragraph',
+                  },
+                ],
+              },
+              type: 'text',
+            },
+          ],
+          key: 'browser-slide',
+        },
+      ],
+      themes: [],
+    };
+
+    const [first, second] = await Promise.all([
+      createPptx(scene),
+      createPptx(scene),
+    ]);
+    const parsed = await parsePptx(first.data, {
+      errorMode: 'strict',
+      imageMode: 'none',
+    });
+
+    expect(second.data).toEqual(first.data);
+    expect(first.report.level).toBe('C1');
+    expect(first.report.addedPartCount).toBe(11);
+    expect(parsed.size).toEqual({ height: 540, width: 960 });
+    expect(parsed.slides).toHaveLength(1);
+    expect(JSON.stringify(parsed)).toContain('Created&nbsp;in&nbsp;browser');
+  });
+
   it('keeps input forms and concurrent parses deterministic', async () => {
     const [firstBytes, secondBytes] = await Promise.all([
       createIndependentPptx({
