@@ -126,6 +126,17 @@ function sortElementsByOrder<T extends { order: number }>(elements: T[]): T[] {
   return elements.sort((left, right) => left.order - right.order);
 }
 
+const STROKE_ONLY_PRESET_SHAPE_TYPES = new Set([
+  'arc',
+  'leftBrace',
+  'rightBrace',
+  'bracePair',
+  'leftBracket',
+  'rightBracket',
+  'bracketPair',
+  'lineInv',
+]);
+
 function throwResourceLimit(
   error: PptxResourceLimitError,
   diagnostics: PptxDiagnostic[],
@@ -1371,7 +1382,7 @@ async function genShape(
     ...(tailEnd ? { tailEnd } : {}),
   };
 
-  const hasText = Boolean(content && hasValidText(content));
+  const hasText = hasValidText(content);
   if (customGeometry) {
     const extension = attributes(nodeAt(slideXfrmNode, ['a:ext']));
     const customWidth = Number(extension.cx ?? 0) * RATIO_EMUs_Points;
@@ -1395,46 +1406,26 @@ async function genShape(
     return customShapeData;
   }
 
-  const shapePath = shapeType
-    ? getShapePath(shapeType, width, height, node)
-    : '';
-  const STROKE_ONLY_PRESET_SHAPE_TYPES = [
-    'arc',
-    'leftBrace',
-    'rightBrace',
-    'bracePair',
-    'leftBracket',
-    'rightBracket',
-    'bracketPair',
-    'lineInv',
-  ];
-  const isStrokeOnlyPresetShape =
-    shapeType !== undefined &&
-    STROKE_ONLY_PRESET_SHAPE_TYPES.includes(shapeType);
-
-  if (shapeType && (type === 'obj' || !type || shapeType !== 'rect')) {
-    return {
-      ...commonData,
-      type: 'shape',
-      content: hasText ? content : '',
-      shapType: shapeType,
-      path: shapePath,
-      pathViewBox,
-      keypoints,
-      ...(isStrokeOnlyPresetShape ? { strokeOnly: true } : {}),
-    };
-  }
-  if (shapeType && !hasText && (fill || borderWidth)) {
-    return {
-      ...commonData,
-      type: 'shape',
-      content: '',
-      shapType: shapeType,
-      path: shapePath,
-      pathViewBox,
-      keypoints,
-      ...(isStrokeOnlyPresetShape ? { strokeOnly: true } : {}),
-    };
+  if (shapeType !== undefined) {
+    const shouldRenderAsShape =
+      shapeType !== 'rect' ||
+      type === undefined ||
+      type === 'obj' ||
+      (!hasText && Boolean(fill || borderWidth));
+    if (shouldRenderAsShape) {
+      return {
+        ...commonData,
+        type: 'shape',
+        content: hasText ? content : '',
+        shapType: shapeType,
+        path: getShapePath(shapeType, width, height, node),
+        pathViewBox,
+        keypoints,
+        ...(STROKE_ONLY_PRESET_SHAPE_TYPES.has(shapeType)
+          ? { strokeOnly: true }
+          : {}),
+      };
+    }
   }
   return {
     ...commonData,
