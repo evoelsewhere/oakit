@@ -1,5 +1,8 @@
 import { parse } from '../parser';
-import { resolvePptxResourceLimits } from '../internal/resource-limits';
+import {
+  resolvePptxResourceLimits,
+  type ResolvedPptxResourceLimits,
+} from '../internal/resource-limits';
 import { PptxWriteError } from '../write-error';
 import type { PptxWriteReport, PptxWriteResult } from '../write-types';
 import {
@@ -48,11 +51,10 @@ function r0Report(copiedPartCount: number): PptxWriteReport {
   };
 }
 
-export async function writePptxRoundTrip(
+export async function writePptxRoundTripWithLimits(
   value: PptxRoundTripSnapshot,
-  options: PptxRoundTripWriteOptions = {},
+  limits: ResolvedPptxResourceLimits,
 ): Promise<PptxWriteResult> {
-  const limits = resolvePptxResourceLimits(options.limits);
   const validated = validatePptxRoundTripSnapshot(value, limits);
   const snapshot = structuredClone(validated);
   const normalized = await normalizePptxRoundTripInput(
@@ -117,4 +119,14 @@ export async function writePptxRoundTrip(
     data: normalized.bytes,
     report: r0Report(inspection.partCount),
   };
+}
+
+export async function writePptxRoundTrip(
+  value: PptxRoundTripSnapshot,
+  options: PptxRoundTripWriteOptions = {},
+): Promise<PptxWriteResult> {
+  return writePptxRoundTripWithLimits(
+    value,
+    resolvePptxResourceLimits(options.limits),
+  );
 }

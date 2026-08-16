@@ -1,10 +1,14 @@
 export {
   createPptx,
+  defaultPptxRoundTripPortableLimits,
   parsePptx,
+  parsePptxRoundTripJson,
   parsePptxWithDiagnostics,
   PptxParseError,
+  PptxRoundTripPortableLimitError,
   PptxWriteError,
   readPptxRoundTrip,
+  serializePptxRoundTripJson,
   validatePptxScene,
   writePptxRoundTrip,
 } from './formats/pptx/index';

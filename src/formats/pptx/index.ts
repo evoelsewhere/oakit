@@ -8,6 +8,12 @@ import type {
 
 export { validatePptxScene } from './scene-validation';
 export { createPptx } from './creator';
+export {
+  defaultPptxRoundTripPortableLimits,
+  parsePptxRoundTripJson,
+  PptxRoundTripPortableLimitError,
+  serializePptxRoundTripJson,
+} from './roundtrip/portable';
 export { readPptxRoundTrip } from './roundtrip/read';
 export { writePptxRoundTrip } from './roundtrip/write';
 
