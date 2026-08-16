@@ -17,13 +17,13 @@ describe('PowerPoint shape dispatch through the public API', () => {
             <p:grpSpPr/>
             <p:sp>
               <p:nvSpPr><p:cNvPr id="300"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr>
-              <p:spPr><a:xfrm flipH="1" flipV="1" rot="5400000"><a:off x="0" y="0"/><a:ext cx="914400" cy="457200"/></a:xfrm><a:prstGeom prst="rect"><a:avLst><a:gd name="valid" fmla="val 25000"/><a:gd name="trimmed" fmla=" val 10000 "/><a:gd name="multipleSpaces" fmla="val   15000"/><a:gd name="positive" fmla="val +5000"/><a:gd name="negative" fmla="val -5000"/><a:gd name="malformed" fmla="val nope"/><a:gd name="prefixed" fmla="junk val 10000"/><a:gd name="suffixed" fmla="val 10000 junk"/><a:gd name="characterPrefix" fmla="val x12000"/><a:gd name="calculated" fmla="*/ w 1 2"/><a:gd fmla="val 50000"/></a:avLst></a:prstGeom></p:spPr>
+              <p:spPr><a:xfrm flipH="1" flipV="1" rot="5400000"><a:off x="0" y="0"/><a:ext cx="914400" cy="457200"/></a:xfrm><a:prstGeom prst="rect"><a:avLst><a:gd name="valid" fmla="val 25000"/><a:gd name="trimmed" fmla=" val 10000 "/><a:gd name="multipleSpaces" fmla="val   15000"/><a:gd name="positive" fmla="val +5000"/><a:gd name="negative" fmla="val -5000"/><a:gd name="malformed" fmla="val nope"/><a:gd name="prefixed" fmla="junk val 10000"/><a:gd name="suffixed" fmla="val 10000 junk"/><a:gd name="characterPrefix" fmla="val x12000"/><a:gd name="calculated" fmla="*/ w 1 2"/><a:gd fmla="val 50000"/></a:avLst></a:prstGeom><a:ln w="12700"><a:solidFill><a:srgbClr val="112233"/></a:solidFill><a:headEnd type="triangle" w="sm" len="lg"/><a:tailEnd type="oval" w="med" len="sm"/></a:ln><a:effectLst><a:outerShdw blurRad="25400" dist="12700" dir="0"><a:srgbClr val="445566"/></a:outerShdw></a:effectLst></p:spPr>
             </p:sp>
             <p:sp>
               <p:nvSpPr><p:cNvPr id="301" name="Authored text box"/><p:cNvSpPr txBox="1"/><p:nvPr/></p:nvSpPr>
               <p:spPr><a:xfrm><a:off x="0" y="457200"/><a:ext cx="914400" cy="457200"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></p:spPr>
               <p:txXfrm rot="5400000"/>
-              <p:txBody><a:bodyPr/><a:lstStyle/><a:p><a:r><a:t>Authored text</a:t></a:r></a:p></p:txBody>
+              <p:txBody><a:bodyPr vert="eaVert" wrap="none" lIns="914400" tIns="457200" rIns="1828800" bIns="228600"/><a:lstStyle/><a:p><a:r><a:t>Authored text</a:t></a:r></a:p></p:txBody>
             </p:sp>
             <p:sp>
               <p:nvSpPr><p:cNvPr id="302" name="Layout typed"/><p:cNvSpPr/><p:nvPr><p:ph idx="7"/></p:nvPr></p:nvSpPr>
@@ -90,6 +90,9 @@ describe('PowerPoint shape dispatch through the public API', () => {
       left: 0,
       name: '',
       rotate: 90,
+      shadow: { blur: 2, color: '#445566', h: 1, v: 0 },
+      headEnd: { length: 'lg', type: 'triangle', width: 'sm' },
+      tailEnd: { length: 'sm', type: 'oval', width: 'med' },
       top: 0,
       type: 'shape',
       width: 72,
@@ -112,10 +115,13 @@ describe('PowerPoint shape dispatch through the public API', () => {
       name: 'Authored text box',
       isFlipH: false,
       isFlipV: false,
+      isVertical: true,
       rotate: 180,
+      textInset: { b: 18, l: 72, r: 144, t: 36 },
       top: 36,
       type: 'text',
       width: 72,
+      wrap: false,
     });
     expect(authoredTextBox?.type).toBe('text');
     if (authoredTextBox?.type !== 'text') {
@@ -143,6 +149,8 @@ describe('PowerPoint shape dispatch through the public API', () => {
       top: 144,
       type: 'text',
       width: 144,
+      isVertical: false,
+      wrap: true,
     });
     expect(byId['305']).toMatchObject({
       height: 36,
