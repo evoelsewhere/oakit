@@ -9,15 +9,16 @@
 </p>
 
 OAKit gives agents and automation systems a reliable way to read, understand,
-edit, and eventually generate PowerPoint, Excel, and Word documents through a
-consistent structured model. It owns the difficult OOXML work—ZIP packages,
-relationships, inheritance, units, media, malformed input, and producer
-differences—so agent workflows can operate on meaningful document data instead
-of raw XML.
+preserve, preview, and create supported PowerPoint content through a consistent
+structured model, with Excel and Word on the same product path. It owns the
+difficult OOXML work—ZIP packages, relationships, inheritance, units, media,
+malformed input, and producer differences—so agent workflows can operate on
+meaningful document data instead of raw XML.
 
-> **Project status:** pre-stable (`0.0.0`). The implemented public capability is
-> PowerPoint (`.pptx`) reading. Excel, Word, and document writing are product
-> direction, not completed APIs yet.
+> **Project status:** pre-stable (`0.0.x`). Implemented PowerPoint capabilities
+> include bounded reading, text-focused `C1` creation, byte-exact `R0` portable
+> hand-offs, and Office-free SVG/PNG previews. Semantic editing, Excel, and Word
+> remain product direction rather than completed APIs.
 
 ## Why OAKit
 
@@ -41,11 +42,17 @@ agent runtime, tool-calling protocol, or vector database.
 
 ## Format support
 
-| Format               | Read | Write | Status                      |
-| -------------------- | ---- | ----- | --------------------------- |
-| PowerPoint (`.pptx`) | Yes  | No    | Active fidelity development |
-| Excel (`.xlsx`)      | No   | No    | Planned                     |
-| Word (`.docx`)       | No   | No    | Planned                     |
+| Format               | Read | Create          | Preserve      | Preview |
+| -------------------- | ---- | --------------- | ------------- | ------- |
+| PowerPoint (`.pptx`) | Yes  | Text-focused C1 | Byte-exact R0 | SVG/PNG |
+| Excel (`.xlsx`)      | No   | No              | No            | No      |
+| Word (`.docx`)       | No   | No              | No            | No      |
+
+`C1` means a new package is valid and reparses to the supported source-free
+scene. `R0` means an unchanged source package is restored byte for byte through
+runtime or portable JSON. Neither level claims arbitrary semantic editing,
+full reconstruction from normalized JSON, or pixel-identical PowerPoint
+rendering.
 
 The PowerPoint reader currently handles:
 
@@ -83,8 +90,9 @@ brew install evoelsewhere/tap/oakit
 The Homebrew formula installs the `oakit` executable. Use npm or pnpm when the
 programmatic JavaScript API is required.
 
-The npm package and Homebrew formula have not been published yet. Until then,
-use the repository directly for development.
+The npm release and Homebrew formula are distributed independently. When a
+registry release is not available for the desired version, use the repository
+directly for development.
 
 ## Command-line interface
 
@@ -92,7 +100,7 @@ The package installs the `oakit` executable for deterministic Office-to-JSON
 workflows in terminals, scripts, CI jobs, and agent sandboxes. The current CLI
 accepts PowerPoint (`.pptx`) input.
 
-Install it globally after the first npm release:
+Install the published CLI globally from npm:
 
 ```bash
 npm install --global @evoelsewhere/oakit
@@ -421,6 +429,62 @@ Elements use a discriminated `type` field:
 Text is returned as an escaped HTML fragment. Applications that inject
 document HTML into a page should still apply their own sanitizer as defense in
 depth.
+
+### Create bounded text presentations
+
+`createPptx` accepts the versioned scene model, validates it strictly, and
+returns deterministic package bytes with a `C1` fidelity report. The current
+creation profile supports source-free slides containing structured text; it
+rejects unsupported scene elements rather than emitting a guessed package.
+
+```ts
+import { writeFile } from 'node:fs/promises';
+import { createPptx, type PptxSceneDocument } from '@evoelsewhere/oakit';
+
+const scene: PptxSceneDocument = {
+  layouts: [],
+  masters: [],
+  media: [],
+  schemaVersion: 2,
+  size: { height: 540, width: 960 },
+  slides: [
+    {
+      elements: [
+        {
+          authored: {
+            transform: { height: 80, width: 600, x: 40, y: 40 },
+          },
+          key: 'title',
+          resolved: { hidden: false },
+          text: {
+            body: { anchor: 'center', wrap: true },
+            paragraphs: [
+              {
+                children: [
+                  {
+                    key: 'title-run',
+                    properties: { bold: true, fontSize: 28 },
+                    text: 'Agent-ready presentation',
+                    type: 'run',
+                  },
+                ],
+                key: 'title-paragraph',
+              },
+            ],
+          },
+          type: 'text',
+        },
+      ],
+      key: 'slide-1',
+    },
+  ],
+  themes: [],
+};
+
+const created = await createPptx(scene);
+await writeFile('created.pptx', created.data);
+console.log(created.report.level); // C1
+```
 
 ### Agent-ready slide previews without Office
 
