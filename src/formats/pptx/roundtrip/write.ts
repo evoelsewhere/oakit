@@ -56,6 +56,12 @@ export async function writePptxRoundTripWithLimits(
   limits: ResolvedPptxResourceLimits,
 ): Promise<PptxWriteResult> {
   const validated = validatePptxRoundTripSnapshot(value, limits);
+  if (validated.operations.length !== 0) {
+    throw new PptxWriteError(
+      'unsupported-edit-operation',
+      'PowerPoint text edit writing is not enabled',
+    );
+  }
   const snapshot = structuredClone(validated);
   const normalized = await normalizePptxRoundTripInput(
     snapshot.source.data,

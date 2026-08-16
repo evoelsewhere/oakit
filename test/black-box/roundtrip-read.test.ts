@@ -98,7 +98,7 @@ describe('PowerPoint round-trip reading through the public API', () => {
     });
     expect(snapshot.consistency).toMatchObject({
       canonicalizationVersion: 'canonical-json-v1',
-      capabilityProfileVersion: 'pptx-roundtrip-r0-v1',
+      capabilityProfileVersion: 'pptx-roundtrip-text-v1',
       contractVersion: '1',
       hashAlgorithm: 'sha256',
       keyAlgorithmVersion: 'pptx-scene-key-v1',

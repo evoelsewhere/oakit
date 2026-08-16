@@ -261,7 +261,7 @@ function registerKey(
   return value;
 }
 
-function isValidXmlText(value: string): boolean {
+export function isValidXmlText(value: string): boolean {
   for (const character of value) {
     if (character.length === 2) continue;
     const codeUnit = character.charCodeAt(0);

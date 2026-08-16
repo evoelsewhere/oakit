@@ -31,11 +31,21 @@ export interface PptxSnapshotConsistency {
   sourceManifestSha256: string;
 }
 
+export interface PptxRoundTripReplaceTextOperation {
+  expectedText: string;
+  id: string;
+  kind: 'replace-text';
+  targetKey: string;
+  value: string;
+}
+
+export type PptxRoundTripOperation = PptxRoundTripReplaceTextOperation;
+
 export interface PptxRoundTripSnapshot {
   consistency: PptxSnapshotConsistency;
   document: PptxSceneDocument;
   format: 'pptx';
-  operations: [];
+  operations: PptxRoundTripOperation[];
   schemaVersion: 1;
   source: PptxRoundTripRuntimeSource;
   supportProfile: PptxWriteSupportProfile;
@@ -45,7 +55,7 @@ export interface PptxRoundTripPortableJson {
   consistency: PptxSnapshotConsistency;
   document: PptxSceneDocument;
   format: 'pptx';
-  operations: [];
+  operations: PptxRoundTripOperation[];
   schemaVersion: 1;
   source: PptxRoundTripPortableSource;
   supportProfile: PptxWriteSupportProfile;

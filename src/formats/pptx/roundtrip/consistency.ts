@@ -10,7 +10,7 @@ export const PPTX_ROUND_TRIP_CONTRACT_VERSION = '1';
 export const PPTX_ROUND_TRIP_KEY_ALGORITHM_VERSION = 'pptx-scene-key-v1';
 export const PPTX_ROUND_TRIP_CANONICALIZATION_VERSION = 'canonical-json-v1';
 export const PPTX_ROUND_TRIP_CAPABILITY_PROFILE_VERSION =
-  'pptx-roundtrip-r0-v1';
+  'pptx-roundtrip-text-v1';
 
 export interface PptxRoundTripConsistencyInput {
   document: PptxSceneDocument;
@@ -57,6 +57,15 @@ export function createPptxRoundTripSupportProfile(): PptxWriteSupportProfile {
   return {
     effectiveLevel: 'R0',
     id: 'pptx-roundtrip-r0',
+    producerMatrix: [],
+    version: '1',
+  };
+}
+
+export function createPptxRoundTripTextEditSupportProfile(): PptxWriteSupportProfile {
+  return {
+    effectiveLevel: 'R2',
+    id: 'pptx-roundtrip-text-v1',
     producerMatrix: [],
     version: '1',
   };

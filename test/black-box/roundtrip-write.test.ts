@@ -62,10 +62,6 @@ async function sourceSnapshot(): Promise<{
   };
 }
 
-function record(value: unknown): Record<string, unknown> {
-  return value as Record<string, unknown>;
-}
-
 describe('PowerPoint exact round-trip writing through the public API', () => {
   it('returns an independent byte-identical package with an exact R0 report', async () => {
     const { bytes, snapshot } = await sourceSnapshot();
@@ -160,11 +156,29 @@ describe('PowerPoint exact round-trip writing through the public API', () => {
 
   it('rejects edit operations before reading source bytes', async () => {
     const { snapshot } = await sourceSnapshot();
-    record(snapshot).operations = [{ type: 'replace-text' }];
+    const element = snapshot.document.slides[0]?.elements[0];
+    if (element?.type !== 'text') throw new Error('Expected editable text');
+    const run = element.text.paragraphs[0]?.children[0];
+    if (run?.type !== 'run') throw new Error('Expected editable text run');
+    snapshot.operations = [
+      {
+        expectedText: run.text,
+        id: 'replace-text-1',
+        kind: 'replace-text',
+        targetKey: run.key,
+        value: 'After',
+      },
+    ];
+    snapshot.supportProfile = {
+      effectiveLevel: 'R2',
+      id: 'pptx-roundtrip-text-v1',
+      producerMatrix: [],
+      version: '1',
+    };
 
     await expect(writePptxRoundTrip(snapshot)).rejects.toMatchObject({
       code: 'unsupported-edit-operation',
-      message: 'PowerPoint R0 round-trip does not support edit operations',
+      message: 'PowerPoint text edit writing is not enabled',
     });
   });
 

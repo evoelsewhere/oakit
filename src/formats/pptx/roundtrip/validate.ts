@@ -2,7 +2,7 @@ import {
   assertPptxInputWithinLimits,
   type ResolvedPptxResourceLimits,
 } from '../internal/resource-limits';
-import { validatePptxScene } from '../scene-validation';
+import { isValidXmlText, validatePptxScene } from '../scene-validation';
 import { PptxWriteError } from '../write-error';
 import {
   PPTX_ROUND_TRIP_CANONICALIZATION_VERSION,
@@ -44,6 +44,13 @@ const CONSISTENCY_KEYS = [
   'operationsSha256',
   'semanticPreviewSha256',
   'sourceManifestSha256',
+] as const;
+const OPERATION_KEYS = [
+  'expectedText',
+  'id',
+  'kind',
+  'targetKey',
+  'value',
 ] as const;
 const SHA256_PATTERN = /^[0-9a-f]{64}$/;
 
@@ -136,7 +143,7 @@ function validateSource(
   );
 }
 
-function validateSupportProfile(value: unknown): void {
+function validateSupportProfile(value: unknown, hasOperations: boolean): void {
   const profile = exactRecord(
     value,
     SUPPORT_PROFILE_KEYS,
@@ -144,12 +151,14 @@ function validateSupportProfile(value: unknown): void {
   );
   assertLiteral(
     profile.effectiveLevel,
-    'R0',
-    'PowerPoint round-trip snapshot support level must be R0',
+    hasOperations ? 'R2' : 'R0',
+    hasOperations
+      ? 'PowerPoint text edit snapshot support level must be R2'
+      : 'PowerPoint round-trip snapshot support level must be R0',
   );
   assertLiteral(
     profile.id,
-    'pptx-roundtrip-r0',
+    hasOperations ? 'pptx-roundtrip-text-v1' : 'pptx-roundtrip-r0',
     'PowerPoint round-trip snapshot support profile id is unsupported',
   );
   assertLiteral(
@@ -164,8 +173,99 @@ function validateSupportProfile(value: unknown): void {
   }
   if (profile.producerMatrix.length !== 0) {
     invalidSnapshot(
-      'PowerPoint round-trip R0 snapshot cannot claim producer evidence',
+      'PowerPoint round-trip snapshot cannot claim unverified producer evidence',
     );
+  }
+}
+
+function editableRuns(
+  value: PptxRoundTripSnapshot['document'],
+): Map<string, string> {
+  const runs = new Map<string, string>();
+  for (const slide of value.slides) {
+    for (const element of slide.elements) {
+      if (element.type !== 'text') continue;
+      for (const paragraph of element.text.paragraphs) {
+        for (const child of paragraph.children) {
+          if (child.type !== 'run') continue;
+          if (runs.has(child.key)) {
+            invalidSnapshot(
+              'PowerPoint round-trip snapshot contains an ambiguous text target',
+            );
+          }
+          runs.set(child.key, child.text);
+        }
+      }
+    }
+  }
+  return runs;
+}
+
+function validateOperations(
+  values: unknown[],
+  document: PptxRoundTripSnapshot['document'],
+  limits: ResolvedPptxResourceLimits,
+): void {
+  const runs = editableRuns(document);
+  const ids = new Set<string>();
+  const targets = new Set<string>();
+  for (const [index, value] of values.entries()) {
+    const operation = exactRecord(
+      value,
+      OPERATION_KEYS,
+      `PowerPoint round-trip operation ${index + 1} has an invalid shape`,
+    );
+    assertLiteral(
+      operation.kind,
+      'replace-text',
+      `PowerPoint round-trip operation ${index + 1} kind is unsupported`,
+    );
+    for (const key of ['expectedText', 'id', 'targetKey', 'value'] as const) {
+      if (typeof operation[key] !== 'string') {
+        invalidSnapshot(
+          `PowerPoint round-trip operation ${index + 1} ${key} must be a string`,
+        );
+      }
+    }
+    const id = operation.id as string;
+    const targetKey = operation.targetKey as string;
+    const expectedText = operation.expectedText as string;
+    const replacement = operation.value as string;
+    if (id.length === 0 || ids.has(id)) {
+      invalidSnapshot('PowerPoint round-trip operation ids must be unique');
+    }
+    if (targetKey.length === 0 || targets.has(targetKey)) {
+      invalidSnapshot(
+        'PowerPoint round-trip text edit targets must be non-empty and unique',
+      );
+    }
+    ids.add(id);
+    targets.add(targetKey);
+    const sourceText = runs.get(targetKey);
+    if (sourceText === undefined) {
+      invalidSnapshot('PowerPoint round-trip text edit target does not exist');
+    }
+    if (sourceText !== expectedText) {
+      invalidSnapshot(
+        'PowerPoint round-trip text edit precondition does not match the preview',
+      );
+    }
+    if (replacement === expectedText) {
+      invalidSnapshot('PowerPoint round-trip text edit must change the value');
+    }
+    if (!isValidXmlText(replacement)) {
+      invalidSnapshot(
+        'PowerPoint round-trip text edit value is not safe XML text',
+      );
+    }
+    if (
+      replacement.length > limits.maxXmlBytes ||
+      new TextEncoder().encode(replacement).byteLength > limits.maxXmlBytes
+    ) {
+      invalidSnapshot(
+        'PowerPoint round-trip text edit value exceeds the XML part byte limit',
+      );
+    }
   }
 }
 
@@ -244,16 +344,8 @@ export function validatePptxRoundTripSnapshot(
       'PowerPoint round-trip snapshot operations must be an array',
     );
   }
-  if (snapshot.operations.length !== 0) {
-    throw new PptxWriteError(
-      'unsupported-edit-operation',
-      'PowerPoint R0 round-trip does not support edit operations',
-    );
-  }
 
   validateSource(snapshot.source, limits);
-  validateSupportProfile(snapshot.supportProfile);
-  validateConsistency(snapshot.consistency);
   const sceneValidation = validatePptxScene(snapshot.document);
   if (!sceneValidation.valid) {
     throw new PptxWriteError(
@@ -262,6 +354,16 @@ export function validatePptxRoundTripSnapshot(
       { issues: sceneValidation.issues },
     );
   }
+  validateOperations(
+    snapshot.operations,
+    snapshot.document as PptxRoundTripSnapshot['document'],
+    limits,
+  );
+  validateSupportProfile(
+    snapshot.supportProfile,
+    snapshot.operations.length !== 0,
+  );
+  validateConsistency(snapshot.consistency);
 
   return snapshot as unknown as PptxRoundTripSnapshot;
 }

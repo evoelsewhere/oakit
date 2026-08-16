@@ -3,6 +3,7 @@ import type { PptxSceneValidationIssue } from './scene-types';
 export type PptxFidelityLevel = 'C1' | 'C2' | 'C3' | 'R0' | 'R1' | 'R2' | 'R3';
 
 export type PptxWriteErrorCode =
+  | 'invalid-edit-operation'
   | 'invalid-scene'
   | 'invalid-snapshot'
   | 'package-build-failed'

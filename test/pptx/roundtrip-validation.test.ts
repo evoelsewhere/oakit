@@ -10,7 +10,7 @@ function snapshot(): PptxRoundTripSnapshot {
   return {
     consistency: {
       canonicalizationVersion: 'canonical-json-v1',
-      capabilityProfileVersion: 'pptx-roundtrip-r0-v1',
+      capabilityProfileVersion: 'pptx-roundtrip-text-v1',
       contractVersion: '1',
       hashAlgorithm: 'sha256',
       keyAlgorithmVersion: 'pptx-scene-key-v1',
@@ -150,11 +150,56 @@ describe('PowerPoint round-trip snapshot contract validation', () => {
         rootRecord(value).operations = [{ type: 'replaceText' }];
         return value;
       },
-      'unsupported-edit-operation',
-      'PowerPoint R0 round-trip does not support edit operations',
+      'invalid-snapshot',
+      'PowerPoint round-trip operation 1 has an invalid shape',
     ],
   ])('rejects %s', (_name, create, code, message) => {
     expectInvalid(create(), code, message);
+  });
+
+  it('accepts a text edit with an exact preview precondition and R2 profile', () => {
+    const value = snapshot();
+    value.document.slides = [
+      {
+        elements: [
+          {
+            authored: {},
+            key: 'text-1',
+            resolved: { hidden: false },
+            text: {
+              body: {},
+              paragraphs: [
+                {
+                  children: [{ key: 'run-1', text: 'Before', type: 'run' }],
+                  key: 'paragraph-1',
+                },
+              ],
+            },
+            type: 'text',
+          },
+        ],
+        key: 'slide-1',
+      },
+    ];
+    value.operations = [
+      {
+        expectedText: 'Before',
+        id: 'replace-text-1',
+        kind: 'replace-text',
+        targetKey: 'run-1',
+        value: 'After',
+      },
+    ];
+    value.supportProfile = {
+      effectiveLevel: 'R2',
+      id: 'pptx-roundtrip-text-v1',
+      producerMatrix: [],
+      version: '1',
+    };
+
+    expect(
+      validatePptxRoundTripSnapshot(value, resolvePptxResourceLimits()),
+    ).toBe(value);
   });
 
   it.each([
@@ -326,7 +371,7 @@ describe('PowerPoint round-trip snapshot contract validation', () => {
       (value: PptxRoundTripSnapshot) => {
         nestedRecord(value, 'supportProfile').producerMatrix = ['PowerPoint'];
       },
-      'PowerPoint round-trip R0 snapshot cannot claim producer evidence',
+      'PowerPoint round-trip snapshot cannot claim unverified producer evidence',
     ],
   ])('rejects support profile %s', (_name, mutate, message) => {
     const value = snapshot();

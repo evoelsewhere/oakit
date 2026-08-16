@@ -105,7 +105,7 @@ describe('PowerPoint round-trip snapshot consistency', () => {
       keyAlgorithmVersion: PPTX_ROUND_TRIP_KEY_ALGORITHM_VERSION,
     }).toEqual({
       canonicalizationVersion: 'canonical-json-v1',
-      capabilityProfileVersion: 'pptx-roundtrip-r0-v1',
+      capabilityProfileVersion: 'pptx-roundtrip-text-v1',
       contractVersion: '1',
       keyAlgorithmVersion: 'pptx-scene-key-v1',
     });
@@ -132,7 +132,7 @@ describe('PowerPoint round-trip snapshot consistency', () => {
 
     expect(consistency).toEqual({
       canonicalizationVersion: 'canonical-json-v1',
-      capabilityProfileVersion: 'pptx-roundtrip-r0-v1',
+      capabilityProfileVersion: 'pptx-roundtrip-text-v1',
       contractVersion: '1',
       hashAlgorithm: 'sha256',
       keyAlgorithmVersion: 'pptx-scene-key-v1',
