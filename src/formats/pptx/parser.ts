@@ -1619,41 +1619,28 @@ async function processGraphicFrameNode(
   warpObj: PptxParserContext,
   source: string,
 ): Promise<ElementDraft | null> {
-  const graphicTypeUri = textAt(node, [
-    'a:graphic',
-    'a:graphicData',
-    'attrs',
-    'uri',
-  ]);
+  const graphicData = nodeAt(node, ['a:graphic', 'a:graphicData']);
+  const graphicTypeUri = textAt(graphicData, ['attrs', 'uri']);
 
-  let result: ElementDraft | null = null;
   switch (graphicTypeUri) {
     case 'http://schemas.openxmlformats.org/drawingml/2006/table':
-      result = genTable(node, warpObj);
-      break;
+      return genTable(node, warpObj);
     case 'http://schemas.openxmlformats.org/drawingml/2006/chart':
-      result = await genChart(node, warpObj);
-      break;
+      return await genChart(node, warpObj);
     case 'http://schemas.openxmlformats.org/drawingml/2006/diagram':
-      result = await genDiagram(node, warpObj);
-      break;
+      return await genDiagram(node, warpObj);
     case 'http://schemas.openxmlformats.org/presentationml/2006/ole': {
-      let oleObject = nodeAt(node, [
-        'a:graphic',
-        'a:graphicData',
-        'mc:AlternateContent',
-        'mc:Fallback',
-        'p:oleObj',
-      ]);
-      if (!oleObject)
-        oleObject = nodeAt(node, ['a:graphic', 'a:graphicData', 'p:oleObj']);
-      if (oleObject)
-        result = await processGroupSpNode(oleObject, warpObj, source);
-      break;
+      const alternateContent = nodeAt(graphicData, ['mc:AlternateContent']);
+      const oleObject =
+        nodeAt(alternateContent, ['mc:Choice', 'p:oleObj']) ??
+        nodeAt(alternateContent, ['mc:Fallback', 'p:oleObj']) ??
+        nodeAt(graphicData, ['p:oleObj']);
+      const preview = nodeAt(oleObject, ['p:pic']);
+      return preview ? await processPicNode(preview, warpObj, source) : null;
     }
     default:
+      return null;
   }
-  return result;
 }
 
 function genTable(
