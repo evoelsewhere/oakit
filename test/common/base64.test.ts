@@ -65,6 +65,7 @@ describe('runtime-neutral base64 encoding', () => {
     'AA\nE=',
     'AA-E',
     'AA_E',
+    '{AAA',
     '=AAA',
     'A=AA',
     'AA=A',
@@ -99,4 +100,18 @@ describe('runtime-neutral base64 encoding', () => {
     decoded.fill(0);
     expect(input[255]).toBe(255);
   });
+
+  it('accepts every RFC 4648 alphabet character', () => {
+    const encoded =
+      'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+
+    expect(decodedBase64ByteLength(encoded)).toBe(48);
+    expect(encodeBase64(decodeBase64(encoded))).toBe(encoded);
+  });
+
+  it('validates a large canonical value without recursive regular expressions', () => {
+    const encoded = 'A'.repeat(4_500_000);
+
+    expect(decodedBase64ByteLength(encoded)).toBe(3_375_000);
+  }, 15_000);
 });

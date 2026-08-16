@@ -2,10 +2,27 @@ function base64Alphabet(): string {
   return 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
 }
 
-function isCanonicalBase64(input: string): boolean {
-  return /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(
-    input,
+function isBase64Character(code: number): boolean {
+  return (
+    (code >= 65 && code <= 90) ||
+    (code >= 97 && code <= 122) ||
+    (code >= 48 && code <= 57) ||
+    code === 43 ||
+    code === 47
   );
+}
+
+function hasBase64Syntax(input: string): boolean {
+  if (input.length % 4 !== 0) return false;
+  let contentLength = input.indexOf('=');
+  if (contentLength === -1) contentLength = input.length;
+  for (let index = 0; index < contentLength; index += 1) {
+    if (!isBase64Character(input.charCodeAt(index))) return false;
+  }
+  for (let index = contentLength; index < input.length; index += 1) {
+    if (input.charAt(index) !== '=') return false;
+  }
+  return true;
 }
 
 function invalidBase64(): never {
@@ -14,7 +31,7 @@ function invalidBase64(): never {
 
 /** Return the decoded size after validating canonical RFC 4648 Base64. */
 export function decodedBase64ByteLength(input: string): number {
-  if (!isCanonicalBase64(input)) invalidBase64();
+  if (!hasBase64Syntax(input)) invalidBase64();
   const alphabet = base64Alphabet();
   const padding = input.endsWith('==') ? 2 : input.endsWith('=') ? 1 : 0;
   if (padding === 2) {
