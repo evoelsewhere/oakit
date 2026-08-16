@@ -1467,16 +1467,11 @@ async function processPicNode(
     : undefined;
   if (!imageName) return null;
 
-  let xfrmNode = nodeAt(node, ['p:spPr', 'a:xfrm']);
-  if (!xfrmNode) {
-    const index = textAt(node, ['p:nvPicPr', 'p:nvPr', 'p:ph', 'attrs', 'idx']);
-    if (index) {
-      xfrmNode = nodeAt(warpObj.slideLayoutTables.idxTable[index], [
-        'p:spPr',
-        'a:xfrm',
-      ]);
-    }
-  }
+  const index = textAt(node, ['p:nvPicPr', 'p:nvPr', 'p:ph', 'attrs', 'idx']);
+  const inheritedXfrmNode = index
+    ? nodeAt(warpObj.slideLayoutTables.idxTable[index], ['p:spPr', 'a:xfrm'])
+    : undefined;
+  const xfrmNode = nodeAt(node, ['p:spPr', 'a:xfrm']) ?? inheritedXfrmNode;
 
   const { top, left } = getPosition(xfrmNode, undefined, undefined);
   const { width, height } = getSize(xfrmNode, undefined, undefined);
@@ -1486,16 +1481,21 @@ async function processPicNode(
   const isFlipH = textAt(xfrmNode, ['attrs', 'flipH']) === '1';
   const rotate = angleToDegrees(textAt(xfrmNode, ['attrs', 'rot']));
 
-  const videoNode = nodeAt(node, ['p:nvPicPr', 'p:nvPr', 'a:videoFile']);
+  const videoRelationshipId = textAt(node, [
+    'p:nvPicPr',
+    'p:nvPr',
+    'a:videoFile',
+    'attrs',
+    'r:link',
+  ]);
+  const videoFile = videoRelationshipId
+    ? relationships[videoRelationshipId]?.target
+    : undefined;
   let videoData: Pick<PptxMediaData, 'blob' | 'ref'> | undefined;
-  if (videoNode) {
-    const videoRelationshipId = textAt(videoNode, ['attrs', 'r:link']);
-    const videoFile = videoRelationshipId
-      ? relationships[videoRelationshipId]?.target
-      : undefined;
-    if (videoFile && isVideoLink(videoFile)) {
+  if (videoFile) {
+    if (isVideoLink(videoFile)) {
       videoData = { ref: videoFile, blob: '' };
-    } else if (videoFile) {
+    } else {
       const extension = extractFileExtension(videoFile).toLowerCase();
       if (extension === 'mp4' || extension === 'webm' || extension === 'ogg') {
         videoData = await getVideoData(videoFile, warpObj);
@@ -1505,22 +1505,22 @@ async function processPicNode(
     }
   }
 
-  const audioNode = nodeAt(node, ['p:nvPicPr', 'p:nvPr', 'a:audioFile']);
+  const audioRelationshipId = textAt(node, [
+    'p:nvPicPr',
+    'p:nvPr',
+    'a:audioFile',
+    'attrs',
+    'r:link',
+  ]);
+  const audioFile = audioRelationshipId
+    ? relationships[audioRelationshipId]?.target
+    : undefined;
   let audioData: Pick<PptxMediaData, 'blob' | 'ref'> | undefined;
-  if (audioNode) {
-    const audioRelationshipId = textAt(audioNode, ['attrs', 'r:link']);
-    const audioFile = audioRelationshipId
-      ? relationships[audioRelationshipId]?.target
-      : undefined;
-    const extension = audioFile
-      ? extractFileExtension(audioFile).toLowerCase()
-      : '';
-    if (
-      audioFile &&
-      (extension === 'mp3' || extension === 'wav' || extension === 'ogg')
-    ) {
+  if (audioFile) {
+    const extension = extractFileExtension(audioFile).toLowerCase();
+    if (extension === 'mp3' || extension === 'wav' || extension === 'ogg') {
       audioData = await getAudioData(audioFile, warpObj);
-    } else if (audioFile) {
+    } else {
       audioData = { ref: audioFile, blob: '' };
     }
   }
