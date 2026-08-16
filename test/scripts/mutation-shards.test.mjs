@@ -1,0 +1,95 @@
+import { describe, expect, it } from 'vitest';
+
+import { mergeMutationReports } from '../../scripts/merge-mutation-reports.mjs';
+import { mutatedFiles } from '../../scripts/mutation-scope.mjs';
+import { createMutationShards } from '../../scripts/mutation-shards.mjs';
+
+function report(files, schemaVersion = '1.0') {
+  return {
+    config: { mutate: Object.keys(files) },
+    files,
+    framework: { name: 'vitest' },
+    projectRoot: '/workspace',
+    schemaVersion,
+    testFiles: {},
+    thresholds: { high: 100, low: 100 },
+  };
+}
+
+describe('mutation report sharding', () => {
+  it('assigns every configured source to exactly one balanced shard', () => {
+    const weights = new Map(
+      mutatedFiles.map((file, index) => [file, index + 1]),
+    );
+    const shards = createMutationShards(mutatedFiles, 8, (file) =>
+      weights.get(file),
+    );
+    const flattened = shards.flat();
+
+    expect(shards).toHaveLength(8);
+    expect(new Set(flattened).size).toBe(mutatedFiles.length);
+    expect(flattened.toSorted()).toEqual(mutatedFiles.toSorted());
+    expect(shards.every((shard) => shard.length > 0)).toBe(true);
+  });
+
+  it.each([0, -1, 1.5, Number.MAX_SAFE_INTEGER + 1])(
+    'rejects invalid shard count %s',
+    (count) => {
+      expect(() => createMutationShards(['a.ts'], count, () => 1)).toThrow(
+        'Mutation shard count must be a positive integer',
+      );
+    },
+  );
+
+  it('rejects excess shards, duplicate files, and invalid weights', () => {
+    expect(() => createMutationShards(['a.ts'], 2, () => 1)).toThrow(
+      'Mutation shard count must not exceed the file count',
+    );
+    expect(() => createMutationShards(['a.ts', 'a.ts'], 1, () => 1)).toThrow(
+      'Mutation shard input contains duplicate files',
+    );
+    expect(() => createMutationShards(['a.ts'], 1, () => 0)).toThrow(
+      'Mutation shard weights must be positive integers',
+    );
+  });
+
+  it('merges complete disjoint reports in configured file order', () => {
+    const merged = mergeMutationReports(
+      [
+        report({ 'b.ts': { mutants: [] } }),
+        report({ 'a.ts': { mutants: [] } }),
+      ],
+      ['a.ts', 'b.ts'],
+    );
+
+    expect(Object.keys(merged.files)).toEqual(['a.ts', 'b.ts']);
+    expect(merged.config.mutate).toEqual(['a.ts', 'b.ts']);
+  });
+
+  it('rejects empty, malformed, mismatched, duplicate, missing, and extra reports', () => {
+    expect(() => mergeMutationReports([], ['a.ts'])).toThrow(
+      'At least one mutation shard report is required',
+    );
+    expect(() => mergeMutationReports([null], ['a.ts'])).toThrow(
+      'Mutation shard report must be an object',
+    );
+    expect(() =>
+      mergeMutationReports(
+        [report({ 'a.ts': {} }), report({ 'b.ts': {} }, '2.0')],
+        ['a.ts', 'b.ts'],
+      ),
+    ).toThrow('Mutation shard schema versions do not match');
+    expect(() =>
+      mergeMutationReports(
+        [report({ 'a.ts': {} }), report({ 'a.ts': {} })],
+        ['a.ts'],
+      ),
+    ).toThrow('Duplicate mutation report file: a.ts');
+    expect(() => mergeMutationReports([report({})], ['a.ts'])).toThrow(
+      'Missing mutation report file: a.ts',
+    );
+    expect(() =>
+      mergeMutationReports([report({ 'b.ts': {} })], ['a.ts']),
+    ).toThrow('Unexpected mutation report file: b.ts');
+  });
+});

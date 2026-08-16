@@ -115,9 +115,13 @@ jobs:
       - run: pnpm test:corpus:large
 
   mutation:
-    name: Complete PowerPoint mutation suite
+    name: PowerPoint mutation shard ${{ matrix.shard }} of 8
     runs-on: ubuntu-latest
     timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4, 5, 6, 7, 8]
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -128,10 +132,43 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm test:mutation
+      - name: Run forced mutation shard
+        run: |
+          mutate_files="$(node scripts/mutation-shards.mjs '${{ matrix.shard }}' 8)"
+          MUTATION_FILES="$mutate_files" \
+          MUTATION_REPORT="reports/mutation/shard-${{ matrix.shard }}.json" \
+            pnpm exec stryker run stryker.shard.config.mjs --force
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mutation-shard-${{ matrix.shard }}
+          path: reports/mutation/shard-${{ matrix.shard }}.json
+          if-no-files-found: error
+
+  mutation-audit:
+    name: Complete PowerPoint mutation audit
+    needs: mutation
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: mutation-shard-*
+          path: reports/mutation/shards
+      - run: node scripts/merge-mutation-reports.mjs
+      - run: pnpm test:mutation:audit
       - if: always()
         uses: actions/upload-artifact@v4
         with:
           name: mutation-report
-          path: reports/mutation
+          path: reports/mutation/mutation.json
           if-no-files-found: error
