@@ -117,17 +117,16 @@ export function getDiagramDrawingRelId(
 }
 
 function relationshipTarget(
-  context: PptxParserContext,
+  relationships: PptxRelationshipMap,
   relationshipId: string | undefined,
 ): string | undefined {
-  return relationshipId
-    ? context.slideResObj[relationshipId]?.target
-    : undefined;
+  return relationshipId ? relationships[relationshipId]?.target : undefined;
 }
 
 export async function getDiagramNodeContext(
   node: XmlLookupValue,
   context: PptxParserContext,
+  relationships: PptxRelationshipMap = context.slideResObj,
 ): Promise<PptxParserContext> {
   const relationshipIds =
     getTextByPathList<Record<string, string>>(node, [
@@ -145,10 +144,19 @@ export async function getDiagramNodeContext(
   };
   const diagramResObj: PptxRelationshipMap = {};
 
-  const dataTarget = relationshipTarget(context, relationshipIds['r:dm']);
-  const layoutTarget = relationshipTarget(context, relationshipIds['r:lo']);
-  const quickStyleTarget = relationshipTarget(context, relationshipIds['r:qs']);
-  const colorsTarget = relationshipTarget(context, relationshipIds['r:cs']);
+  const dataTarget = relationshipTarget(relationships, relationshipIds['r:dm']);
+  const layoutTarget = relationshipTarget(
+    relationships,
+    relationshipIds['r:lo'],
+  );
+  const quickStyleTarget = relationshipTarget(
+    relationships,
+    relationshipIds['r:qs'],
+  );
+  const colorsTarget = relationshipTarget(
+    relationships,
+    relationshipIds['r:cs'],
+  );
 
   if (dataTarget)
     diagramContent.data = await loadDiagramFile(context, dataTarget);
@@ -168,7 +176,7 @@ export async function getDiagramNodeContext(
     : {};
   const drawingTarget =
     dataRelationships[drawingRelationshipId]?.target ??
-    relationshipTarget(context, drawingRelationshipId);
+    relationshipTarget(relationships, drawingRelationshipId);
   let drawing: XmlLookupValue | null = null;
 
   if (drawingTarget) {

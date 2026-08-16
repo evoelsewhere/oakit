@@ -1628,7 +1628,7 @@ async function processGraphicFrameNode(
     case 'http://schemas.openxmlformats.org/drawingml/2006/chart':
       return await genChart(node, warpObj, source);
     case 'http://schemas.openxmlformats.org/drawingml/2006/diagram':
-      return await genDiagram(node, warpObj);
+      return await genDiagram(node, warpObj, source);
     case 'http://schemas.openxmlformats.org/presentationml/2006/ole': {
       const alternateContent = nodeAt(graphicData, ['mc:AlternateContent']);
       const oleObject =
@@ -1861,13 +1861,24 @@ async function genChart(
 async function genDiagram(
   node: XmlLookupValue,
   warpObj: PptxParserContext,
+  source: string,
 ): Promise<Draft<Diagram>> {
+  const relationships =
+    source === 'slideMasterBg'
+      ? warpObj.masterResObj
+      : source === 'slideLayoutBg'
+        ? warpObj.layoutResObj
+        : warpObj.slideResObj;
   const order = getXmlNodeOrder(node) ?? 0;
   const xfrmNode = nodeAt(node, ['p:xfrm']);
   const { left, top } = getPosition(xfrmNode, undefined, undefined);
   const { width, height } = getSize(xfrmNode, undefined, undefined);
 
-  const diagramWarpObj = await getDiagramNodeContext(node, warpObj);
+  const diagramWarpObj = await getDiagramNodeContext(
+    node,
+    warpObj,
+    relationships,
+  );
   const diagramShapes = asArray(
     nodeAt(diagramWarpObj.digramFileContent, ['p:drawing', 'p:spTree', 'p:sp']),
   );
