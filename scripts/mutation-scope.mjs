@@ -85,6 +85,7 @@ export const mutatedFiles = [
   'src/formats/xlsx/internal/shared-strings.ts',
   'src/formats/xlsx/internal/style-border.ts',
   'src/formats/xlsx/internal/style-color.ts',
+  'src/formats/xlsx/internal/style-differential.ts',
   'src/formats/xlsx/internal/style-fill.ts',
   'src/formats/xlsx/internal/style-formatting.ts',
   'src/formats/xlsx/internal/style-font.ts',
