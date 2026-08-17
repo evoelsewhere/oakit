@@ -93,6 +93,39 @@ describe('controlled Google Slides transport', () => {
     expect(fetchImplementation.mock.calls[2]?.[1]?.method).toBe('DELETE');
   });
 
+  it('retains a bounded Google error reason without exposing response details', async () => {
+    const fetchImplementation = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse({ id: 'temporary-id' }))
+      .mockResolvedValueOnce(
+        jsonResponse(
+          {
+            error: {
+              errors: [
+                {
+                  message: 'secret server detail',
+                  reason: 'exportSizeLimitExceeded',
+                },
+              ],
+            },
+          },
+          403,
+        ),
+      )
+      .mockResolvedValueOnce(new globalThis.Response(null, { status: 204 }));
+
+    const result = roundTripGoogleSlidesPresentation(
+      new Uint8Array([1]),
+      'token',
+      'deck',
+      fetchImplementation,
+    );
+    await expect(result).rejects.toThrow(
+      'Google Drive export failed with status 403 (exportSizeLimitExceeded)',
+    );
+    await expect(result).rejects.not.toThrow('secret server detail');
+  });
+
   it('fails closed when export and cleanup both fail without exposing a token', async () => {
     const fetchImplementation = vi
       .fn()

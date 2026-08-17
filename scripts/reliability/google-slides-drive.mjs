@@ -4,7 +4,7 @@ const GOOGLE_SLIDES_MIME = 'application/vnd.google-apps.presentation';
 const PPTX_MIME =
   'application/vnd.openxmlformats-officedocument.presentationml.presentation';
 
-export const GOOGLE_SLIDES_MAX_EXPORT_BYTES = 50 * 1024 * 1024;
+export const GOOGLE_SLIDES_MAX_EXPORT_BYTES = 10 * 1024 * 1024;
 export const GOOGLE_SLIDES_MAX_SOURCE_BYTES = 50 * 1024 * 1024;
 
 function authorization(accessToken) {
@@ -16,8 +16,18 @@ function authorization(accessToken) {
 
 async function assertDriveResponse(response, operation) {
   if (!response.ok) {
+    let reason;
+    try {
+      const value = await response.json();
+      const candidate = value?.error?.errors?.[0]?.reason;
+      if (typeof candidate === 'string' && /^[\w-]{1,80}$/.test(candidate)) {
+        reason = candidate;
+      }
+    } catch {
+      reason = undefined;
+    }
     throw new Error(
-      `Google Drive ${operation} failed with status ${response.status}`,
+      `Google Drive ${operation} failed with status ${response.status}${reason === undefined ? '' : ` (${reason})`}`,
     );
   }
 }
