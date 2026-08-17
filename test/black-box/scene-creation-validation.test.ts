@@ -147,6 +147,22 @@ describe('PowerPoint creation scene validation', () => {
     });
   });
 
+  it.each(['x#0F172A', '#0F172Ax'])(
+    'rejects a color with data outside the #RRGGBB boundary: %s',
+    (backgroundColor) => {
+      const scene = creationScene();
+      const slides = scene.slides as Record<string, unknown>[];
+      const slide = slides[0] as Record<string, unknown>;
+      slide.backgroundColor = backgroundColor;
+
+      expect(validateCreation(scene).issues).toContainEqual({
+        code: 'invalid-scene-document',
+        message: 'Expected a #RRGGBB color',
+        path: '$.slides[0].backgroundColor',
+      });
+    },
+  );
+
   it('rejects unsupported geometry and unsafe line widths', () => {
     const scene = creationScene();
     const authored = element(scene).authored as Record<string, unknown>;
