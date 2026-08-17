@@ -719,24 +719,25 @@ pnpm install
 pnpm check
 ```
 
-| Command                         | Purpose                                                 |
-| ------------------------------- | ------------------------------------------------------- |
-| `pnpm dev`                      | Rebuild in watch mode                                   |
-| `pnpm test`                     | Run deterministic unit, integration, and property tests |
-| `pnpm test:browser`             | Run the public API suite in Chromium                    |
-| `pnpm test:corpus`              | Verify PowerPoint and LibreOffice documents             |
-| `pnpm test:corpus:large`        | Include the large Google Slides corpus                  |
-| `pnpm test:fuzz`                | Fuzz SVG/PNG safety using reproducible recorded seeds   |
-| `pnpm test:mutation`            | Measure whether tests detect behavioral mutations       |
-| `pnpm test:package`             | Smoke-test package exports and the bundled CLI          |
-| `pnpm test:render:e2e`          | Prove Office-free portable edit and SVG/PNG rendering   |
-| `pnpm test:render:memory`       | Measure SVG/PNG memory at 1, 25, and 100 slides         |
-| `pnpm test:producer:powerpoint` | Run macOS PowerPoint save/reopen evidence               |
-| `pnpm typecheck`                | Run strict type checking                                |
-| `pnpm lint`                     | Run ESLint                                              |
-| `pnpm format:check`             | Verify formatting                                       |
-| `pnpm build`                    | Build ESM, CommonJS, declarations, and source maps      |
-| `pnpm check`                    | Run the required pull-request quality gates             |
+| Command                            | Purpose                                                 |
+| ---------------------------------- | ------------------------------------------------------- |
+| `pnpm dev`                         | Rebuild in watch mode                                   |
+| `pnpm test`                        | Run deterministic unit, integration, and property tests |
+| `pnpm test:browser`                | Run the public API suite in Chromium                    |
+| `pnpm test:corpus`                 | Verify PowerPoint and LibreOffice documents             |
+| `pnpm test:corpus:large`           | Include the large Google Slides corpus                  |
+| `pnpm test:fuzz`                   | Fuzz SVG/PNG safety using reproducible recorded seeds   |
+| `pnpm test:mutation`               | Measure whether tests detect behavioral mutations       |
+| `pnpm test:package`                | Smoke-test package exports and the bundled CLI          |
+| `pnpm test:render:e2e`             | Prove Office-free portable edit and SVG/PNG rendering   |
+| `pnpm test:render:memory`          | Measure SVG/PNG memory at 1, 25, and 100 slides         |
+| `pnpm test:producer:powerpoint`    | Run macOS PowerPoint save/reopen evidence               |
+| `pnpm test:producer:google-slides` | Run controlled Google Slides import/export evidence     |
+| `pnpm typecheck`                   | Run strict type checking                                |
+| `pnpm lint`                        | Run ESLint                                              |
+| `pnpm format:check`                | Verify formatting                                       |
+| `pnpm build`                       | Build ESM, CommonJS, declarations, and source maps      |
+| `pnpm check`                       | Run the required pull-request quality gates             |
 
 The fast CI matrix runs on Node.js 20, 22, and 24 plus Chromium. Producer
 corpus and mutation suites run in the reliability workflow.

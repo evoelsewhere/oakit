@@ -1,0 +1,34 @@
+name: Google Slides Producer Evidence
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  producer:
+    name: Controlled Google Slides import and export
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: producer-validation
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Import, export, verify, and delete temporary presentations
+        env:
+          GOOGLE_DRIVE_ACCESS_TOKEN: ${{ secrets.GOOGLE_DRIVE_ACCESS_TOKEN }}
+        run: pnpm test:producer:google-slides
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: google-slides-powerpoint-producer-evidence
+          path: reports/reliability/pptx-google-slides
+          if-no-files-found: error

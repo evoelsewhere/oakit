@@ -60,6 +60,7 @@
     "test:package": "node scripts/check-package.mjs",
     "test:portable:memory": "pnpm build && node --expose-gc scripts/reliability/check-pptx-portable-memory.mjs",
     "test:producer:powerpoint": "pnpm build && node scripts/reliability/check-pptx-powerpoint-macos.mjs",
+    "test:producer:google-slides": "pnpm build && node scripts/reliability/check-pptx-google-slides.mjs",
     "test:render:e2e": "pnpm build && node scripts/reliability/check-pptx-render-e2e.mjs",
     "test:render:memory": "pnpm build && node --expose-gc scripts/reliability/check-pptx-render-memory.mjs",
     "test:watch": "vitest",
