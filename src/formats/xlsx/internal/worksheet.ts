@@ -8,6 +8,9 @@ import type {
   XlsxRichTextRun,
   XlsxRow,
   XlsxWorksheetView,
+  XlsxWorksheetFormat,
+  XlsxWorksheetOutline,
+  XlsxColor,
 } from '../types';
 import {
   parseXlsxCellReference,
@@ -43,6 +46,12 @@ import {
   type XlsxAuthoredColumnRange,
   xlsxMergedRangesOverlap,
 } from './worksheet-layout';
+import {
+  parseXlsxDeclaredDimension,
+  parseXlsxWorksheetFormat,
+  parseXlsxWorksheetOutline,
+  parseXlsxWorksheetTabColor,
+} from './worksheet-metadata';
 import {
   parseXlsxWorksheetPane,
   parseXlsxWorksheetView,
@@ -104,8 +113,12 @@ interface SharedFormulaMaster {
 
 export interface XlsxWorksheetPayload {
   columns: XlsxColumnRange[];
+  declaredDimension?: XlsxRange;
   mergedRanges: XlsxRange[];
+  outline?: XlsxWorksheetOutline;
   rows: XlsxRow[];
+  sheetFormat?: XlsxWorksheetFormat;
+  tabColor?: XlsxColor;
   views: XlsxWorksheetView[];
 }
 
@@ -332,6 +345,8 @@ class WorksheetSink implements XlsxXmlEventSink {
   private currentRow: XlsxRow | undefined;
   private currentRowSelected!: boolean;
   private currentView: XlsxWorksheetView | undefined;
+  private declaredDimension: XlsxRange | undefined;
+  private dimensionSeen = false;
   private ignoredDepth = 0;
   private lastCellColumn = 0;
   private lastRow = 0;
@@ -340,11 +355,18 @@ class WorksheetSink implements XlsxXmlEventSink {
   private readonly mergedRanges: XlsxRange[] = [];
   private readonly selectedColumnPrefix: Uint32Array;
   private sheetDataSeen = false;
+  private sheetFormat: XlsxWorksheetFormat | undefined;
+  private sheetFormatSeen = false;
+  private sheetPropertiesSeen = false;
   private sheetViewsSeen = false;
   private readonly stack: XlsxXmlElement[] = [];
   private readonly rows: XlsxRow[] = [];
   private readonly viewIds = new Set<number>();
   private readonly views: XlsxWorksheetView[] = [];
+  private outline: XlsxWorksheetOutline | undefined;
+  private outlineSeen = false;
+  private tabColor: XlsxColor | undefined;
+  private tabColorSeen = false;
   private readonly sharedFormulaMasters = new Map<
     number,
     SharedFormulaMaster
@@ -483,10 +505,18 @@ class WorksheetSink implements XlsxXmlEventSink {
       columns: normalizeXlsxColumnRanges(this.authoredColumns).filter((range) =>
         this.columnRangeSelected(range),
       ),
+      ...(this.declaredDimension === undefined
+        ? {}
+        : { declaredDimension: this.declaredDimension }),
       mergedRanges: this.mergedRanges.filter((range) =>
         this.mergedRangeSelected(range),
       ),
+      ...(this.outline === undefined ? {} : { outline: this.outline }),
       rows: this.rows,
+      ...(this.sheetFormat === undefined
+        ? {}
+        : { sheetFormat: this.sheetFormat }),
+      ...(this.tabColor === undefined ? {} : { tabColor: this.tabColor }),
       views: this.views,
     };
   }
@@ -533,6 +563,49 @@ class WorksheetSink implements XlsxXmlEventSink {
 
   private openChild(parent: string, element: XlsxXmlElement): void {
     if (parent === 'worksheet') {
+      if (element.localName === 'dimension') {
+        if (this.dimensionSeen) {
+          structureFailure(
+            this.part,
+            undefined,
+            'Worksheet contains duplicate dimension elements',
+          );
+        }
+        this.dimensionSeen = true;
+        this.declaredDimension = parseXlsxDeclaredDimension(element, this.part);
+        consume(
+          this.budget,
+          'rangeAreas',
+          1,
+          'maxRangeAreas',
+          this.limits,
+          this.part,
+        );
+        return;
+      }
+      if (element.localName === 'sheetPr') {
+        if (this.sheetPropertiesSeen) {
+          structureFailure(
+            this.part,
+            undefined,
+            'Worksheet contains duplicate sheetPr elements',
+          );
+        }
+        this.sheetPropertiesSeen = true;
+        return;
+      }
+      if (element.localName === 'sheetFormatPr') {
+        if (this.sheetFormatSeen) {
+          structureFailure(
+            this.part,
+            undefined,
+            'Worksheet contains duplicate sheetFormatPr elements',
+          );
+        }
+        this.sheetFormatSeen = true;
+        this.sheetFormat = parseXlsxWorksheetFormat(element, this.part);
+        return;
+      }
       if (element.localName === 'cols') {
         if (this.columnsSeen) {
           structureFailure(
@@ -600,6 +673,36 @@ class WorksheetSink implements XlsxXmlEventSink {
     if (parent === 'cols' && element.localName === 'col') {
       this.openColumn(element);
       return;
+    }
+    if (parent === 'sheetPr') {
+      if (element.localName === 'tabColor') {
+        if (this.tabColorSeen) {
+          structureFailure(
+            this.part,
+            undefined,
+            'Worksheet contains duplicate tab colors',
+          );
+        }
+        this.tabColorSeen = true;
+        this.tabColor = parseXlsxWorksheetTabColor(element, this.part);
+        return;
+      }
+      if (element.localName === 'outlinePr') {
+        if (this.outlineSeen) {
+          structureFailure(
+            this.part,
+            undefined,
+            'Worksheet contains duplicate outline properties',
+          );
+        }
+        this.outlineSeen = true;
+        this.outline = parseXlsxWorksheetOutline(element, this.part);
+        return;
+      }
+      if (element.localName === 'pageSetUpPr') {
+        this.beginIgnore();
+        return;
+      }
     }
     if (parent === 'sheetViews' && element.localName === 'sheetView') {
       this.openView(element);

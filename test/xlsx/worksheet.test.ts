@@ -148,6 +148,11 @@ describe('XLSX worksheet streaming', () => {
 
     await expect(parse(xml, { strings: SHARED_STRINGS })).resolves.toEqual({
       columns: [],
+      declaredDimension: {
+        end: { column: 16_384, row: 1_048_576 },
+        reference: 'A1:XFD1048576',
+        start: { column: 1, row: 1 },
+      },
       mergedRanges: [
         {
           end: { column: 2, row: 1 },
@@ -356,6 +361,63 @@ describe('XLSX worksheet streaming', () => {
     });
   });
 
+  it('returns sheet defaults while treating declared dimensions as stale hints', async () => {
+    const budget = createXlsxWorksheetBudget(EMPTY_STRINGS);
+    const result = await parse(
+      worksheet(`
+        <sheetPr>
+          <tabColor theme="2" tint="-.25"/>
+          <outlinePr applyStyles="1" showOutlineSymbols="0"
+            summaryBelow="false" summaryRight="0"/>
+          <pageSetUpPr fitToPage="1"/>
+        </sheetPr>
+        <dimension ref="B2:D4"/>
+        <sheetFormatPr baseColWidth="9" defaultColWidth="12.5"
+          defaultRowHeight="18" customHeight="1" outlineLevelCol="2"
+          outlineLevelRow="3" thickBottom="1" thickTop="true" zeroHeight="1"/>
+        <sheetData><row r="5"><c r="E5"><v>7</v></c></row></sheetData>`),
+      { budget },
+    );
+
+    expect(result).toMatchObject({
+      declaredDimension: {
+        end: { column: 4, row: 4 },
+        reference: 'B2:D4',
+        start: { column: 2, row: 2 },
+      },
+      outline: {
+        applyStyles: true,
+        showOutlineSymbols: false,
+        summaryBelow: false,
+        summaryRight: false,
+      },
+      rows: [
+        {
+          cells: [
+            {
+              address: 'E5',
+              content: { kind: 'value', value: { kind: 'number', value: 7 } },
+            },
+          ],
+          index: 5,
+        },
+      ],
+      sheetFormat: {
+        baseColumnWidth: 9,
+        customHeight: true,
+        defaultColumnWidth: 12.5,
+        defaultRowHeight: 18,
+        outlineColumnLevel: 2,
+        outlineRowLevel: 3,
+        thickBottom: true,
+        thickTop: true,
+        zeroHeight: true,
+      },
+      tabColor: { index: 2, kind: 'theme', tint: -0.25 },
+    });
+    expect(budget.rangeAreas).toBe(1);
+  });
+
   it('normalizes worksheet views, panes, and selections in authored order', async () => {
     const budget = createXlsxWorksheetBudget(EMPTY_STRINGS);
     const result = await parse(
@@ -443,20 +505,21 @@ describe('XLSX worksheet streaming', () => {
   });
 
   it('enforces worksheet view range-area boundaries exactly', async () => {
-    const xml = worksheet(`<sheetViews><sheetView workbookViewId="0">
+    const xml =
+      worksheet(`<dimension ref="A1"/><sheetViews><sheetView workbookViewId="0">
       <selection sqref="A1 B2"/>
     </sheetView></sheetViews><sheetData/>`);
 
     await expect(
-      parse(xml, { limits: { maxRangeAreas: 2 } }),
+      parse(xml, { limits: { maxRangeAreas: 3 } }),
     ).resolves.toMatchObject({
       views: [{ selections: [{ ranges: [{}, {}] }] }],
     });
     await expect(
-      parse(xml, { limits: { maxRangeAreas: 1 } }),
+      parse(xml, { limits: { maxRangeAreas: 2 } }),
     ).rejects.toMatchObject({
-      actual: 2,
-      limit: 1,
+      actual: 3,
+      limit: 2,
       limitName: 'maxRangeAreas',
       name: 'XlsxResourceLimitError',
     });
@@ -518,6 +581,46 @@ describe('XLSX worksheet streaming', () => {
       const error = await captureParseError(worksheet(body));
       expect(error.diagnostic).toMatchObject({
         code: 'invalid-document-value',
+        message,
+      });
+    },
+  );
+
+  it.each([
+    [
+      '<dimension ref="A1"/><dimension ref="B2"/><sheetData/>',
+      'Worksheet contains duplicate dimension elements',
+    ],
+    [
+      '<sheetPr/><sheetPr/><sheetData/>',
+      'Worksheet contains duplicate sheetPr elements',
+    ],
+    [
+      '<sheetFormatPr defaultRowHeight="15"/><sheetFormatPr defaultRowHeight="15"/><sheetData/>',
+      'Worksheet contains duplicate sheetFormatPr elements',
+    ],
+    [
+      '<sheetPr><tabColor rgb="FF000000"/><tabColor rgb="FFFFFFFF"/></sheetPr><sheetData/>',
+      'Worksheet contains duplicate tab colors',
+    ],
+    [
+      '<sheetPr><outlinePr/><outlinePr/></sheetPr><sheetData/>',
+      'Worksheet contains duplicate outline properties',
+    ],
+    [
+      '<sheetPr><unknown/></sheetPr><sheetData/>',
+      'Worksheet element nesting is invalid',
+    ],
+    [
+      '<sheetData><row><tabColor rgb="FF000000"/></row></sheetData>',
+      'Worksheet element nesting is invalid',
+    ],
+  ] as const)(
+    'rejects duplicate worksheet metadata %#',
+    async (body, message) => {
+      const error = await captureParseError(worksheet(body));
+      expect(error.diagnostic).toMatchObject({
+        code: 'invalid-document-structure',
         message,
       });
     },

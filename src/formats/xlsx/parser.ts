@@ -206,12 +206,9 @@ export async function parseXlsxWithDiagnostics(
       );
       sheets.push({
         ...sheet,
-        columns: payload.columns,
-        mergedRanges: payload.mergedRanges,
+        ...payload,
         payload:
           selection.kind === 'full-sheet' ? 'full-sheet' : 'selected-ranges',
-        rows: payload.rows,
-        views: payload.views,
       });
     }
   } catch (error) {

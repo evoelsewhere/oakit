@@ -193,6 +193,25 @@ export interface XlsxWorksheetView {
   zoomScaleSheetLayout?: number;
 }
 
+export interface XlsxWorksheetFormat {
+  baseColumnWidth: number;
+  customHeight: boolean;
+  defaultColumnWidth?: number;
+  defaultRowHeight: number;
+  outlineColumnLevel: number;
+  outlineRowLevel: number;
+  thickBottom: boolean;
+  thickTop: boolean;
+  zeroHeight: boolean;
+}
+
+export interface XlsxWorksheetOutline {
+  applyStyles: boolean;
+  showOutlineSymbols: boolean;
+  summaryBelow: boolean;
+  summaryRight: boolean;
+}
+
 export type XlsxColor =
   | { argb: string; kind: 'rgb'; tint?: number }
   | { index: number; kind: 'theme'; tint?: number }
@@ -402,10 +421,14 @@ export interface XlsxSheetBase {
 
 export interface XlsxWorksheet extends XlsxSheetBase {
   columns: XlsxColumnRange[];
+  declaredDimension?: XlsxRange;
   drawings: XlsxDrawing[];
   kind: 'worksheet';
   mergedRanges: XlsxRange[];
+  outline?: XlsxWorksheetOutline;
   rows: XlsxRow[];
+  sheetFormat?: XlsxWorksheetFormat;
+  tabColor?: XlsxColor;
   tables: XlsxTable[];
   views: XlsxWorksheetView[];
 }

@@ -97,6 +97,7 @@ export const mutatedFiles = [
   'src/formats/xlsx/internal/workbook-tables.ts',
   'src/formats/xlsx/internal/workbook-views.ts',
   'src/formats/xlsx/internal/worksheet-layout.ts',
+  'src/formats/xlsx/internal/worksheet-metadata.ts',
   'src/formats/xlsx/internal/worksheet-view.ts',
   'src/formats/xlsx/internal/worksheet.ts',
   'src/formats/xlsx/parser.ts',

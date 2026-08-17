@@ -70,6 +70,11 @@ describe('public XLSX parser', () => {
         sheets: [
           {
             columns: [],
+            declaredDimension: {
+              end: { column: 3, row: 3 },
+              reference: 'A1:C3',
+              start: { column: 1, row: 1 },
+            },
             drawings: [],
             index: 0,
             kind: 'worksheet',
@@ -169,11 +174,14 @@ describe('public XLSX parser', () => {
       </styleSheet>`,
       'xl/workbook.xml': workbook,
       'xl/worksheets/sheet1.xml': `<worksheet xmlns="${XLSX_SPREADSHEET_NS}">
+        <sheetPr><tabColor rgb="FF00AABB"/><outlinePr summaryBelow="0"/></sheetPr>
+        <dimension ref="A1:C1"/>
         <cols><col min="1" max="2" width="14" hidden="1" style="1"/></cols>
         <sheetViews><sheetView workbookViewId="0" rightToLeft="1" zoomScale="125">
           <pane xSplit="1" state="frozen" topLeftCell="B1"/>
           <selection pane="topRight" activeCell="B1" sqref="B1:B2"/>
         </sheetView></sheetViews>
+        <sheetFormatPr defaultRowHeight="18" defaultColWidth="12"/>
         <sheetData><row s="1" customFormat="1" collapsed="1">
           <c r="A1" s="1"><v>0</v></c>
           <c r="B1" s="2"><f>A1+1</f><v>1</v></c>
@@ -196,6 +204,11 @@ describe('public XLSX parser', () => {
     ]);
     expect(document.sheets[0]).toMatchObject({
       columns: [{ end: 2, hidden: true, start: 1, style: 1, width: 14 }],
+      declaredDimension: {
+        end: { column: 3, row: 1 },
+        reference: 'A1:C1',
+        start: { column: 1, row: 1 },
+      },
       mergedRanges: [
         {
           end: { column: 2, row: 1 },
@@ -203,6 +216,12 @@ describe('public XLSX parser', () => {
           start: { column: 1, row: 1 },
         },
       ],
+      outline: {
+        applyStyles: false,
+        showOutlineSymbols: true,
+        summaryBelow: false,
+        summaryRight: true,
+      },
       rows: [
         {
           cells: [
@@ -253,6 +272,18 @@ describe('public XLSX parser', () => {
           style: 1,
         },
       ],
+      sheetFormat: {
+        baseColumnWidth: 8,
+        customHeight: false,
+        defaultColumnWidth: 12,
+        defaultRowHeight: 18,
+        outlineColumnLevel: 0,
+        outlineRowLevel: 0,
+        thickBottom: false,
+        thickTop: false,
+        zeroHeight: false,
+      },
+      tabColor: { argb: 'FF00AABB', kind: 'rgb' },
       views: [
         {
           kind: 'normal',
@@ -735,6 +766,11 @@ describe('public XLSX parser', () => {
     expect(document.sheets).toEqual([
       {
         columns: [],
+        declaredDimension: {
+          end: { column: 3, row: 3 },
+          reference: 'A1:C3',
+          start: { column: 1, row: 1 },
+        },
         drawings: [],
         index: 0,
         kind: 'worksheet',
