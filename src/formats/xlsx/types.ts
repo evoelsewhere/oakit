@@ -816,6 +816,85 @@ export interface XlsxWorksheetProtection {
   protectSort: boolean;
 }
 
+export interface XlsxUniversalMeasure {
+  unit: 'cm' | 'in' | 'mm' | 'pc' | 'pi' | 'pt';
+  value: number;
+}
+
+export interface XlsxPageMargins {
+  bottom: number;
+  footer: number;
+  header: number;
+  left: number;
+  right: number;
+  top: number;
+}
+
+export interface XlsxPrintOptions {
+  gridLines: boolean;
+  gridLinesSet: boolean;
+  headings: boolean;
+  horizontalCentered: boolean;
+  verticalCentered: boolean;
+}
+
+export interface XlsxPageSetupProperties {
+  autoPageBreaks: boolean;
+  fitToPage: boolean;
+}
+
+export interface XlsxPageSetup {
+  blackAndWhite: boolean;
+  cellComments: 'as-displayed' | 'at-end' | 'none';
+  copies?: number;
+  draft: boolean;
+  errors: 'blank' | 'dash' | 'displayed' | 'not-available';
+  firstPageNumber?: number;
+  fitToHeight?: number;
+  fitToWidth?: number;
+  horizontalDpi?: number;
+  orientation: 'default' | 'landscape' | 'portrait';
+  pageOrder: 'down-then-over' | 'over-then-down';
+  paperHeight?: XlsxUniversalMeasure;
+  paperSize?: number;
+  paperWidth?: XlsxUniversalMeasure;
+  scale?: number;
+  useFirstPageNumber: boolean;
+  usePrinterDefaults: boolean;
+  verticalDpi?: number;
+}
+
+export interface XlsxHeaderFooter {
+  alignWithMargins: boolean;
+  differentFirst: boolean;
+  differentOddEven: boolean;
+  evenFooter?: string;
+  evenHeader?: string;
+  firstFooter?: string;
+  firstHeader?: string;
+  oddFooter?: string;
+  oddHeader?: string;
+  scaleWithDocument: boolean;
+}
+
+export interface XlsxPageBreak {
+  end: number;
+  manual: boolean;
+  pivot: boolean;
+  position: number;
+  start: number;
+}
+
+export interface XlsxWorksheetPrintSettings {
+  columnBreaks?: XlsxPageBreak[];
+  headerFooter?: XlsxHeaderFooter;
+  margins?: XlsxPageMargins;
+  options?: XlsxPrintOptions;
+  pageSetup?: XlsxPageSetup;
+  properties?: XlsxPageSetupProperties;
+  rowBreaks?: XlsxPageBreak[];
+}
+
 export interface XlsxTable {
   autoFilter?: XlsxAutoFilter;
   columns: XlsxTableColumn[];
@@ -880,6 +959,7 @@ export interface XlsxWorksheet extends XlsxSheetBase {
   kind: 'worksheet';
   mergedRanges: XlsxRange[];
   outline?: XlsxWorksheetOutline;
+  print?: XlsxWorksheetPrintSettings;
   protectedRanges: XlsxProtectedRange[];
   protection?: XlsxWorksheetProtection;
   rows: XlsxRow[];

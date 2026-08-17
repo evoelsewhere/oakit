@@ -10,6 +10,12 @@ import type {
   XlsxFormula,
   XlsxHyperlink,
   XlsxProtectedRange,
+  XlsxHeaderFooter,
+  XlsxPageBreak,
+  XlsxPageMargins,
+  XlsxPageSetup,
+  XlsxPageSetupProperties,
+  XlsxPrintOptions,
   XlsxRange,
   XlsxRichTextRun,
   XlsxRow,
@@ -17,6 +23,7 @@ import type {
   XlsxWorksheetFormat,
   XlsxWorksheetOutline,
   XlsxWorksheetProtection,
+  XlsxWorksheetPrintSettings,
   XlsxColor,
 } from '../types';
 import { XlsxAutoFilterCapture } from './auto-filter';
@@ -38,6 +45,14 @@ import {
   parseXlsxWorksheetProtection,
   XlsxProtectedRangesCapture,
 } from './worksheet-protection';
+import {
+  parseXlsxPageMargins,
+  parseXlsxPageSetup,
+  parseXlsxPageSetupProperties,
+  parseXlsxPrintOptions,
+  XlsxHeaderFooterCapture,
+  XlsxPageBreaksCapture,
+} from './worksheet-print';
 import { xlsxNumberFormatDatePrecision } from './number-format';
 import { XlsxPartReader } from './part-reader';
 import {
@@ -144,6 +159,7 @@ export interface XlsxWorksheetPayload {
   hyperlinks: XlsxHyperlink[];
   mergedRanges: XlsxRange[];
   outline?: XlsxWorksheetOutline;
+  print?: XlsxWorksheetPrintSettings;
   protectedRanges: XlsxProtectedRange[];
   protection?: XlsxWorksheetProtection;
   rows: XlsxRow[];
@@ -446,6 +462,23 @@ class WorksheetSink implements XlsxXmlEventSink {
   private readonly views: XlsxWorksheetView[] = [];
   private outline: XlsxWorksheetOutline | undefined;
   private outlineSeen = false;
+  private columnBreaks: XlsxPageBreak[] | undefined;
+  private columnBreaksSeen = false;
+  private headerFooter: XlsxHeaderFooter | undefined;
+  private headerFooterCapture: XlsxHeaderFooterCapture | undefined;
+  private headerFooterSeen = false;
+  private pageBreaksCapture: XlsxPageBreaksCapture | undefined;
+  private pageBreaksKind: 'column' | 'row' | undefined;
+  private pageMargins: XlsxPageMargins | undefined;
+  private pageMarginsSeen = false;
+  private pageSetup: XlsxPageSetup | undefined;
+  private pageSetupProperties: XlsxPageSetupProperties | undefined;
+  private pageSetupPropertiesSeen = false;
+  private pageSetupSeen = false;
+  private printOptions: XlsxPrintOptions | undefined;
+  private printOptionsSeen = false;
+  private rowBreaks: XlsxPageBreak[] | undefined;
+  private rowBreaksSeen = false;
   private readonly protectedRanges: XlsxProtectedRange[] = [];
   private protectedRangesCapture: XlsxProtectedRangesCapture | undefined;
   private protectedRangesSeen = false;
@@ -536,6 +569,16 @@ class WorksheetSink implements XlsxXmlEventSink {
       this.stack.push(element);
       return;
     }
+    if (this.headerFooterCapture) {
+      this.headerFooterCapture.openElement(element);
+      this.stack.push(element);
+      return;
+    }
+    if (this.pageBreaksCapture) {
+      this.pageBreaksCapture.openElement(element);
+      this.stack.push(element);
+      return;
+    }
     const parent = this.stack.at(-1);
     if (!parent) {
       if (element.localName !== 'worksheet') {
@@ -594,6 +637,30 @@ class WorksheetSink implements XlsxXmlEventSink {
       this.stack.pop();
       return;
     }
+    if (this.headerFooterCapture) {
+      this.headerFooterCapture.closeElement(element);
+      if (element.localName === 'headerFooter') {
+        this.headerFooter = this.headerFooterCapture.result();
+        this.headerFooterCapture = undefined;
+      }
+      this.stack.pop();
+      return;
+    }
+    if (this.pageBreaksCapture) {
+      this.pageBreaksCapture.closeElement(element);
+      if (
+        element.localName === 'rowBreaks' ||
+        element.localName === 'colBreaks'
+      ) {
+        const result = this.pageBreaksCapture.result();
+        if (this.pageBreaksKind === 'row') this.rowBreaks = result;
+        else this.columnBreaks = result;
+        this.pageBreaksCapture = undefined;
+        this.pageBreaksKind = undefined;
+      }
+      this.stack.pop();
+      return;
+    }
     this.capture = null;
     if (element.localName === 'r') this.closeInlineRun();
     if (element.localName === 'c') this.closeCell();
@@ -618,6 +685,14 @@ class WorksheetSink implements XlsxXmlEventSink {
     }
     if (this.protectedRangesCapture) {
       this.protectedRangesCapture.text(value);
+      return;
+    }
+    if (this.headerFooterCapture) {
+      this.headerFooterCapture.text(value);
+      return;
+    }
+    if (this.pageBreaksCapture) {
+      this.pageBreaksCapture.text(value);
       return;
     }
     if (this.capture === 'value') {
@@ -676,6 +751,7 @@ class WorksheetSink implements XlsxXmlEventSink {
         'Worksheet table-part count does not match',
       );
     }
+    const print = this.printSettings();
     return {
       ...(this.autoFilter === undefined ? {} : { autoFilter: this.autoFilter }),
       columns: normalizeXlsxColumnRanges(this.authoredColumns).filter((range) =>
@@ -713,6 +789,7 @@ class WorksheetSink implements XlsxXmlEventSink {
         this.mergedRangeSelected(range),
       ),
       ...(this.outline === undefined ? {} : { outline: this.outline }),
+      ...(print === undefined ? {} : { print }),
       protectedRanges: this.protectedRanges,
       ...(this.protection === undefined ? {} : { protection: this.protection }),
       rows: this.rows,
@@ -770,6 +847,37 @@ class WorksheetSink implements XlsxXmlEventSink {
     this.ignoredDepth = 1;
   }
 
+  private printSettings(): XlsxWorksheetPrintSettings | undefined {
+    if (
+      this.columnBreaks === undefined &&
+      this.headerFooter === undefined &&
+      this.pageMargins === undefined &&
+      this.pageSetup === undefined &&
+      this.pageSetupProperties === undefined &&
+      this.printOptions === undefined &&
+      this.rowBreaks === undefined
+    ) {
+      return undefined;
+    }
+    return {
+      ...(this.columnBreaks === undefined
+        ? {}
+        : { columnBreaks: this.columnBreaks }),
+      ...(this.headerFooter === undefined
+        ? {}
+        : { headerFooter: this.headerFooter }),
+      ...(this.pageMargins === undefined ? {} : { margins: this.pageMargins }),
+      ...(this.printOptions === undefined
+        ? {}
+        : { options: this.printOptions }),
+      ...(this.pageSetup === undefined ? {} : { pageSetup: this.pageSetup }),
+      ...(this.pageSetupProperties === undefined
+        ? {}
+        : { properties: this.pageSetupProperties }),
+      ...(this.rowBreaks === undefined ? {} : { rowBreaks: this.rowBreaks }),
+    };
+  }
+
   private openChild(parent: string, element: XlsxXmlElement): void {
     if (parent === 'worksheet') {
       if (element.localName === 'dimension') {
@@ -825,6 +933,85 @@ class WorksheetSink implements XlsxXmlEventSink {
           this.part,
         );
         this.protectedRangesCapture.openElement(element);
+        return;
+      }
+      if (element.localName === 'printOptions') {
+        if (this.printOptionsSeen) {
+          structureFailure(
+            this.part,
+            undefined,
+            'Worksheet contains duplicate printOptions elements',
+          );
+        }
+        this.printOptionsSeen = true;
+        this.printOptions = parseXlsxPrintOptions(element, this.part);
+        return;
+      }
+      if (element.localName === 'pageMargins') {
+        if (this.pageMarginsSeen) {
+          structureFailure(
+            this.part,
+            undefined,
+            'Worksheet contains duplicate pageMargins elements',
+          );
+        }
+        this.pageMarginsSeen = true;
+        this.pageMargins = parseXlsxPageMargins(element, this.part);
+        return;
+      }
+      if (element.localName === 'pageSetup') {
+        if (this.pageSetupSeen) {
+          structureFailure(
+            this.part,
+            undefined,
+            'Worksheet contains duplicate pageSetup elements',
+          );
+        }
+        this.pageSetupSeen = true;
+        this.pageSetup = parseXlsxPageSetup(element, this.part);
+        return;
+      }
+      if (element.localName === 'headerFooter') {
+        if (this.headerFooterSeen) {
+          structureFailure(
+            this.part,
+            undefined,
+            'Worksheet contains duplicate headerFooter elements',
+          );
+        }
+        this.headerFooterSeen = true;
+        this.headerFooterCapture = new XlsxHeaderFooterCapture(
+          this.budget,
+          this.limits,
+          this.part,
+        );
+        this.headerFooterCapture.openElement(element);
+        return;
+      }
+      if (
+        element.localName === 'rowBreaks' ||
+        element.localName === 'colBreaks'
+      ) {
+        const row = element.localName === 'rowBreaks';
+        if (row ? this.rowBreaksSeen : this.columnBreaksSeen) {
+          structureFailure(
+            this.part,
+            undefined,
+            row
+              ? 'Worksheet contains duplicate rowBreaks elements'
+              : 'Worksheet contains duplicate colBreaks elements',
+          );
+        }
+        if (row) this.rowBreaksSeen = true;
+        else this.columnBreaksSeen = true;
+        this.pageBreaksKind = row ? 'row' : 'column';
+        this.pageBreaksCapture = new XlsxPageBreaksCapture(
+          this.pageBreaksKind,
+          this.budget,
+          this.limits,
+          this.part,
+        );
+        this.pageBreaksCapture.openElement(element);
         return;
       }
       if (element.localName === 'sheetPr') {
@@ -1040,7 +1227,18 @@ class WorksheetSink implements XlsxXmlEventSink {
         return;
       }
       if (element.localName === 'pageSetUpPr') {
-        this.beginIgnore();
+        if (this.pageSetupPropertiesSeen) {
+          structureFailure(
+            this.part,
+            undefined,
+            'Worksheet contains duplicate page setup properties',
+          );
+        }
+        this.pageSetupPropertiesSeen = true;
+        this.pageSetupProperties = parseXlsxPageSetupProperties(
+          element,
+          this.part,
+        );
         return;
       }
     }
