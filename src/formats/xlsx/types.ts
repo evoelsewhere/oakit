@@ -180,6 +180,50 @@ export interface XlsxFont {
   verticalAlignment?: 'subscript' | 'superscript';
 }
 
+export type XlsxPatternType =
+  | 'darkDown'
+  | 'darkGray'
+  | 'darkGrid'
+  | 'darkHorizontal'
+  | 'darkTrellis'
+  | 'darkUp'
+  | 'darkVertical'
+  | 'gray0625'
+  | 'gray125'
+  | 'lightDown'
+  | 'lightGray'
+  | 'lightGrid'
+  | 'lightHorizontal'
+  | 'lightTrellis'
+  | 'lightUp'
+  | 'lightVertical'
+  | 'mediumGray'
+  | 'none'
+  | 'solid';
+
+export interface XlsxGradientStop {
+  color: XlsxColor;
+  position: number;
+}
+
+export type XlsxFill =
+  | {
+      backgroundColor?: XlsxColor;
+      foregroundColor?: XlsxColor;
+      kind: 'pattern';
+      pattern: XlsxPatternType;
+    }
+  | {
+      angle?: number;
+      bottom?: number;
+      kind: 'gradient';
+      left?: number;
+      right?: number;
+      stops: XlsxGradientStop[];
+      top?: number;
+      type: 'linear' | 'path';
+    };
+
 export interface XlsxStyle {
   font?: XlsxFont;
   numberFormat?: string;
