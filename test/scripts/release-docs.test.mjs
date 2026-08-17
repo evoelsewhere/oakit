@@ -76,8 +76,24 @@ describe('release documentation', () => {
         revision: '83f1cebf0dd1429a1f8305389681cc50e010b038',
         sourceTree: '4b7c749f58f908967b9868716bddd78e05a0fbcd',
       },
+      release: {
+        knownPackagingIssue: {
+          apiExportsAffected: false,
+          fixedIn: '0.0.2',
+          scope: 'installed CLI mapping',
+        },
+        publish: {
+          conclusion: 'success',
+          provenance: true,
+          runId: '32054316824',
+        },
+        revision: '42a7483fd101c2374cf6afe4e656f2da19787679',
+        tag: 'v0.0.1',
+      },
       sourceTree: '4b7c749f58f908967b9868716bddd78e05a0fbcd',
       version: '0.0.1',
     });
+    expect(checklist).toContain('- [x] Create tag `v0.0.1`');
+    expect(checklist).toContain('package smoke now executes');
   });
 });

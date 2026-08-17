@@ -51,8 +51,20 @@ creation, arbitrary element editing, or pixel-identical rendering.
 - [x] Verify the release candidate changes no production source from the audited
       tree; `83f1cebf0dd1429a1f8305389681cc50e010b038` retains source tree
       `4b7c749f58f908967b9868716bddd78e05a0fbcd`.
-- [ ] Create tag `v0.0.1` from the final docs-only attestation descendant.
-- [ ] Publish the GitHub release to trigger provenance-enabled npm publishing.
+- [x] Create tag `v0.0.1` from the final docs-only attestation descendant at
+      `42a7483fd101c2374cf6afe4e656f2da19787679`.
+- [x] Publish the [GitHub release](https://github.com/evoelsewhere/oakit/releases/tag/v0.0.1)
+      and complete provenance-enabled npm
+      [run 32054316824](https://github.com/evoelsewhere/oakit/actions/runs/32054316824).
+
+## Published artifact note
+
+npm 11 removed the `oakit` bin mapping while normalizing the published `0.0.1`
+manifest because its path started with `./`. The ESM, CJS, and subpath APIs remain
+available, but the installed command is not claimed for this immutable package
+version. The release notes disclose the issue, the manifest now uses
+`dist/cli.js`, and package smoke now executes `node_modules/.bin/oakit` directly.
+That fix is released as `0.0.2`; the `v0.0.1` tag is not moved or rewritten.
 
 ## Evidence
 

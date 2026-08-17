@@ -46,5 +46,20 @@
       "runId": "32053915220",
       "jobs": 11
     }
+  },
+  "release": {
+    "tag": "v0.0.1",
+    "revision": "42a7483fd101c2374cf6afe4e656f2da19787679",
+    "url": "https://github.com/evoelsewhere/oakit/releases/tag/v0.0.1",
+    "publish": {
+      "conclusion": "success",
+      "runId": "32054316824",
+      "provenance": true
+    },
+    "knownPackagingIssue": {
+      "scope": "installed CLI mapping",
+      "apiExportsAffected": false,
+      "fixedIn": "0.0.2"
+    }
   }
 }
