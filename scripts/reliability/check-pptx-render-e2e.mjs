@@ -37,6 +37,15 @@ function sha256(bytes) {
   return createHash('sha256').update(bytes).digest('hex');
 }
 
+async function partPayloads(bytes) {
+  const archive = await JSZip.loadAsync(bytes, { checkCRC32: true });
+  const result = new Map();
+  for (const part of Object.values(archive.files)) {
+    if (!part.dir) result.set(part.name, await part.async('uint8array'));
+  }
+  return result;
+}
+
 async function createFixture() {
   const zip = new JSZip();
   const parts = {
@@ -195,16 +204,38 @@ const child = await execFileAsync(
 assert.equal(child.stderr, '');
 const workerEvidence = JSON.parse(child.stdout);
 assert.equal(workerEvidence.path, '');
-assert.equal(workerEvidence.fidelityLevel, 'R0');
+assert.equal(workerEvidence.fidelityLevel, 'R2');
+assert.equal(workerEvidence.operationCount, 1);
 assert.equal(workerEvidence.slideCount, 1);
-assert.equal(workerEvidence.sourceSha256, workerEvidence.outputSha256);
+assert.notEqual(workerEvidence.sourceSha256, workerEvidence.outputSha256);
+assert.equal(workerEvidence.sourceStoredInPortableJson, true);
+assert.deepEqual(workerEvidence.writeReport, {
+  addedPartCount: 0,
+  copiedPartCount: 11,
+  patchedPartCount: 1,
+  rebuiltPartCount: 0,
+  removedPartCount: 0,
+});
 
 const restored = new Uint8Array(
   await readFile(path.join(outputDirectory, 'restored.pptx')),
 );
-assert.deepEqual(restored, source);
+const [sourceParts, restoredParts] = await Promise.all([
+  partPayloads(source),
+  partPayloads(restored),
+]);
+assert.equal(restoredParts.size, sourceParts.size);
+for (const [name, sourcePayload] of sourceParts) {
+  const restoredPayload = restoredParts.get(name);
+  assert.ok(restoredPayload, `Missing restored part ${name}`);
+  if (name === 'ppt/slides/slide1.xml') {
+    assert.notDeepEqual(restoredPayload, sourcePayload);
+  } else {
+    assert.deepEqual(restoredPayload, sourcePayload);
+  }
+}
 const svg = await readFile(path.join(outputDirectory, 'slide-1.svg'), 'utf8');
-assert.match(svg.replaceAll('\u00a0', ' '), /Agent Ready preview/);
+assert.match(svg.replaceAll('\u00a0', ' '), /Agent edited preview/);
 assert.doesNotMatch(svg, /<(?:foreignObject|script)\b/i);
 assert.doesNotMatch(svg, /(?:blob|file|https):/i);
 const png = new Uint8Array(
@@ -224,9 +255,15 @@ const evidence = {
     runtime: process.version,
   },
   package: {
-    byteExact: true,
     fidelityLevel: workerEvidence.fidelityLevel,
-    sha256: sha256(source),
+    operationCount: workerEvidence.operationCount,
+    outputSha256: sha256(restored),
+    partInventoryPreserved: true,
+    patchedParts: ['ppt/slides/slide1.xml'],
+    sourceSha256: sha256(source),
+    sourceStoredInPortableJson: workerEvidence.sourceStoredInPortableJson,
+    untouchedPartPayloadsPreserved: true,
+    writeReport: workerEvidence.writeReport,
   },
   png: {
     ...workerEvidence.png,

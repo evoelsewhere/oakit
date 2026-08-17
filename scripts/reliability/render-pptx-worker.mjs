@@ -7,6 +7,7 @@ import {
   parsePptx,
   parsePptxRoundTripJson,
   readPptxRoundTrip,
+  replacePptxRoundTripText,
   renderPptxDocumentToSvg,
   serializePptxRoundTripJson,
   writePptxRoundTrip,
@@ -24,7 +25,15 @@ function sha256(bytes) {
 
 const source = new Uint8Array(await readFile(inputPath));
 const runtime = await readPptxRoundTrip(source);
-const portable = await serializePptxRoundTripJson(runtime);
+const element = runtime.document.slides[0]?.elements[0];
+if (element?.type !== 'text') throw new Error('Expected editable text element');
+const run = element.text.paragraphs[0]?.children[0];
+if (run?.type !== 'run') throw new Error('Expected editable text run');
+const edited = await replacePptxRoundTripText(runtime, {
+  targetKey: run.key,
+  value: 'Agent edited preview',
+});
+const portable = await serializePptxRoundTripJson(edited);
 const wireJson = JSON.stringify(portable);
 const transported = await parsePptxRoundTripJson(JSON.parse(wireJson));
 const restored = await writePptxRoundTrip(transported);
@@ -50,6 +59,7 @@ await Promise.all([
 process.stdout.write(
   JSON.stringify({
     fidelityLevel: restored.report.level,
+    operationCount: restored.report.operations.length,
     outputSha256: sha256(restored.data),
     path: process.env.PATH ?? null,
     png: {
@@ -61,6 +71,15 @@ process.stdout.write(
     portableJsonBytes: Buffer.byteLength(wireJson),
     slideCount: document.slides.length,
     sourceSha256: sha256(source),
+    sourceStoredInPortableJson:
+      portable.source.packageBase64 === Buffer.from(source).toString('base64'),
+    writeReport: {
+      addedPartCount: restored.report.addedPartCount,
+      copiedPartCount: restored.report.copiedPartCount,
+      patchedPartCount: restored.report.patchedPartCount,
+      rebuiltPartCount: restored.report.rebuiltPartCount,
+      removedPartCount: restored.report.removedPartCount,
+    },
     svg: {
       bytes: svgSlide.data.byteLength,
       height: svgSlide.height,
