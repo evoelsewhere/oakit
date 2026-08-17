@@ -10,6 +10,7 @@ import {
   parsePptx,
   readPptxRoundTrip,
   replacePptxRoundTripText,
+  setPptxRoundTripTextTransform,
   writePptxRoundTrip,
 } from '../../dist/index.js';
 
@@ -165,9 +166,21 @@ try {
   assert.equal(element?.type, 'text');
   const run = element.text.paragraphs[0]?.children[0];
   assert.equal(run?.type, 'run');
-  const operation = await replacePptxRoundTripText(snapshot, {
+  const textOperation = await replacePptxRoundTripText(snapshot, {
     targetKey: run.key,
     value: 'After native producer',
+  });
+  const operation = await setPptxRoundTripTextTransform(textOperation, {
+    targetKey: element.key,
+    value: {
+      flipHorizontal: true,
+      flipVertical: true,
+      height: 100,
+      rotation: 45,
+      width: 400,
+      x: 50,
+      y: 60,
+    },
   });
   const edited = await writePptxRoundTrip(operation);
   assert.equal(edited.report.level, 'R2');
@@ -205,6 +218,28 @@ try {
   assertText(editedDocument, 'After native producer', 'Before native producer');
   assert.equal(createdDocument.slides.length, 1);
   assert.equal(editedDocument.slides.length, 1);
+  const editedElement = editedDocument.slides[0]?.elements[0];
+  assert.equal(editedElement?.type, 'text');
+  assert.deepEqual(
+    {
+      flipHorizontal: editedElement.isFlipH,
+      flipVertical: editedElement.isFlipV,
+      height: editedElement.height,
+      rotation: editedElement.rotate,
+      width: editedElement.width,
+      x: editedElement.left,
+      y: editedElement.top,
+    },
+    {
+      flipHorizontal: true,
+      flipVertical: true,
+      height: 100,
+      rotation: 45,
+      width: 400,
+      x: 50,
+      y: 60,
+    },
+  );
   assert.notEqual(sha256(createdResaved), sha256(created.data));
   assert.notEqual(sha256(editedResaved), sha256(edited.data));
 
@@ -226,6 +261,7 @@ try {
       outputSha256: sha256(editedResaved),
       saveReopen: true,
       semanticTextPreserved: true,
+      semanticTransformPreserved: true,
       sourceSha256: sha256(edited.data),
     },
     platform: {

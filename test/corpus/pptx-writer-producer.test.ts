@@ -18,6 +18,7 @@ import {
   parsePptx,
   readPptxRoundTrip,
   replacePptxRoundTripText,
+  setPptxRoundTripTextTransform,
   writePptxRoundTrip,
   type PptxSceneDocument,
 } from '../../src';
@@ -121,6 +122,10 @@ function convertWithLibreOffice(
   }
 }
 
+function expectLibreOfficePoint(actual: number, expected: number): void {
+  expect(Math.abs(actual - expected)).toBeLessThanOrEqual(0.2);
+}
+
 describe('PowerPoint writer producer compatibility', () => {
   it('survives LibreOffice open, PDF export, and PPTX resave', async () => {
     const directory = await mkdtemp(join(tmpdir(), 'oakit-pptx-writer-'));
@@ -193,14 +198,29 @@ describe('PowerPoint writer producer compatibility', () => {
       if (run?.type !== 'text') throw new Error('Expected editable text');
       const target = run.text.paragraphs[0]?.children[0];
       if (target?.type !== 'run') throw new Error('Expected editable run');
-      const operation = await replacePptxRoundTripText(snapshot, {
+      const textOperation = await replacePptxRoundTripText(snapshot, {
         targetKey: target.key,
         value: 'OAKit edited by an agent',
+      });
+      const operation = await setPptxRoundTripTextTransform(textOperation, {
+        targetKey: run.key,
+        value: {
+          flipHorizontal: true,
+          flipVertical: true,
+          height: 100,
+          rotation: 45,
+          width: 400,
+          x: 50,
+          y: 60,
+        },
       });
       const edited = await writePptxRoundTrip(operation);
       expect(edited.report).toMatchObject({
         level: 'R2',
-        operations: [{ kind: 'replace-text', status: 'verified' }],
+        operations: [
+          { kind: 'replace-text', status: 'verified' },
+          { kind: 'set-transform', status: 'verified' },
+        ],
         patchedPartCount: 1,
       });
       await writeFile(source, edited.data);
@@ -244,6 +264,19 @@ describe('PowerPoint writer producer compatibility', () => {
         'OAKit&nbsp;LibreOffice&nbsp;verification',
       );
       expect(serialized).toContain('Second&nbsp;producer&nbsp;slide');
+      const reopenedElement = reopened.slides[0]?.elements[0];
+      expect(reopenedElement).toMatchObject({
+        isFlipH: true,
+        isFlipV: true,
+        rotate: 45,
+      });
+      if (reopenedElement === undefined) {
+        throw new Error('Expected LibreOffice text element');
+      }
+      expectLibreOfficePoint(reopenedElement.left, 50);
+      expectLibreOfficePoint(reopenedElement.top, 60);
+      expectLibreOfficePoint(reopenedElement.width, 400);
+      expectLibreOfficePoint(reopenedElement.height, 100);
       expect(
         (await stat(join(pdfDirectory, 'edited.pdf'))).size,
       ).toBeGreaterThan(0);
