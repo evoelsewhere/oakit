@@ -260,6 +260,7 @@ export interface XlsxBorder {
 }
 
 export interface XlsxStyle {
+  border?: XlsxBorder;
   fill?: XlsxFill;
   font?: XlsxFont;
   numberFormat?: string;

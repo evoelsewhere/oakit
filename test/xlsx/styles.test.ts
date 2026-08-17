@@ -306,6 +306,57 @@ describe('XLSX styles table', () => {
     expect(Object.isFrozen(result.styles[3]?.fill)).toBe(true);
   });
 
+  it('resolves border references into semantic styles and deduplicates them', async () => {
+    const result = await load({
+      'xl/styles.xml': styleSheet(`
+        <fonts count="1"><font/></fonts>
+        <fills count="1"><fill/></fills>
+        <borders count="3">
+          <border/>
+          <border><left style="thin"><color rgb="FFFF0000"/></left></border>
+          <border diagonalUp="1" outline="0">
+            <diagonal style="dashDot"><color theme="4" tint=".25"/></diagonal>
+          </border>
+        </borders>
+        <cellStyleXfs count="1"><xf/></cellStyleXfs>
+        <cellXfs count="4">
+          <xf/>
+          <xf borderId="1"/>
+          <xf borderId="2"/>
+          <xf borderId="1"/>
+        </cellXfs>`),
+    });
+
+    expect(result.cellXfs).toEqual([
+      { normalizedStyle: 0 },
+      { normalizedStyle: 1 },
+      { normalizedStyle: 2 },
+      { normalizedStyle: 1 },
+    ]);
+    expect(result.styles).toEqual([
+      {},
+      {
+        border: {
+          left: {
+            color: { argb: 'FFFF0000', kind: 'rgb' },
+            style: 'thin',
+          },
+        },
+      },
+      {
+        border: {
+          diagonal: {
+            color: { index: 4, kind: 'theme', tint: 0.25 },
+            style: 'dashDot',
+          },
+          diagonalUp: true,
+          outline: false,
+        },
+      },
+    ]);
+    expect(Object.isFrozen(result.styles[2]?.border)).toBe(true);
+  });
+
   it('accepts maxStyles exactly and rejects one over using formats plus XFs', async () => {
     const xml = styleSheet(`${CORE}
       <numFmts count="1"><numFmt numFmtId="164" formatCode="0.000"/></numFmts>

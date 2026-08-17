@@ -9,6 +9,7 @@ import {
   type ResolvedXlsxResourceLimits,
   XlsxResourceLimitError,
 } from './resource-limits';
+import { parseXlsxStyleBorder } from './style-border';
 import { parseXlsxStyleFont } from './style-font';
 import { parseXlsxStyleFill } from './style-fill';
 import {
@@ -186,7 +187,7 @@ function customNumberFormats(
 function collectionCount(
   root: XmlRecord,
   prefix: string,
-  name: 'borders' | 'cellStyleXfs',
+  name: 'cellStyleXfs',
   item: 'border' | 'fill' | 'font' | 'xf',
   part: string,
 ): number {
@@ -242,7 +243,9 @@ export function parseXlsxStylePart(
   const fills = collection(root, prefix, 'fills', 'fill', part, true).map(
     (fill) => parseXlsxStyleFill(fill, prefix, part),
   );
-  const borderCount = collectionCount(root, prefix, 'borders', 'border', part);
+  const borders = collection(root, prefix, 'borders', 'border', part, true).map(
+    (border) => parseXlsxStyleBorder(border, prefix, part),
+  );
   const baseXfCount = collectionCount(root, prefix, 'cellStyleXfs', 'xf', part);
   const xfs = collection(root, prefix, 'cellXfs', 'xf', part, true);
   const totalStyles = custom.size + xfs.length;
@@ -280,9 +283,9 @@ export function parseXlsxStylePart(
       'Styles XF fill reference is invalid',
       part,
     );
-    referencedIndex(
+    const borderId = referencedIndex(
       attrs.borderId,
-      borderCount,
+      borders.length,
       'Styles XF border reference is invalid',
       part,
     );
@@ -293,6 +296,7 @@ export function parseXlsxStylePart(
       part,
     );
     const code = numberFormat(numFmtId, custom, part);
+    const border = borders[borderId]!;
     const font = fonts[fontId]!;
     const fill = fills[fillId]!;
     const defaultFill =
@@ -301,6 +305,7 @@ export function parseXlsxStylePart(
       fill.foregroundColor === undefined &&
       fill.backgroundColor === undefined;
     const style: XlsxStyle = {
+      ...(Object.keys(border).length === 0 ? {} : { border }),
       ...(defaultFill ? {} : { fill }),
       ...(Object.keys(font).length === 0 ? {} : { font }),
       ...(code === undefined ? {} : { numberFormat: code }),
