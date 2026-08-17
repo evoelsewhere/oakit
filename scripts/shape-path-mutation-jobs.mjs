@@ -12,8 +12,8 @@ const stringJobCount = 2;
 const remainingJobDefinitions = [
   { count: 3, names: ['ConditionalExpression'] },
   { count: 3, names: ['ArrowFunction', 'MethodExpression'] },
-  { count: 1, names: ['BlockStatement'] },
-  { count: 1, names: ['BooleanLiteral', 'LogicalOperator'] },
+  { count: 3, names: ['BlockStatement'] },
+  { count: 3, names: ['BooleanLiteral', 'LogicalOperator'] },
   { count: 2, names: ['ArrayDeclaration'] },
   {
     count: 2,
