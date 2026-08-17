@@ -12,6 +12,7 @@ import {
   writePptxRoundTrip,
 } from '../../dist/index.js';
 import { roundTripGoogleSlidesPresentation } from './google-slides-drive.mjs';
+import { pptxTransformsAreEquivalent } from './pptx-transform-equivalence.mjs';
 
 const accessToken = process.env.GOOGLE_DRIVE_ACCESS_TOKEN;
 if (accessToken === undefined || accessToken.trim().length === 0) {
@@ -190,9 +191,17 @@ assert.equal(editedDocument.slides.length, 1);
 assertText(createdDocument, 'Before Google producer', 'After Google producer');
 assertText(editedDocument, 'After Google producer', 'Before Google producer');
 assert.equal(editedElement?.type, 'text');
-assert.equal(editedElement.isFlipH, true);
-assert.equal(editedElement.isFlipV, true);
-assert.equal(editedElement.rotate, 45);
+assert.equal(
+  pptxTransformsAreEquivalent(
+    { flipHorizontal: true, flipVertical: true, rotation: 45 },
+    {
+      flipHorizontal: editedElement.isFlipH,
+      flipVertical: editedElement.isFlipV,
+      rotation: editedElement.rotate,
+    },
+  ),
+  true,
+);
 assertPoint(editedElement.left, 50, 'edited x');
 assertPoint(editedElement.top, 60, 'edited y');
 assertPoint(editedElement.width, 400, 'edited width');
@@ -241,6 +250,18 @@ const evidence = {
     semanticTransformPreserved: true,
     strictParse: true,
     temporaryPresentationsDeleted: true,
+    transformNormalization: {
+      exported: {
+        flipHorizontal: editedElement.isFlipH,
+        flipVertical: editedElement.isFlipV,
+        rotation: editedElement.rotate,
+      },
+      requested: {
+        flipHorizontal: true,
+        flipVertical: true,
+        rotation: 45,
+      },
+    },
   },
   verifiedAt: new Date().toISOString(),
 };
