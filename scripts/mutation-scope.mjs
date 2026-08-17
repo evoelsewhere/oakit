@@ -83,6 +83,7 @@ export const mutatedFiles = [
   'src/formats/xlsx/internal/resource-limits.ts',
   'src/formats/xlsx/internal/selection.ts',
   'src/formats/xlsx/internal/shared-strings.ts',
+  'src/formats/xlsx/internal/style-color.ts',
   'src/formats/xlsx/internal/styles.ts',
   'src/formats/xlsx/internal/streaming-xml.ts',
   'src/formats/xlsx/internal/workbook-discovery.ts',

@@ -156,6 +156,12 @@ export interface XlsxColumnRange {
   width?: number;
 }
 
+export type XlsxColor =
+  | { argb: string; kind: 'rgb'; tint?: number }
+  | { index: number; kind: 'theme'; tint?: number }
+  | { index: number; kind: 'indexed'; tint?: number }
+  | { kind: 'automatic' };
+
 export interface XlsxStyle {
   numberFormat?: string;
 }
