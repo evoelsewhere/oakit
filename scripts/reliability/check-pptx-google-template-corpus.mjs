@@ -320,6 +320,13 @@ const manifest = {
     sourceContactSheet: artifactEvidence(sourceContactSheet),
   },
   corpus: evidence,
+  execution: {
+    repository: process.env.GITHUB_REPOSITORY ?? null,
+    revision: process.env.GITHUB_SHA ?? null,
+    runAttempt: process.env.GITHUB_RUN_ATTEMPT ?? null,
+    runId: process.env.GITHUB_RUN_ID ?? null,
+    workflow: process.env.GITHUB_WORKFLOW ?? null,
+  },
   platform: {
     architecture: process.arch,
     node: process.version,
