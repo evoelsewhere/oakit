@@ -3,6 +3,7 @@ import type { PptxParserContext } from './context';
 
 import {
   decodeXmlEntities,
+  decodeOfficeTextEscapes,
   escapeHtml,
   getTextByPathList,
   getXmlNodeOrder,
@@ -78,8 +79,9 @@ function renderSpan(style: SpanStyleInfo, text: string): string {
 }
 
 export function getTextNodeValue(node: unknown): string | undefined {
-  if (typeof node === 'string') return node;
-  return textAt(node, ['value']);
+  if (typeof node === 'string') return decodeOfficeTextEscapes(node);
+  const value = textAt(node, ['value']);
+  return value === undefined ? undefined : decodeOfficeTextEscapes(value);
 }
 
 function getParagraphContent(

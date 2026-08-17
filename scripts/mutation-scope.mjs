@@ -7,6 +7,7 @@ export const mutatedFiles = [
   'src/common/media/media-type.ts',
   'src/common/numbers.ts',
   'src/common/ooxml/units.ts',
+  'src/common/ooxml/text.ts',
   'src/common/opc/part-uri.ts',
   'src/common/text/css.ts',
   'src/common/text/html.ts',

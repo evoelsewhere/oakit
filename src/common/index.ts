@@ -5,6 +5,7 @@ export {
   isVideoLink,
 } from './media/media-type';
 export { angleToDegrees, numberToFixed, toHex } from './numbers';
+export { decodeOfficeTextEscapes } from './ooxml/text';
 export {
   getRelationshipPartUri,
   resolvePartUri,
