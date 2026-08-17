@@ -24,9 +24,9 @@ export const slidesManiaCorpus = [
     sourcePage: 'https://slidesmania.com/happy-halloween-free-ppt-template/',
   },
   {
-    title: 'think GREEN',
+    title: 'Digital pastel ring binder',
     sourcePage:
-      'https://slidesmania.com/think-green-free-presentation-template/',
+      'https://slidesmania.com/free-digital-pastel-colored-ring-binder/',
   },
   {
     title: 'Personal Dashboard planner',
@@ -54,14 +54,12 @@ export const slidesManiaCorpus = [
       'https://slidesmania.com/black-and-white-free-presentation-template/',
   },
   {
-    title: 'Vintage Vision Board',
-    sourcePage:
-      'https://slidesmania.com/vintage-vision-board-with-monthly-calendars-free-template/',
+    title: 'Rigel retro lines',
+    sourcePage: 'https://slidesmania.com/rigel-free-presentation-template/',
   },
   {
-    title: 'Marketing Analysis',
-    sourcePage:
-      'https://slidesmania.com/marketing-analysis-free-presentation-template/',
+    title: 'Daisy groovy presentation',
+    sourcePage: 'https://slidesmania.com/daisy-free-presentation-template/',
   },
   {
     title: 'Art and Crafts',
@@ -69,9 +67,9 @@ export const slidesManiaCorpus = [
       'https://slidesmania.com/art-and-crafts-free-presentation-template/',
   },
   {
-    title: 'Marketing Campaign',
+    title: 'Interface with file folders',
     sourcePage:
-      'https://slidesmania.com/marketing-campaign-free-presentation-template/',
+      'https://slidesmania.com/interface-with-file-folders-free-presentation-template/',
   },
   {
     title: 'Minimal Social',
@@ -79,9 +77,8 @@ export const slidesManiaCorpus = [
       'https://slidesmania.com/minimal-social-free-presentation-template/',
   },
   {
-    title: 'Personal Finance',
-    sourcePage:
-      'https://slidesmania.com/personal-finance-free-presentation-template/',
+    title: 'Amelia floral presentation',
+    sourcePage: 'https://slidesmania.com/amelia-free-presentation-template/',
   },
   {
     title: 'Early Childhood',
@@ -117,8 +114,9 @@ export const slidesManiaCorpus = [
       'https://slidesmania.com/unlock-your-creative-vision-with-this-free-mood-board-template/',
   },
   {
-    title: 'Book Review Scrapbook',
-    sourcePage: 'https://slidesmania.com/book-review-scrapbook-free-template/',
+    title: 'Interactive Choice Board',
+    sourcePage:
+      'https://slidesmania.com/differentiated-instruction-free-choice-board-template/',
   },
   {
     title: 'Formal Peach',
@@ -126,9 +124,9 @@ export const slidesManiaCorpus = [
       'https://slidesmania.com/formal-peach-free-ppt-template-and-google-slides-theme/',
   },
   {
-    title: 'Minimalist Business Pitch',
+    title: 'My Portfolio',
     sourcePage:
-      'https://slidesmania.com/free-simple-business-pitch-free-template/',
+      'https://slidesmania.com/my-portfolio-free-presentation-template/',
   },
   {
     title: 'Beth elegant presentation',
@@ -151,6 +149,7 @@ export const slidesManiaCorpusProvenance = {
   categoryPages: [
     'https://slidesmania.com/free-templates/popular/',
     'https://slidesmania.com/free-templates/popular/page/2/',
+    'https://slidesmania.com/free-templates/popular/page/3/',
   ],
   homepage: 'https://slidesmania.com/',
   license: 'https://slidesmania.com/copyright-and-legal-information/#license',
