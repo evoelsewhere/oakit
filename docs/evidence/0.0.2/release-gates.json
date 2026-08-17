@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "version": "0.0.2",
+  "sourceTree": "4b7c749f58f908967b9868716bddd78e05a0fbcd",
+  "productionSourceChangedFrom0.0.1": false,
+  "parentEvidence": "../0.0.1/release-gates.json",
+  "package": {
+    "bin": {
+      "oakit": "dist/cli.js"
+    },
+    "packedConsumerSmoke": true,
+    "registryCliVersion": "oakit 0.0.2",
+    "registryEsmImport": true,
+    "integrity": "sha512-82+9M33QYGbq6r4JFLYzPhxaAPnZmnCqUkD7gP1lLZen/ZZ05O5g5aGcB+M60fOcrqdYZ7O8gqJ7S5SnUDjCJg=="
+  },
+  "ci": {
+    "conclusion": "success",
+    "revision": "a3eeb50ce7d78bb7bd92e53b32f41383aca1f57d",
+    "runId": "32055043675",
+    "jobs": 11
+  },
+  "release": {
+    "tag": "v0.0.2",
+    "revision": "a3eeb50ce7d78bb7bd92e53b32f41383aca1f57d",
+    "url": "https://github.com/evoelsewhere/oakit/releases/tag/v0.0.2"
+  },
+  "publish": {
+    "conclusion": "success",
+    "runId": "32055249795",
+    "provenance": true,
+    "transparencyLogIndex": 2498849109
+  }
+}

@@ -100,9 +100,39 @@ describe('release documentation', () => {
       path.resolve('docs', 'release-0.0.2.md'),
       'utf8',
     );
+    const hotfixGates = JSON.parse(
+      await readFile(
+        path.resolve('docs', 'evidence', '0.0.2', 'release-gates.json'),
+        'utf8',
+      ),
+    );
     expect(hotfixChecklist).toContain('node_modules/.bin/oakit');
     expect(hotfixChecklist).toContain(
       '[run 32054867081](https://github.com/evoelsewhere/oakit/actions/runs/32054867081)',
     );
+    expect(hotfixChecklist).not.toContain('- [ ]');
+    expect(hotfixGates).toMatchObject({
+      ci: {
+        conclusion: 'success',
+        jobs: 11,
+        runId: '32055043675',
+      },
+      package: {
+        bin: { oakit: 'dist/cli.js' },
+        registryCliVersion: 'oakit 0.0.2',
+        registryEsmImport: true,
+      },
+      publish: {
+        conclusion: 'success',
+        provenance: true,
+        runId: '32055249795',
+      },
+      release: {
+        revision: 'a3eeb50ce7d78bb7bd92e53b32f41383aca1f57d',
+        tag: 'v0.0.2',
+      },
+      sourceTree: '4b7c749f58f908967b9868716bddd78e05a0fbcd',
+      version: '0.0.2',
+    });
   });
 });
