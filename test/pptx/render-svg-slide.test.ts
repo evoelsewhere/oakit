@@ -127,6 +127,7 @@ describe('PowerPoint SVG slide source', () => {
   it.each([
     ['ellipse', '<ellipse cx="40" cy="20" rx="40" ry="20"'],
     ['line', '<line x1="0" y1="0" x2="80" y2="40"'],
+    ['straightConnector1', '<line x1="0" y1="0" x2="80" y2="40"'],
     ['lineInv', '<line x1="0" y1="40" x2="80" y2="0"'],
     ['roundRect', '<rect x="0" y="0" width="80" height="40" rx="6"'],
   ])('renders the safe %s geometry', (shapType, fragment) => {
@@ -134,6 +135,21 @@ describe('PowerPoint SVG slide source', () => {
     expect(result.source).toContain(fragment);
     expect(result.warnings).toEqual([]);
   });
+
+  it.each([
+    ['straightConnector1', 80, 0, '<line x1="0" y1="0" x2="80" y2="0"'],
+    ['straightConnector1', 0, 40, '<line x1="0" y1="0" x2="0" y2="40"'],
+    ['line', 80, 0, '<line x1="0" y1="0" x2="80" y2="0"'],
+    ['lineInv', 0, 40, '<line x1="0" y1="40" x2="0" y2="0"'],
+  ])(
+    'renders a zero-dimension %s with dimensions %sx%s',
+    (shapType, width, height, fragment) => {
+      const result = render(slide([shape({ height, shapType, width })]));
+
+      expect(result.source).toContain(fragment);
+      expect(result.warnings).toEqual([]);
+    },
+  );
 
   it.each([
     [Number.NaN, '#112233'],

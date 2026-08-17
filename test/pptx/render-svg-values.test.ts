@@ -5,6 +5,7 @@ import {
   svgBox,
   svgColor,
   svgDashArray,
+  svgLineBox,
   svgNumber,
 } from '../../src/formats/pptx/render-svg-values';
 
@@ -98,5 +99,23 @@ describe('PowerPoint SVG values', () => {
     { height: '1', left: 0, top: 0, width: 1 },
   ])('rejects unsafe box %#', (value) => {
     expect(svgBox(value)).toBeNull();
+  });
+
+  it('accepts one zero line dimension but rejects a zero-area point', () => {
+    expect(svgLineBox({ height: 0, left: 1, top: 2, width: 10 })).toEqual({
+      height: 0,
+      left: 1,
+      top: 2,
+      width: 10,
+    });
+    expect(svgLineBox({ height: 10, left: 1, top: 2, width: 0 })).toEqual({
+      height: 10,
+      left: 1,
+      top: 2,
+      width: 0,
+    });
+    expect(svgLineBox({ height: 0, left: 1, top: 2, width: 0 })).toBeNull();
+    expect(svgLineBox({ height: 1, left: 1, top: 2, width: -1 })).toBeNull();
+    expect(svgLineBox({ height: -1, left: 1, top: 2, width: 1 })).toBeNull();
   });
 });

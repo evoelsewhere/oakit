@@ -7,6 +7,7 @@ import {
   svgBox,
   svgColor,
   svgDashArray,
+  svgLineBox,
   svgNumber,
   type PptxSvgBox,
 } from './render-svg-values';
@@ -195,7 +196,10 @@ function shapeGeometry(
   if (element.shapType === 'ellipse') {
     return `<ellipse cx="${svgNumber(box.width / 2)}" cy="${svgNumber(box.height / 2)}" rx="${svgNumber(box.width / 2)}" ry="${svgNumber(box.height / 2)}" ${style}/>`;
   }
-  if (element.shapType === 'line') {
+  if (
+    element.shapType === 'line' ||
+    element.shapType === 'straightConnector1'
+  ) {
     return `<line x1="0" y1="0" x2="${width}" y2="${height}" ${style}/>`;
   }
   if (element.shapType === 'lineInv') {
@@ -278,7 +282,13 @@ function renderImage(
 }
 
 function renderElement(element: Element, context: RenderContext): string {
-  const box = svgBox(element);
+  const box =
+    element.type === 'shape' &&
+    (element.shapType === 'line' ||
+      element.shapType === 'lineInv' ||
+      element.shapType === 'straightConnector1')
+      ? svgLineBox(element)
+      : svgBox(element);
   if (box === null) {
     warning(
       context,

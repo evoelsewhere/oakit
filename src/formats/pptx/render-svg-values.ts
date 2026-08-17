@@ -76,3 +76,27 @@ export function svgBox(value: unknown): PptxSvgBox | null {
   }
   return { height, left, top, width };
 }
+
+export function svgLineBox(value: unknown): PptxSvgBox | null {
+  if (!isRecord(value)) return null;
+  const left = value.left;
+  const top = value.top;
+  const width = value.width;
+  const height = value.height;
+  if (
+    typeof left !== 'number' ||
+    !Number.isFinite(left) ||
+    typeof top !== 'number' ||
+    !Number.isFinite(top) ||
+    typeof width !== 'number' ||
+    !Number.isFinite(width) ||
+    width < 0 ||
+    typeof height !== 'number' ||
+    !Number.isFinite(height) ||
+    height < 0 ||
+    (width === 0 && height === 0)
+  ) {
+    return null;
+  }
+  return { height, left, top, width };
+}
