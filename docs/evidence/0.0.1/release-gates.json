@@ -28,5 +28,23 @@
     "revision": "cbae5e40a4f67b70ad18264e47c4566d4daae2d6",
     "runId": "32049822932",
     "jobs": 11
+  },
+  "releaseCandidate": {
+    "revision": "83f1cebf0dd1429a1f8305389681cc50e010b038",
+    "sourceTree": "4b7c749f58f908967b9868716bddd78e05a0fbcd",
+    "packageSmoke": {
+      "packedInstall": true,
+      "esm": true,
+      "cjs": true,
+      "subpathExports": true,
+      "cliVersion": "oakit 0.0.1",
+      "portableRestoreByteExact": true,
+      "officeFreePng": true
+    },
+    "ci": {
+      "conclusion": "success",
+      "runId": "32053915220",
+      "jobs": 11
+    }
   }
 }

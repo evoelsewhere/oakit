@@ -44,7 +44,10 @@ describe('release documentation', () => {
       '[run 32049829830](https://github.com/evoelsewhere/oakit/actions/runs/32049829830)',
     );
     expect(checklist).toContain('21,184 mutants');
-    expect(checklist).toContain('- [ ] Pack and install the release tarball');
+    expect(checklist).toContain('- [x] Pack and install the release tarball');
+    expect(checklist).toContain(
+      '[run 32053915220](https://github.com/evoelsewhere/oakit/actions/runs/32053915220)',
+    );
     expect(gates).toMatchObject({
       ci: { conclusion: 'success', runId: '32049822932' },
       mutation: {
@@ -58,6 +61,20 @@ describe('release documentation', () => {
         runId: '32045412714',
         templateCount: 30,
         totalSlides: 733,
+      },
+      releaseCandidate: {
+        ci: { conclusion: 'success', jobs: 11, runId: '32053915220' },
+        packageSmoke: {
+          cjs: true,
+          cliVersion: 'oakit 0.0.1',
+          esm: true,
+          officeFreePng: true,
+          packedInstall: true,
+          portableRestoreByteExact: true,
+          subpathExports: true,
+        },
+        revision: '83f1cebf0dd1429a1f8305389681cc50e010b038',
+        sourceTree: '4b7c749f58f908967b9868716bddd78e05a0fbcd',
       },
       sourceTree: '4b7c749f58f908967b9868716bddd78e05a0fbcd',
       version: '0.0.1',
