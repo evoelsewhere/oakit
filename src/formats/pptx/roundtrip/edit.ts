@@ -1,6 +1,5 @@
 import { resolvePptxResourceLimits } from '../internal/resource-limits';
 import { isValidXmlText } from '../scene-validation';
-import { validatePptxScene } from '../scene-validation';
 import { PptxWriteError } from '../write-error';
 import type { PptxSceneTextElement, PptxSceneTransform } from '../scene-types';
 import { canonicalJson } from './canonical-json';
@@ -80,9 +79,6 @@ function findTextElement(
   for (const slide of snapshot.document.slides) {
     for (const element of slide.elements) {
       if (element.type !== 'text' || element.key !== targetKey) continue;
-      if (matched !== undefined) {
-        invalidEdit('PowerPoint transform target key is ambiguous');
-      }
       matched = element;
     }
   }
@@ -92,9 +88,39 @@ function findTextElement(
   return matched;
 }
 
-function normalizedTransform(value: PptxSceneTransform): PptxSceneTransform {
+export function normalizePptxRoundTripTransform(
+  value: PptxSceneTransform,
+): PptxSceneTransform {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) {
     invalidEdit('PowerPoint transform value must be an object');
+  }
+  const allowedKeys = new Set([
+    'flipHorizontal',
+    'flipVertical',
+    'height',
+    'rotation',
+    'width',
+    'x',
+    'y',
+  ]);
+  if (Object.keys(value).some((key) => !allowedKeys.has(key))) {
+    invalidEdit('PowerPoint transform value is not a valid scene transform');
+  }
+  for (const key of ['x', 'y', 'width', 'height'] as const) {
+    if (!Number.isFinite(value[key])) {
+      invalidEdit('PowerPoint transform value is not a valid scene transform');
+    }
+  }
+  if (value.width <= 0 || value.height <= 0) {
+    invalidEdit('PowerPoint transform value is not a valid scene transform');
+  }
+  if (value.rotation !== undefined && !Number.isFinite(value.rotation)) {
+    invalidEdit('PowerPoint transform value is not a valid scene transform');
+  }
+  for (const key of ['flipHorizontal', 'flipVertical'] as const) {
+    if (value[key] !== undefined && typeof value[key] !== 'boolean') {
+      invalidEdit('PowerPoint transform value is not a valid scene transform');
+    }
   }
   return {
     flipHorizontal: value.flipHorizontal ?? false,
@@ -105,33 +131,6 @@ function normalizedTransform(value: PptxSceneTransform): PptxSceneTransform {
     x: value.x,
     y: value.y,
   };
-}
-
-function validateTransformRequest(
-  snapshot: PptxRoundTripSnapshot,
-  targetKey: string,
-  value: PptxSceneTransform,
-): PptxSceneTransform {
-  if (typeof targetKey !== 'string' || targetKey.length === 0) {
-    invalidEdit('PowerPoint transform target key must be a non-empty string');
-  }
-  const normalized = normalizedTransform(value);
-  const candidate = structuredClone(snapshot.document);
-  let updated = false;
-  for (const slide of candidate.slides) {
-    for (const element of slide.elements) {
-      if (element.type === 'text' && element.key === targetKey) {
-        element.resolved.transform = normalized;
-        updated = true;
-      }
-    }
-  }
-  if (!updated) invalidEdit('PowerPoint transform target key does not exist');
-  const validation = validatePptxScene(candidate);
-  if (!validation.valid) {
-    invalidEdit('PowerPoint transform value is not a valid scene transform');
-  }
-  return normalized;
 }
 
 function invalidEdit(message: string): never {
@@ -149,9 +148,6 @@ function findRunText(
       for (const paragraph of element.text.paragraphs) {
         for (const child of paragraph.children) {
           if (child.key !== targetKey || child.type !== 'run') continue;
-          if (matched !== undefined) {
-            invalidEdit('PowerPoint text edit target key is ambiguous');
-          }
           matched = child.text;
         }
       }
@@ -163,7 +159,7 @@ function findRunText(
   return matched;
 }
 
-function validateRequest(
+export function validatePptxRoundTripReplaceTextRequest(
   request: PptxRoundTripReplaceTextRequest,
   maxXmlBytes: number,
 ): void {
@@ -176,10 +172,7 @@ function validateRequest(
   if (!isValidXmlText(request.value)) {
     invalidEdit('PowerPoint text edit value is not safe XML text');
   }
-  if (
-    request.value.length > maxXmlBytes ||
-    new TextEncoder().encode(request.value).byteLength > maxXmlBytes
-  ) {
+  if (new TextEncoder().encode(request.value).byteLength > maxXmlBytes) {
     invalidEdit('PowerPoint text edit value exceeds the XML part byte limit');
   }
 }
@@ -190,7 +183,7 @@ export async function replacePptxRoundTripText(
 ): Promise<PptxRoundTripSnapshot> {
   const limits = resolvePptxResourceLimits();
   const validated = validatePptxRoundTripSnapshot(value, limits);
-  validateRequest(request, limits.maxXmlBytes);
+  validatePptxRoundTripReplaceTextRequest(request, limits.maxXmlBytes);
   const snapshot = structuredClone(validated);
   const expectedText = findRunText(snapshot, request.targetKey);
   if (expectedText === request.value) {
@@ -229,16 +222,15 @@ export async function setPptxRoundTripTextTransform(
   const limits = resolvePptxResourceLimits();
   const validated = validatePptxRoundTripSnapshot(value, limits);
   const snapshot = structuredClone(validated);
+  if (typeof request.targetKey !== 'string' || request.targetKey.length === 0) {
+    invalidEdit('PowerPoint transform target key must be a non-empty string');
+  }
   const target = findTextElement(snapshot, request.targetKey);
   const expectedTransform = target.resolved.transform;
   if (expectedTransform === undefined) {
     invalidEdit('PowerPoint transform target has no resolved transform');
   }
-  const transform = validateTransformRequest(
-    snapshot,
-    request.targetKey,
-    request.value,
-  );
+  const transform = normalizePptxRoundTripTransform(request.value);
   if (canonicalJson(expectedTransform) === canonicalJson(transform)) {
     invalidEdit('PowerPoint transform edit must change the target value');
   }

@@ -205,11 +205,6 @@ function editableRuns(
       for (const paragraph of element.text.paragraphs) {
         for (const child of paragraph.children) {
           if (child.type !== 'run') continue;
-          if (runs.has(child.key)) {
-            invalidSnapshot(
-              'PowerPoint round-trip snapshot contains an ambiguous text target',
-            );
-          }
           runs.set(child.key, child.text);
         }
       }
@@ -224,14 +219,7 @@ function editableTransforms(
   const transforms = new Map<string, unknown>();
   for (const slide of value.slides) {
     for (const element of slide.elements) {
-      if (element.type !== 'text' || element.resolved.transform === undefined) {
-        continue;
-      }
-      if (transforms.has(element.key)) {
-        invalidSnapshot(
-          'PowerPoint round-trip snapshot contains an ambiguous transform target',
-        );
-      }
+      if (element.type !== 'text') continue;
       transforms.set(element.key, element.resolved.transform);
     }
   }
@@ -244,10 +232,7 @@ function validateTransform(
 ): Record<string, unknown> {
   const transform = exactRecord(value, TRANSFORM_KEYS, message);
   for (const key of ['x', 'y', 'width', 'height', 'rotation'] as const) {
-    if (
-      typeof transform[key] !== 'number' ||
-      !Number.isFinite(transform[key])
-    ) {
+    if (!Number.isFinite(transform[key])) {
       invalidSnapshot(message);
     }
   }
@@ -360,10 +345,7 @@ function validateOperations(
         'PowerPoint round-trip text edit value is not safe XML text',
       );
     }
-    if (
-      replacement.length > limits.maxXmlBytes ||
-      new TextEncoder().encode(replacement).byteLength > limits.maxXmlBytes
-    ) {
+    if (new TextEncoder().encode(replacement).byteLength > limits.maxXmlBytes) {
       invalidSnapshot(
         'PowerPoint round-trip text edit value exceeds the XML part byte limit',
       );

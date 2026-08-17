@@ -442,7 +442,7 @@ function booleanAttribute(attributesText: string, name: string): boolean {
   unsupportedEdit(`PowerPoint transform ${name} attribute is invalid`);
 }
 
-function patchShapeTransform(
+export function patchPptxShapeTransformXml(
   xml: string,
   shapeId: string,
   operation: PptxRoundTripSetTransformOperation,
@@ -490,13 +490,10 @@ function patchShapeTransform(
       'PowerPoint transform target must contain one simple shape transform',
     );
   }
-  const match = matches[0];
-  if (match === undefined) {
-    unsupportedEdit('PowerPoint shape transform disappeared');
-  }
-  const transformAttributes = match[1] ?? '';
-  const offsetAttributes = match[2] ?? '';
-  const extentAttributes = match[3] ?? '';
+  const match = matches[0] as RegExpMatchArray;
+  const transformAttributes = match[1] as string;
+  const offsetAttributes = match[2] as string;
+  const extentAttributes = match[3] as string;
   const source = {
     flipHorizontal: booleanAttribute(transformAttributes, 'flipH'),
     flipVertical: booleanAttribute(transformAttributes, 'flipV'),
@@ -507,8 +504,8 @@ function patchShapeTransform(
     y: integerAttribute(offsetAttributes, 'y'),
   };
   const expected = {
-    flipHorizontal: operation.expectedTransform.flipHorizontal ?? false,
-    flipVertical: operation.expectedTransform.flipVertical ?? false,
+    flipHorizontal: operation.expectedTransform.flipHorizontal as boolean,
+    flipVertical: operation.expectedTransform.flipVertical as boolean,
     height: pointsToEmu(operation.expectedTransform.height),
     rotation: degreesToAngle(operation.expectedTransform.rotation ?? 0),
     width: pointsToEmu(operation.expectedTransform.width),
@@ -629,7 +626,7 @@ export async function patchPptxOperations(
     const patched =
       operation.kind === 'replace-text'
         ? patchShapeText(current, target.shapeId, operation)
-        : patchShapeTransform(current, target.shapeId, operation);
+        : patchPptxShapeTransformXml(current, target.shapeId, operation);
     editedXml.set(slidePart, patched);
     patchedParts.add(slidePart);
   }

@@ -176,6 +176,23 @@ describe('PowerPoint part-preserving text transform editing', () => {
     });
   });
 
+  it('allows transform after a text operation targeting a different stable key', async () => {
+    const { snapshot } = await fixture();
+    const textEdited = await replacePptxRoundTripText(snapshot, {
+      targetKey: 'slide-1-element-1-run-1',
+      value: 'After',
+    });
+    const transformed = await setPptxRoundTripTextTransform(textEdited, {
+      targetKey: 'slide-1-element-1',
+      value: changedTransform(),
+    });
+
+    expect(transformed.operations.map((operation) => operation.kind)).toEqual([
+      'replace-text',
+      'set-transform',
+    ]);
+  });
+
   it('normalizes omitted rotation and flip fields', async () => {
     const { snapshot } = await fixture();
     const edited = await setPptxRoundTripTextTransform(snapshot, {
@@ -241,20 +258,82 @@ describe('PowerPoint part-preserving text transform editing', () => {
   });
 
   it.each([
-    ['missing target', 'missing', changedTransform()],
-    ['zero width', 'slide-1-element-1', { ...changedTransform(), width: 0 }],
+    [
+      'missing target',
+      'missing',
+      changedTransform(),
+      'PowerPoint transform target key does not exist',
+    ],
+    [
+      'zero width',
+      'slide-1-element-1',
+      { ...changedTransform(), width: 0 },
+      'PowerPoint transform value is not a valid scene transform',
+    ],
+    [
+      'zero height',
+      'slide-1-element-1',
+      { ...changedTransform(), height: 0 },
+      'PowerPoint transform value is not a valid scene transform',
+    ],
     [
       'non-finite x',
       'slide-1-element-1',
       { ...changedTransform(), x: Number.NaN },
+      'PowerPoint transform value is not a valid scene transform',
     ],
-  ])('rejects an invalid request: %s', async (_name, targetKey, value) => {
-    const { snapshot } = await fixture();
+    [
+      'non-numeric y',
+      'slide-1-element-1',
+      { ...changedTransform(), y: '60' as never },
+      'PowerPoint transform value is not a valid scene transform',
+    ],
+    [
+      'missing required x',
+      'slide-1-element-1',
+      { ...changedTransform(), x: undefined as never },
+      'PowerPoint transform value is not a valid scene transform',
+    ],
+    [
+      'non-finite rotation',
+      'slide-1-element-1',
+      { ...changedTransform(), rotation: Number.NaN },
+      'PowerPoint transform value is not a valid scene transform',
+    ],
+    [
+      'non-numeric rotation',
+      'slide-1-element-1',
+      { ...changedTransform(), rotation: '45' as never },
+      'PowerPoint transform value is not a valid scene transform',
+    ],
+    [
+      'non-boolean flip',
+      'slide-1-element-1',
+      { ...changedTransform(), flipHorizontal: 1 as never },
+      'PowerPoint transform value is not a valid scene transform',
+    ],
+    [
+      'non-boolean vertical flip',
+      'slide-1-element-1',
+      { ...changedTransform(), flipVertical: 'true' as never },
+      'PowerPoint transform value is not a valid scene transform',
+    ],
+    [
+      'extra property',
+      'slide-1-element-1',
+      { ...changedTransform(), extra: true } as PptxSceneTransform,
+      'PowerPoint transform value is not a valid scene transform',
+    ],
+  ])(
+    'rejects an invalid request: %s',
+    async (_name, targetKey, value, message) => {
+      const { snapshot } = await fixture();
 
-    await expect(
-      setPptxRoundTripTextTransform(snapshot, { targetKey, value }),
-    ).rejects.toMatchObject({ code: 'invalid-edit-operation' });
-  });
+      await expect(
+        setPptxRoundTripTextTransform(snapshot, { targetKey, value }),
+      ).rejects.toMatchObject({ code: 'invalid-edit-operation', message });
+    },
+  );
 
   it('rejects a no-op and a duplicate transform target', async () => {
     const { snapshot } = await fixture();

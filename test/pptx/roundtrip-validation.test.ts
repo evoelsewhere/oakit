@@ -275,12 +275,39 @@ describe('PowerPoint round-trip snapshot contract validation', () => {
     return value;
   }
 
+  function replaceSnapshot(replacement = 'After'): PptxRoundTripSnapshot {
+    const value = transformSnapshot();
+    value.operations = [
+      {
+        expectedText: 'Before',
+        id: 'replace-text-1',
+        kind: 'replace-text',
+        targetKey: 'run-1',
+        value: replacement,
+      },
+    ];
+    return value;
+  }
+
   it('accepts a transform edit with an exact preview precondition', () => {
     const value = transformSnapshot();
 
     expect(
       validatePptxRoundTripSnapshot(value, resolvePptxResourceLimits()),
     ).toBe(value);
+  });
+
+  it('reports the exact index of a malformed second operation', () => {
+    const value = transformSnapshot();
+    rootRecord(value).operations = [
+      ...value.operations,
+      { kind: 'set-transform' },
+    ];
+    expectInvalid(
+      value,
+      'invalid-snapshot',
+      'PowerPoint round-trip operation 2 has an invalid shape',
+    );
   });
 
   it.each([
@@ -333,6 +360,305 @@ describe('PowerPoint round-trip snapshot contract validation', () => {
     const value = transformSnapshot();
     mutate(value);
     expectInvalid(value, 'invalid-snapshot', message);
+  });
+
+  it.each([null, [], 7])(
+    'rejects primitive operation value %j',
+    (operation) => {
+      const value = transformSnapshot();
+      rootRecord(value).operations = [operation];
+      expectInvalid(
+        value,
+        'invalid-snapshot',
+        'PowerPoint round-trip operation 1 has an invalid shape',
+      );
+    },
+  );
+
+  it.each([
+    ['id', 7, 'PowerPoint round-trip operation 1 id must be a string'],
+    [
+      'targetKey',
+      7,
+      'PowerPoint round-trip operation 1 targetKey must be a string',
+    ],
+    ['id', '', 'PowerPoint round-trip operation ids must be unique'],
+    [
+      'targetKey',
+      '',
+      'PowerPoint round-trip text edit targets must be non-empty and unique',
+    ],
+  ])('rejects transform %s=%j', (key, replacement, message) => {
+    const value = transformSnapshot();
+    const operation = value.operations[0];
+    if (operation === undefined) throw new Error('Expected operation');
+    unknownRecord(operation)[key] = replacement;
+    expectInvalid(value, 'invalid-snapshot', message);
+  });
+
+  it('rejects duplicate operation ids before resolving the second target', () => {
+    const value = transformSnapshot();
+    const operation = value.operations[0];
+    if (operation?.kind !== 'set-transform')
+      throw new Error('Expected transform');
+    value.operations.push({
+      ...structuredClone(operation),
+      targetKey: 'missing',
+      value: { ...operation.value, x: 31 },
+    });
+    expectInvalid(
+      value,
+      'invalid-snapshot',
+      'PowerPoint round-trip operation ids must be unique',
+    );
+  });
+
+  it('rejects duplicate operation targets with unique ids', () => {
+    const value = transformSnapshot();
+    const operation = value.operations[0];
+    if (operation?.kind !== 'set-transform')
+      throw new Error('Expected transform');
+    value.operations.push({
+      ...structuredClone(operation),
+      id: 'set-transform-2',
+      value: { ...operation.value, x: 31 },
+    });
+    expectInvalid(
+      value,
+      'invalid-snapshot',
+      'PowerPoint round-trip text edit targets must be non-empty and unique',
+    );
+  });
+
+  it.each(['x', 'y', 'width', 'height', 'rotation'] as const)(
+    'rejects non-numeric transform field %s',
+    (key) => {
+      for (const replacement of ['1', Number.NaN, Number.POSITIVE_INFINITY]) {
+        const value = transformSnapshot();
+        const operation = value.operations[0];
+        if (operation?.kind !== 'set-transform') {
+          throw new Error('Expected transform');
+        }
+        unknownRecord(operation.value)[key] = replacement;
+        expectInvalid(
+          value,
+          'invalid-snapshot',
+          typeof replacement === 'number'
+            ? 'PowerPoint round-trip snapshot contains a non-JSON value'
+            : 'PowerPoint round-trip operation 1 value is not a valid transform',
+        );
+      }
+    },
+  );
+
+  it.each(['width', 'height'] as const)(
+    'rejects non-positive transform %s',
+    (key) => {
+      for (const replacement of [0, -1]) {
+        const value = transformSnapshot();
+        const operation = value.operations[0];
+        if (operation?.kind !== 'set-transform') {
+          throw new Error('Expected transform');
+        }
+        operation.value[key] = replacement;
+        expectInvalid(
+          value,
+          'invalid-snapshot',
+          'PowerPoint round-trip operation 1 value is not a valid transform',
+        );
+      }
+    },
+  );
+
+  it.each(['flipHorizontal', 'flipVertical'] as const)(
+    'rejects non-boolean transform field %s',
+    (key) => {
+      const value = transformSnapshot();
+      const operation = value.operations[0];
+      if (operation?.kind !== 'set-transform') {
+        throw new Error('Expected transform');
+      }
+      unknownRecord(operation.value)[key] = 1;
+      expectInvalid(
+        value,
+        'invalid-snapshot',
+        'PowerPoint round-trip operation 1 value is not a valid transform',
+      );
+    },
+  );
+
+  it('rejects duplicate transform keys at semantic scene validation', () => {
+    const value = transformSnapshot();
+    const slide = value.document.slides[0];
+    const element = slide?.elements[0];
+    if (slide === undefined || element?.type !== 'text') {
+      throw new Error('Expected text element');
+    }
+    const duplicate = structuredClone(element);
+    const paragraph = duplicate.text.paragraphs[0];
+    const child = paragraph?.children[0];
+    if (child === undefined) throw new Error('Expected text child');
+    child.key = 'unique-run';
+    slide.elements.push(duplicate);
+    expectInvalid(
+      value,
+      'invalid-snapshot',
+      'PowerPoint round-trip snapshot semantic preview is invalid',
+    );
+  });
+
+  it.each([
+    [
+      'missing target',
+      (value: PptxRoundTripSnapshot) => {
+        const operation = value.operations[0];
+        if (operation !== undefined) operation.targetKey = 'missing';
+      },
+      'PowerPoint round-trip text edit target does not exist',
+    ],
+    [
+      'stale precondition',
+      (value: PptxRoundTripSnapshot) => {
+        const operation = value.operations[0];
+        if (operation?.kind === 'replace-text')
+          operation.expectedText = 'Stale';
+      },
+      'PowerPoint round-trip text edit precondition does not match the preview',
+    ],
+    [
+      'no-op',
+      (value: PptxRoundTripSnapshot) => {
+        const operation = value.operations[0];
+        if (operation?.kind === 'replace-text') operation.value = 'Before';
+      },
+      'PowerPoint round-trip text edit must change the value',
+    ],
+    [
+      'unsafe XML',
+      (value: PptxRoundTripSnapshot) => {
+        const operation = value.operations[0];
+        if (operation?.kind === 'replace-text') operation.value = 'bad\u0000';
+      },
+      'PowerPoint round-trip text edit value is not safe XML text',
+    ],
+    [
+      'non-string expected text',
+      (value: PptxRoundTripSnapshot) => {
+        const operation = value.operations[0];
+        if (operation !== undefined) unknownRecord(operation).expectedText = 7;
+      },
+      'PowerPoint round-trip operation 1 expectedText must be a string',
+    ],
+    [
+      'non-string value',
+      (value: PptxRoundTripSnapshot) => {
+        const operation = value.operations[0];
+        if (operation !== undefined) unknownRecord(operation).value = 7;
+      },
+      'PowerPoint round-trip operation 1 value must be a string',
+    ],
+  ])('rejects replace operation with %s', (_name, mutate, message) => {
+    const value = replaceSnapshot();
+    mutate(value);
+    expectInvalid(value, 'invalid-snapshot', message);
+  });
+
+  it('enforces text byte limits at exact UTF-16 and UTF-8 boundaries', () => {
+    const limits = resolvePptxResourceLimits();
+    limits.maxXmlBytes = 4;
+    expect(() =>
+      validatePptxRoundTripSnapshot(replaceSnapshot('1234'), limits),
+    ).not.toThrow();
+    for (const replacement of ['12345', '😀😀']) {
+      expect(() =>
+        validatePptxRoundTripSnapshot(replaceSnapshot(replacement), limits),
+      ).toThrow(
+        'PowerPoint round-trip text edit value exceeds the XML part byte limit',
+      );
+    }
+  });
+
+  it.each([
+    ['break', 'break-1'],
+    ['unsupported element', 'unsupported'],
+  ])('does not expose %s as an editable run', (_name, targetKey) => {
+    const value = replaceSnapshot();
+    const slide = value.document.slides[0];
+    const element = slide?.elements[0];
+    if (slide === undefined || element?.type !== 'text') {
+      throw new Error('Expected text element');
+    }
+    const paragraph = element.text.paragraphs[0];
+    if (paragraph === undefined) throw new Error('Expected paragraph');
+    paragraph.children.push({ key: 'break-1', type: 'break' });
+    slide.elements.push({
+      authored: {},
+      feature: 'shape',
+      key: 'unsupported',
+      resolved: { hidden: false },
+      type: 'unsupported',
+    });
+    const operation = value.operations[0];
+    if (operation !== undefined) operation.targetKey = targetKey;
+    expectInvalid(
+      value,
+      'invalid-snapshot',
+      'PowerPoint round-trip text edit target does not exist',
+    );
+  });
+
+  it.each([
+    ['unsupported element', 'unsupported'],
+    ['text without geometry', 'no-transform'],
+  ])('does not expose %s as an editable transform', (_name, targetKey) => {
+    const value = transformSnapshot();
+    const slide = value.document.slides[0];
+    if (slide === undefined) throw new Error('Expected slide');
+    slide.elements.push(
+      {
+        authored: {},
+        feature: 'shape',
+        key: 'unsupported',
+        resolved: {
+          hidden: false,
+          transform: { height: 10, width: 10, x: 1, y: 1 },
+        },
+        type: 'unsupported',
+      },
+      {
+        authored: {},
+        key: 'no-transform',
+        resolved: { hidden: false },
+        text: {
+          body: {},
+          paragraphs: [
+            {
+              children: [{ key: 'other-run', text: 'Other', type: 'run' }],
+              key: 'other-paragraph',
+            },
+          ],
+        },
+        type: 'text',
+      },
+    );
+    const operation = value.operations[0];
+    if (operation?.kind === 'set-transform') {
+      operation.targetKey = targetKey;
+      operation.expectedTransform = {
+        flipHorizontal: false,
+        flipVertical: false,
+        height: 10,
+        rotation: 0,
+        width: 10,
+        x: 1,
+        y: 1,
+      };
+    }
+    expectInvalid(
+      value,
+      'invalid-snapshot',
+      'PowerPoint round-trip transform target does not exist',
+    );
   });
 
   it.each([
@@ -510,6 +836,16 @@ describe('PowerPoint round-trip snapshot contract validation', () => {
     const value = snapshot();
     mutate(value);
     expectInvalid(value, 'invalid-snapshot', message);
+  });
+
+  it('reports the R2 support-level requirement for edited snapshots', () => {
+    const value = transformSnapshot();
+    value.supportProfile.effectiveLevel = 'R1';
+    expectInvalid(
+      value,
+      'invalid-snapshot',
+      'PowerPoint text edit snapshot support level must be R2',
+    );
   });
 
   it.each([
