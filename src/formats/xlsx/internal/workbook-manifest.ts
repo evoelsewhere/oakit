@@ -284,6 +284,7 @@ export async function parseXlsxWorkbookManifest(
         ...base,
         columns: [],
         drawings: [],
+        hyperlinks: [],
         kind,
         mergedRanges: [],
         rows: [],

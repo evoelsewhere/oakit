@@ -13,6 +13,7 @@ function worksheet(
   return {
     columns: [],
     drawings: [],
+    hyperlinks: [],
     index,
     kind: 'worksheet',
     mergedRanges: [],

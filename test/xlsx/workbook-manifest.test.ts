@@ -115,6 +115,7 @@ describe('XLSX workbook manifest', () => {
         {
           columns: [],
           drawings: [],
+          hyperlinks: [],
           index: 0,
           kind: 'worksheet',
           mergedRanges: [],

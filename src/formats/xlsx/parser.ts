@@ -22,6 +22,7 @@ import {
 } from './internal/workbook-defined-names';
 import { parseXlsxWorkbookManifest } from './internal/workbook-manifest';
 import { loadXlsxSharedStrings } from './internal/workbook-tables';
+import { loadXlsxWorksheetRelationships } from './internal/worksheet-relationships';
 import {
   createXlsxWorksheetBudget,
   parseXlsxWorksheetPart,
@@ -190,6 +191,11 @@ export async function parseXlsxWithDiagnostics(
         sheets.push({ ...sheet, payload: 'not-selected', rows: [] });
         continue;
       }
+      const worksheetRelationships = await loadXlsxWorksheetRelationships(
+        manifest.sheetParts[index]!,
+        reader,
+        limits,
+      );
       const payload = await parseXlsxWorksheetPart(
         manifest.sheetParts[index]!,
         discovery.dialect,
@@ -200,6 +206,8 @@ export async function parseXlsxWithDiagnostics(
         selection,
         {
           dateSystem: manifest.properties.dateSystem,
+          dialect: discovery.dialect,
+          relationships: worksheetRelationships,
           styles,
           workbookViewCount: manifest.properties.views.length,
         },

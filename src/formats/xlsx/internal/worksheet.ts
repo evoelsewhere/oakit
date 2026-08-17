@@ -4,6 +4,7 @@ import type {
   XlsxCellValue,
   XlsxColumnRange,
   XlsxFormula,
+  XlsxHyperlink,
   XlsxRange,
   XlsxRichTextRun,
   XlsxRow,
@@ -23,6 +24,7 @@ import {
 } from './cell-value';
 import { normalizeXlsxSerialDate } from './date-system';
 import { translateXlsxSharedFormula } from './formula';
+import { parseXlsxHyperlink, type ParsedXlsxHyperlink } from './hyperlink';
 import { xlsxNumberFormatDatePrecision } from './number-format';
 import { XlsxPartReader } from './part-reader';
 import {
@@ -35,6 +37,7 @@ import {
   xlsxSelectionIncludesRow,
 } from './selection';
 import type { XlsxSharedStringTable } from './shared-strings';
+import type { XlsxRelationship } from './relationships';
 import { EMPTY_XLSX_STYLE_TABLE, type XlsxStyleTable } from './styles';
 import type { XlsxXmlElement, XlsxXmlEventSink } from './streaming-xml';
 import {
@@ -114,6 +117,7 @@ interface SharedFormulaMaster {
 export interface XlsxWorksheetPayload {
   columns: XlsxColumnRange[];
   declaredDimension?: XlsxRange;
+  hyperlinks: XlsxHyperlink[];
   mergedRanges: XlsxRange[];
   outline?: XlsxWorksheetOutline;
   rows: XlsxRow[];
@@ -124,12 +128,16 @@ export interface XlsxWorksheetPayload {
 
 export interface XlsxWorksheetSemantics {
   dateSystem: '1900' | '1904';
+  dialect: 'strict' | 'transitional';
+  relationships: ReadonlyMap<string, XlsxRelationship>;
   styles: XlsxStyleTable;
   workbookViewCount: number;
 }
 
 const DEFAULT_WORKSHEET_SEMANTICS: XlsxWorksheetSemantics = Object.freeze({
   dateSystem: '1900',
+  dialect: 'transitional',
+  relationships: new Map(),
   styles: EMPTY_XLSX_STYLE_TABLE,
   workbookViewCount: 1,
 });
@@ -348,6 +356,8 @@ class WorksheetSink implements XlsxXmlEventSink {
   private declaredDimension: XlsxRange | undefined;
   private dimensionSeen = false;
   private ignoredDepth = 0;
+  private readonly hyperlinks: ParsedXlsxHyperlink[] = [];
+  private hyperlinksSeen = false;
   private lastCellColumn = 0;
   private lastRow = 0;
   private mergeCellsExpected: number | undefined;
@@ -508,6 +518,26 @@ class WorksheetSink implements XlsxXmlEventSink {
       ...(this.declaredDimension === undefined
         ? {}
         : { declaredDimension: this.declaredDimension }),
+      hyperlinks: this.hyperlinks.flatMap((hyperlink) => {
+        const selectionRelation = this.featureSelectionRelation(
+          hyperlink.range,
+        );
+        return selectionRelation === null
+          ? []
+          : [
+              {
+                ...(hyperlink.display === undefined
+                  ? {}
+                  : { display: hyperlink.display }),
+                range: hyperlink.range,
+                selectionRelation,
+                target: hyperlink.target,
+                ...(hyperlink.tooltip === undefined
+                  ? {}
+                  : { tooltip: hyperlink.tooltip }),
+              },
+            ];
+      }),
       mergedRanges: this.mergedRanges.filter((range) =>
         this.mergedRangeSelected(range),
       ),
@@ -533,8 +563,14 @@ class WorksheetSink implements XlsxXmlEventSink {
   }
 
   private mergedRangeSelected(range: XlsxRange): boolean {
+    return this.featureSelectionRelation(range) !== null;
+  }
+
+  private featureSelectionRelation(
+    range: XlsxRange,
+  ): XlsxHyperlink['selectionRelation'] | null {
     if (this.selection.kind !== 'selected-ranges') {
-      return this.selection.kind === 'full-sheet';
+      return this.selection.kind === 'full-sheet' ? 'full-sheet' : null;
     }
     for (const selected of this.selection.ranges) {
       consume(
@@ -551,10 +587,10 @@ class WorksheetSink implements XlsxXmlEventSink {
         selected.start.column <= range.end.column &&
         selected.end.column >= range.start.column
       ) {
-        return true;
+        return 'intersects-selection';
       }
     }
-    return false;
+    return null;
   }
 
   private beginIgnore(): void {
@@ -667,6 +703,17 @@ class WorksheetSink implements XlsxXmlEventSink {
         }
         return;
       }
+      if (element.localName === 'hyperlinks') {
+        if (this.hyperlinksSeen) {
+          structureFailure(
+            this.part,
+            undefined,
+            'Worksheet contains duplicate hyperlinks elements',
+          );
+        }
+        this.hyperlinksSeen = true;
+        return;
+      }
       this.beginIgnore();
       return;
     }
@@ -706,6 +753,10 @@ class WorksheetSink implements XlsxXmlEventSink {
     }
     if (parent === 'sheetViews' && element.localName === 'sheetView') {
       this.openView(element);
+      return;
+    }
+    if (parent === 'hyperlinks' && element.localName === 'hyperlink') {
+      this.openHyperlink(element);
       return;
     }
     if (parent === 'sheetView') {
@@ -890,6 +941,41 @@ class WorksheetSink implements XlsxXmlEventSink {
       ...(style === undefined ? {} : { style: style.normalizedStyle }),
       ...(width === undefined ? {} : { width }),
     });
+  }
+
+  private openHyperlink(element: XlsxXmlElement): void {
+    const actual = this.hyperlinks.length + 1;
+    if (actual > this.limits.maxHyperlinks) {
+      throw new XlsxResourceLimitError(
+        'maxHyperlinks',
+        actual,
+        this.limits.maxHyperlinks,
+        this.part,
+      );
+    }
+    const hyperlink = parseXlsxHyperlink(
+      element,
+      this.semantics.dialect,
+      this.semantics.relationships,
+      this.part,
+    );
+    consume(
+      this.budget,
+      'rangeAreas',
+      1,
+      'maxRangeAreas',
+      this.limits,
+      this.part,
+    );
+    consume(
+      this.budget,
+      'textCharacters',
+      hyperlink.textCharacters,
+      'maxTextCharacters',
+      this.limits,
+      this.part,
+    );
+    this.hyperlinks.push(hyperlink);
   }
 
   private openView(element: XlsxXmlElement): void {

@@ -19,6 +19,7 @@ const SHEETS: XlsxSheet[] = [
   {
     columns: [],
     drawings: [],
+    hyperlinks: [],
     index: 0,
     kind: 'worksheet',
     mergedRanges: [],
@@ -39,6 +40,7 @@ const SHEETS: XlsxSheet[] = [
   {
     columns: [],
     drawings: [],
+    hyperlinks: [],
     index: 2,
     kind: 'worksheet',
     mergedRanges: [],

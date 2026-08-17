@@ -9,12 +9,14 @@ import {
   XlsxResourceLimitError,
 } from '../../src/formats/xlsx/internal/resource-limits';
 import type { XlsxSharedStringTable } from '../../src/formats/xlsx/internal/shared-strings';
+import type { XlsxRelationship } from '../../src/formats/xlsx/internal/relationships';
 import type { XlsxResolvedSheetSelection } from '../../src/formats/xlsx/internal/selection';
 import type { XlsxStyleTable } from '../../src/formats/xlsx/internal/styles';
 import {
   createXlsxWorksheetBudget,
   parseXlsxWorksheetPart,
   type XlsxWorksheetBudget,
+  type XlsxWorksheetSemantics,
 } from '../../src/formats/xlsx/internal/worksheet';
 import { XLSX_SPREADSHEET_NAMESPACES } from '../../src/formats/xlsx/internal/workbook-discovery';
 
@@ -73,6 +75,7 @@ async function parse(
     selection?: XlsxResolvedSheetSelection;
     strings?: XlsxSharedStringTable;
     styles?: XlsxStyleTable;
+    relationships?: XlsxWorksheetSemantics['relationships'];
     workbookViewCount?: number;
   } = {},
 ) {
@@ -92,6 +95,8 @@ async function parse(
     options.selection,
     {
       dateSystem: options.dateSystem ?? '1900',
+      dialect: options.dialect ?? 'transitional',
+      relationships: options.relationships ?? new Map(),
       styles: options.styles ?? TEST_STYLES,
       workbookViewCount: options.workbookViewCount ?? 1,
     },
@@ -153,6 +158,7 @@ describe('XLSX worksheet streaming', () => {
         reference: 'A1:XFD1048576',
         start: { column: 1, row: 1 },
       },
+      hyperlinks: [],
       mergedRanges: [
         {
           end: { column: 2, row: 1 },
@@ -311,6 +317,7 @@ describe('XLSX worksheet streaming', () => {
 
     await expect(parse(xml, { dialect: 'strict' })).resolves.toEqual({
       columns: [{ end: 2, hidden: true, start: 1, width: 12 }],
+      hyperlinks: [],
       mergedRanges: [
         {
           end: { column: 2, row: 1 },
@@ -355,6 +362,7 @@ describe('XLSX worksheet streaming', () => {
       parse(worksheet('\n<sheetData> \n </sheetData>\n')),
     ).resolves.toEqual({
       columns: [],
+      hyperlinks: [],
       mergedRanges: [],
       rows: [],
       views: [],
@@ -417,6 +425,134 @@ describe('XLSX worksheet streaming', () => {
     });
     expect(budget.rangeAreas).toBe(1);
   });
+
+  it('returns safe hyperlinks with selection intersection metadata', async () => {
+    const relationships = new Map<string, XlsxRelationship>([
+      [
+        'external',
+        {
+          id: 'external',
+          mode: 'external',
+          target: 'https://example.com/path',
+          type: `${TRANSITIONAL.replace('/spreadsheetml/2006/main', '/officeDocument/2006/relationships')}/hyperlink`,
+        },
+      ],
+    ]);
+    const xml = worksheet(`<sheetData/>
+      <hyperlinks>
+        <hyperlink ref="A1:B2" location="Sheet2!A1" display="Internal" tooltip="Jump"/>
+        <hyperlink ref="D4:E5" r:id="external" location="Section" display="External"/>
+      </hyperlinks>`).replace(
+      '<worksheet ',
+      `<worksheet xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" `,
+    );
+    const full = await parse(xml, { relationships });
+    expect(full.hyperlinks).toEqual([
+      {
+        display: 'Internal',
+        range: {
+          end: { column: 2, row: 2 },
+          reference: 'A1:B2',
+          start: { column: 1, row: 1 },
+        },
+        selectionRelation: 'full-sheet',
+        target: { kind: 'internal', location: 'Sheet2!A1' },
+        tooltip: 'Jump',
+      },
+      {
+        display: 'External',
+        range: {
+          end: { column: 5, row: 5 },
+          reference: 'D4:E5',
+          start: { column: 4, row: 4 },
+        },
+        selectionRelation: 'full-sheet',
+        target: {
+          kind: 'external',
+          location: 'Section',
+          url: 'https://example.com/path',
+        },
+      },
+    ]);
+
+    const selection: XlsxResolvedSheetSelection = {
+      endRowPrefix: [4],
+      kind: 'selected-ranges',
+      ranges: [
+        {
+          end: { column: 4, row: 4 },
+          reference: 'D4',
+          start: { column: 4, row: 4 },
+        },
+      ],
+    };
+    const selected = await parse(xml, { relationships, selection });
+    expect(selected.hyperlinks).toHaveLength(1);
+    expect(selected.hyperlinks[0]).toMatchObject({
+      selectionRelation: 'intersects-selection',
+      target: { kind: 'external' },
+    });
+  });
+
+  it('enforces hyperlink boundaries exactly', async () => {
+    const xml = worksheet(`<sheetData/><hyperlinks>
+      <hyperlink ref="A1" location="A1"/><hyperlink ref="B2" location="B2"/>
+    </hyperlinks>`);
+    const result = await parse(xml, {
+      limits: { maxHyperlinks: 2, maxRangeAreas: 2, maxTextCharacters: 4 },
+    });
+    expect(result.hyperlinks).toHaveLength(2);
+    expect('display' in result.hyperlinks[0]!).toBe(false);
+    expect('tooltip' in result.hyperlinks[0]!).toBe(false);
+    await expect(
+      parse(xml, { limits: { maxHyperlinks: 1 } }),
+    ).rejects.toMatchObject({
+      actual: 2,
+      limit: 1,
+      limitName: 'maxHyperlinks',
+      name: 'XlsxResourceLimitError',
+    });
+    await expect(
+      parse(xml, { limits: { maxRangeAreas: 1 } }),
+    ).rejects.toMatchObject({
+      actual: 2,
+      limit: 1,
+      limitName: 'maxRangeAreas',
+      name: 'XlsxResourceLimitError',
+    });
+    await expect(
+      parse(xml, { limits: { maxTextCharacters: 3 } }),
+    ).rejects.toMatchObject({
+      actual: 4,
+      limit: 3,
+      limitName: 'maxTextCharacters',
+      name: 'XlsxResourceLimitError',
+    });
+  });
+
+  it.each([
+    [
+      '<sheetData/><hyperlinks/><hyperlinks/>',
+      'Worksheet contains duplicate hyperlinks elements',
+    ],
+    [
+      '<sheetData><row><hyperlink ref="A1" location="A1"/></row></sheetData>',
+      'Worksheet element nesting is invalid',
+    ],
+    [
+      '<sheetData/><hyperlinks><unknown/></hyperlinks>',
+      'Worksheet element nesting is invalid',
+    ],
+  ] as const)(
+    'rejects invalid hyperlink structure %#',
+    async (body, message) => {
+      const error = await captureParseError(worksheet(body));
+      expect(error.diagnostic).toMatchObject({
+        code: 'invalid-document-structure',
+        message,
+      });
+    },
+  );
 
   it('normalizes worksheet views, panes, and selections in authored order', async () => {
     const budget = createXlsxWorksheetBudget(EMPTY_STRINGS);
@@ -849,6 +985,7 @@ describe('XLSX worksheet streaming', () => {
         { collapsed: true, end: 5, outlineLevel: 3, start: 4 },
         { end: 6, hidden: true, start: 6, style: 0, width: 10 },
       ],
+      hyperlinks: [],
       mergedRanges: [
         {
           end: { column: 2, row: 2 },
@@ -947,6 +1084,7 @@ describe('XLSX worksheet streaming', () => {
 
     expect(result).toEqual({
       columns: [],
+      hyperlinks: [],
       mergedRanges: [],
       rows: [],
       views: [],
@@ -1234,6 +1372,7 @@ describe('XLSX worksheet streaming', () => {
     );
     expect(result).toEqual({
       columns: [],
+      hyperlinks: [],
       mergedRanges: [],
       rows: [
         {
@@ -1359,6 +1498,7 @@ describe('XLSX worksheet streaming', () => {
 
     expect(result).toEqual({
       columns: [],
+      hyperlinks: [],
       mergedRanges: [],
       rows: [
         {
@@ -1477,6 +1617,7 @@ describe('XLSX worksheet streaming', () => {
       }),
     ).resolves.toEqual({
       columns: [],
+      hyperlinks: [],
       mergedRanges: [],
       rows: [
         {
@@ -1517,6 +1658,7 @@ describe('XLSX worksheet streaming', () => {
       }),
     ).resolves.toEqual({
       columns: [],
+      hyperlinks: [],
       mergedRanges: [],
       rows: [
         {
@@ -1755,6 +1897,7 @@ describe('XLSX worksheet streaming', () => {
       ),
     ).resolves.toEqual({
       columns: [],
+      hyperlinks: [],
       mergedRanges: [],
       rows: [
         {
@@ -1855,6 +1998,7 @@ describe('XLSX worksheet streaming', () => {
 
     expect(result).toEqual({
       columns: [],
+      hyperlinks: [],
       mergedRanges: [],
       rows: [
         {

@@ -412,6 +412,18 @@ export interface XlsxDrawing {
   kind: 'absolute' | 'one-cell' | 'two-cell';
 }
 
+export type XlsxHyperlinkTarget =
+  | { kind: 'internal'; location: string }
+  | { kind: 'external'; location?: string; url: string };
+
+export interface XlsxHyperlink {
+  display?: string;
+  range: XlsxRange;
+  selectionRelation: 'full-sheet' | 'intersects-selection';
+  target: XlsxHyperlinkTarget;
+  tooltip?: string;
+}
+
 export interface XlsxSheetBase {
   index: number;
   name: string;
@@ -423,6 +435,7 @@ export interface XlsxWorksheet extends XlsxSheetBase {
   columns: XlsxColumnRange[];
   declaredDimension?: XlsxRange;
   drawings: XlsxDrawing[];
+  hyperlinks: XlsxHyperlink[];
   kind: 'worksheet';
   mergedRanges: XlsxRange[];
   outline?: XlsxWorksheetOutline;

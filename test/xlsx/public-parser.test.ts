@@ -76,6 +76,7 @@ describe('public XLSX parser', () => {
               start: { column: 1, row: 1 },
             },
             drawings: [],
+            hyperlinks: [],
             index: 0,
             kind: 'worksheet',
             mergedRanges: [],
@@ -363,6 +364,62 @@ describe('public XLSX parser', () => {
         code: 'invalid-document-value',
         message: 'Worksheet workbook view reference is out of range',
         part: 'xl/worksheets/sheet1.xml',
+      },
+      name: 'XlsxParseError',
+    });
+  });
+
+  it('returns safe worksheet hyperlinks without exposing relationship IDs', async () => {
+    const worksheet = `<worksheet xmlns="${XLSX_SPREADSHEET_NS}" xmlns:r="${XLSX_OFFICE_REL_TYPE.slice(0, -1)}">
+      <sheetData/>
+      <hyperlinks>
+        <hyperlink ref="A1" location="Sheet1!B2" display="Internal"/>
+        <hyperlink ref="C3:D4" r:id="external" tooltip="Website"/>
+      </hyperlinks>
+    </worksheet>`;
+    const relationshipPart = `<Relationships xmlns="${XLSX_PACKAGE_REL_NS}">
+      <Relationship Id="external" Type="${XLSX_OFFICE_REL_TYPE}hyperlink"
+        Target="https://user:secret@example.com/path" TargetMode="External"/>
+    </Relationships>`;
+    const bytes = await createIndependentXlsx({
+      'xl/worksheets/_rels/sheet1.xml.rels': relationshipPart,
+      'xl/worksheets/sheet1.xml': worksheet,
+    });
+
+    const document = await parseXlsx(bytes);
+    const sheet = document.sheets[0]!;
+    expect(sheet).toMatchObject({
+      hyperlinks: [
+        {
+          display: 'Internal',
+          range: { reference: 'A1' },
+          selectionRelation: 'full-sheet',
+          target: { kind: 'internal', location: 'Sheet1!B2' },
+        },
+        {
+          range: { reference: 'C3:D4' },
+          selectionRelation: 'full-sheet',
+          target: { kind: 'external', url: 'https://example.com/path' },
+          tooltip: 'Website',
+        },
+      ],
+    });
+    expect(sheet.kind).toBe('worksheet');
+    if (sheet.kind !== 'worksheet') throw new Error('Expected worksheet');
+    expect('id' in sheet.hyperlinks[1]!.target).toBe(false);
+    expect(JSON.stringify(document)).not.toContain('secret');
+
+    const unsafe = await createIndependentXlsx({
+      'xl/worksheets/_rels/sheet1.xml.rels': relationshipPart.replace(
+        'https://user:secret@example.com/path',
+        'javascript:alert(1)',
+      ),
+      'xl/worksheets/sheet1.xml': worksheet,
+    });
+    await expect(parseXlsx(unsafe)).rejects.toMatchObject({
+      diagnostic: {
+        code: 'security-rejected-content',
+        relationshipType: 'hyperlink',
       },
       name: 'XlsxParseError',
     });
@@ -772,6 +829,7 @@ describe('public XLSX parser', () => {
           start: { column: 1, row: 1 },
         },
         drawings: [],
+        hyperlinks: [],
         index: 0,
         kind: 'worksheet',
         mergedRanges: [],
