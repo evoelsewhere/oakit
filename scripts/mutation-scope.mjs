@@ -86,6 +86,7 @@ export const mutatedFiles = [
   'src/formats/xlsx/internal/style-border.ts',
   'src/formats/xlsx/internal/style-color.ts',
   'src/formats/xlsx/internal/style-fill.ts',
+  'src/formats/xlsx/internal/style-formatting.ts',
   'src/formats/xlsx/internal/style-font.ts',
   'src/formats/xlsx/internal/styles.ts',
   'src/formats/xlsx/internal/streaming-xml.ts',

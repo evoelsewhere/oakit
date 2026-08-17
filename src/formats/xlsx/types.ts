@@ -259,6 +259,30 @@ export interface XlsxBorder {
   vertical?: XlsxBorderSide;
 }
 
+export interface XlsxAlignment {
+  horizontal?:
+    | 'center'
+    | 'centerContinuous'
+    | 'distributed'
+    | 'fill'
+    | 'justify'
+    | 'left'
+    | 'right';
+  indent?: number;
+  justifyLastLine?: boolean;
+  readingOrder?: 'left-to-right' | 'right-to-left';
+  relativeIndent?: number;
+  shrinkToFit?: boolean;
+  textRotation?: number;
+  vertical?: 'center' | 'distributed' | 'justify' | 'top';
+  wrapText?: boolean;
+}
+
+export interface XlsxProtection {
+  hidden?: boolean;
+  locked?: boolean;
+}
+
 export interface XlsxStyle {
   border?: XlsxBorder;
   fill?: XlsxFill;
