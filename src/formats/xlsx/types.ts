@@ -148,6 +148,7 @@ export interface XlsxRow {
 }
 
 export interface XlsxColumnRange {
+  collapsed?: boolean;
   end: number;
   hidden?: boolean;
   outlineLevel?: number;
