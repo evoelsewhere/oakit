@@ -31,6 +31,111 @@ function reportMutants(value, file) {
   return value;
 }
 
+function reportTests(value, file) {
+  if (!Array.isArray(value)) {
+    throw new TypeError(`Mutation shard tests for ${file} must be an array`);
+  }
+  return value.map((value, index) => {
+    const test = reportRecord(
+      value,
+      `Mutation shard test ${index} for ${file}`,
+    );
+    return {
+      id: reportString(test.id, `Mutation shard test id for ${file}`),
+      metadata: test,
+      name: reportString(test.name, `Mutation shard test name for ${file}`),
+    };
+  });
+}
+
+function normalizedTestFile(value, file) {
+  const metadata = reportRecord(
+    value,
+    `Mutation shard test file metadata for ${file}`,
+  );
+  const source = reportString(
+    metadata.source,
+    `Mutation shard test source for ${file}`,
+  );
+  const tests = reportTests(metadata.tests, file);
+  return {
+    metadata,
+    signature: JSON.stringify({
+      ...metadata,
+      source,
+      tests: tests.map(({ metadata: testMetadata, name }) => {
+        const normalized = { ...testMetadata, name };
+        delete normalized.id;
+        return normalized;
+      }),
+    }),
+    tests,
+  };
+}
+
+function canonicalTestMetadata(reportContexts) {
+  const definitions = new Map();
+  for (const context of reportContexts) {
+    for (const [file, value] of Object.entries(context.shardTests)) {
+      const testFile = normalizedTestFile(value, file);
+      const existing = definitions.get(file);
+      if (existing !== undefined && existing.signature !== testFile.signature) {
+        throw new Error(`Mutation shard test metadata does not match: ${file}`);
+      }
+      if (existing === undefined) definitions.set(file, testFile);
+      context.testFiles.set(file, testFile);
+    }
+  }
+
+  let nextId = 0;
+  const testFiles = {};
+  for (const file of [...definitions.keys()].sort()) {
+    const definition = definitions.get(file);
+    definition.canonicalIds = definition.tests.map(() => String(nextId++));
+    testFiles[file] = {
+      ...definition.metadata,
+      tests: definition.tests.map(({ metadata }, index) => ({
+        ...metadata,
+        id: definition.canonicalIds[index],
+      })),
+    };
+  }
+
+  for (const context of reportContexts) {
+    for (const [file, testFile] of context.testFiles) {
+      const definition = definitions.get(file);
+      for (const [index, test] of testFile.tests.entries()) {
+        const canonicalId = definition.canonicalIds[index];
+        if (context.testIds.has(test.id) || canonicalId === undefined) {
+          throw new Error(`Mutation shard test ids are invalid for ${file}`);
+        }
+        context.testIds.set(test.id, canonicalId);
+      }
+    }
+  }
+  return testFiles;
+}
+
+function remapMutantTestIds(mutant, context, file) {
+  const result = { ...mutant };
+  for (const key of ['coveredBy', 'killedBy']) {
+    const ids = mutant[key];
+    if (ids === undefined) continue;
+    if (!Array.isArray(ids)) {
+      throw new TypeError(`Mutation shard ${key} for ${file} must be an array`);
+    }
+    result[key] = ids.map((value) => {
+      const id = reportString(value, `Mutation shard ${key} id for ${file}`);
+      const canonicalId = context.testIds.get(id);
+      if (canonicalId === undefined) {
+        throw new Error(`Mutation shard ${key} references unknown test ${id}`);
+      }
+      return canonicalId;
+    });
+  }
+  return result;
+}
+
 export function reportMutantFingerprint(value) {
   const mutant = reportRecord(value, 'Mutation shard mutant');
   const location = reportRecord(mutant.location, 'Mutation shard location');
@@ -48,15 +153,24 @@ export function mergeMutationReports(reports, expectedFiles) {
     throw new Error('At least one mutation shard report is required');
   }
   const first = reportRecord(reports[0], 'Mutation shard report');
-  const files = {};
-  const fileMutants = new Map();
-  const testFiles = {};
-
-  for (const value of reports) {
+  const reportContexts = reports.map((value) => {
     const report = reportRecord(value, 'Mutation shard report');
     if (report.schemaVersion !== first.schemaVersion) {
       throw new Error('Mutation shard schema versions do not match');
     }
+    return {
+      report,
+      shardTests: reportRecord(report.testFiles, 'Mutation shard test files'),
+      testFiles: new Map(),
+      testIds: new Map(),
+    };
+  });
+  const files = {};
+  const fileMutants = new Map();
+  const testFiles = canonicalTestMetadata(reportContexts);
+
+  for (const context of reportContexts) {
+    const { report } = context;
     const shardFiles = reportRecord(report.files, 'Mutation shard files');
     for (const [file, value] of Object.entries(shardFiles)) {
       const fileReport = reportRecord(
@@ -85,31 +199,22 @@ export function mergeMutationReports(reports, expectedFiles) {
       }
 
       for (const mutant of reportMutants(fileReport.mutants, file)) {
-        const fingerprint = reportMutantFingerprint(mutant);
+        const normalizedMutant = remapMutantTestIds(mutant, context, file);
+        const fingerprint = reportMutantFingerprint(normalizedMutant);
         const existing = targetMutants.get(fingerprint);
         if (existing !== undefined) {
-          if (existing.status !== mutant.status) {
-            throw new Error(
-              `Mutation shard status does not match for ${file}: ${fingerprint}`,
-            );
+          if (existing.status === normalizedMutant.status) continue;
+          if (existing.status === 'Ignored') {
+            targetMutants.set(fingerprint, normalizedMutant);
+            continue;
           }
-          continue;
+          if (normalizedMutant.status === 'Ignored') continue;
+          throw new Error(
+            `Mutation shard status does not match for ${file}: ${fingerprint}`,
+          );
         }
-        targetMutants.set(fingerprint, mutant);
+        targetMutants.set(fingerprint, normalizedMutant);
       }
-    }
-    const shardTests = reportRecord(
-      report.testFiles,
-      'Mutation shard test files',
-    );
-    for (const [file, testFile] of Object.entries(shardTests)) {
-      if (
-        Object.hasOwn(testFiles, file) &&
-        JSON.stringify(testFiles[file]) !== JSON.stringify(testFile)
-      ) {
-        throw new Error(`Mutation shard test metadata does not match: ${file}`);
-      }
-      testFiles[file] = testFile;
     }
   }
 

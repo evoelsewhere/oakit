@@ -244,6 +244,81 @@ describe('mutation report sharding', () => {
     ).toBe(2);
   });
 
+  it('uses executed evidence instead of the same mutant ignored by another partition', () => {
+    const ignored = reportMutant({ status: 'Ignored' });
+    const killed = reportMutant({ status: 'Killed' });
+    const merged = mergeMutationReports(
+      [
+        report({ 'a.ts': fileReport([ignored]) }),
+        report({ 'a.ts': fileReport([killed]) }),
+      ],
+      ['a.ts'],
+    );
+
+    expect(merged.files['a.ts'].mutants).toMatchObject([{ status: 'Killed' }]);
+  });
+
+  it('canonicalizes focused and full-run test ids while preserving evidence', () => {
+    const first = report({
+      'a.ts': fileReport([
+        { ...reportMutant(), coveredBy: ['0'], killedBy: ['0'] },
+      ]),
+    });
+    first.testFiles = {
+      'test.ts': {
+        source: 'it("works", () => {});',
+        tests: [{ id: '0', name: 'works' }],
+      },
+    };
+    const second = report({
+      'b.ts': fileReport([
+        {
+          ...reportMutant({ startLine: 2 }),
+          coveredBy: ['1055'],
+          killedBy: ['1055'],
+        },
+      ]),
+    });
+    second.testFiles = {
+      'test.ts': {
+        source: 'it("works", () => {});',
+        tests: [{ id: '1055', name: 'works' }],
+      },
+    };
+
+    const merged = mergeMutationReports([first, second], ['a.ts', 'b.ts']);
+
+    expect(merged.testFiles).toEqual({
+      'test.ts': {
+        source: 'it("works", () => {});',
+        tests: [{ id: '0', name: 'works' }],
+      },
+    });
+    expect(merged.files['a.ts'].mutants[0]).toMatchObject({
+      coveredBy: ['0'],
+      killedBy: ['0'],
+    });
+    expect(merged.files['b.ts'].mutants[0]).toMatchObject({
+      coveredBy: ['0'],
+      killedBy: ['0'],
+    });
+  });
+
+  it('rejects genuinely different test metadata after ignoring ids', () => {
+    const first = report({ 'a.ts': fileReport() });
+    first.testFiles = {
+      'test.ts': { source: 'source', tests: [{ id: '0', name: 'first' }] },
+    };
+    const second = report({ 'b.ts': fileReport() });
+    second.testFiles = {
+      'test.ts': { source: 'source', tests: [{ id: '1', name: 'second' }] },
+    };
+
+    expect(() =>
+      mergeMutationReports([first, second], ['a.ts', 'b.ts']),
+    ).toThrow('Mutation shard test metadata does not match: test.ts');
+  });
+
   it('rejects conflicting duplicate mutation results and source metadata', () => {
     const killed = reportMutant();
     const survived = reportMutant({ status: 'Survived' });
