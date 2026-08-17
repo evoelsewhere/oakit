@@ -16,7 +16,7 @@ import {
 
 type XmlRecord = Record<string, unknown>;
 
-interface XlsxCellXf {
+export interface XlsxCellXf {
   normalizedStyle: number;
   numberFormat?: string;
 }

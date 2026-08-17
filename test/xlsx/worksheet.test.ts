@@ -10,6 +10,7 @@ import {
 } from '../../src/formats/xlsx/internal/resource-limits';
 import type { XlsxSharedStringTable } from '../../src/formats/xlsx/internal/shared-strings';
 import type { XlsxResolvedSheetSelection } from '../../src/formats/xlsx/internal/selection';
+import type { XlsxStyleTable } from '../../src/formats/xlsx/internal/styles';
 import {
   createXlsxWorksheetBudget,
   parseXlsxWorksheetPart,
@@ -31,6 +32,23 @@ const SHARED_STRINGS: XlsxSharedStringTable = {
     },
   ],
 };
+const TEST_STYLES: XlsxStyleTable = {
+  cellXfs: [
+    { normalizedStyle: 0 },
+    { normalizedStyle: 1, numberFormat: '0' },
+    { normalizedStyle: 2, numberFormat: '0.0' },
+    { normalizedStyle: 3, numberFormat: '0.00' },
+    { normalizedStyle: 4, numberFormat: '0.000' },
+  ],
+  part: 'xl/styles.xml',
+  styles: [
+    {},
+    { numberFormat: '0' },
+    { numberFormat: '0.0' },
+    { numberFormat: '0.00' },
+    { numberFormat: '0.000' },
+  ],
+};
 
 function worksheet(body: string, namespace: string = TRANSITIONAL): string {
   return `<worksheet xmlns="${namespace}">${body}</worksheet>`;
@@ -47,10 +65,12 @@ async function parse(
   options: {
     budget?: XlsxWorksheetBudget;
     dialect?: 'strict' | 'transitional';
+    dateSystem?: '1900' | '1904';
     limits?: Partial<ResolvedXlsxResourceLimits>;
     part?: string;
     selection?: XlsxResolvedSheetSelection;
     strings?: XlsxSharedStringTable;
+    styles?: XlsxStyleTable;
   } = {},
 ) {
   const part = options.part ?? PART;
@@ -67,6 +87,10 @@ async function parse(
     strings,
     options.budget ?? createXlsxWorksheetBudget(strings),
     options.selection,
+    {
+      dateSystem: options.dateSystem ?? '1900',
+      styles: options.styles ?? TEST_STYLES,
+    },
   );
 }
 
@@ -305,11 +329,9 @@ describe('XLSX worksheet streaming', () => {
     expect(result.rows[0]?.height).toBe(expected);
   });
 
-  it('preserves unsigned style boundaries and explicit unstyled blanks', async () => {
+  it('maps raw style references to normalized styles and preserves explicit blanks', async () => {
     const result = await parse(
-      worksheet(
-        '<sheetData><row><c s="0"/><c s="4294967295"/><c/></row></sheetData>',
-      ),
+      worksheet('<sheetData><row><c s="0"/><c s="4"/><c/></row></sheetData>'),
     );
     expect(result.rows[0]?.cells).toEqual([
       { address: 'A1', column: 1, content: { kind: 'blank' }, style: 0 },
@@ -317,11 +339,162 @@ describe('XLSX worksheet streaming', () => {
         address: 'B1',
         column: 2,
         content: { kind: 'blank' },
-        style: 0xffff_ffff,
+        style: 4,
       },
       { address: 'C1', column: 3, content: { kind: 'blank' } },
     ]);
     expect('style' in result.rows[0]!.cells[2]!).toBe(false);
+  });
+
+  it('rejects a missing style reference even outside the selected range', async () => {
+    const selection: XlsxResolvedSheetSelection = {
+      endRowPrefix: [1],
+      kind: 'selected-ranges',
+      ranges: [
+        {
+          end: { column: 1, row: 1 },
+          reference: 'A1',
+          start: { column: 1, row: 1 },
+        },
+      ],
+    };
+    const error = await captureParseError(
+      worksheet(
+        '<sheetData><row><c r="A1"/><c r="B1" s="5"/></row></sheetData>',
+      ),
+      { selection },
+    );
+
+    expect(error.diagnostic).toEqual({
+      cell: 'B1',
+      code: 'invalid-document-value',
+      message: 'Worksheet cell style reference is invalid',
+      part: PART,
+      severity: 'error',
+    });
+  });
+
+  it('normalizes styled numeric values and formula caches as serial dates', async () => {
+    const styles: XlsxStyleTable = {
+      cellXfs: [
+        { normalizedStyle: 0 },
+        { normalizedStyle: 1, numberFormat: 'mm-dd-yy' },
+        { normalizedStyle: 2, numberFormat: '[h]:mm:ss' },
+        { normalizedStyle: 3, numberFormat: 'h:mm' },
+        { normalizedStyle: 4, numberFormat: 'm/d/yy h:mm' },
+      ],
+      part: 'xl/styles.xml',
+      styles: [
+        {},
+        { numberFormat: 'mm-dd-yy' },
+        { numberFormat: '[h]:mm:ss' },
+        { numberFormat: 'h:mm' },
+        { numberFormat: 'm/d/yy h:mm' },
+      ],
+    };
+    const result = await parse(
+      worksheet(`<sheetData><row>
+        <c r="A1" s="1"><v>0</v></c>
+        <c r="B1" s="1"><v>60</v></c>
+        <c r="C1" s="1"><v>61</v></c>
+        <c r="D1" s="3"><v>.5</v></c>
+        <c r="E1" s="4"><v>45292.5</v></c>
+        <c r="F1" s="2"><v>1.5</v></c>
+        <c r="G1" s="1" t="b"><v>1</v></c>
+        <c r="H1" s="1"><f>DATE(1900,3,1)</f><v>61</v></c>
+      </row></sheetData>`),
+      { styles },
+    );
+
+    expect(result.rows[0]!.cells.map((cell) => cell.content)).toEqual([
+      {
+        kind: 'value',
+        value: {
+          kind: 'date',
+          normalized: '1899-12-31',
+          precision: 'date',
+          source: { dateSystem: '1900', kind: 'serial', value: 0 },
+        },
+      },
+      {
+        kind: 'value',
+        value: {
+          kind: 'date',
+          normalized: null,
+          precision: 'date',
+          source: { dateSystem: '1900', kind: 'serial', value: 60 },
+        },
+      },
+      {
+        kind: 'value',
+        value: {
+          kind: 'date',
+          normalized: '1900-03-01',
+          precision: 'date',
+          source: { dateSystem: '1900', kind: 'serial', value: 61 },
+        },
+      },
+      {
+        kind: 'value',
+        value: {
+          kind: 'date',
+          normalized: '12:00:00',
+          precision: 'time',
+          source: { dateSystem: '1900', kind: 'serial', value: 0.5 },
+        },
+      },
+      {
+        kind: 'value',
+        value: {
+          kind: 'date',
+          normalized: '2024-01-01T12:00:00',
+          precision: 'date-time',
+          source: { dateSystem: '1900', kind: 'serial', value: 45292.5 },
+        },
+      },
+      {
+        kind: 'value',
+        value: {
+          kind: 'date',
+          normalized: 'P1DT12H',
+          precision: 'duration',
+          source: { dateSystem: '1900', kind: 'serial', value: 1.5 },
+        },
+      },
+      { kind: 'value', value: { kind: 'boolean', value: true } },
+      {
+        cached: {
+          kind: 'date',
+          normalized: '1900-03-01',
+          precision: 'date',
+          source: { dateSystem: '1900', kind: 'serial', value: 61 },
+        },
+        formula: { expression: 'DATE(1900,3,1)', kind: 'normal' },
+        kind: 'formula',
+      },
+    ]);
+  });
+
+  it('uses the workbook 1904 date system for serial normalization', async () => {
+    const styles: XlsxStyleTable = {
+      cellXfs: [{ normalizedStyle: 0, numberFormat: 'mm-dd-yy' }],
+      part: 'xl/styles.xml',
+      styles: [{ numberFormat: 'mm-dd-yy' }],
+    };
+    const result = await parse(
+      worksheet('<sheetData><row><c s="0"><v>0</v></c></row></sheetData>'),
+      { dateSystem: '1904', styles },
+    );
+
+    expect(result.rows[0]?.cells[0]?.content).toEqual({
+      kind: 'value',
+      value: {
+        kind: 'date',
+        normalized: '1904-01-01',
+        precision: 'date',
+        source: { dateSystem: '1904', kind: 'serial', value: 0 },
+      },
+    });
   });
 
   it('ignores cell extension payload without treating nested foreign XML as cells', async () => {

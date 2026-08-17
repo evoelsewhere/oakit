@@ -113,7 +113,7 @@ describe('public XLSX parser', () => {
             tables: [],
           },
         ],
-        styles: [],
+        styles: [{}],
         workbook: {
           calculation: {
             forceFullCalculation: false,
@@ -126,6 +126,120 @@ describe('public XLSX parser', () => {
       },
     });
     expect(JSON.parse(JSON.stringify(result))).toEqual(result);
+  });
+
+  it('returns normalized cell styles and serial dates without exposing raw XF indexes', async () => {
+    const workbook = independentWorkbook(
+      '<sheet name="Sheet1" sheetId="1" r:id="rIdSheet1"/>',
+    ).replace('date1904="0"', 'date1904="1"');
+    const bytes = await createIndependentXlsx({
+      'xl/styles.xml': `<styleSheet xmlns="${XLSX_SPREADSHEET_NS}">
+        <fonts count="1"><font/></fonts>
+        <fills count="1"><fill/></fills>
+        <borders count="1"><border/></borders>
+        <cellStyleXfs count="1"><xf/></cellStyleXfs>
+        <cellXfs count="3">
+          <xf/>
+          <xf numFmtId="14"/>
+          <xf numFmtId="14"/>
+        </cellXfs>
+      </styleSheet>`,
+      'xl/workbook.xml': workbook,
+      'xl/worksheets/sheet1.xml': `<worksheet xmlns="${XLSX_SPREADSHEET_NS}">
+        <sheetData><row>
+          <c r="A1" s="1"><v>0</v></c>
+          <c r="B1" s="2"><f>A1+1</f><v>1</v></c>
+          <c r="C1"><v>2</v></c>
+        </row></sheetData>
+      </worksheet>`,
+    });
+
+    const document = await parseXlsx(bytes);
+
+    expect(document.styles).toEqual([{}, { numberFormat: 'mm-dd-yy' }]);
+    expect(document.sheets[0]).toMatchObject({
+      rows: [
+        {
+          cells: [
+            {
+              address: 'A1',
+              content: {
+                kind: 'value',
+                value: {
+                  kind: 'date',
+                  normalized: '1904-01-01',
+                  precision: 'date',
+                  source: {
+                    dateSystem: '1904',
+                    kind: 'serial',
+                    value: 0,
+                  },
+                },
+              },
+              style: 1,
+            },
+            {
+              address: 'B1',
+              content: {
+                cached: {
+                  kind: 'date',
+                  normalized: '1904-01-02',
+                  precision: 'date',
+                  source: {
+                    dateSystem: '1904',
+                    kind: 'serial',
+                    value: 1,
+                  },
+                },
+                formula: { expression: 'A1+1', kind: 'normal' },
+                kind: 'formula',
+              },
+              style: 1,
+            },
+            {
+              address: 'C1',
+              content: {
+                kind: 'value',
+                value: { kind: 'number', value: 2 },
+              },
+            },
+          ],
+        },
+      ],
+    });
+    expect(JSON.parse(JSON.stringify(document))).toEqual(document);
+  });
+
+  it('maps style-table limits to the public structured error', async () => {
+    const bytes = await createIndependentXlsx({
+      'xl/styles.xml': `<styleSheet xmlns="${XLSX_SPREADSHEET_NS}">
+        <fonts count="1"><font/></fonts>
+        <fills count="1"><fill/></fills>
+        <borders count="1"><border/></borders>
+        <cellStyleXfs count="1"><xf/></cellStyleXfs>
+        <cellXfs count="2"><xf/><xf/></cellXfs>
+      </styleSheet>`,
+    });
+
+    await expect(
+      parseXlsx(bytes, { limits: { maxStyles: 1 } }),
+    ).rejects.toMatchObject({
+      cause: {
+        actual: 2,
+        limit: 1,
+        limitName: 'maxStyles',
+        name: 'XlsxResourceLimitError',
+        part: 'xl/styles.xml',
+      },
+      diagnostic: {
+        actual: 2,
+        code: 'resource-limit-exceeded',
+        limit: 1,
+        limitName: 'maxStyles',
+        severity: 'error',
+      },
+      name: 'XlsxParseError',
+    });
   });
 
   it('treats ArrayBuffer, Uint8Array, subarray, and Blob inputs identically', async () => {

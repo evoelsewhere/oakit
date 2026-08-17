@@ -16,7 +16,9 @@ import {
   parseXlsxScalarCellValue,
   type XlsxScalarCellType,
 } from './cell-value';
+import { normalizeXlsxSerialDate } from './date-system';
 import { translateXlsxSharedFormula } from './formula';
+import { xlsxNumberFormatDatePrecision } from './number-format';
 import { XlsxPartReader } from './part-reader';
 import {
   type ResolvedXlsxResourceLimits,
@@ -28,6 +30,7 @@ import {
   xlsxSelectionIncludesRow,
 } from './selection';
 import type { XlsxSharedStringTable } from './shared-strings';
+import { EMPTY_XLSX_STYLE_TABLE, type XlsxStyleTable } from './styles';
 import type { XlsxXmlElement, XlsxXmlEventSink } from './streaming-xml';
 import {
   type XlsxWorkbookDiscovery,
@@ -57,6 +60,7 @@ interface PendingCell {
   inlineMode: 'plain' | 'rich' | 'unset';
   inlineRuns: XlsxRichTextRun[];
   inlineText: string;
+  numberFormat?: string;
   selected: boolean;
   style?: number;
   type: CellType;
@@ -87,6 +91,16 @@ interface SharedFormulaMaster {
 export interface XlsxWorksheetPayload {
   rows: XlsxRow[];
 }
+
+export interface XlsxWorksheetSemantics {
+  dateSystem: '1900' | '1904';
+  styles: XlsxStyleTable;
+}
+
+const DEFAULT_WORKSHEET_SEMANTICS: XlsxWorksheetSemantics = Object.freeze({
+  dateSystem: '1900',
+  styles: EMPTY_XLSX_STYLE_TABLE,
+});
 
 function structureFailure(
   part: string,
@@ -281,6 +295,7 @@ class WorksheetSink implements XlsxXmlEventSink {
     private readonly budget: XlsxWorksheetBudget,
     private readonly limits: ResolvedXlsxResourceLimits,
     private readonly selection: XlsxResolvedSheetSelection,
+    private readonly semantics: XlsxWorksheetSemantics,
   ) {}
 
   openElement(element: XlsxXmlElement): void {
@@ -536,12 +551,23 @@ class WorksheetSink implements XlsxXmlEventSink {
     if (column <= this.lastCellColumn) {
       valueFailure(this.part, address, 'Worksheet cells are out of order');
     }
-    const style = unsignedInteger(
+    const rawStyle = unsignedInteger(
       attribute(element, 's'),
       this.part,
       address,
       'Worksheet cell style index is invalid',
     );
+    const styleXf =
+      rawStyle === undefined
+        ? undefined
+        : this.semantics.styles.cellXfs[rawStyle];
+    if (rawStyle !== undefined && styleXf === undefined) {
+      valueFailure(
+        this.part,
+        address,
+        'Worksheet cell style reference is invalid',
+      );
+    }
     consume(
       this.budget,
       'scannedCells',
@@ -573,8 +599,11 @@ class WorksheetSink implements XlsxXmlEventSink {
       inlineMode: 'unset',
       inlineRuns: [],
       inlineText: '',
+      ...(styleXf?.numberFormat === undefined
+        ? {}
+        : { numberFormat: styleXf.numberFormat }),
       selected,
-      ...(style === undefined ? {} : { style }),
+      ...(styleXf === undefined ? {} : { style: styleXf.normalizedStyle }),
       type: cellType(attribute(element, 't'), this.part, address),
       valueText: '',
     };
@@ -711,12 +740,15 @@ class WorksheetSink implements XlsxXmlEventSink {
     if (cell.formula !== undefined) {
       const formula = this.resolveFormula(cell);
       const cached = cell.hasValue
-        ? parseXlsxScalarCellValue(
-            cell.type as XlsxScalarCellType,
-            cell.valueText,
-            this.sharedStrings,
-            this.part,
-            cell.address,
+        ? this.applyNumberFormat(
+            parseXlsxScalarCellValue(
+              cell.type as XlsxScalarCellType,
+              cell.valueText,
+              this.sharedStrings,
+              this.part,
+              cell.address,
+            ),
+            cell,
           )
         : ({ kind: 'missing' } as const);
       if (cell.selected && cached.kind !== 'missing') {
@@ -734,12 +766,15 @@ class WorksheetSink implements XlsxXmlEventSink {
       if (cell.selected) this.consumeTextCharacters(value.text);
       content = { kind: 'value', value };
     } else {
-      const value = parseXlsxScalarCellValue(
-        cell.type as XlsxScalarCellType,
-        cell.valueText,
-        this.sharedStrings,
-        this.part,
-        cell.address,
+      const value = this.applyNumberFormat(
+        parseXlsxScalarCellValue(
+          cell.type as XlsxScalarCellType,
+          cell.valueText,
+          this.sharedStrings,
+          this.part,
+          cell.address,
+        ),
+        cell,
       );
       if (cell.selected) this.consumeReturnedText(value);
       content = { kind: 'value', value };
@@ -764,6 +799,33 @@ class WorksheetSink implements XlsxXmlEventSink {
       });
     }
     this.currentCell = undefined;
+  }
+
+  private applyNumberFormat(
+    value: XlsxCellValue,
+    cell: PendingCell,
+  ): XlsxCellValue {
+    if (value.kind !== 'number' || cell.numberFormat === undefined)
+      return value;
+    const precision = xlsxNumberFormatDatePrecision(
+      cell.numberFormat,
+      value.value,
+    );
+    if (precision === undefined) return value;
+    return {
+      kind: 'date',
+      normalized: normalizeXlsxSerialDate(
+        value.value,
+        this.semantics.dateSystem,
+        precision,
+      ),
+      precision,
+      source: {
+        dateSystem: this.semantics.dateSystem,
+        kind: 'serial',
+        value: value.value,
+      },
+    };
   }
 
   private resolveFormula(cell: PendingCell): XlsxFormula {
@@ -998,6 +1060,7 @@ export async function parseXlsxWorksheetPart(
   sharedStrings: XlsxSharedStringTable,
   budget: XlsxWorksheetBudget,
   selection: XlsxResolvedSheetSelection = { kind: 'full-sheet' },
+  semantics: XlsxWorksheetSemantics = DEFAULT_WORKSHEET_SEMANTICS,
 ): Promise<XlsxWorksheetPayload> {
   const sink = new WorksheetSink(
     part,
@@ -1006,6 +1069,7 @@ export async function parseXlsxWorksheetPart(
     budget,
     limits,
     selection,
+    semantics,
   );
   await reader.streamXml(part, sink, { required: true });
   return sink.result();

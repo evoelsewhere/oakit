@@ -14,6 +14,7 @@ import {
   XlsxResourceLimitError,
 } from './internal/resource-limits';
 import { resolveXlsxSelection } from './internal/selection';
+import { loadXlsxStyles } from './internal/styles';
 import { discoverXlsxWorkbook } from './internal/workbook-discovery';
 import { parseXlsxWorkbookManifest } from './internal/workbook-manifest';
 import { loadXlsxSharedStrings } from './internal/workbook-tables';
@@ -122,6 +123,7 @@ export async function parseXlsxWithDiagnostics(
   let discovery: Awaited<ReturnType<typeof discoverXlsxWorkbook>>;
   let manifest: Awaited<ReturnType<typeof parseXlsxWorkbookManifest>>;
   let sharedStrings: Awaited<ReturnType<typeof loadXlsxSharedStrings>>;
+  let styles: Awaited<ReturnType<typeof loadXlsxStyles>>;
   let selections: ReturnType<typeof resolveXlsxSelection>;
   try {
     discovery = await discoverXlsxWorkbook(reader, limits);
@@ -131,6 +133,7 @@ export async function parseXlsxWithDiagnostics(
       manifest.sheets,
       limits,
     );
+    styles = await loadXlsxStyles(discovery, reader, limits);
     sharedStrings = await loadXlsxSharedStrings(discovery, reader, limits);
   } catch (error) {
     if (error instanceof XlsxResourceLimitError) {
@@ -170,6 +173,7 @@ export async function parseXlsxWithDiagnostics(
         sharedStrings,
         budget,
         selection,
+        { dateSystem: manifest.properties.dateSystem, styles },
       );
       sheets.push({
         ...sheet,
@@ -186,7 +190,7 @@ export async function parseXlsxWithDiagnostics(
   }
   const document: XlsxDocument = {
     sheets,
-    styles: [],
+    styles: [...styles.styles],
     workbook: manifest.properties,
   };
   return { diagnostics, document };
