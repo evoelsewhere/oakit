@@ -101,6 +101,25 @@ async function createEditablePptx(): Promise<Uint8Array> {
             },
             type: 'text',
           },
+          {
+            authored: {
+              transform: { height: 40, width: 180, x: 500, y: 100 },
+            },
+            key: 'cli-decoy-text',
+            resolved: { hidden: false },
+            text: {
+              body: {},
+              paragraphs: [
+                {
+                  children: [
+                    { key: 'cli-decoy-run', text: 'Decoy', type: 'run' },
+                  ],
+                  key: 'cli-decoy-paragraph',
+                },
+              ],
+            },
+            type: 'text',
+          },
         ],
         key: 'cli-slide',
       },
@@ -349,6 +368,63 @@ describe('oakit portable PowerPoint CLI contract', () => {
     expect(io.stderr).toBe('');
   });
 
+  it.each([
+    ['--x', '11', { x: 11 }],
+    ['--y', '12', { y: 12 }],
+    ['--width', '330', { width: 330 }],
+    ['--height', '90', { height: 90 }],
+    ['--rotation', '25', { rotation: 25 }],
+    ['--flip-horizontal', 'true', { flipHorizontal: true }],
+    ['--flip-vertical', 'true', { flipVertical: true }],
+  ])(
+    'accepts transform option %s independently',
+    async (option, value, expected) => {
+      const sourceIo = new PortableCliIo();
+      sourceIo.files.set('source.pptx', await createEditablePptx());
+      await runOakitCli(
+        ['snapshot', 'source.pptx', '--output', 'handoff.json'],
+        sourceIo,
+        '1.2.3',
+      );
+      const io = new PortableCliIo();
+      io.files.set('handoff.json', String(sourceIo.files.get('handoff.json')));
+
+      await expect(
+        runOakitCli(
+          [
+            'transform-text',
+            'handoff.json',
+            '--target=slide-1-element-1',
+            option,
+            value,
+          ],
+          io,
+          '1.2.3',
+        ),
+      ).resolves.toBe(0);
+      expect(json(io.stdout).operations).toMatchObject([{ value: expected }]);
+      expect(io.stderr).toBe('');
+    },
+  );
+
+  it('transforms portable JSON from stdin', async () => {
+    const sourceIo = new PortableCliIo();
+    sourceIo.files.set('source.pptx', await createEditablePptx());
+    await runOakitCli(['snapshot', 'source.pptx'], sourceIo, '1.2.3');
+    const io = new PortableCliIo();
+    io.stdin = new TextEncoder().encode(sourceIo.stdout);
+
+    await expect(
+      runOakitCli(
+        ['transform-text', '-', '--target=slide-1-element-1', '--x', '11'],
+        io,
+        '1.2.3',
+      ),
+    ).resolves.toBe(0);
+    expect(json(io.stdout).operations).toMatchObject([{ value: { x: 11 } }]);
+    expect(io.stderr).toBe('');
+  });
+
   it('writes pretty portable JSON to stdout from explicit-format stdin', async () => {
     const io = new PortableCliIo();
     io.stdin = await createMinimalPptx();
@@ -429,7 +505,58 @@ describe('oakit portable PowerPoint CLI contract', () => {
       message: 'Unknown option: --image-mode',
     },
     {
+      args: ['edit-text', 'handoff.json', '--format', 'pptx'],
+      code: 'unknown-option',
+      message: 'Unknown option: --format',
+    },
+    {
+      args: ['transform-text', 'handoff.json', '--format', 'pptx'],
+      code: 'unknown-option',
+      message: 'Unknown option: --format',
+    },
+    {
+      args: ['transform-text', 'handoff.json', '--value', 'After'],
+      code: 'unknown-option',
+      message: 'Unknown option: --value',
+    },
+    {
+      args: ['transform-text', 'handoff.json', '--value=After'],
+      code: 'unknown-option',
+      message: 'Unknown option: --value=After',
+    },
+    {
+      args: ['edit-text', 'handoff.json', '--x', '10'],
+      code: 'unknown-option',
+      message: 'Unknown option: --x',
+    },
+    {
+      args: ['restore', 'handoff.json', '--target', 'key'],
+      code: 'unknown-option',
+      message: 'Unknown option: --target',
+    },
+    {
+      args: ['restore', 'handoff.json', '--target=key'],
+      code: 'unknown-option',
+      message: 'Unknown option: --target=key',
+    },
+    {
+      args: [
+        'transform-text',
+        'handoff.json',
+        '--target',
+        'slide-1-element-1',
+        '--unknown',
+      ],
+      code: 'unknown-option',
+      message: 'Unknown option: --unknown',
+    },
+    {
       args: ['edit-text', 'handoff.json', '--value', 'After'],
+      code: 'edit-target-required',
+      message: 'Editing text requires a non-empty --target run key',
+    },
+    {
+      args: ['edit-text', 'handoff.json', '--target=', '--value', 'After'],
       code: 'edit-target-required',
       message: 'Editing text requires a non-empty --target run key',
     },
@@ -445,6 +572,11 @@ describe('oakit portable PowerPoint CLI contract', () => {
     },
     {
       args: ['transform-text', 'handoff.json', '--x', '10'],
+      code: 'transform-target-required',
+      message: 'Transforming text requires a non-empty --target element key',
+    },
+    {
+      args: ['transform-text', 'handoff.json', '--target=', '--x', '10'],
       code: 'transform-target-required',
       message: 'Transforming text requires a non-empty --target element key',
     },
@@ -646,7 +778,7 @@ describe('oakit portable PowerPoint CLI contract', () => {
     expect(io.files.has('handoff.json')).toBe(false);
   });
 
-  it.each(['snapshot', 'restore'] as const)(
+  it.each(['snapshot', 'restore', 'edit-text', 'transform-text'] as const)(
     'reports %s input read failures before output',
     async (action) => {
       const io = new PortableCliIo();
@@ -654,7 +786,25 @@ describe('oakit portable PowerPoint CLI contract', () => {
       const args =
         action === 'snapshot'
           ? ['snapshot', 'source.pptx', '--output', 'handoff.json']
-          : ['restore', 'handoff.json', '--output', 'out.pptx'];
+          : action === 'restore'
+            ? ['restore', 'handoff.json', '--output', 'out.pptx']
+            : action === 'edit-text'
+              ? [
+                  'edit-text',
+                  'handoff.json',
+                  '--target',
+                  'slide-1-element-1-run-1',
+                  '--value',
+                  'After',
+                ]
+              : [
+                  'transform-text',
+                  'handoff.json',
+                  '--target',
+                  'slide-1-element-1',
+                  '--x',
+                  '10',
+                ];
 
       await expect(runOakitCli(args, io, '1.2.3')).resolves.toBe(1);
       expect(json(io.stderr)).toEqual({
@@ -724,6 +874,101 @@ describe('oakit portable PowerPoint CLI contract', () => {
     });
   });
 
+  it.each(['edit-text', 'transform-text'] as const)(
+    'returns structured portable limit evidence while running %s',
+    async (action) => {
+      const io = new PortableCliIo();
+      io.files.set('source.pptx', await createEditablePptx());
+      await runOakitCli(
+        ['snapshot', 'source.pptx', '--output', 'handoff.json'],
+        io,
+        '1.2.3',
+      );
+      const failure = new PptxRoundTripPortableLimitError(
+        'maxDecodedBytes',
+        101,
+        100,
+      );
+      const args =
+        action === 'edit-text'
+          ? [
+              'edit-text',
+              'handoff.json',
+              '--target',
+              'slide-1-element-1-run-1',
+              '--value',
+              'After',
+            ]
+          : [
+              'transform-text',
+              'handoff.json',
+              '--target',
+              'slide-1-element-1',
+              '--x',
+              '10',
+            ];
+
+      await expect(
+        runOakitCli(args, io, '1.2.3', {
+          serializeRoundTripJson: () => Promise.reject(failure),
+        }),
+      ).resolves.toBe(1);
+      expect(json(io.stderr)).toEqual({
+        error: {
+          code: 'portable-limit-exceeded',
+          diagnostic: {
+            actual: 101,
+            limit: 100,
+            limitName: 'maxDecodedBytes',
+          },
+          message:
+            'PowerPoint portable snapshot limit maxDecodedBytes exceeded: 101 > 100',
+        },
+      });
+    },
+  );
+
+  it.each(['edit-text', 'transform-text'] as const)(
+    'writes %s JSON to stdout for explicit dash output',
+    async (action) => {
+      const io = new PortableCliIo();
+      io.files.set('source.pptx', await createEditablePptx());
+      await runOakitCli(
+        ['snapshot', 'source.pptx', '--output', 'handoff.json'],
+        io,
+        '1.2.3',
+      );
+      const args =
+        action === 'edit-text'
+          ? [
+              'edit-text',
+              'handoff.json',
+              '--target',
+              'slide-1-element-1-run-1',
+              '--value',
+              'After',
+              '--output',
+              '-',
+            ]
+          : [
+              'transform-text',
+              'handoff.json',
+              '--target',
+              'slide-1-element-1',
+              '--x',
+              '10',
+              '--output',
+              '-',
+            ];
+
+      io.stdout = '';
+      await expect(runOakitCli(args, io, '1.2.3')).resolves.toBe(0);
+      expect(json(io.stdout).operations).toHaveLength(1);
+      expect(io.files.has('-')).toBe(false);
+      expect(io.stderr).toBe('');
+    },
+  );
+
   it('preserves typed snapshot failures from portable serialization', async () => {
     const io = new PortableCliIo();
     io.files.set('source.pptx', await createMinimalPptx());
@@ -749,29 +994,136 @@ describe('oakit portable PowerPoint CLI contract', () => {
     });
   });
 
-  it.each(['snapshot', 'restore'] as const)(
+  it.each(['edit-text', 'transform-text'] as const)(
+    'preserves typed %s operation failures',
+    async (action) => {
+      const io = new PortableCliIo();
+      io.files.set('source.pptx', await createEditablePptx());
+      await runOakitCli(
+        ['snapshot', 'source.pptx', '--output', 'handoff.json'],
+        io,
+        '1.2.3',
+      );
+      const failure = new PptxWriteError(
+        'invalid-edit-operation',
+        `${action} rejected its target`,
+      );
+      const overrides: Partial<OakitCliOperations> =
+        action === 'edit-text'
+          ? { replaceRoundTripText: () => Promise.reject(failure) }
+          : { setRoundTripTextTransform: () => Promise.reject(failure) };
+      const args =
+        action === 'edit-text'
+          ? [
+              'edit-text',
+              'handoff.json',
+              '--target',
+              'slide-1-element-1-run-1',
+              '--value',
+              'After',
+            ]
+          : [
+              'transform-text',
+              'handoff.json',
+              '--target',
+              'slide-1-element-1',
+              '--x',
+              '10',
+            ];
+
+      await expect(runOakitCli(args, io, '1.2.3', overrides)).resolves.toBe(1);
+      expect(json(io.stderr)).toEqual({
+        error: {
+          code: 'invalid-edit-operation',
+          message: `${action} rejected its target`,
+        },
+      });
+    },
+  );
+
+  it('rejects a missing transform target with a typed CLI error', async () => {
+    const io = new PortableCliIo();
+    io.files.set('source.pptx', await createEditablePptx());
+    await runOakitCli(
+      ['snapshot', 'source.pptx', '--output', 'handoff.json'],
+      io,
+      '1.2.3',
+    );
+
+    await expect(
+      runOakitCli(
+        ['transform-text', 'handoff.json', '--target', 'missing', '--x', '10'],
+        io,
+        '1.2.3',
+      ),
+    ).resolves.toBe(1);
+    expect(json(io.stderr)).toEqual({
+      error: {
+        code: 'invalid-edit-operation',
+        message: 'PowerPoint transform target has no resolved transform',
+      },
+    });
+  });
+
+  it.each(['snapshot', 'restore', 'edit-text', 'transform-text'] as const)(
     'reports unexpected %s failures without a stack trace',
     async (action) => {
       const io = new PortableCliIo();
-      const input = await createMinimalPptx();
+      const input = await createEditablePptx();
+      io.files.set('source.pptx', input);
+      await runOakitCli(
+        ['snapshot', 'source.pptx', '--output', 'handoff.json'],
+        io,
+        '1.2.3',
+      );
       io.files.set(
         action === 'snapshot' ? 'source.pptx' : 'handoff.json',
-        action === 'snapshot' ? input : '{}',
+        action === 'snapshot' ? input : String(io.files.get('handoff.json')),
       );
-      const overrides: Partial<OakitCliOperations> =
-        action === 'snapshot'
-          ? {
-              readRoundTrip: () =>
-                Promise.reject(new Error('unexpected snapshot failure')),
-            }
-          : {
-              parseRoundTripJson: () =>
-                Promise.reject(new Error('unexpected restore failure')),
-            };
+      let overrides: Partial<OakitCliOperations>;
+      if (action === 'snapshot') {
+        overrides = {
+          readRoundTrip: () =>
+            Promise.reject(new Error('unexpected snapshot failure')),
+        };
+      } else if (action === 'restore') {
+        overrides = {
+          parseRoundTripJson: () =>
+            Promise.reject(new Error('unexpected restore failure')),
+        };
+      } else if (action === 'edit-text') {
+        overrides = {
+          replaceRoundTripText: () =>
+            Promise.reject(new Error('unexpected edit-text failure')),
+        };
+      } else {
+        overrides = {
+          setRoundTripTextTransform: () =>
+            Promise.reject(new Error('unexpected transform-text failure')),
+        };
+      }
       const args =
         action === 'snapshot'
           ? ['snapshot', 'source.pptx']
-          : ['restore', 'handoff.json', '--output', 'out.pptx'];
+          : action === 'restore'
+            ? ['restore', 'handoff.json', '--output', 'out.pptx']
+            : action === 'edit-text'
+              ? [
+                  'edit-text',
+                  'handoff.json',
+                  '--target',
+                  'slide-1-element-1-run-1',
+                  '--value',
+                  'After',
+                ]
+              : [
+                  'transform-text',
+                  'handoff.json',
+                  '--target',
+                  'slide-1-element-1',
+                  '--x',
+                  '10',
+                ];
 
       await expect(runOakitCli(args, io, '1.2.3', overrides)).resolves.toBe(1);
       expect(json(io.stderr)).toEqual({
@@ -784,11 +1136,11 @@ describe('oakit portable PowerPoint CLI contract', () => {
     },
   );
 
-  it.each(['snapshot', 'restore'] as const)(
+  it.each(['snapshot', 'restore', 'edit-text', 'transform-text'] as const)(
     'reports %s output failures without claiming success',
     async (action) => {
       const io = new PortableCliIo();
-      io.files.set('source.pptx', await createMinimalPptx());
+      io.files.set('source.pptx', await createEditablePptx());
       await runOakitCli(
         ['snapshot', 'source.pptx', '--output', 'handoff.json'],
         io,
@@ -798,7 +1150,29 @@ describe('oakit portable PowerPoint CLI contract', () => {
       const args =
         action === 'snapshot'
           ? ['snapshot', 'source.pptx', '--output', 'second.json']
-          : ['restore', 'handoff.json', '--output', 'out.pptx'];
+          : action === 'restore'
+            ? ['restore', 'handoff.json', '--output', 'out.pptx']
+            : action === 'edit-text'
+              ? [
+                  'edit-text',
+                  'handoff.json',
+                  '--target',
+                  'slide-1-element-1-run-1',
+                  '--value',
+                  'After',
+                  '--output',
+                  'edited.json',
+                ]
+              : [
+                  'transform-text',
+                  'handoff.json',
+                  '--target',
+                  'slide-1-element-1',
+                  '--x',
+                  '10',
+                  '--output',
+                  'transformed.json',
+                ];
 
       await expect(runOakitCli(args, io, '1.2.3')).resolves.toBe(1);
       expect(json(io.stderr)).toEqual({

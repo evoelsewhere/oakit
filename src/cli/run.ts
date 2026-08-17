@@ -371,18 +371,20 @@ function parseCommand(args: readonly string[]): CliCommand {
       action !== 'transform-text'
     ) {
       explicitFormat = optionValue(iterator, value);
-    } else if (value === '--target' && action === 'edit-text') {
+    } else if (
+      value === '--target' &&
+      (action === 'edit-text' || action === 'transform-text')
+    ) {
       targetKey = optionValue(iterator, value);
-    } else if (value.startsWith('--target=') && action === 'edit-text') {
+    } else if (
+      value.startsWith('--target=') &&
+      (action === 'edit-text' || action === 'transform-text')
+    ) {
       targetKey = value.slice('--target='.length);
     } else if (value === '--value' && action === 'edit-text') {
       textValue = optionValue(iterator, value);
     } else if (value.startsWith('--value=') && action === 'edit-text') {
       textValue = value.slice('--value='.length);
-    } else if (value === '--target' && action === 'transform-text') {
-      targetKey = optionValue(iterator, value);
-    } else if (value.startsWith('--target=') && action === 'transform-text') {
-      targetKey = value.slice('--target='.length);
     } else if (action === 'transform-text') {
       const transformOptions = [
         '--x',
@@ -916,37 +918,31 @@ async function transformPortableText(
   let json: string;
   try {
     const runtime = await operations.parseRoundTripJson(input.value);
-    let matchedTransform:
-      | NonNullable<
-          (typeof runtime.document.slides)[number]['elements'][number]['resolved']['transform']
-        >
-      | undefined;
+    let matchedElement:
+      (typeof runtime.document.slides)[number]['elements'][number] | undefined;
     for (const slide of runtime.document.slides) {
       for (const element of slide.elements) {
-        if (element.type !== 'text' || element.key !== command.targetKey)
-          continue;
-        if (matchedTransform !== undefined) {
-          throw new PptxWriteError(
-            'invalid-edit-operation',
-            'PowerPoint transform target key is ambiguous',
-          );
-        }
-        matchedTransform = element.resolved.transform;
+        if (element.key === command.targetKey) matchedElement = element;
       }
     }
-    if (matchedTransform === undefined) {
+    if (
+      matchedElement?.type !== 'text' ||
+      matchedElement.resolved.transform === undefined
+    ) {
       throw new PptxWriteError(
         'invalid-edit-operation',
         'PowerPoint transform target has no resolved transform',
       );
     }
+    const matchedTransform = matchedElement.resolved.transform;
     const edited = await operations.setRoundTripTextTransform(runtime, {
       targetKey: command.targetKey,
       value: {
         flipHorizontal:
-          command.flipHorizontal ?? matchedTransform.flipHorizontal ?? false,
+          command.flipHorizontal ??
+          (matchedTransform.flipHorizontal as boolean),
         flipVertical:
-          command.flipVertical ?? matchedTransform.flipVertical ?? false,
+          command.flipVertical ?? (matchedTransform.flipVertical as boolean),
         height: command.height ?? matchedTransform.height,
         rotation: command.rotation ?? matchedTransform.rotation ?? 0,
         width: command.width ?? matchedTransform.width,
