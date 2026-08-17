@@ -1,0 +1,2713 @@
+{
+  "corpus": [
+    {
+      "attributionPreserved": true,
+      "elementRetention": 1,
+      "elements": {
+        "output": 297,
+        "source": 297
+      },
+      "index": 1,
+      "output": {
+        "pptx": {
+          "byteLength": 6889019,
+          "sha256": "be7ef9fe28c8c21d68356e54c71aa16577e81fefc0064b3495722f6175f8ed99"
+        },
+        "render": {
+          "representativePngs": [
+            {
+              "byteLength": 36260,
+              "sha256": "72b62cdebc4d1dbe10480875ec79f2e40122565f0a38142c794b980aa6b1a728",
+              "slideNumber": 1,
+              "warningCount": 71
+            },
+            {
+              "byteLength": 25164,
+              "sha256": "2a40953725f7871330274b674088953ad4209ec220284756c14bc83da3bf01b5",
+              "slideNumber": 13,
+              "warningCount": 78
+            },
+            {
+              "byteLength": 50921,
+              "sha256": "e56ee411bd2a84ed9718693c2da205e070280f7dde5e0e1108abc0b34bbb19d0",
+              "slideNumber": 25,
+              "warningCount": 67
+            }
+          ],
+          "svg": {
+            "byteLength": 9547783,
+            "sha256": "84be0b5e6e573dbd92ae7aa5ebd3b4fb12290693f7a1ba1a36f80700f3a12850"
+          },
+          "warnings": {
+            "font-substitution": 147,
+            "approximate-shape": 1541,
+            "approximate-fill": 5,
+            "approximate-media": 13
+          }
+        }
+      },
+      "slideCount": 25,
+      "source": {
+        "pptx": {
+          "byteLength": 6261101,
+          "sha256": "2bab513e0fcf3e75c102db45777359b7d8a5ae416370b7dd2da2a96aba8efee2"
+        },
+        "render": {
+          "representativePngs": [
+            {
+              "byteLength": 36260,
+              "sha256": "72b62cdebc4d1dbe10480875ec79f2e40122565f0a38142c794b980aa6b1a728",
+              "slideNumber": 1,
+              "warningCount": 71
+            },
+            {
+              "byteLength": 25164,
+              "sha256": "2a40953725f7871330274b674088953ad4209ec220284756c14bc83da3bf01b5",
+              "slideNumber": 13,
+              "warningCount": 78
+            },
+            {
+              "byteLength": 50496,
+              "sha256": "25fb81d980864d6b290abfe2b9357b46061e0b945e76321757c89fe24d1ddb71",
+              "slideNumber": 25,
+              "warningCount": 63
+            }
+          ],
+          "svg": {
+            "byteLength": 9547778,
+            "sha256": "e3406fff2d163b9ab7ba3ab2459a0c679a38cfcc9d28470d6afb31d57e89fccf"
+          },
+          "warnings": {
+            "font-substitution": 147,
+            "approximate-shape": 1541,
+            "approximate-fill": 5,
+            "approximate-media": 8
+          }
+        }
+      },
+      "sourcePage": "https://slidesmania.com/synergy-free-template-for-group-projects-and-presentations/",
+      "textRetention": 1,
+      "title": "Synergy group projects"
+    },
+    {
+      "attributionPreserved": true,
+      "elementRetention": 1,
+      "elements": {
+        "output": 303,
+        "source": 303
+      },
+      "index": 2,
+      "output": {
+        "pptx": {
+          "byteLength": 9072974,
+          "sha256": "6dbf25a65ded4b37bc73c12063640cfaa6b6ed56b629add5f7ff4f6b2e63aec4"
+        },
+        "render": {
+          "representativePngs": [
+            {
+              "byteLength": 353822,
+              "sha256": "e77a1c1f16b587cfedbdf6a3dcdfdb83f3b92a49dadd4b459acf0a09364b11a3",
+              "slideNumber": 1,
+              "warningCount": 4
+            },
+            {
+              "byteLength": 342299,
+              "sha256": "fd5e3fb686b0f9d4db51bc7b1ec90a04a456e9fedaaa2cf752c8cdb21d0f5bb3",
+              "slideNumber": 14,
+              "warningCount": 25
+            },
+            {
+              "byteLength": 344974,
+              "sha256": "e482f7b8ff568594d905242e8d6a372b442cc9520cd1879342467ae2e5491fa6",
+              "slideNumber": 28,
+              "warningCount": 9
+            }
+          ],
+          "svg": {
+            "byteLength": 27023314,
+            "sha256": "f7876da9bda845ed2a33c315f11fd2173d4f475923d550c665abb358e5bad577"
+          },
+          "warnings": {
+            "approximate-media": 41,
+            "font-substitution": 174,
+            "approximate-shape": 23,
+            "approximate-fill": 4
+          }
+        }
+      },
+      "slideCount": 28,
+      "source": {
+        "pptx": {
+          "byteLength": 7637025,
+          "sha256": "66e793fbc66169ddb54002911f1de22b9964d2fe4de5cf1934c86b58e30e28e7"
+        },
+        "render": {
+          "representativePngs": [
+            {
+              "byteLength": 353822,
+              "sha256": "e77a1c1f16b587cfedbdf6a3dcdfdb83f3b92a49dadd4b459acf0a09364b11a3",
+              "slideNumber": 1,
+              "warningCount": 4
+            },
+            {
+              "byteLength": 342299,
+              "sha256": "fd5e3fb686b0f9d4db51bc7b1ec90a04a456e9fedaaa2cf752c8cdb21d0f5bb3",
+              "slideNumber": 14,
+              "warningCount": 25
+            },
+            {
+              "byteLength": 344974,
+              "sha256": "e482f7b8ff568594d905242e8d6a372b442cc9520cd1879342467ae2e5491fa6",
+              "slideNumber": 28,
+              "warningCount": 5
+            }
+          ],
+          "svg": {
+            "byteLength": 27022458,
+            "sha256": "840f00a72ce231df8a6e10c2f7dc18417638ac3d784d477e7dbf940ff09c9efd"
+          },
+          "warnings": {
+            "approximate-media": 36,
+            "font-substitution": 175,
+            "approximate-shape": 23,
+            "approximate-fill": 4
+          }
+        }
+      },
+      "sourcePage": "https://slidesmania.com/minimal-pastel-free-presentation-template/",
+      "textRetention": 1,
+      "title": "Minimal Pastel"
+    },
+    {
+      "attributionPreserved": true,
+      "elementRetention": 1,
+      "elements": {
+        "output": 252,
+        "source": 252
+      },
+      "index": 3,
+      "output": {
+        "pptx": {
+          "byteLength": 2802206,
+          "sha256": "bd22d20365dccfa867b3727e5913a348e11aa5d049f6be67837c9b4afb8fb969"
+        },
+        "render": {
+          "representativePngs": [
+            {
+              "byteLength": 83897,
+              "sha256": "0f441d3597f95d839263ac42ba987b69e50ee6bf93e28b2f74774bf4c5253b2f",
+              "slideNumber": 1,
+              "warningCount": 6
+            },
+            {
+              "byteLength": 33427,
+              "sha256": "c367f1afd1cc235f9f7bc2a4e8d72be72a4ae2d7cfe9bf24ae332d16c1281588",
+              "slideNumber": 12,
+              "warningCount": 4
+            },
+            {
+              "byteLength": 48477,
+              "sha256": "c88b064ee1df5d42fe23eaae753277de9f2bd938918a68a2d4a732fbcf8980e9",
+              "slideNumber": 23,
+              "warningCount": 7
+            }
+          ],
+          "svg": {
+            "byteLength": 5723818,
+            "sha256": "dbd41076b20ec847261bed25b3c0ec22e48cb4a58dc5b6d747fffbca461b6175"
+          },
+          "warnings": {
+            "font-substitution": 113,
+            "approximate-media": 12,
+            "approximate-shape": 15
+          }
+        }
+      },
+      "slideCount": 23,
+      "source": {
+        "pptx": {
+          "byteLength": 1998870,
+          "sha256": "e3ca3af64b02b406a0d5c340a8dde2b14db1e6b7f33271384223c84b4efaac50"
+        },
+        "render": {
+          "representativePngs": [
+            {
+              "byteLength": 83897,
+              "sha256": "0f441d3597f95d839263ac42ba987b69e50ee6bf93e28b2f74774bf4c5253b2f",
+              "slideNumber": 1,
+              "warningCount": 6
+            },
+            {
+              "byteLength": 33427,
+              "sha256": "c367f1afd1cc235f9f7bc2a4e8d72be72a4ae2d7cfe9bf24ae332d16c1281588",
+              "slideNumber": 12,
+              "warningCount": 4
+            },
+            {
+              "byteLength": 48119,
+              "sha256": "d7508210c5534ad750254e9483ae96cc163276ccf4e4bbf03a362a8b642e788d",
+              "slideNumber": 23,
+              "warningCount": 3
+            }
+          ],
+          "svg": {
+            "byteLength": 5723883,
+            "sha256": "c63943fb298829aca258888167df11e7148b5efd13c024ed17390e51277cb7ca"
+          },
+          "warnings": {
+            "font-substitution": 113,
+            "approximate-media": 8,
+            "approximate-shape": 15
+          }
+        }
+      },
+      "sourcePage": "https://slidesmania.com/happy-thanksgiving-free-presentation-template/",
+      "textRetention": 1,
+      "title": "Happy Thanksgiving"
+    },
+    {
+      "attributionPreserved": true,
+      "elementRetention": 1,
+      "elements": {
+        "output": 261,
+        "source": 261
+      },
+      "index": 4,
+      "output": {
+        "pptx": {
+          "byteLength": 2722065,
+          "sha256": "4a4730bded8bd52415c9911e856ae7f4dd6902d44f12cfb860e0cd6032203434"
+        },
+        "render": {
+          "representativePngs": [
+            {
+              "byteLength": 271397,
+              "sha256": "a4f218ae4d9ee0ebd3f532e394783ff42221e653ad7469d4c05f09b2f51dccf2",
+              "slideNumber": 1,
+              "warningCount": 7
+            },
+            {
+              "byteLength": 28672,
+              "sha256": "6cfe8f4da65c6afeedb4ba873a95ec7a0193987c9f50935bef648a843626964c",
+              "slideNumber": 12,
+              "warningCount": 14
+            },
+            {
+              "byteLength": 7374,
+              "sha256": "986011a65fc5963b0778f5bff4e07d140eca69c21bd5cd05174672e720946f58",
+              "slideNumber": 24,
+              "warningCount": 7
+            }
+          ],
+          "svg": {
+            "byteLength": 4480206,
+            "sha256": "0acb00ada866731ce233f82dfa8d6a38c543939814e8547774ad06bf7d38e5ea"
+          },
+          "warnings": {
+            "approximate-fill": 14,
+            "approximate-shape": 28,
+            "font-substitution": 123,
+            "approximate-media": 14,
+            "approximate-table": 18
+          }
+        }
+      },
+      "slideCount": 24,
+      "source": {
+        "pptx": {
+          "byteLength": 2289815,
+          "sha256": "266f84ea9c2a57ea3811c40cabe32e1e1f61fab04f434c1a59662a834aa3dd47"
+        },
+        "render": {
+          "representativePngs": [
+            {
+              "byteLength": 271412,
+              "sha256": "0ad32a7dc1f392f64765e89b2a3203fd6e29597bfa04c4c9880317a39932a0da",
+              "slideNumber": 1,
+              "warningCount": 7
+            },
+            {
+              "byteLength": 28672,
+              "sha256": "6cfe8f4da65c6afeedb4ba873a95ec7a0193987c9f50935bef648a843626964c",
+              "slideNumber": 12,
+              "warningCount": 14
+            },
+            {
+              "byteLength": 7374,
+              "sha256": "986011a65fc5963b0778f5bff4e07d140eca69c21bd5cd05174672e720946f58",
+              "slideNumber": 24,
+              "warningCount": 7
+            }
+          ],
+          "svg": {
+            "byteLength": 4480209,
+            "sha256": "4597779349d52a962a7c7dff406d4e4a5247fdcad0ac7d17c025ef400d38156f"
+          },
+          "warnings": {
+            "approximate-fill": 14,
+            "approximate-shape": 28,
+            "font-substitution": 123,
+            "approximate-media": 14,
+            "approximate-table": 18
+          }
+        }
+      },
+      "sourcePage": "https://slidesmania.com/gadgets-and-notes-free-presentation-template/",
+      "textRetention": 1,
+      "title": "Gadgets and Notes"
+    },
+    {
+      "attributionPreserved": true,
+      "elementRetention": 1,
+      "elements": {
+        "output": 305,
+        "source": 305
+      },
+      "index": 5,
+      "output": {
+        "pptx": {
+          "byteLength": 8351321,
+          "sha256": "91617ad79bcd273988b53cba35185eb29e988afd11077d7c4ec402bd40bca97c"
+        },
+        "render": {
+          "representativePngs": [
+            {
+              "byteLength": 101554,
+              "sha256": "993aee3877bdf3ee1009a4fc2f0939393351d9b96608696a62b3863cdc15f70d",
+              "slideNumber": 1,
+              "warningCount": 11
+            },
+            {
+              "byteLength": 35358,
+              "sha256": "e30986a7af6d6b02d3af996a976d3458d5e1cba75db6155fd88f62930e60e131",
+              "slideNumber": 13,
+              "warningCount": 21
+            },
+            {
+              "byteLength": 50206,
+              "sha256": "a59cb83b0de44384655faf57427a299b5f19d41ac508565aedac81a6977ea6a3",
+              "slideNumber": 25,
+              "warningCount": 7
+            }
+          ],
+          "svg": {
+            "byteLength": 15989082,
+            "sha256": "f7c9c53ad8b0020bd68b58af36bdef3ff34f9c05fe31549329933bf011ed5333"
+          },
+          "warnings": {
+            "approximate-shape": 49,
+            "approximate-fill": 41,
+            "font-substitution": 118,
+            "approximate-media": 12
+          }
+        }
+      },
+      "slideCount": 25,
+      "source": {
+        "pptx": {
+          "byteLength": 7887960,
+          "sha256": "942cbc41f0fff375f46c7d47e95574c8456f46e0707d0dd40d8d56703e62fa0b"
+        },
+        "render": {
+          "representativePngs": [
+            {
+              "byteLength": 101551,
+              "sha256": "49bce90cba6e7a1ab524537b62c099a68b50269bb546edf1b4be2068b3c50669",
+              "slideNumber": 1,
+              "warningCount": 11
+            },
+            {
+              "byteLength": 35358,
+              "sha256": "e30986a7af6d6b02d3af996a976d3458d5e1cba75db6155fd88f62930e60e131",
+              "slideNumber": 13,
+              "warningCount": 21
+            },
+            {
+              "byteLength": 49867,
+              "sha256": "1f5e74807e0141c069a5e968f897ff4898619b6fa829c92a8fcd49c87af38bc1",
+              "slideNumber": 25,
+              "warningCount": 3
+            }
+          ],
+          "svg": {
+            "byteLength": 15989075,
+            "sha256": "067d9fd6fd8fc61da6d6a4258650596852c57347e97557e28224765e4724acb4"
+          },
+          "warnings": {
+            "approximate-shape": 49,
+            "approximate-fill": 41,
+            "font-substitution": 118,
+            "approximate-media": 8
+          }
+        }
+      },
+      "sourcePage": "https://slidesmania.com/happy-halloween-free-ppt-template/",
+      "textRetention": 1,
+      "title": "Spooky Paper Cut Halloween"
+    },
+    {
+      "attributionPreserved": true,
+      "elementRetention": 1,
+      "elements": {
+        "output": 114,
+        "source": 114
+      },
+      "index": 6,
+      "output": {
+        "pptx": {
+          "byteLength": 1973814,
+          "sha256": "8dacf8335f7f051b2efeb83eb4e0f5ad324f9e41f7fe417037a7210f4b525f9e"
+        },
+        "render": {
+          "representativePngs": [
+            {
+              "byteLength": 35757,
+              "sha256": "1b16165c47fa3d770281529e34dba245bcc5728e684d6eefef8595d80762f0b1",
+              "slideNumber": 1,
+              "warningCount": 15
+            },
+            {
+              "byteLength": 32944,
+              "sha256": "d72853b931f452722fddf7a4c0a099304df1466e399a43e4737beaac7b52661e",
+              "slideNumber": 16,
+              "warningCount": 19
+            },
+            {
+              "byteLength": 25099,
+              "sha256": "9c7c84e02b8788ae4693f2ccffadf33228db7ea9ff4f79e4f2aa5fc377fc3d66",
+              "slideNumber": 31,
+              "warningCount": 17
+            }
+          ],
+          "svg": {
+            "byteLength": 11933616,
+            "sha256": "c5d3aefa1f4e01968d19cc979b29b33527ae6f0da8a2f6811ad966939ade987c"
+          },
+          "warnings": {
+            "approximate-fill": 177,
+            "font-substitution": 389,
+            "approximate-table": 32,
+            "approximate-media": 9,
+            "approximate-shape": 1
+          }
+        }
+      },
+      "slideCount": 31,
+      "source": {
+        "pptx": {
+          "byteLength": 1285690,
+          "sha256": "d7e4e700aafeb6d552894ec897bcc59a08b81bed7741eb0d818b54bde9c8cb6b"
+        },
+        "render": {
+          "representativePngs": [
+            {
+              "byteLength": 35757,
+              "sha256": "1b16165c47fa3d770281529e34dba245bcc5728e684d6eefef8595d80762f0b1",
+              "slideNumber": 1,
+              "warningCount": 15
+            },
+            {
+              "byteLength": 32944,
+              "sha256": "d72853b931f452722fddf7a4c0a099304df1466e399a43e4737beaac7b52661e",
+              "slideNumber": 16,
+              "warningCount": 19
+            },
+            {
+              "byteLength": 25099,
+              "sha256": "9c7c84e02b8788ae4693f2ccffadf33228db7ea9ff4f79e4f2aa5fc377fc3d66",
+              "slideNumber": 31,
+              "warningCount": 17
+            }
+          ],
+          "svg": {
+            "byteLength": 11933645,
+            "sha256": "37c4bca0ad2d028dd3b109e2e132b5ce921e40a3515cf9be722af1fb6c981b16"
+          },
+          "warnings": {
+            "approximate-fill": 177,
+            "font-substitution": 389,
+            "approximate-table": 32,
+            "approximate-media": 7,
+            "approximate-shape": 1
+          }
+        }
+      },
+      "sourcePage": "https://slidesmania.com/free-digital-pastel-colored-ring-binder/",
+      "textRetention": 1,
+      "title": "Digital pastel ring binder"
+    },
+    {
+      "attributionPreserved": true,
+      "elementRetention": 1,
+      "elements": {
+        "output": 1204,
+        "source": 1204
+      },
+      "index": 7,
+      "output": {
+        "pptx": {
+          "byteLength": 1163586,
+          "sha256": "64df6e0df52190ae93c9531348022a46529687a1cd1859b7281b72b53189da4c"
+        },
+        "render": {
+          "representativePngs": [
+            {
+              "byteLength": 30019,
+              "sha256": "a0ef00c4d8555978c38963f1f23562e2c7ac17bd0825ff27b344f649f7480a9b",
+              "slideNumber": 1,
+              "warningCount": 23
+            },
+            {
+              "byteLength": 23618,
+              "sha256": "9d1f0dbb5018c75eb18a1d33a12c6798c6b9f55855c146148ae471e334d959da",
+              "slideNumber": 22,
+              "warningCount": 31
+            },
+            {
+              "byteLength": 18671,
+              "sha256": "9dcf001249843d4f61f9adf72333ddb505287282dfb8b579f790e9cf79775fdc",
+              "slideNumber": 44,
+              "warningCount": 19
+            }
+          ],
+          "svg": {
+            "byteLength": 2545401,
+            "sha256": "465c5a8dd14a91fe98f68f0d1568b219da167d3ee1034aaf64908379615c636c"
+          },
+          "warnings": {
+            "font-substitution": 1606,
+            "approximate-table": 42,
+            "approximate-shape": 2,
+            "approximate-media": 5
+          }
+        }
+      },
+      "slideCount": 44,
+      "source": {
+        "pptx": {
+          "byteLength": 287354,
+          "sha256": "0695f94cb6c0f88b3ca30b9e2b92a4e5249b5006b03914b4fa65f413b3a33828"
+        },
+        "render": {
+          "representativePngs": [
+            {
+              "byteLength": 30019,
+              "sha256": "a0ef00c4d8555978c38963f1f23562e2c7ac17bd0825ff27b344f649f7480a9b",
+              "slideNumber": 1,
+              "warningCount": 23
+            },
+            {
+              "byteLength": 23618,
+              "sha256": "9d1f0dbb5018c75eb18a1d33a12c6798c6b9f55855c146148ae471e334d959da",
+              "slideNumber": 22,
+              "warningCount": 31
+            },
+            {
+              "byteLength": 18671,
+              "sha256": "9dcf001249843d4f61f9adf72333ddb505287282dfb8b579f790e9cf79775fdc",
+              "slideNumber": 44,
+              "warningCount": 15
+            }
+          ],
+          "svg": {
+            "byteLength": 2545319,
+            "sha256": "003beb8d538065133c8f5ead0ca942c9b3f0725c7fe07cca6d28501e5009d02d"
+          },
+          "warnings": {
+            "font-substitution": 1606,
+            "approximate-table": 42,
+            "approximate-shape": 2,
+            "approximate-media": 1
+          }
+        }
+      },
+      "sourcePage": "https://slidesmania.com/my-personal-dashboard-free-digital-planner/",
+      "textRetention": 1,
+      "title": "Personal Dashboard planner"
+    },
+    {
+      "attributionPreserved": true,
+      "elementRetention": 1,
+      "elements": {
+        "output": 1409,
+        "source": 1409
+      },
+      "index": 8,
+      "output": {
+        "pptx": {
+          "byteLength": 1135980,
+          "sha256": "0ecadabf3f95aa3fb4400d8fbd0f9cf1c206b7b489fc1ea830d77e92ef809d73"
+        },
+        "render": {
+          "representativePngs": [
+            {
+              "byteLength": 70575,
+              "sha256": "ad40ba36462f629a848cbc136e987ca1191ce5488f00a26955e1cdfefebeacbd",
+              "slideNumber": 1,
+              "warningCount": 118
+            },
+            {
+              "byteLength": 62519,
+              "sha256": "b5e7e9b3239c1ab2ad268cf6aaca5e4f21106b351a6e558b3505196822317982",
+              "slideNumber": 18,
+              "warningCount": 64
+            },
+            {
+              "byteLength": 57232,
+              "sha256": "b132d96eb99caff274d7a9af08691d090568c8860a9e3e8d6d315f24d85b95ed",
+              "slideNumber": 36,
+              "warningCount": 58
+            }
+          ],
+          "svg": {
+            "byteLength": 5690876,
+            "sha256": "7f7d99f54679b77c06cfd07958a6dd601bef36702cf0d0fb621acc76a7ad48e2"
+          },
+          "warnings": {
+            "approximate-fill": 1178,
+            "approximate-media": 157,
+            "font-substitution": 1340,
+            "approximate-shape": 80,
+            "approximate-table": 57
+          }
+        }
+      },
+      "slideCount": 36,
+      "source": {
+        "pptx": {
+          "byteLength": 407475,
+          "sha256": "391ff54070283724639964d88ff26e2ea1069ae3822f2430fe6f0701e7198543"
+        },
+        "render": {
+          "representativePngs": [
+            {
+              "byteLength": 70578,
+              "sha256": "e5dc74ae692d8c810ffb4ebb168233e801726d44578e0f9ab6c18f8807c4e53a",
+              "slideNumber": 1,
+              "warningCount": 118
+            },
+            {
+              "byteLength": 62523,
+              "sha256": "2e63a0b233f3944d4e6708c0e6acdb9adca78cfbeb96b3b05a1b0af114d75030",
+              "slideNumber": 18,
+              "warningCount": 64
+            },
+            {
+              "byteLength": 57236,
+              "sha256": "3ecda69f89d84956eef9acc28205798ee31da5f81c2aacebed540285d657dee4",
+              "slideNumber": 36,
+              "warningCount": 54
+            }
+          ],
+          "svg": {
+            "byteLength": 5690150,
+            "sha256": "a3067d14cee0ffe41681d2c1de32a0817d79f6d08fec5ce7f80cb6378e974d96"
+          },
+          "warnings": {
+            "approximate-fill": 1178,
+            "approximate-media": 148,
+            "font-substitution": 1344,
+            "approximate-shape": 80,
+            "approximate-table": 57
+          }
+        }
+      },
+      "sourcePage": "https://slidesmania.com/free-digital-planner-xxiv-for-google-slides-and-powerpoint/",
+      "textRetention": 1,
+      "title": "2026 digital planner"
+    },
+    {
+      "attributionPreserved": true,
+      "elementRetention": 1,
+      "elements": {
+        "output": 268,
+        "source": 268
+      },
+      "index": 9,
+      "output": {
+        "pptx": {
+          "byteLength": 6573793,
+          "sha256": "3cfc4a17cae506d44fabf2a6d92054098303453a07dfb017a4de7e3696c86540"
+        },
+        "render": {
+          "representativePngs": [
+            {
+              "byteLength": 46397,
+              "sha256": "6f0e09da4f025bc7c697f3b8fcc4d87b971ccf1da8bbc66468affbfae4a7ac0a",
+              "slideNumber": 1,
+              "warningCount": 54
+            },
+            {
+              "byteLength": 45130,
+              "sha256": "ab399029ac780b5749b0764913f3036948d5e3110c2d003ff147981e8b1d93af",
+              "slideNumber": 11,
+              "warningCount": 54
+            },
+            {
+              "byteLength": 34701,
+              "sha256": "f9b332227193e4aa915fc00073a501b03614b327401fee3654dceedba1d0a111",
+              "slideNumber": 22,
+              "warningCount": 59
+            }
+          ],
+          "svg": {
+            "byteLength": 9397036,
+            "sha256": "377c0dd0322de71cbc20d934dd34779ec39bd54dcaf003e595707903b6959f8b"
+          },
+          "warnings": {
+            "approximate-shape": 1090,
+            "approximate-media": 57,
+            "approximate-table": 22,
+            "font-substitution": 100
+          }
+        }
+      },
+      "slideCount": 22,
+      "source": {
+        "pptx": {
+          "byteLength": 5842520,
+          "sha256": "7cbe03e4efb3caeb0daa0c3a3be7d4db13b53b04c5fc75ee9b1ef0b4acc9c661"
+        },
+        "render": {
+          "representativePngs": [
+            {
+              "byteLength": 46397,
+              "sha256": "6f0e09da4f025bc7c697f3b8fcc4d87b971ccf1da8bbc66468affbfae4a7ac0a",
+              "slideNumber": 1,
+              "warningCount": 52
+            },
+            {
+              "byteLength": 45130,
+              "sha256": "ab399029ac780b5749b0764913f3036948d5e3110c2d003ff147981e8b1d93af",
+              "slideNumber": 11,
+              "warningCount": 52
+            },
+            {
+              "byteLength": 34701,
+              "sha256": "f9b332227193e4aa915fc00073a501b03614b327401fee3654dceedba1d0a111",
+              "slideNumber": 22,
+              "warningCount": 53
+            }
+          ],
+          "svg": {
+            "byteLength": 9397036,
+            "sha256": "8408253a6ba378f9c75077b6059197e89296bb4cf59c8a964dffe8cd5c49c1d5"
+          },
+          "warnings": {
+            "approximate-shape": 1090,
+            "approximate-table": 22,
+            "font-substitution": 100,
+            "approximate-media": 9
+          }
+        }
+      },
+      "sourcePage": "https://slidesmania.com/pastel-notebook-free-presentation-template/",
+      "textRetention": 1,
+      "title": "Pastel Notebook"
+    },
+    {
+      "attributionPreserved": true,
+      "elementRetention": 1,
+      "elements": {
+        "output": 114,
+        "source": 114
+      },
+      "index": 10,
+      "output": {
+        "pptx": {
+          "byteLength": 2448616,
+          "sha256": "64ec1ec4614918ca231b93945e66e2c46707843864cf015ebf8c1524cf44949e"
+        },
+        "render": {
+          "representativePngs": [
+            {
+              "byteLength": 222956,
+              "sha256": "bd7fc9c7ffdf533d23dfc0f358a49d690e1d003dab17489159c4d34bc523f859",
+              "slideNumber": 1,
+              "warningCount": 2
+            },
+            {
+              "byteLength": 117108,
+              "sha256": "b8ada822ee9a679eb2fc7cb394dcf923fac44138e063cbdf1757cec97d6ff94d",
+              "slideNumber": 11,
+              "warningCount": 2
+            },
+            {
+              "byteLength": 50226,
+              "sha256": "06229b20a2129b97fae450fd998189af3e97a2115579e1f6d0389229b45ec6ba",
+              "slideNumber": 22,
+              "warningCount": 7
+            }
+          ],
+          "svg": {
+            "byteLength": 5513122,
+            "sha256": "354308947a23475adecd4c324064d4f6fe70f7e65c10f48c315f1501aa3393f8"
+          },
+          "warnings": {
+            "font-substitution": 85,
+            "approximate-media": 9
+          }
+        }
+      },
+      "slideCount": 22,
+      "source": {
+        "pptx": {
+          "byteLength": 1944158,
+          "sha256": "228a128a32f50aee6de5cadf31afc6f3e3a896455cadf724844877582c9015ef"
+        },
+        "render": {
+          "representativePngs": [
+            {
+              "byteLength": 222956,
+              "sha256": "bd7fc9c7ffdf533d23dfc0f358a49d690e1d003dab17489159c4d34bc523f859",
+              "slideNumber": 1,
+              "warningCount": 2
+            },
+            {
+              "byteLength": 117108,
+              "sha256": "b8ada822ee9a679eb2fc7cb394dcf923fac44138e063cbdf1757cec97d6ff94d",
+              "slideNumber": 11,
+              "warningCount": 2
+            },
+            {
+              "byteLength": 49871,
+              "sha256": "5b32ed7311cfb58ce39957a58b1c36304fe9096382fb31a93f65f04ae09edc6c",
+              "slideNumber": 22,
+              "warningCount": 3
+            }
+          ],
+          "svg": {
+            "byteLength": 5513101,
+            "sha256": "16c24c8cd7a5039c92a47ef2e816de87dcfc5204905d1e230710f04db0ee0b9c"
+          },
+          "warnings": {
+            "font-substitution": 85,
+            "approximate-media": 4
+          }
+        }
+      },
+      "sourcePage": "https://slidesmania.com/cute-monkeys-free-theme-and-drag-and-drop-activity/",
+      "textRetention": 1,
+      "title": "Cute Monkeys activity"
+    },
+    {
+      "attributionPreserved": true,
+      "elementRetention": 1,
+      "elements": {
+        "output": 253,
+        "source": 253
+      },
+      "index": 11,
+      "output": {
+        "pptx": {
+          "byteLength": 8016250,
+          "sha256": "42fd2ae52aa0e1c6e90384e782734e89a214a629b1fdcc24b0f1c16f8f469ccf"
+        },
+        "render": {
+          "representativePngs": [
+            {
+              "byteLength": 18879,
+              "sha256": "8422f08c2ac97515df9013a86249320301d1ef18f734122bd03ed8433e23a00d",
+              "slideNumber": 1,
+              "warningCount": 2
+            },
+            {
+              "byteLength": 34998,
+              "sha256": "23c471ffa2826d32fa7cd8a319f60e112a984f45eecd8e81219d4df7ed1acd8b",
+              "slideNumber": 13,
+              "warningCount": 2
+            },
+            {
+              "byteLength": 50224,
+              "sha256": "1f025723ee62bb768145b55590959bb45164e467d51beaefcac680fabcf270bd",
+              "slideNumber": 26,
+              "warningCount": 7
+            }
+          ],
+          "svg": {
+            "byteLength": 10209609,
+            "sha256": "5b72f7e10ae0d763138a7e38ce99202b06976552433bbbea3da4cfc11a718cee"
+          },
+          "warnings": {
+            "font-substitution": 110,
+            "approximate-media": 12,
+            "approximate-shape": 21,
+            "approximate-table": 1,
+            "approximate-fill": 4
+          }
+        }
+      },
+      "slideCount": 26,
+      "source": {
+        "pptx": {
+          "byteLength": 6782925,
+          "sha256": "a83b81a096c5a46722932748a512a45e24eff6fa4c99d7f8be5a560584bf204c"
+        },
+        "render": {
+          "representativePngs": [
+            {
+              "byteLength": 18879,
+              "sha256": "8422f08c2ac97515df9013a86249320301d1ef18f734122bd03ed8433e23a00d",
+              "slideNumber": 1,
+              "warningCount": 2
+            },
+            {
+              "byteLength": 34998,
+              "sha256": "23c471ffa2826d32fa7cd8a319f60e112a984f45eecd8e81219d4df7ed1acd8b",
+              "slideNumber": 13,
+              "warningCount": 2
+            },
+            {
+              "byteLength": 49900,
+              "sha256": "53a93018bc062fd25e1e8961692110e37e6f3393889666b7dfcd8831d8904a5b",
+              "slideNumber": 26,
+              "warningCount": 3
+            }
+          ],
+          "svg": {
+            "byteLength": 10209002,
+            "sha256": "81d9400fd1926bff9be3d63c2183062fc203c2c9af94c53bd3a6a5e2b278a453"
+          },
+          "warnings": {
+            "font-substitution": 110,
+            "approximate-media": 8,
+            "approximate-shape": 21,
+            "approximate-table": 1,
+            "approximate-fill": 4
+          }
+        }
+      },
+      "sourcePage": "https://slidesmania.com/black-and-white-free-presentation-template/",
+      "textRetention": 1,
+      "title": "Formal Black and White"
+    },
+    {
+      "attributionPreserved": true,
+      "elementRetention": 1,
+      "elements": {
+        "output": 250,
+        "source": 250
+      },
+      "index": 12,
+      "output": {
+        "pptx": {
+          "byteLength": 7455417,
+          "sha256": "d19f41c82f25c499ed90410377021367797d9c9867d032c4620e1043ad65874c"
+        },
+        "render": {
+          "representativePngs": [
+            {
+              "byteLength": 394383,
+              "sha256": "5702df3791c5fe75fb549cc42d2d76c02a99d826581ee9ae53e39b9151028b20",
+              "slideNumber": 1,
+              "warningCount": 4
+            },
+            {
+              "byteLength": 342543,
+              "sha256": "85075cfbd4291ec51d6a46513ff64ea9c9a9246a45e0a7331254fc25486b4e09",
+              "slideNumber": 13,
+              "warningCount": 20
+            },
+            {
+              "byteLength": 51724,
+              "sha256": "e3821566b519bac4248d4809305891fa843cac51a923bf3ca13d3757f3a226f2",
+              "slideNumber": 25,
+              "warningCount": 8
+            }
+          ],
+          "svg": {
+            "byteLength": 60739906,
+            "sha256": "110bc35f437fb3cb7ef1ddf4f73bcea34a1777396a4875ee17f0427274261c96"
+          },
+          "warnings": {
+            "approximate-media": 46,
+            "font-substitution": 133,
+            "approximate-shape": 12,
+            "approximate-fill": 4
+          }
+        }
+      },
+      "slideCount": 25,
+      "source": {
+        "pptx": {
+          "byteLength": 6929449,
+          "sha256": "6c6fa37144d43c6b942add705c043794efd57e744b5f9c868d0fad1b95bdedc3"
+        },
+        "render": {
+          "representativePngs": [
+            {
+              "byteLength": 394383,
+              "sha256": "5702df3791c5fe75fb549cc42d2d76c02a99d826581ee9ae53e39b9151028b20",
+              "slideNumber": 1,
+              "warningCount": 4
+            },
+            {
+              "byteLength": 342543,
+              "sha256": "85075cfbd4291ec51d6a46513ff64ea9c9a9246a45e0a7331254fc25486b4e09",
+              "slideNumber": 13,
+              "warningCount": 20
+            },
+            {
+              "byteLength": 51354,
+              "sha256": "0a963968886fce84fe0956ba60309bc92a6671c14ed4487c8b73183a768ac0a3",
+              "slideNumber": 25,
+              "warningCount": 4
+            }
+          ],
+          "svg": {
+            "byteLength": 60739904,
+            "sha256": "d70e92f4e7c1969a159d5c50f58d6f002a32329b2492c2a5bb1c8825b011da21"
+          },
+          "warnings": {
+            "approximate-media": 42,
+            "font-substitution": 133,
+            "approximate-shape": 12,
+            "approximate-fill": 4
+          }
+        }
+      },
+      "sourcePage": "https://slidesmania.com/rigel-free-presentation-template/",
+      "textRetention": 1,
+      "title": "Rigel retro lines"
+    },
+    {
+      "attributionPreserved": true,
+      "elementRetention": 1,
+      "elements": {
+        "output": 333,
+        "source": 333
+      },
+      "index": 13,
+      "output": {
+        "pptx": {
+          "byteLength": 3743554,
+          "sha256": "ca3586686d3ea0cd400d5c094e32ecf2e00b6ebdf64e2587709fc3791ce12ecd"
+        },
+        "render": {
+          "representativePngs": [
+            {
+              "byteLength": 60252,
+              "sha256": "3d7625b514c58499e7f8682fdfc9bd28a50845bead8c998457ef1cfe0ea5e7e9",
+              "slideNumber": 1,
+              "warningCount": 30
+            },
+            {
+              "byteLength": 62825,
+              "sha256": "122cd7282febe36b40b4a95804e2ccfd5b379ed61dc96703f791b8fe4f7a22f4",
+              "slideNumber": 11,
+              "warningCount": 1
+            },
+            {
+              "byteLength": 49894,
+              "sha256": "d8ef62e29d57ef6665e4da503bf65ce69661897dca4080e8f39fdd8840642136",
+              "slideNumber": 21,
+              "warningCount": 7
+            }
+          ],
+          "svg": {
+            "byteLength": 5041150,
+            "sha256": "943f1473b1be23c760c7d118ea786d4ef04318ac08334de260cc30b5eea37668"
+          },
+          "warnings": {
+            "font-substitution": 140,
+            "approximate-media": 12,
+            "approximate-shape": 8,
+            "approximate-fill": 4
+          }
+        }
+      },
+      "slideCount": 21,
+      "source": {
+        "pptx": {
+          "byteLength": 2588046,
+          "sha256": "e84e72888a32ba21bb6dbe1dc2d6ba00da3f1a099e923efb5918323cd1493c88"
+        },
+        "render": {
+          "representativePngs": [
+            {
+              "byteLength": 60252,
+              "sha256": "3d7625b514c58499e7f8682fdfc9bd28a50845bead8c998457ef1cfe0ea5e7e9",
+              "slideNumber": 1,
+              "warningCount": 30
+            },
+            {
+              "byteLength": 62825,
+              "sha256": "122cd7282febe36b40b4a95804e2ccfd5b379ed61dc96703f791b8fe4f7a22f4",
+              "slideNumber": 11,
+              "warningCount": 1
+            },
+            {
+              "byteLength": 49538,
+              "sha256": "894c7cacabf8bb63b1da5e01e6253dbcc15a944bc84953a5846e85860056976b",
+              "slideNumber": 21,
+              "warningCount": 3
+            }
+          ],
+          "svg": {
+            "byteLength": 5040966,
+            "sha256": "b01bae0232829b784ab1919b8a54ee60adb664f9c909a8a828fb4483ca26ae91"
+          },
+          "warnings": {
+            "font-substitution": 140,
+            "approximate-media": 7,
+            "approximate-shape": 8,
+            "approximate-fill": 4
+          }
+        }
+      },
+      "sourcePage": "https://slidesmania.com/daisy-free-presentation-template/",
+      "textRetention": 1,
+      "title": "Daisy groovy presentation"
+    },
+    {
+      "attributionPreserved": true,
+      "elementRetention": 1,
+      "elements": {
+        "output": 262,
+        "source": 262
+      },
+      "index": 14,
+      "output": {
+        "pptx": {
+          "byteLength": 4848543,
+          "sha256": "4fb54daabb29e6c6612445c42664af1dfee3c02024e6230bf62509ca8295392e"
+        },
+        "render": {
+          "representativePngs": [
+            {
+              "byteLength": 139065,
+              "sha256": "60ae7338d3c9bc3b9c94bbf08a2f70765658490622bc62bd3d1cfc21232e5c10",
+              "slideNumber": 1,
+              "warningCount": 3
+            },
+            {
+              "byteLength": 53752,
+              "sha256": "f4b6225190aa4a5c919c1980069689dbef4e3f35c9a88557abcfd41c9e5be024",
+              "slideNumber": 12,
+              "warningCount": 8
+            },
+            {
+              "byteLength": 50760,
+              "sha256": "2de9730f15ca56b9f793eaedb8cb327d2d1ca30be932ff05a3b7f70ca9dc6bc1",
+              "slideNumber": 24,
+              "warningCount": 8
+            }
+          ],
+          "svg": {
+            "byteLength": 8099487,
+            "sha256": "53e6e411ab4d6765680527281608f2c469bc4101340252d5885b785f46c7d3e5"
+          },
+          "warnings": {
+            "font-substitution": 120,
+            "approximate-media": 12,
+            "approximate-fill": 4
+          }
+        }
+      },
+      "slideCount": 24,
+      "source": {
+        "pptx": {
+          "byteLength": 4121758,
+          "sha256": "cd83550c65ffef23e5baf3ceb2c1b792c2bf30799809c41e9b1073c47de48b88"
+        },
+        "render": {
+          "representativePngs": [
+            {
+              "byteLength": 139053,
+              "sha256": "96e80c65f07405979ec9ad08a1aae98f9d1a5805ae2e68ad16b1a35bb7d2816a",
+              "slideNumber": 1,
+              "warningCount": 3
+            },
+            {
+              "byteLength": 53752,
+              "sha256": "f4b6225190aa4a5c919c1980069689dbef4e3f35c9a88557abcfd41c9e5be024",
+              "slideNumber": 12,
+              "warningCount": 8
+            },
+            {
+              "byteLength": 50366,
+              "sha256": "9c81d35d5b5dd5a1161bdb35a5879abc55a0be34e564ec57b62fcaca92c13fde",
+              "slideNumber": 24,
+              "warningCount": 4
+            }
+          ],
+          "svg": {
+            "byteLength": 8099472,
+            "sha256": "7af416821309dbae9af6904b7e18da796c3e8a912ae1fef443425b45314ebff3"
+          },
+          "warnings": {
+            "font-substitution": 120,
+            "approximate-media": 8,
+            "approximate-fill": 4
+          }
+        }
+      },
+      "sourcePage": "https://slidesmania.com/art-and-crafts-free-presentation-template/",
+      "textRetention": 1,
+      "title": "Art and Crafts"
+    },
+    {
+      "attributionPreserved": true,
+      "elementRetention": 1,
+      "elements": {
+        "output": 292,
+        "source": 292
+      },
+      "index": 15,
+      "output": {
+        "pptx": {
+          "byteLength": 5437753,
+          "sha256": "898d4ba82d963f8b372dd61b6e2309fa432cdbb042a28c7de549dcccfdf3e480"
+        },
+        "render": {
+          "representativePngs": [
+            {
+              "byteLength": 64056,
+              "sha256": "05165c88ee643e5bd567ac7ad84669e95627e3e97df9a16846c36b8eab5efe59",
+              "slideNumber": 1,
+              "warningCount": 2
+            },
+            {
+              "byteLength": 79918,
+              "sha256": "c480259a52803bcbc9f7e67694dd0cffbbc617a692cf044ad0463a1953a2b926",
+              "slideNumber": 12,
+              "warningCount": 9
+            },
+            {
+              "byteLength": 54306,
+              "sha256": "aab9ad57addb98cc54aa91103059d7c2f816b0f0bb49daf411037b38a28937f6",
+              "slideNumber": 24,
+              "warningCount": 7
+            }
+          ],
+          "svg": {
+            "byteLength": 10407528,
+            "sha256": "98d4fdc3b58fe8d69cd53d1f6eed1250a37cde577f641a506f1a8a9cf9940253"
+          },
+          "warnings": {
+            "font-substitution": 112,
+            "approximate-media": 12,
+            "approximate-shape": 14,
+            "approximate-fill": 4
+          }
+        }
+      },
+      "slideCount": 24,
+      "source": {
+        "pptx": {
+          "byteLength": 4825407,
+          "sha256": "4aab14d1e51b1216fab646780f9b758e6e4234a94b3466f157eb1de60d423460"
+        },
+        "render": {
+          "representativePngs": [
+            {
+              "byteLength": 64056,
+              "sha256": "05165c88ee643e5bd567ac7ad84669e95627e3e97df9a16846c36b8eab5efe59",
+              "slideNumber": 1,
+              "warningCount": 2
+            },
+            {
+              "byteLength": 79918,
+              "sha256": "c480259a52803bcbc9f7e67694dd0cffbbc617a692cf044ad0463a1953a2b926",
+              "slideNumber": 12,
+              "warningCount": 9
+            },
+            {
+              "byteLength": 53976,
+              "sha256": "78c5803db1d18716136f5ca83bdcc52d7852e5797d8e01fd9636c1dce7f80445",
+              "slideNumber": 24,
+              "warningCount": 3
+            }
+          ],
+          "svg": {
+            "byteLength": 10407482,
+            "sha256": "97a59e22f2dd863b01fc42472d25c48daba25456a7a5e434db50c042feaa9bdb"
+          },
+          "warnings": {
+            "font-substitution": 112,
+            "approximate-media": 7,
+            "approximate-shape": 14,
+            "approximate-fill": 4
+          }
+        }
+      },
+      "sourcePage": "https://slidesmania.com/interface-with-file-folders-free-presentation-template/",
+      "textRetention": 1,
+      "title": "Interface with file folders"
+    },
+    {
+      "attributionPreserved": true,
+      "elementRetention": 1,
+      "elements": {
+        "output": 252,
+        "source": 252
+      },
+      "index": 16,
+      "output": {
+        "pptx": {
+          "byteLength": 6573625,
+          "sha256": "45cd1ce67f1e559cc3dd926557dcc5beee3704fa3880edb6a1a06be1c3c38a05"
+        },
+        "render": {
+          "representativePngs": [
+            {
+              "byteLength": 34319,
+              "sha256": "08d72c8ce5ca1267e5ce27b1bd1c654087965a4d63bb0497840daac4b77d783c",
+              "slideNumber": 1,
+              "warningCount": 2
+            },
+            {
+              "byteLength": 35558,
+              "sha256": "45bd52871ff0e60fd88a32989471d3e3c6f86c97ae1c77e653bf13ae6a464b9c",
+              "slideNumber": 13,
+              "warningCount": 2
+            },
+            {
+              "byteLength": 49848,
+              "sha256": "7247de1cb53c8d40971ad9d973beb34c25b86f26bf9a22197e5201d0b5f4d111",
+              "slideNumber": 25,
+              "warningCount": 7
+            }
+          ],
+          "svg": {
+            "byteLength": 10407141,
+            "sha256": "f77c11a78107a8ea118ddc9fff2318091e222c684a9c9cca0c9d804467125e75"
+          },
+          "warnings": {
+            "font-substitution": 115,
+            "approximate-media": 14,
+            "approximate-shape": 33,
+            "approximate-fill": 4
+          }
+        }
+      },
+      "slideCount": 25,
+      "source": {
+        "pptx": {
+          "byteLength": 6167987,
+          "sha256": "840e6a836891b5d47019698972e92cf72eb6fabfb731597b1c5a19ea1e796bc9"
+        },
+        "render": {
+          "representativePngs": [
+            {
+              "byteLength": 34319,
+              "sha256": "08d72c8ce5ca1267e5ce27b1bd1c654087965a4d63bb0497840daac4b77d783c",
+              "slideNumber": 1,
+              "warningCount": 2
+            },
+            {
+              "byteLength": 35558,
+              "sha256": "45bd52871ff0e60fd88a32989471d3e3c6f86c97ae1c77e653bf13ae6a464b9c",
+              "slideNumber": 13,
+              "warningCount": 2
+            },
+            {
+              "byteLength": 49583,
+              "sha256": "c68c7308717d614cf1449d6e41da5cb43f89e2313a272785dd0af24e6fe1033b",
+              "slideNumber": 25,
+              "warningCount": 3
+            }
+          ],
+          "svg": {
+            "byteLength": 10407139,
+            "sha256": "b8543cdcba7b26b6217e1105c757d6047d1625c0bf2e3c7d029134ca65a55377"
+          },
+          "warnings": {
+            "font-substitution": 115,
+            "approximate-media": 9,
+            "approximate-shape": 33,
+            "approximate-fill": 4
+          }
+        }
+      },
+      "sourcePage": "https://slidesmania.com/minimal-social-free-presentation-template/",
+      "textRetention": 1,
+      "title": "Minimal Social"
+    },
+    {
+      "attributionPreserved": true,
+      "elementRetention": 1,
+      "elements": {
+        "output": 236,
+        "source": 236
+      },
+      "index": 17,
+      "output": {
+        "pptx": {
+          "byteLength": 6784314,
+          "sha256": "5fc95b5b87c072232ad85f3cb90b023861b2022319e38427b9ee9c0f7c1fdc35"
+        },
+        "render": {
+          "representativePngs": [
+            {
+              "byteLength": 148945,
+              "sha256": "6f6dc1f56789df9bdb10f5ab8ae22800ec483c0f52509f4cfca7ebd223b8af91",
+              "slideNumber": 1,
+              "warningCount": 4
+            },
+            {
+              "byteLength": 96058,
+              "sha256": "7ad892fbfb819d1acd605fcf0aa11e4f791c2206b97cc069ee9cc016bbd07f14",
+              "slideNumber": 12,
+              "warningCount": 3
+            },
+            {
+              "byteLength": 50269,
+              "sha256": "2522ec3250c347cc896fc971b3b09ccb809c2223a47339980de3931daab75b2c",
+              "slideNumber": 23,
+              "warningCount": 7
+            }
+          ],
+          "svg": {
+            "byteLength": 12613361,
+            "sha256": "c992b841b83327359dc835a20a45f5a40dde338e8c92705630a7efadb32e4422"
+          },
+          "warnings": {
+            "approximate-media": 37,
+            "approximate-fill": 25,
+            "font-substitution": 108,
+            "approximate-shape": 14
+          }
+        }
+      },
+      "slideCount": 23,
+      "source": {
+        "pptx": {
+          "byteLength": 6125766,
+          "sha256": "4c5675923b8b0a2bf7963f6a67cef2d3a2e9f8993bcf39f2a5d569db62a56a2a"
+        },
+        "render": {
+          "representativePngs": [
+            {
+              "byteLength": 148945,
+              "sha256": "6f6dc1f56789df9bdb10f5ab8ae22800ec483c0f52509f4cfca7ebd223b8af91",
+              "slideNumber": 1,
+              "warningCount": 4
+            },
+            {
+              "byteLength": 96058,
+              "sha256": "7ad892fbfb819d1acd605fcf0aa11e4f791c2206b97cc069ee9cc016bbd07f14",
+              "slideNumber": 12,
+              "warningCount": 3
+            },
+            {
+              "byteLength": 49898,
+              "sha256": "cace6adb878bb6021c601d8bd54bd903551a90ce17d1dc91b31d9d64d1cb3eef",
+              "slideNumber": 23,
+              "warningCount": 3
+            }
+          ],
+          "svg": {
+            "byteLength": 12613359,
+            "sha256": "6ac175d67e4cdeabdb993d37667a8721ac08f6de1d1aae014094488d02547c2a"
+          },
+          "warnings": {
+            "approximate-media": 32,
+            "approximate-fill": 25,
+            "font-substitution": 108,
+            "approximate-shape": 14
+          }
+        }
+      },
+      "sourcePage": "https://slidesmania.com/amelia-free-presentation-template/",
+      "textRetention": 1,
+      "title": "Amelia floral presentation"
+    },
+    {
+      "attributionPreserved": true,
+      "elementRetention": 1,
+      "elements": {
+        "output": 260,
+        "source": 260
+      },
+      "index": 18,
+      "output": {
+        "pptx": {
+          "byteLength": 5503631,
+          "sha256": "7795ed743d985e328d2c82a1616c7b106a00480d8ef2c3937e1d6e1a2193708f"
+        },
+        "render": {
+          "representativePngs": [
+            {
+              "byteLength": 73050,
+              "sha256": "50ae7bf912706729ba96b8c0300f79cf6a4c22cf0251c4a761ae2a0d8f58668f",
+              "slideNumber": 1,
+              "warningCount": 3
+            },
+            {
+              "byteLength": 46380,
+              "sha256": "53f33d32bb4da813fda81e946415cc10dbae5dd4a0d3a74b9abf7a7bbc7de3c0",
+              "slideNumber": 12,
+              "warningCount": 3
+            },
+            {
+              "byteLength": 50542,
+              "sha256": "65e22f056a257efb7ba9029c39c582b59b91d712e3bfbf8404df9dfb5c97b396",
+              "slideNumber": 23,
+              "warningCount": 8
+            }
+          ],
+          "svg": {
+            "byteLength": 7283294,
+            "sha256": "19f58f2a1f1d4c918a8faa98caacc2321554d97b3a8e212dd4b423971b37b5b0"
+          },
+          "warnings": {
+            "font-substitution": 123,
+            "approximate-media": 13,
+            "approximate-shape": 15
+          }
+        }
+      },
+      "slideCount": 23,
+      "source": {
+        "pptx": {
+          "byteLength": 4349251,
+          "sha256": "90382148d2d3a25a9321683738d32658481bd8e36d901cf0028c3124d54eeb56"
+        },
+        "render": {
+          "representativePngs": [
+            {
+              "byteLength": 73050,
+              "sha256": "50ae7bf912706729ba96b8c0300f79cf6a4c22cf0251c4a761ae2a0d8f58668f",
+              "slideNumber": 1,
+              "warningCount": 3
+            },
+            {
+              "byteLength": 46380,
+              "sha256": "53f33d32bb4da813fda81e946415cc10dbae5dd4a0d3a74b9abf7a7bbc7de3c0",
+              "slideNumber": 12,
+              "warningCount": 3
+            },
+            {
+              "byteLength": 50187,
+              "sha256": "b25c8301718ff051b4a176877d21144bf82cb485858053989046ad3c14f5096a",
+              "slideNumber": 23,
+              "warningCount": 4
+            }
+          ],
+          "svg": {
+            "byteLength": 7283294,
+            "sha256": "b15431b0580616480d4296f74dcb154f5bdc6e0908ebce3a5c95e24a1c0c1000"
+          },
+          "warnings": {
+            "font-substitution": 123,
+            "approximate-media": 8,
+            "approximate-shape": 15
+          }
+        }
+      },
+      "sourcePage": "https://slidesmania.com/early-childhood-free-presentation-template/",
+      "textRetention": 1,
+      "title": "Early Childhood"
+    },
+    {
+      "attributionPreserved": true,
+      "elementRetention": 1,
+      "elements": {
+        "output": 291,
+        "source": 291
+      },
+      "index": 19,
+      "output": {
+        "pptx": {
+          "byteLength": 3925541,
+          "sha256": "24a9b53f7209e6702f25902e1d385e436b81e4de4190ea41920dd4853e67b703"
+        },
+        "render": {
+          "representativePngs": [
+            {
+              "byteLength": 776386,
+              "sha256": "e1fcce88f8d512beb75cc9eb162cf9433dfb26e93e6e263e6f32054184001044",
+              "slideNumber": 1,
+              "warningCount": 13
+            },
+            {
+              "byteLength": 676885,
+              "sha256": "9b56fbc1760a7de9f76810cf01022e994767288516e22b9be981cf7212994195",
+              "slideNumber": 13,
+              "warningCount": 24
+            },
+            {
+              "byteLength": 767124,
+              "sha256": "9f1309e9c8f65815798aba64b47c3e7cc76519b0b381fdb6473e0e4202da9089",
+              "slideNumber": 25,
+              "warningCount": 8
+            }
+          ],
+          "svg": {
+            "byteLength": 308891987,
+            "sha256": "1be66c0f09e2226f4583c16de0fcdc7f5799542df880b4d9d69a981d1ff39246"
+          },
+          "warnings": {
+            "approximate-media": 208,
+            "font-substitution": 113,
+            "approximate-shape": 15,
+            "approximate-fill": 4
+          }
+        }
+      },
+      "slideCount": 25,
+      "source": {
+        "pptx": {
+          "byteLength": 3512367,
+          "sha256": "d823846de7e8c12bec317254eac845c4e3058f9c6e56f60b08d3b81b40b8d56d"
+        },
+        "render": {
+          "representativePngs": [
+            {
+              "byteLength": 776385,
+              "sha256": "c8b4334c6c2cba8d6372671006218803b1c2f2ac1caf92a1b83b7f46fa3ea28a",
+              "slideNumber": 1,
+              "warningCount": 12
+            },
+            {
+              "byteLength": 676886,
+              "sha256": "a79762a6ca3679d803f20a82d2e0cd132aa5fdf4bd92f78810d1a3187427ef4e",
+              "slideNumber": 13,
+              "warningCount": 23
+            },
+            {
+              "byteLength": 767124,
+              "sha256": "9f1309e9c8f65815798aba64b47c3e7cc76519b0b381fdb6473e0e4202da9089",
+              "slideNumber": 25,
+              "warningCount": 3
+            }
+          ],
+          "svg": {
+            "byteLength": 308891958,
+            "sha256": "0eee76041e6f12288d16f989e9bd4307e962de8ace00eac0344a90765d6f5593"
+          },
+          "warnings": {
+            "approximate-media": 177,
+            "font-substitution": 113,
+            "approximate-shape": 15,
+            "approximate-fill": 4
+          }
+        }
+      },
+      "sourcePage": "https://slidesmania.com/geometrical-marketing-free-presentation-template/",
+      "textRetention": 1,
+      "title": "Geometric Marketing"
+    },
+    {
+      "attributionPreserved": true,
+      "elementRetention": 1,
+      "elements": {
+        "output": 293,
+        "source": 293
+      },
+      "index": 20,
+      "output": {
+        "pptx": {
+          "byteLength": 4205228,
+          "sha256": "f5708821e7b5a643a05fee5245c65bde992b70d2ad4fac69f3b39e60f587c5bf"
+        },
+        "render": {
+          "representativePngs": [
+            {
+              "byteLength": 93160,
+              "sha256": "80fc891defa325fe62676713fb483c9a8784041d9b4c5078a7884a63dfbefbf6",
+              "slideNumber": 1,
+              "warningCount": 3
+            },
+            {
+              "byteLength": 45310,
+              "sha256": "d55c668030bcc0c0ac48bf2cdb55d02ae9a5829c53b64e3841d49ee3eb8d5470",
+              "slideNumber": 13,
+              "warningCount": 19
+            },
+            {
+              "byteLength": 50301,
+              "sha256": "9ce0375130e6ac1416af8da10bdbefc2ee07d51ef8b3be8edc5b3287feff478c",
+              "slideNumber": 26,
+              "warningCount": 8
+            }
+          ],
+          "svg": {
+            "byteLength": 11676732,
+            "sha256": "bb6bf72aee9cd37a3ed5b53a57ff29d72039352d4b118283e04d6946bc13f863"
+          },
+          "warnings": {
+            "font-substitution": 142,
+            "approximate-media": 13,
+            "approximate-shape": 9,
+            "approximate-fill": 4
+          }
+        }
+      },
+      "slideCount": 26,
+      "source": {
+        "pptx": {
+          "byteLength": 3749731,
+          "sha256": "86319b63713e7bfa5b1fa033a858cb0517c24428a995ea65686f8b907e9640e9"
+        },
+        "render": {
+          "representativePngs": [
+            {
+              "byteLength": 93155,
+              "sha256": "4d0c5cbb565c28715461c4e8eb0883792993816314f17383ab8f45e1bb7b0de8",
+              "slideNumber": 1,
+              "warningCount": 3
+            },
+            {
+              "byteLength": 45312,
+              "sha256": "55500730807d5884ddb4311f5ab55111d4755d447531ce4ba351ca3b231d6876",
+              "slideNumber": 13,
+              "warningCount": 19
+            },
+            {
+              "byteLength": 49897,
+              "sha256": "685c3c84166695f807e92d44f439e45638d3fbff43fbf1396aee61665c61dfa4",
+              "slideNumber": 26,
+              "warningCount": 4
+            }
+          ],
+          "svg": {
+            "byteLength": 11676732,
+            "sha256": "d350412bea4ed5e9de344438866a26d64bf1d36a1a3373a0a4b5862e23dc015c"
+          },
+          "warnings": {
+            "font-substitution": 142,
+            "approximate-media": 8,
+            "approximate-shape": 9,
+            "approximate-fill": 4
+          }
+        }
+      },
+      "sourcePage": "https://slidesmania.com/flowers-and-ladybugs-free-spring-presentation-template/",
+      "textRetention": 1,
+      "title": "Flowers and Ladybugs"
+    },
+    {
+      "attributionPreserved": true,
+      "elementRetention": 1,
+      "elements": {
+        "output": 110,
+        "source": 110
+      },
+      "index": 21,
+      "output": {
+        "pptx": {
+          "byteLength": 4140675,
+          "sha256": "a49b29434c9c9db3ebd195963cb64e8e07706d09a4096222d53b7bb2f2a8ef36"
+        },
+        "render": {
+          "representativePngs": [
+            {
+              "byteLength": 102921,
+              "sha256": "d24591750e5c6629a47bc17f9caff44783ed111e15155ac86bc61146368ff53a",
+              "slideNumber": 1,
+              "warningCount": 2
+            },
+            {
+              "byteLength": 115229,
+              "sha256": "40dd88e54bc3aa28d750e1dd6e6a64834c35cf1fd50b40cb3d4042bbe0ed38a5",
+              "slideNumber": 8,
+              "warningCount": 3
+            },
+            {
+              "byteLength": 78405,
+              "sha256": "9ddcd9126a43f143c3676cc4a8618c27530d9cbf11d35d6d1deb874f167a987b",
+              "slideNumber": 16,
+              "warningCount": 7
+            }
+          ],
+          "svg": {
+            "byteLength": 8703800,
+            "sha256": "6cf5d71e60986e91419c10cb89d8f5d898799b12e686102767e63c1f766e46c4"
+          },
+          "warnings": {
+            "font-substitution": 49,
+            "approximate-media": 61
+          }
+        }
+      },
+      "slideCount": 16,
+      "source": {
+        "pptx": {
+          "byteLength": 3439882,
+          "sha256": "81c39743892e10c8486d2b679acb3cda61f55acce1a7954a70f6df6fd5d14ee5"
+        },
+        "render": {
+          "representativePngs": [
+            {
+              "byteLength": 102933,
+              "sha256": "b90cafbbaf63584f7ee7df358ec08b0ccb69cbcd79a3ca9563b3c3b87a8897b1",
+              "slideNumber": 1,
+              "warningCount": 2
+            },
+            {
+              "byteLength": 115237,
+              "sha256": "9d7bbd161cab0c62d1cc7d9c51b3dde09fc9159a30d5ef4458200fc836a3171d",
+              "slideNumber": 8,
+              "warningCount": 3
+            },
+            {
+              "byteLength": 77817,
+              "sha256": "31272dcb143028f570be82d01038b7c2be028ce722614d88f492e6ba2a61c10f",
+              "slideNumber": 16,
+              "warningCount": 3
+            }
+          ],
+          "svg": {
+            "byteLength": 8704416,
+            "sha256": "32a6c6c15af99f6e34faad8de7c655610ef48cd8ae801edc8a9770e9b4405285"
+          },
+          "warnings": {
+            "font-substitution": 49,
+            "approximate-media": 57
+          }
+        }
+      },
+      "sourcePage": "https://slidesmania.com/celebrate-saint-patricks-day-memory-games-and-slides/",
+      "textRetention": 1,
+      "title": "Saint Patrick memory game"
+    },
+    {
+      "attributionPreserved": true,
+      "elementRetention": 1,
+      "elements": {
+        "output": 156,
+        "source": 156
+      },
+      "index": 22,
+      "output": {
+        "pptx": {
+          "byteLength": 2130261,
+          "sha256": "9fc51bce924fe56aff61e249541c15d424dccf4d2e24845015fa2b30d0f8be09"
+        },
+        "render": {
+          "representativePngs": [
+            {
+              "byteLength": 41661,
+              "sha256": "d93302476665ef0f0fac6b8e8d810d354b167118f34a4ea1c401459e4a103704",
+              "slideNumber": 1,
+              "warningCount": 10
+            },
+            {
+              "byteLength": 35535,
+              "sha256": "a7ca4ab3217df2f87a5776b9b890d8b3aadcb059304759c54d0308cd3092e51a",
+              "slideNumber": 12,
+              "warningCount": 10
+            },
+            {
+              "byteLength": 25480,
+              "sha256": "8aa5b9f8e10edee3310cee3c82b7c70143740d1b3930cd731ab14ee8ccecae15",
+              "slideNumber": 24,
+              "warningCount": 14
+            }
+          ],
+          "svg": {
+            "byteLength": 2274651,
+            "sha256": "afed39501b036aee4e8517ca7644506904430d3e53ebe38e726f2b6bbca4bfba"
+          },
+          "warnings": {
+            "font-substitution": 278,
+            "approximate-table": 25,
+            "approximate-media": 9,
+            "approximate-shape": 12
+          }
+        }
+      },
+      "slideCount": 24,
+      "source": {
+        "pptx": {
+          "byteLength": 899113,
+          "sha256": "809fd61e1a63e4465597192b2aaadaf5a1264874651566337d936547dafb6541"
+        },
+        "render": {
+          "representativePngs": [
+            {
+              "byteLength": 41661,
+              "sha256": "d93302476665ef0f0fac6b8e8d810d354b167118f34a4ea1c401459e4a103704",
+              "slideNumber": 1,
+              "warningCount": 10
+            },
+            {
+              "byteLength": 35535,
+              "sha256": "a7ca4ab3217df2f87a5776b9b890d8b3aadcb059304759c54d0308cd3092e51a",
+              "slideNumber": 12,
+              "warningCount": 10
+            },
+            {
+              "byteLength": 25480,
+              "sha256": "8aa5b9f8e10edee3310cee3c82b7c70143740d1b3930cd731ab14ee8ccecae15",
+              "slideNumber": 24,
+              "warningCount": 10
+            }
+          ],
+          "svg": {
+            "byteLength": 2274651,
+            "sha256": "a7078b9b16529cee3a38d0e0cd68630f3ede7a7aa1561c224e2d310b2557cb91"
+          },
+          "warnings": {
+            "font-substitution": 278,
+            "approximate-table": 25,
+            "approximate-media": 4,
+            "approximate-shape": 12
+          }
+        }
+      },
+      "sourcePage": "https://slidesmania.com/free-notebook-syllabus-template/",
+      "textRetention": 1,
+      "title": "Interactive Notebook syllabus"
+    },
+    {
+      "attributionPreserved": true,
+      "elementRetention": 1,
+      "elements": {
+        "output": 127,
+        "source": 127
+      },
+      "index": 23,
+      "output": {
+        "pptx": {
+          "byteLength": 5935487,
+          "sha256": "e187b935fc2e54dc9f1c5b62d58ff826aefb6892a0eec1fbb7b3d1c744ab2469"
+        },
+        "render": {
+          "representativePngs": [
+            {
+              "byteLength": 480827,
+              "sha256": "828589674409ade678bf77e862213efc25d1a3975e0b3121867113985ea5c77d",
+              "slideNumber": 1,
+              "warningCount": 10
+            },
+            {
+              "byteLength": 445245,
+              "sha256": "985ec557b8675d7dee972e5b42155a1380997f8748ad7e8afc37c5793443363f",
+              "slideNumber": 10,
+              "warningCount": 14
+            },
+            {
+              "byteLength": 476341,
+              "sha256": "d2405529ff6bfc4c9eca245c90ea52eb102b1c6f12d8fec0f5b108b7e95b2093",
+              "slideNumber": 19,
+              "warningCount": 14
+            }
+          ],
+          "svg": {
+            "byteLength": 36079003,
+            "sha256": "b96e00620ab559e0f16ea1534dc2d0d2f0a8472a64c99a492e753d1f2100b9cd"
+          },
+          "warnings": {
+            "approximate-media": 27,
+            "font-substitution": 220,
+            "approximate-table": 2,
+            "approximate-shape": 1
+          }
+        }
+      },
+      "slideCount": 19,
+      "source": {
+        "pptx": {
+          "byteLength": 5930480,
+          "sha256": "abf7d08d4fc86867d0afca7d01ef8bc41b4fb8fc6a2e2aa682f4d0d825659704"
+        },
+        "render": {
+          "representativePngs": [
+            {
+              "byteLength": 480827,
+              "sha256": "828589674409ade678bf77e862213efc25d1a3975e0b3121867113985ea5c77d",
+              "slideNumber": 1,
+              "warningCount": 9
+            },
+            {
+              "byteLength": 442950,
+              "sha256": "d1d0f1b9840d47dae6562758cfbb459927230e97921e91cdb616d738054bf1c8",
+              "slideNumber": 10,
+              "warningCount": 13
+            },
+            {
+              "byteLength": 476341,
+              "sha256": "d2405529ff6bfc4c9eca245c90ea52eb102b1c6f12d8fec0f5b108b7e95b2093",
+              "slideNumber": 19,
+              "warningCount": 9
+            }
+          ],
+          "svg": {
+            "byteLength": 36078014,
+            "sha256": "c7edf260c6e374692198bad3940ee083c681c0a2ef00aa0d4abde00c312e411b"
+          },
+          "warnings": {
+            "font-substitution": 220,
+            "approximate-media": 4,
+            "approximate-table": 2,
+            "approximate-shape": 1
+          }
+        }
+      },
+      "sourcePage": "https://slidesmania.com/20xx-free-class-syllabus-template/",
+      "textRetention": 1,
+      "title": "20XX class syllabus"
+    },
+    {
+      "attributionPreserved": true,
+      "elementRetention": 1,
+      "elements": {
+        "output": 188,
+        "source": 188
+      },
+      "index": 24,
+      "output": {
+        "pptx": {
+          "byteLength": 5903862,
+          "sha256": "09c7455c9c55e5d32fc621a72e32feca5d561444d5ca4cd2bcf2abca26f06ea5"
+        },
+        "render": {
+          "representativePngs": [
+            {
+              "byteLength": 210655,
+              "sha256": "e6b82498f48956b56e9cbfa19a6a9d5a6d57952fe818c7eaf904cb8663ecad62",
+              "slideNumber": 1,
+              "warningCount": 14
+            },
+            {
+              "byteLength": 154146,
+              "sha256": "de2490921dd0a7166bf42edf8c437d83da3d7551c568475d956d9aa63569bb03",
+              "slideNumber": 9,
+              "warningCount": 6
+            },
+            {
+              "byteLength": 49997,
+              "sha256": "994f97e98b74373d16ae5e21d5d6b9b6209bcb1ce50f27bbfb55c018b96df1fd",
+              "slideNumber": 17,
+              "warningCount": 8
+            }
+          ],
+          "svg": {
+            "byteLength": 17209172,
+            "sha256": "48faa5be5fae26049600e7418617abda3f303134389a7e6316cd23b851d8578d"
+          },
+          "warnings": {
+            "font-substitution": 103,
+            "approximate-media": 47
+          }
+        }
+      },
+      "slideCount": 17,
+      "source": {
+        "pptx": {
+          "byteLength": 4998043,
+          "sha256": "17b8b2e999aa763cb41207d75c2042518cdab16510be9f237ba9ebbc1724c02f"
+        },
+        "render": {
+          "representativePngs": [
+            {
+              "byteLength": 210655,
+              "sha256": "e6b82498f48956b56e9cbfa19a6a9d5a6d57952fe818c7eaf904cb8663ecad62",
+              "slideNumber": 1,
+              "warningCount": 14
+            },
+            {
+              "byteLength": 154146,
+              "sha256": "de2490921dd0a7166bf42edf8c437d83da3d7551c568475d956d9aa63569bb03",
+              "slideNumber": 9,
+              "warningCount": 6
+            },
+            {
+              "byteLength": 49609,
+              "sha256": "cd984dfe72b99191b8a49707281c1a5b2bb4035da7b759216ea9b98f86f9eba0",
+              "slideNumber": 17,
+              "warningCount": 4
+            }
+          ],
+          "svg": {
+            "byteLength": 17209164,
+            "sha256": "6f865e2aa51b9d8769e72a969be4b13ccff3f1cee95bb83821a7dfce8fe610d2"
+          },
+          "warnings": {
+            "font-substitution": 103,
+            "approximate-media": 42
+          }
+        }
+      },
+      "sourcePage": "https://slidesmania.com/unlock-your-creative-vision-with-this-free-mood-board-template/",
+      "textRetention": 1,
+      "title": "Creative Mood Board"
+    },
+    {
+      "attributionPreserved": true,
+      "elementRetention": 1,
+      "elements": {
+        "output": 65,
+        "source": 65
+      },
+      "index": 25,
+      "output": {
+        "pptx": {
+          "byteLength": 857366,
+          "sha256": "68e53642845dd923888929d6ebda06fb66abd788e3d0e48ae18fd5806a6632b5"
+        },
+        "render": {
+          "representativePngs": [
+            {
+              "byteLength": 198933,
+              "sha256": "533f1f7e28add945dab00357e3861d574aa2d73ad651463bb5dc8bfc5c2a80fa",
+              "slideNumber": 1,
+              "warningCount": 5
+            },
+            {
+              "byteLength": 133036,
+              "sha256": "9bb6f8f8df5129bedfa67796edf338299a7df1262a5b52352a44e25f118c601e",
+              "slideNumber": 8,
+              "warningCount": 5
+            },
+            {
+              "byteLength": 44612,
+              "sha256": "ca3587eaf8bbbc5817fd324498c2affaad87ccfc633672b4ddc07f40f740092b",
+              "slideNumber": 15,
+              "warningCount": 8
+            }
+          ],
+          "svg": {
+            "byteLength": 5514917,
+            "sha256": "c65a09ba529516c17d1f781f43cc3cf233fe6da43b0f43dd4224a74cf28fdca0"
+          },
+          "warnings": {
+            "approximate-media": 19,
+            "font-substitution": 68
+          }
+        }
+      },
+      "slideCount": 15,
+      "source": {
+        "pptx": {
+          "byteLength": 417442,
+          "sha256": "0fd2e2aa3bc2b046bcef4872b1e269ddd0e67e55d85df022751deb5b0bc5c6cb"
+        },
+        "render": {
+          "representativePngs": [
+            {
+              "byteLength": 198933,
+              "sha256": "533f1f7e28add945dab00357e3861d574aa2d73ad651463bb5dc8bfc5c2a80fa",
+              "slideNumber": 1,
+              "warningCount": 4
+            },
+            {
+              "byteLength": 133036,
+              "sha256": "9bb6f8f8df5129bedfa67796edf338299a7df1262a5b52352a44e25f118c601e",
+              "slideNumber": 8,
+              "warningCount": 4
+            },
+            {
+              "byteLength": 44336,
+              "sha256": "b28695e8922bd1e8f3502b1937e8a75abaf5920146f8de12bc6709f6b6ac6837",
+              "slideNumber": 15,
+              "warningCount": 8
+            }
+          ],
+          "svg": {
+            "byteLength": 5514917,
+            "sha256": "4c4946599c6c40a4849538f4fdb41b1500b8ef82612afb0d8501b9d3b223ecc5"
+          },
+          "warnings": {
+            "font-substitution": 68,
+            "approximate-media": 5
+          }
+        }
+      },
+      "sourcePage": "https://slidesmania.com/differentiated-instruction-free-choice-board-template/",
+      "textRetention": 1,
+      "title": "Interactive Choice Board"
+    },
+    {
+      "attributionPreserved": true,
+      "elementRetention": 1,
+      "elements": {
+        "output": 261,
+        "source": 261
+      },
+      "index": 26,
+      "output": {
+        "pptx": {
+          "byteLength": 5962034,
+          "sha256": "4ec3fc887319c6ba6193fbc5443d509b599564511d0a63a2de48bbe0be0c3e8e"
+        },
+        "render": {
+          "representativePngs": [
+            {
+              "byteLength": 26169,
+              "sha256": "7666bc4f24cc99c6254d62be19a71fb1db7a27fc650fbcd672d35909c114fb7d",
+              "slideNumber": 1,
+              "warningCount": 10
+            },
+            {
+              "byteLength": 24893,
+              "sha256": "5a94199b7c3172dd6958c3f9100e283d74c168dcb8edee6e129b93c09d0f74f9",
+              "slideNumber": 13,
+              "warningCount": 26
+            },
+            {
+              "byteLength": 50162,
+              "sha256": "aeb32505cebc1a1efd09ea60ff3b9a32097864da00596ac90fd76e9eb8205c96",
+              "slideNumber": 25,
+              "warningCount": 8
+            }
+          ],
+          "svg": {
+            "byteLength": 8945015,
+            "sha256": "cf1b85d9386afa20e1ab569cf542bd51cb91675c4694b12e7135d2ffa0e3edfd"
+          },
+          "warnings": {
+            "approximate-shape": 93,
+            "font-substitution": 144,
+            "approximate-media": 13,
+            "approximate-fill": 4
+          }
+        }
+      },
+      "slideCount": 25,
+      "source": {
+        "pptx": {
+          "byteLength": 5608741,
+          "sha256": "6616b4b7f398d59e35135d5563852f557b4f0443533649bc90864f27e2f5e8d3"
+        },
+        "render": {
+          "representativePngs": [
+            {
+              "byteLength": 26169,
+              "sha256": "7666bc4f24cc99c6254d62be19a71fb1db7a27fc650fbcd672d35909c114fb7d",
+              "slideNumber": 1,
+              "warningCount": 10
+            },
+            {
+              "byteLength": 24893,
+              "sha256": "5a94199b7c3172dd6958c3f9100e283d74c168dcb8edee6e129b93c09d0f74f9",
+              "slideNumber": 13,
+              "warningCount": 26
+            },
+            {
+              "byteLength": 49904,
+              "sha256": "b2b450443db3e4eb3740167c5934807a3ca4bbd220c5a0aa8c4e009658693caa",
+              "slideNumber": 25,
+              "warningCount": 4
+            }
+          ],
+          "svg": {
+            "byteLength": 8945013,
+            "sha256": "91451678bd008e926983988828e58151e0cbf0b1d0bcae668a59e2cda80acc3e"
+          },
+          "warnings": {
+            "approximate-shape": 93,
+            "font-substitution": 144,
+            "approximate-media": 8,
+            "approximate-fill": 4
+          }
+        }
+      },
+      "sourcePage": "https://slidesmania.com/formal-peach-free-ppt-template-and-google-slides-theme/",
+      "textRetention": 1,
+      "title": "Formal Peach"
+    },
+    {
+      "attributionPreserved": true,
+      "elementRetention": 1,
+      "elements": {
+        "output": 318,
+        "source": 318
+      },
+      "index": 27,
+      "output": {
+        "pptx": {
+          "byteLength": 4034253,
+          "sha256": "45593a58eb059fe08b35db8dad2603ae00d21bac36a8b8a1c2913deef98b8650"
+        },
+        "render": {
+          "representativePngs": [
+            {
+              "byteLength": 255505,
+              "sha256": "741671486a455ba91d5fca6a9f4cd28fd89989ac98e42efe6fdc3cca6c2f09ed",
+              "slideNumber": 1,
+              "warningCount": 5
+            },
+            {
+              "byteLength": 56774,
+              "sha256": "9cfc9bfc39870c9075648221a472f2f2095a1fcfd5c667a5febfd963e840592f",
+              "slideNumber": 11,
+              "warningCount": 20
+            },
+            {
+              "byteLength": 49894,
+              "sha256": "d8ef62e29d57ef6665e4da503bf65ce69661897dca4080e8f39fdd8840642136",
+              "slideNumber": 22,
+              "warningCount": 7
+            }
+          ],
+          "svg": {
+            "byteLength": 8201217,
+            "sha256": "12a8d3400489716736d76315fdd13ae30198d780558e81f1757501f15f8a2b88"
+          },
+          "warnings": {
+            "approximate-shape": 72,
+            "font-substitution": 99,
+            "approximate-media": 20,
+            "approximate-fill": 4
+          }
+        }
+      },
+      "slideCount": 22,
+      "source": {
+        "pptx": {
+          "byteLength": 2831722,
+          "sha256": "3a46ab7b2fbd9e27ac77f015e8ab72df048a72fc008d0a24f9502a8cb396b8cd"
+        },
+        "render": {
+          "representativePngs": [
+            {
+              "byteLength": 255505,
+              "sha256": "741671486a455ba91d5fca6a9f4cd28fd89989ac98e42efe6fdc3cca6c2f09ed",
+              "slideNumber": 1,
+              "warningCount": 5
+            },
+            {
+              "byteLength": 56774,
+              "sha256": "9cfc9bfc39870c9075648221a472f2f2095a1fcfd5c667a5febfd963e840592f",
+              "slideNumber": 11,
+              "warningCount": 20
+            },
+            {
+              "byteLength": 49538,
+              "sha256": "894c7cacabf8bb63b1da5e01e6253dbcc15a944bc84953a5846e85860056976b",
+              "slideNumber": 22,
+              "warningCount": 3
+            }
+          ],
+          "svg": {
+            "byteLength": 8201127,
+            "sha256": "80e257071aba9c327fac7ac40ef46b35643e173ab8c163f31bfc53057f65720a"
+          },
+          "warnings": {
+            "approximate-shape": 72,
+            "font-substitution": 99,
+            "approximate-media": 16,
+            "approximate-fill": 4
+          }
+        }
+      },
+      "sourcePage": "https://slidesmania.com/my-portfolio-free-presentation-template/",
+      "textRetention": 1,
+      "title": "My Portfolio"
+    },
+    {
+      "attributionPreserved": true,
+      "elementRetention": 1,
+      "elements": {
+        "output": 260,
+        "source": 260
+      },
+      "index": 28,
+      "output": {
+        "pptx": {
+          "byteLength": 7140991,
+          "sha256": "7a0ee13c7dc1bc1550df9f085a23778e2d0eaf8c6d3d77ac9d92aeba56d9451d"
+        },
+        "render": {
+          "representativePngs": [
+            {
+              "byteLength": 85706,
+              "sha256": "10d672a1713c5b786f04b3d8ee49d7c3df78ca648d25f39ccfaba5e2bf78adfa",
+              "slideNumber": 1,
+              "warningCount": 3
+            },
+            {
+              "byteLength": 76596,
+              "sha256": "dc294e84d75f26cd38d9b7b8c2b8d1faf01cdcf7aeef2c3fa11a90433781e270",
+              "slideNumber": 13,
+              "warningCount": 24
+            },
+            {
+              "byteLength": 50844,
+              "sha256": "351db05593fa0f4dd8fdaf2ea515b66366dd2ffbc7128f33ead95782f2abd386",
+              "slideNumber": 25,
+              "warningCount": 8
+            }
+          ],
+          "svg": {
+            "byteLength": 11027464,
+            "sha256": "cd369a3ae99ca110b27fba80ec30b56a6b68c6b1c538b7dec95d0d6554511cc6"
+          },
+          "warnings": {
+            "font-substitution": 145,
+            "approximate-media": 13,
+            "approximate-shape": 15,
+            "approximate-fill": 4
+          }
+        }
+      },
+      "slideCount": 25,
+      "source": {
+        "pptx": {
+          "byteLength": 5867209,
+          "sha256": "2e90d99d43c623dcb455e3fb2d1432b3e0945ca3ae6c3e398b93cd72e3f06d7e"
+        },
+        "render": {
+          "representativePngs": [
+            {
+              "byteLength": 85706,
+              "sha256": "10d672a1713c5b786f04b3d8ee49d7c3df78ca648d25f39ccfaba5e2bf78adfa",
+              "slideNumber": 1,
+              "warningCount": 3
+            },
+            {
+              "byteLength": 76596,
+              "sha256": "dc294e84d75f26cd38d9b7b8c2b8d1faf01cdcf7aeef2c3fa11a90433781e270",
+              "slideNumber": 13,
+              "warningCount": 24
+            },
+            {
+              "byteLength": 50455,
+              "sha256": "0e4087c363ac20e8deae5ea266212e2b549af63b3d75e17cb2431bf56dda0bf1",
+              "slideNumber": 25,
+              "warningCount": 4
+            }
+          ],
+          "svg": {
+            "byteLength": 11027462,
+            "sha256": "16f6c2440b981ebad5f7458188ccb32b153293fe0cf223acb6d8978b66e2aae1"
+          },
+          "warnings": {
+            "font-substitution": 145,
+            "approximate-media": 8,
+            "approximate-shape": 15,
+            "approximate-fill": 4
+          }
+        }
+      },
+      "sourcePage": "https://slidesmania.com/beth-elegant-and-versatile-free-presentation-template/",
+      "textRetention": 1,
+      "title": "Beth elegant presentation"
+    },
+    {
+      "attributionPreserved": true,
+      "elementRetention": 1,
+      "elements": {
+        "output": 289,
+        "source": 289
+      },
+      "index": 29,
+      "output": {
+        "pptx": {
+          "byteLength": 6910227,
+          "sha256": "9dc0b61d6a3e41f255a43f46d347903f12e65c47447c3ec4ce80eb9f88da2cb1"
+        },
+        "render": {
+          "representativePngs": [
+            {
+              "byteLength": 70527,
+              "sha256": "8a88d3e868c9689d946f7c4251db76e194be247240eb2553af80680f72b7a917",
+              "slideNumber": 1,
+              "warningCount": 2
+            },
+            {
+              "byteLength": 98975,
+              "sha256": "c8d33d8b5562269e5052ae0725780d959f8e2173dd6614e921a06593efddcfa8",
+              "slideNumber": 13,
+              "warningCount": 23
+            },
+            {
+              "byteLength": 50104,
+              "sha256": "7a9596d24be6b2fa2995863b1dfc5ebc2cdd43535d6c7c52a73ab1de0499e5b6",
+              "slideNumber": 25,
+              "warningCount": 7
+            }
+          ],
+          "svg": {
+            "byteLength": 11320709,
+            "sha256": "17bc5dbbe9a7f4339970873dac76e0f74d62f4f3d2f3765f09e36b873076a22b"
+          },
+          "warnings": {
+            "font-substitution": 117,
+            "approximate-media": 12,
+            "approximate-shape": 12,
+            "approximate-fill": 4
+          }
+        }
+      },
+      "slideCount": 25,
+      "source": {
+        "pptx": {
+          "byteLength": 6261209,
+          "sha256": "dba2bee5e4ad05e37cb0bf630baa1af082a64fd35dc949d4cd434b3306af9f24"
+        },
+        "render": {
+          "representativePngs": [
+            {
+              "byteLength": 70527,
+              "sha256": "8a88d3e868c9689d946f7c4251db76e194be247240eb2553af80680f72b7a917",
+              "slideNumber": 1,
+              "warningCount": 2
+            },
+            {
+              "byteLength": 98975,
+              "sha256": "c8d33d8b5562269e5052ae0725780d959f8e2173dd6614e921a06593efddcfa8",
+              "slideNumber": 13,
+              "warningCount": 23
+            },
+            {
+              "byteLength": 49884,
+              "sha256": "d55580a09f31c1c81a93ebc88cd887d1f99a6c1aaa89244adb0e9cad440c72c2",
+              "slideNumber": 25,
+              "warningCount": 3
+            }
+          ],
+          "svg": {
+            "byteLength": 11320704,
+            "sha256": "a582b444b0fcac9859bf68c0bbf93acc9755529393dc2a625e8ecb7186b0e842"
+          },
+          "warnings": {
+            "font-substitution": 117,
+            "approximate-media": 8,
+            "approximate-shape": 12,
+            "approximate-fill": 4
+          }
+        }
+      },
+      "sourcePage": "https://slidesmania.com/valentines-day-gnomes-free-ppt-and-google-slides/",
+      "textRetention": 1,
+      "title": "Valentine Gnomes"
+    },
+    {
+      "attributionPreserved": true,
+      "elementRetention": 1,
+      "elements": {
+        "output": 262,
+        "source": 262
+      },
+      "index": 30,
+      "output": {
+        "pptx": {
+          "byteLength": 5936175,
+          "sha256": "5ee726a001869df29c626a38a0e0b7b03dce598736d69490b2cd66efe630c8f0"
+        },
+        "render": {
+          "representativePngs": [
+            {
+              "byteLength": 52145,
+              "sha256": "b63eb28ce77c6b934624e71b5fd82b0ab47016caabb3f50bc502e4690bf7cb6b",
+              "slideNumber": 1,
+              "warningCount": 42
+            },
+            {
+              "byteLength": 41600,
+              "sha256": "89e2f7bd13359f838dfe8fba1694c3b82a1f1fb54b2a30ecd99d3632f9cfc81c",
+              "slideNumber": 12,
+              "warningCount": 22
+            },
+            {
+              "byteLength": 50011,
+              "sha256": "8dc3b075c4dd4c7bc56c0fde593d2c6eb348a59b3d56da06a92be023a172d39b",
+              "slideNumber": 23,
+              "warningCount": 7
+            }
+          ],
+          "svg": {
+            "byteLength": 8599888,
+            "sha256": "19d7301f80213af8698a4ac4b7608979134163d46dc479644168e7687ba4e86d"
+          },
+          "warnings": {
+            "approximate-shape": 632,
+            "font-substitution": 99,
+            "approximate-media": 12,
+            "approximate-fill": 4
+          }
+        }
+      },
+      "slideCount": 23,
+      "source": {
+        "pptx": {
+          "byteLength": 5483876,
+          "sha256": "c23500858fadcc40ba4dcb961fce7c2d94c5fac0f115e78d5cbb83ac22c77521"
+        },
+        "render": {
+          "representativePngs": [
+            {
+              "byteLength": 52145,
+              "sha256": "b63eb28ce77c6b934624e71b5fd82b0ab47016caabb3f50bc502e4690bf7cb6b",
+              "slideNumber": 1,
+              "warningCount": 42
+            },
+            {
+              "byteLength": 41600,
+              "sha256": "89e2f7bd13359f838dfe8fba1694c3b82a1f1fb54b2a30ecd99d3632f9cfc81c",
+              "slideNumber": 12,
+              "warningCount": 22
+            },
+            {
+              "byteLength": 49655,
+              "sha256": "051a18f360ceae07339ba63e08af46dfb202540e3a2188e8d20dbf912b4b3dfb",
+              "slideNumber": 23,
+              "warningCount": 3
+            }
+          ],
+          "svg": {
+            "byteLength": 8599625,
+            "sha256": "3c17a300a2e67f87e702eee199afdb602f0d60fb83147e54d32180438e70ab9a"
+          },
+          "warnings": {
+            "approximate-shape": 632,
+            "font-substitution": 99,
+            "approximate-media": 8,
+            "approximate-fill": 4
+          }
+        }
+      },
+      "sourcePage": "https://slidesmania.com/90s-vibe-free-ppt-and-google-slides-template/",
+      "textRetention": 1,
+      "title": "90s Vibes"
+    }
+  ],
+  "execution": {
+    "repository": "evoelsewhere/oakit",
+    "revision": "3d67c590c41f916b6081e99cd46be40832c4efd5",
+    "runAttempt": "1",
+    "runId": "32036893093",
+    "workflow": "Google Slides Producer Evidence"
+  },
+  "platform": {
+    "architecture": "x64",
+    "node": "v22.23.2",
+    "os": "linux"
+  },
+  "producer": {
+    "application": "Google Slides",
+    "transport": "Google Drive API v3 controlled import/export"
+  },
+  "provenance": {
+    "categoryPages": [
+      "https://slidesmania.com/free-templates/popular/",
+      "https://slidesmania.com/free-templates/popular/page/2/",
+      "https://slidesmania.com/free-templates/popular/page/3/"
+    ],
+    "homepage": "https://slidesmania.com/",
+    "license": "https://slidesmania.com/copyright-and-legal-information/#license",
+    "selectedAt": "2026-08-17"
+  },
+  "schemaVersion": 1,
+  "summary": {
+    "allAttributionPreserved": true,
+    "allGoogleExportsStrictParsed": true,
+    "allSlidesRenderedWithoutOffice": true,
+    "minimumElementRetention": 1,
+    "minimumTextRetention": 1,
+    "outputWarnings": {
+      "font-substitution": 6733,
+      "approximate-shape": 3807,
+      "approximate-fill": 1496,
+      "approximate-media": 941,
+      "approximate-table": 199
+    },
+    "sourceWarnings": {
+      "font-substitution": 6738,
+      "approximate-shape": 3807,
+      "approximate-fill": 1496,
+      "approximate-media": 709,
+      "approximate-table": 199
+    },
+    "temporaryPresentationsDeleted": true,
+    "templateCount": 30,
+    "totalElements": 9285,
+    "totalSlides": 733
+  },
+  "verifiedAt": "2026-08-17T13:58:56.777Z"
+}
