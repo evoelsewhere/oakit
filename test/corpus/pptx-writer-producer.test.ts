@@ -13,7 +13,14 @@ import { spawnSync } from 'node:child_process';
 
 import { describe, expect, it } from 'vitest';
 
-import { createPptx, parsePptx, type PptxSceneDocument } from '../../src';
+import {
+  createPptx,
+  parsePptx,
+  readPptxRoundTrip,
+  replacePptxRoundTripText,
+  writePptxRoundTrip,
+  type PptxSceneDocument,
+} from '../../src';
 
 function producerScene(): PptxSceneDocument {
   return {
@@ -161,6 +168,84 @@ describe('PowerPoint writer producer compatibility', () => {
       );
       expect(
         (await stat(join(pdfDirectory, 'created.pdf'))).size,
+      ).toBeGreaterThan(0);
+    } finally {
+      await rm(directory, { force: true, recursive: true });
+    }
+  });
+
+  it('survives two LibreOffice save and reopen cycles after a text edit', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'oakit-pptx-edit-'));
+    try {
+      const source = join(directory, 'edited.pptx');
+      const firstDirectory = join(directory, 'first-save');
+      const secondDirectory = join(directory, 'second-save');
+      const pdfDirectory = join(directory, 'pdf');
+      await Promise.all([
+        mkdir(firstDirectory),
+        mkdir(secondDirectory),
+        mkdir(pdfDirectory),
+      ]);
+
+      const created = await createPptx(producerScene());
+      const snapshot = await readPptxRoundTrip(created.data);
+      const run = snapshot.document.slides[0]?.elements[0];
+      if (run?.type !== 'text') throw new Error('Expected editable text');
+      const target = run.text.paragraphs[0]?.children[0];
+      if (target?.type !== 'run') throw new Error('Expected editable run');
+      const operation = await replacePptxRoundTripText(snapshot, {
+        targetKey: target.key,
+        value: 'OAKit edited by an agent',
+      });
+      const edited = await writePptxRoundTrip(operation);
+      expect(edited.report).toMatchObject({
+        level: 'R2',
+        operations: [{ kind: 'replace-text', status: 'verified' }],
+        patchedPartCount: 1,
+      });
+      await writeFile(source, edited.data);
+
+      const executable = process.env.SOFFICE_PATH ?? 'soffice';
+      convertWithLibreOffice(
+        executable,
+        join(directory, 'profile-first'),
+        firstDirectory,
+        'pptx',
+        source,
+      );
+      const firstSave = join(firstDirectory, 'edited.pptx');
+      convertWithLibreOffice(
+        executable,
+        join(directory, 'profile-second'),
+        secondDirectory,
+        'pptx',
+        firstSave,
+      );
+      const secondSave = join(secondDirectory, 'edited.pptx');
+      convertWithLibreOffice(
+        executable,
+        join(directory, 'profile-pdf'),
+        pdfDirectory,
+        'pdf',
+        secondSave,
+      );
+
+      const reopened = await parsePptx(
+        new Uint8Array(await readFile(secondSave)),
+        { errorMode: 'strict', imageMode: 'none' },
+      );
+      const serialized = JSON.stringify(reopened);
+      expect(reopened.size).toEqual({ height: 540, width: 960 });
+      expect(reopened.slides).toHaveLength(2);
+      expect(serialized).toContain(
+        'OAKit&nbsp;edited&nbsp;by&nbsp;an&nbsp;agent',
+      );
+      expect(serialized).not.toContain(
+        'OAKit&nbsp;LibreOffice&nbsp;verification',
+      );
+      expect(serialized).toContain('Second&nbsp;producer&nbsp;slide');
+      expect(
+        (await stat(join(pdfDirectory, 'edited.pdf'))).size,
       ).toBeGreaterThan(0);
     } finally {
       await rm(directory, { force: true, recursive: true });
