@@ -6,6 +6,9 @@ import baseConfig from './stryker.config.mjs';
 const { excludedMutations, mutate, reportPath } = mutationShardEnvironment(
   process.env,
 );
+const focusedTests = (process.env.MUTATION_TEST_FILES ?? '')
+  .split(',')
+  .filter((file) => file.length > 0);
 
 export default {
   ...baseConfig,
@@ -17,4 +20,13 @@ export default {
     excludedMutations,
   },
   reporters: ['json'],
+  ...(focusedTests.length === 0
+    ? {}
+    : {
+        vitest: {
+          ...(baseConfig.vitest ?? {}),
+          configFile: 'vitest.mutation.config.ts',
+          related: false,
+        },
+      }),
 };
