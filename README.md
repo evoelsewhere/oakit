@@ -33,7 +33,7 @@ presentation, then repeats strict parsing and rendering on the exported PPTX.
   <img src="docs/evidence/0.0.1/slidesmania/producer-audit.png" alt="Audit summary for 30 SlidesMania templates round-tripped through Google Slides" width="100%" />
 </p>
 
-Run [32036893093](https://github.com/evoelsewhere/oakit/actions/runs/32036893093)
+Run [32045412714](https://github.com/evoelsewhere/oakit/actions/runs/32045412714)
 verified 30 decks, 733 slides, and 9,285 source elements with 100% minimum text
 and element retention. Attribution was preserved in every export and all 30
 temporary Google presentations were deleted. The tracked
@@ -42,10 +42,13 @@ source-page links, hashes, and metrics—no SlidesMania templates or rendered
 reproductions, in accordance with the
 [SlidesMania template license](https://slidesmania.com/copyright-and-legal-information/#license).
 
-The warning bars are intentional: complex shapes, fills, media, tables, and
-font substitution still have approximation debt. This gate proves robust
-opening, semantic retention, producer compatibility, and Office-free rendering;
-it does not claim pixel-identical or full-fidelity rendering yet.
+The remaining warnings are explicit and narrow: 6,733 output text runs may use
+a substitute when their authored font is unavailable, while 199 tables retain
+their structure and layout but lack complete cell typography metadata in the
+portable model. The same audit reports zero approximation warnings for shapes,
+fills, and media. This gate proves robust opening, semantic retention, producer
+compatibility, and Office-free rendering; it does not claim pixel-identical
+rendering across machines with different installed fonts.
 
 ## Why OAKit
 

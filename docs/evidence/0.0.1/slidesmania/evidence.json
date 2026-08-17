@@ -10,39 +10,36 @@
       "index": 1,
       "output": {
         "pptx": {
-          "byteLength": 6889019,
-          "sha256": "be7ef9fe28c8c21d68356e54c71aa16577e81fefc0064b3495722f6175f8ed99"
+          "byteLength": 6886437,
+          "sha256": "c23523b36dc937d8dd19bae01c31ee4fb7ab5ff5281a06fa3acf639447f465c8"
         },
         "render": {
           "representativePngs": [
             {
-              "byteLength": 36260,
-              "sha256": "72b62cdebc4d1dbe10480875ec79f2e40122565f0a38142c794b980aa6b1a728",
+              "byteLength": 70694,
+              "sha256": "a7f500e1b9edced0eb4c214095056f8783b141e51595075506c3c7c8f8ae7a60",
               "slideNumber": 1,
-              "warningCount": 71
+              "warningCount": 3
             },
             {
-              "byteLength": 25164,
-              "sha256": "2a40953725f7871330274b674088953ad4209ec220284756c14bc83da3bf01b5",
+              "byteLength": 52882,
+              "sha256": "9f03d5afa225715568092a86f418dfc73f4ed0940f3da06a2dfa94bf88d7ad50",
               "slideNumber": 13,
-              "warningCount": 78
+              "warningCount": 13
             },
             {
-              "byteLength": 50921,
-              "sha256": "e56ee411bd2a84ed9718693c2da205e070280f7dde5e0e1108abc0b34bbb19d0",
+              "byteLength": 96384,
+              "sha256": "642c22ccb62675d7639c490b1318efdee9cd4919ed0d3a7dd4821ec6cf5af828",
               "slideNumber": 25,
-              "warningCount": 67
+              "warningCount": 3
             }
           ],
           "svg": {
-            "byteLength": 9547783,
-            "sha256": "84be0b5e6e573dbd92ae7aa5ebd3b4fb12290693f7a1ba1a36f80700f3a12850"
+            "byteLength": 9828206,
+            "sha256": "ab4898036b582840c7aaffa4c2e72629f4d836239cb8160d3874c1a4eef585d7"
           },
           "warnings": {
-            "font-substitution": 147,
-            "approximate-shape": 1541,
-            "approximate-fill": 5,
-            "approximate-media": 13
+            "font-substitution": 147
           }
         }
       },
@@ -50,38 +47,35 @@
       "source": {
         "pptx": {
           "byteLength": 6261101,
-          "sha256": "2bab513e0fcf3e75c102db45777359b7d8a5ae416370b7dd2da2a96aba8efee2"
+          "sha256": "234ef27e515b12ef2b96adb6dcaf83a5fe5f4374699f671503b84120e70e40a9"
         },
         "render": {
           "representativePngs": [
             {
-              "byteLength": 36260,
-              "sha256": "72b62cdebc4d1dbe10480875ec79f2e40122565f0a38142c794b980aa6b1a728",
+              "byteLength": 70694,
+              "sha256": "a7f500e1b9edced0eb4c214095056f8783b141e51595075506c3c7c8f8ae7a60",
               "slideNumber": 1,
-              "warningCount": 71
+              "warningCount": 3
             },
             {
-              "byteLength": 25164,
-              "sha256": "2a40953725f7871330274b674088953ad4209ec220284756c14bc83da3bf01b5",
+              "byteLength": 52882,
+              "sha256": "9f03d5afa225715568092a86f418dfc73f4ed0940f3da06a2dfa94bf88d7ad50",
               "slideNumber": 13,
-              "warningCount": 78
+              "warningCount": 13
             },
             {
-              "byteLength": 50496,
-              "sha256": "25fb81d980864d6b290abfe2b9357b46061e0b945e76321757c89fe24d1ddb71",
+              "byteLength": 96098,
+              "sha256": "5b479a066ea9a92c8223ff9949af427b07393fec320ad7f440c5440d12b30478",
               "slideNumber": 25,
-              "warningCount": 63
+              "warningCount": 3
             }
           ],
           "svg": {
-            "byteLength": 9547778,
-            "sha256": "e3406fff2d163b9ab7ba3ab2459a0c679a38cfcc9d28470d6afb31d57e89fccf"
+            "byteLength": 9827882,
+            "sha256": "621f259866deba0434f164d7e1051cced728509ef9a18fc8c04e4869f973efb5"
           },
           "warnings": {
-            "font-substitution": 147,
-            "approximate-shape": 1541,
-            "approximate-fill": 5,
-            "approximate-media": 8
+            "font-substitution": 147
           }
         }
       },
@@ -99,39 +93,36 @@
       "index": 2,
       "output": {
         "pptx": {
-          "byteLength": 9072974,
-          "sha256": "6dbf25a65ded4b37bc73c12063640cfaa6b6ed56b629add5f7ff4f6b2e63aec4"
+          "byteLength": 9076819,
+          "sha256": "4f90a7b2e4d025d4fee74c21c7dbe090572919a3c830ecae6e1edd867f2f558b"
         },
         "render": {
           "representativePngs": [
             {
-              "byteLength": 353822,
-              "sha256": "e77a1c1f16b587cfedbdf6a3dcdfdb83f3b92a49dadd4b459acf0a09364b11a3",
+              "byteLength": 560321,
+              "sha256": "a2285b77ec0dd40aa7639a16769f19c30219f64ad75903af9a6e8df06f2208f1",
               "slideNumber": 1,
-              "warningCount": 4
+              "warningCount": 3
             },
             {
-              "byteLength": 342299,
-              "sha256": "fd5e3fb686b0f9d4db51bc7b1ec90a04a456e9fedaaa2cf752c8cdb21d0f5bb3",
+              "byteLength": 550461,
+              "sha256": "dba246fa1699735b6741ae749a62d78e986f0be0f56fc18f55b3f651e9c91869",
               "slideNumber": 14,
-              "warningCount": 25
+              "warningCount": 18
             },
             {
-              "byteLength": 344974,
-              "sha256": "e482f7b8ff568594d905242e8d6a372b442cc9520cd1879342467ae2e5491fa6",
+              "byteLength": 549478,
+              "sha256": "b1e0d3f28a5094d150bd9620b685cee38e97cb7b5ef4c0d6c258852615c9a1fc",
               "slideNumber": 28,
-              "warningCount": 9
+              "warningCount": 3
             }
           ],
           "svg": {
-            "byteLength": 27023314,
-            "sha256": "f7876da9bda845ed2a33c315f11fd2173d4f475923d550c665abb358e5bad577"
+            "byteLength": 27035734,
+            "sha256": "da9dcefc536803ade0e48f07cce9a4e39e0a5674da4003953efb22235bdd1eed"
           },
           "warnings": {
-            "approximate-media": 41,
-            "font-substitution": 174,
-            "approximate-shape": 23,
-            "approximate-fill": 4
+            "font-substitution": 174
           }
         }
       },
@@ -139,38 +130,35 @@
       "source": {
         "pptx": {
           "byteLength": 7637025,
-          "sha256": "66e793fbc66169ddb54002911f1de22b9964d2fe4de5cf1934c86b58e30e28e7"
+          "sha256": "984291d7abbb19f05067cd6141f6c6e65857c90f1412f23b4a1c69d51c2af042"
         },
         "render": {
           "representativePngs": [
             {
-              "byteLength": 353822,
-              "sha256": "e77a1c1f16b587cfedbdf6a3dcdfdb83f3b92a49dadd4b459acf0a09364b11a3",
+              "byteLength": 560321,
+              "sha256": "a2285b77ec0dd40aa7639a16769f19c30219f64ad75903af9a6e8df06f2208f1",
               "slideNumber": 1,
-              "warningCount": 4
+              "warningCount": 3
             },
             {
-              "byteLength": 342299,
-              "sha256": "fd5e3fb686b0f9d4db51bc7b1ec90a04a456e9fedaaa2cf752c8cdb21d0f5bb3",
+              "byteLength": 550461,
+              "sha256": "dba246fa1699735b6741ae749a62d78e986f0be0f56fc18f55b3f651e9c91869",
               "slideNumber": 14,
-              "warningCount": 25
+              "warningCount": 18
             },
             {
-              "byteLength": 344974,
-              "sha256": "e482f7b8ff568594d905242e8d6a372b442cc9520cd1879342467ae2e5491fa6",
+              "byteLength": 549478,
+              "sha256": "b1e0d3f28a5094d150bd9620b685cee38e97cb7b5ef4c0d6c258852615c9a1fc",
               "slideNumber": 28,
-              "warningCount": 5
+              "warningCount": 3
             }
           ],
           "svg": {
-            "byteLength": 27022458,
-            "sha256": "840f00a72ce231df8a6e10c2f7dc18417638ac3d784d477e7dbf940ff09c9efd"
+            "byteLength": 27034561,
+            "sha256": "b024ed2bc0c2e94936119f0c8ec302b4dc26fcf3745458cd025c0478b616aca2"
           },
           "warnings": {
-            "approximate-media": 36,
-            "font-substitution": 175,
-            "approximate-shape": 23,
-            "approximate-fill": 4
+            "font-substitution": 175
           }
         }
       },
@@ -188,38 +176,36 @@
       "index": 3,
       "output": {
         "pptx": {
-          "byteLength": 2802206,
-          "sha256": "bd22d20365dccfa867b3727e5913a348e11aa5d049f6be67837c9b4afb8fb969"
+          "byteLength": 2798526,
+          "sha256": "eb0851604fe6b0e3682b352d43ab7cbcdc41afabcdce745e54b3ee299ec40b6f"
         },
         "render": {
           "representativePngs": [
             {
-              "byteLength": 83897,
-              "sha256": "0f441d3597f95d839263ac42ba987b69e50ee6bf93e28b2f74774bf4c5253b2f",
+              "byteLength": 198318,
+              "sha256": "559fc5e52f8be5044397de016655098d0e853ab0df07fead1f3d73e28af70061",
               "slideNumber": 1,
               "warningCount": 6
             },
             {
-              "byteLength": 33427,
-              "sha256": "c367f1afd1cc235f9f7bc2a4e8d72be72a4ae2d7cfe9bf24ae332d16c1281588",
+              "byteLength": 161017,
+              "sha256": "80f3e1e66d97ee9456e6f5ab993e0a6d7069b07e7cd17d57e4c9cbf4057bd5ac",
               "slideNumber": 12,
-              "warningCount": 4
+              "warningCount": 2
             },
             {
-              "byteLength": 48477,
-              "sha256": "c88b064ee1df5d42fe23eaae753277de9f2bd938918a68a2d4a732fbcf8980e9",
+              "byteLength": 59701,
+              "sha256": "56ce5d12a746e2673bc54487f79a410f5ae636d66b6e6ecfe8426cc54a2aa265",
               "slideNumber": 23,
-              "warningCount": 7
+              "warningCount": 2
             }
           ],
           "svg": {
-            "byteLength": 5723818,
-            "sha256": "dbd41076b20ec847261bed25b3c0ec22e48cb4a58dc5b6d747fffbca461b6175"
+            "byteLength": 5734703,
+            "sha256": "9ff45c75478bdb4323680504ce014d8fb02d751c21d999e9ded5db1bcb950f36"
           },
           "warnings": {
-            "font-substitution": 113,
-            "approximate-media": 12,
-            "approximate-shape": 15
+            "font-substitution": 113
           }
         }
       },
@@ -227,37 +213,35 @@
       "source": {
         "pptx": {
           "byteLength": 1998870,
-          "sha256": "e3ca3af64b02b406a0d5c340a8dde2b14db1e6b7f33271384223c84b4efaac50"
+          "sha256": "1b73a78b369a7eded671ef11ee363982125d5f5232cdaa22fae0c914badba5fd"
         },
         "render": {
           "representativePngs": [
             {
-              "byteLength": 83897,
-              "sha256": "0f441d3597f95d839263ac42ba987b69e50ee6bf93e28b2f74774bf4c5253b2f",
+              "byteLength": 198318,
+              "sha256": "559fc5e52f8be5044397de016655098d0e853ab0df07fead1f3d73e28af70061",
               "slideNumber": 1,
               "warningCount": 6
             },
             {
-              "byteLength": 33427,
-              "sha256": "c367f1afd1cc235f9f7bc2a4e8d72be72a4ae2d7cfe9bf24ae332d16c1281588",
+              "byteLength": 161017,
+              "sha256": "80f3e1e66d97ee9456e6f5ab993e0a6d7069b07e7cd17d57e4c9cbf4057bd5ac",
               "slideNumber": 12,
-              "warningCount": 4
+              "warningCount": 2
             },
             {
-              "byteLength": 48119,
-              "sha256": "d7508210c5534ad750254e9483ae96cc163276ccf4e4bbf03a362a8b642e788d",
+              "byteLength": 59419,
+              "sha256": "e17817f63cef76800f4009b8e4b57d74b4d9ecbff724cf593c74b5ae3d2eca7d",
               "slideNumber": 23,
-              "warningCount": 3
+              "warningCount": 2
             }
           ],
           "svg": {
-            "byteLength": 5723883,
-            "sha256": "c63943fb298829aca258888167df11e7148b5efd13c024ed17390e51277cb7ca"
+            "byteLength": 5734516,
+            "sha256": "5ee2c59c9ba1fa9489b4de15b5bc97ddc8e5f6f93c01d03460a63c34275beef4"
           },
           "warnings": {
-            "font-substitution": 113,
-            "approximate-media": 8,
-            "approximate-shape": 15
+            "font-substitution": 113
           }
         }
       },
@@ -275,39 +259,36 @@
       "index": 4,
       "output": {
         "pptx": {
-          "byteLength": 2722065,
-          "sha256": "4a4730bded8bd52415c9911e856ae7f4dd6902d44f12cfb860e0cd6032203434"
+          "byteLength": 2722106,
+          "sha256": "c6e88b9c69dd2449007bab89ae4838ec5506c05d173945e0d405afeaa5a08bf3"
         },
         "render": {
           "representativePngs": [
             {
-              "byteLength": 271397,
-              "sha256": "a4f218ae4d9ee0ebd3f532e394783ff42221e653ad7469d4c05f09b2f51dccf2",
+              "byteLength": 290701,
+              "sha256": "955719c72a81577f7bbf099cbe009fa6f8bf3c9516d79db428c9eae8b8bb00fd",
               "slideNumber": 1,
-              "warningCount": 7
+              "warningCount": 3
             },
             {
               "byteLength": 28672,
               "sha256": "6cfe8f4da65c6afeedb4ba873a95ec7a0193987c9f50935bef648a843626964c",
               "slideNumber": 12,
-              "warningCount": 14
+              "warningCount": 10
             },
             {
               "byteLength": 7374,
               "sha256": "986011a65fc5963b0778f5bff4e07d140eca69c21bd5cd05174672e720946f58",
               "slideNumber": 24,
-              "warningCount": 7
+              "warningCount": 2
             }
           ],
           "svg": {
-            "byteLength": 4480206,
-            "sha256": "0acb00ada866731ce233f82dfa8d6a38c543939814e8547774ad06bf7d38e5ea"
+            "byteLength": 4588400,
+            "sha256": "16d9c1d3d00d9e9da1c2ca7396e4bfe14220b4a10f9bd0d782c81d468e5776a6"
           },
           "warnings": {
-            "approximate-fill": 14,
-            "approximate-shape": 28,
             "font-substitution": 123,
-            "approximate-media": 14,
             "approximate-table": 18
           }
         }
@@ -315,39 +296,36 @@
       "slideCount": 24,
       "source": {
         "pptx": {
-          "byteLength": 2289815,
-          "sha256": "266f84ea9c2a57ea3811c40cabe32e1e1f61fab04f434c1a59662a834aa3dd47"
+          "byteLength": 2289835,
+          "sha256": "480bf8a27d4393f88fb0d58cfabc91a5a0df198cc77d2be7747cafc022ed0ff1"
         },
         "render": {
           "representativePngs": [
             {
-              "byteLength": 271412,
-              "sha256": "0ad32a7dc1f392f64765e89b2a3203fd6e29597bfa04c4c9880317a39932a0da",
+              "byteLength": 290715,
+              "sha256": "15228241c586f7a07d8f5a8609ef377d825751936b953c402fe9b19510a6f496",
               "slideNumber": 1,
-              "warningCount": 7
+              "warningCount": 3
             },
             {
               "byteLength": 28672,
               "sha256": "6cfe8f4da65c6afeedb4ba873a95ec7a0193987c9f50935bef648a843626964c",
               "slideNumber": 12,
-              "warningCount": 14
+              "warningCount": 10
             },
             {
               "byteLength": 7374,
               "sha256": "986011a65fc5963b0778f5bff4e07d140eca69c21bd5cd05174672e720946f58",
               "slideNumber": 24,
-              "warningCount": 7
+              "warningCount": 2
             }
           ],
           "svg": {
-            "byteLength": 4480209,
-            "sha256": "4597779349d52a962a7c7dff406d4e4a5247fdcad0ac7d17c025ef400d38156f"
+            "byteLength": 4588498,
+            "sha256": "6fc3b19baac3ee4b0a66472b93d215935c87506dec583df0d20c06899c7e942a"
           },
           "warnings": {
-            "approximate-fill": 14,
-            "approximate-shape": 28,
             "font-substitution": 123,
-            "approximate-media": 14,
             "approximate-table": 18
           }
         }
@@ -366,39 +344,36 @@
       "index": 5,
       "output": {
         "pptx": {
-          "byteLength": 8351321,
-          "sha256": "91617ad79bcd273988b53cba35185eb29e988afd11077d7c4ec402bd40bca97c"
+          "byteLength": 8351409,
+          "sha256": "8303557dedbf3148f8d5c90813725ed84536572752297dec69d81fa3a65dc2e6"
         },
         "render": {
           "representativePngs": [
             {
-              "byteLength": 101554,
-              "sha256": "993aee3877bdf3ee1009a4fc2f0939393351d9b96608696a62b3863cdc15f70d",
+              "byteLength": 243613,
+              "sha256": "258890ede988dc32e3a8369e9e12cbea18f8d1c4080e5e83f955030475fa5985",
               "slideNumber": 1,
-              "warningCount": 11
+              "warningCount": 2
             },
             {
-              "byteLength": 35358,
-              "sha256": "e30986a7af6d6b02d3af996a976d3458d5e1cba75db6155fd88f62930e60e131",
+              "byteLength": 181219,
+              "sha256": "d7358b4a6eb60558c03ace1ca899def3bf0045bb7e23df445f0b3a8691704a1f",
               "slideNumber": 13,
-              "warningCount": 21
+              "warningCount": 12
             },
             {
-              "byteLength": 50206,
-              "sha256": "a59cb83b0de44384655faf57427a299b5f19d41ac508565aedac81a6977ea6a3",
+              "byteLength": 61510,
+              "sha256": "80d8175ac0f4b288ccb37fece15195583b649c47f417b12e9a000984fd12aeb4",
               "slideNumber": 25,
-              "warningCount": 7
+              "warningCount": 2
             }
           ],
           "svg": {
-            "byteLength": 15989082,
-            "sha256": "f7c9c53ad8b0020bd68b58af36bdef3ff34f9c05fe31549329933bf011ed5333"
+            "byteLength": 16016779,
+            "sha256": "97646192225d50a52d0b17372e30f1e9da861cdb2c14d9c89d12a535209a41f4"
           },
           "warnings": {
-            "approximate-shape": 49,
-            "approximate-fill": 41,
-            "font-substitution": 118,
-            "approximate-media": 12
+            "font-substitution": 118
           }
         }
       },
@@ -406,38 +381,35 @@
       "source": {
         "pptx": {
           "byteLength": 7887960,
-          "sha256": "942cbc41f0fff375f46c7d47e95574c8456f46e0707d0dd40d8d56703e62fa0b"
+          "sha256": "9b347fcb0dfe476772af38832234040b54cb7326e1aab8e1cea460197be309a6"
         },
         "render": {
           "representativePngs": [
             {
-              "byteLength": 101551,
-              "sha256": "49bce90cba6e7a1ab524537b62c099a68b50269bb546edf1b4be2068b3c50669",
+              "byteLength": 243610,
+              "sha256": "31134d3d89fb98ff865e58de74aa2b2ff547d58ae0e087a41394d1ecd01cb66e",
               "slideNumber": 1,
-              "warningCount": 11
+              "warningCount": 2
             },
             {
-              "byteLength": 35358,
-              "sha256": "e30986a7af6d6b02d3af996a976d3458d5e1cba75db6155fd88f62930e60e131",
+              "byteLength": 181219,
+              "sha256": "99d8cd3bfe739ca48a9f5fd4cb8a7289e48b8f93ad6627874f1897e7ef3c274e",
               "slideNumber": 13,
-              "warningCount": 21
+              "warningCount": 12
             },
             {
-              "byteLength": 49867,
-              "sha256": "1f5e74807e0141c069a5e968f897ff4898619b6fa829c92a8fcd49c87af38bc1",
+              "byteLength": 61218,
+              "sha256": "24b8dc9075c4d6c9454ce7735077e87eaf80efdd694506168e1702d8f9a93a3c",
               "slideNumber": 25,
-              "warningCount": 3
+              "warningCount": 2
             }
           ],
           "svg": {
-            "byteLength": 15989075,
-            "sha256": "067d9fd6fd8fc61da6d6a4258650596852c57347e97557e28224765e4724acb4"
+            "byteLength": 16016523,
+            "sha256": "b1e90b152f0ad85477b8d7fc1587997fb7740505a9482ddb0dd04134d41a09a3"
           },
           "warnings": {
-            "approximate-shape": 49,
-            "approximate-fill": 41,
-            "font-substitution": 118,
-            "approximate-media": 8
+            "font-substitution": 118
           }
         }
       },
@@ -455,80 +427,74 @@
       "index": 6,
       "output": {
         "pptx": {
-          "byteLength": 1973814,
-          "sha256": "8dacf8335f7f051b2efeb83eb4e0f5ad324f9e41f7fe417037a7210f4b525f9e"
+          "byteLength": 1973074,
+          "sha256": "071e69490d0955e07a1d9dad78add9eb224ccbaace3cc83d6430853c17d2b184"
         },
         "render": {
           "representativePngs": [
             {
-              "byteLength": 35757,
-              "sha256": "1b16165c47fa3d770281529e34dba245bcc5728e684d6eefef8595d80762f0b1",
+              "byteLength": 35577,
+              "sha256": "8da731891fcb496e3c412a79c93fb7023187cdf7d6dd210294762e11fbc371c4",
               "slideNumber": 1,
-              "warningCount": 15
+              "warningCount": 12
             },
             {
-              "byteLength": 32944,
-              "sha256": "d72853b931f452722fddf7a4c0a099304df1466e399a43e4737beaac7b52661e",
+              "byteLength": 33936,
+              "sha256": "52cb854b6507393c7c0a03270f20835baa6dab3239778569b3c033ee355e7d6d",
               "slideNumber": 16,
-              "warningCount": 19
+              "warningCount": 13
             },
             {
-              "byteLength": 25099,
-              "sha256": "9c7c84e02b8788ae4693f2ccffadf33228db7ea9ff4f79e4f2aa5fc377fc3d66",
+              "byteLength": 24660,
+              "sha256": "293311e09cf80348b4ae40331a4c225b93501c34b208068010de1149946fa300",
               "slideNumber": 31,
-              "warningCount": 17
+              "warningCount": 12
             }
           ],
           "svg": {
-            "byteLength": 11933616,
-            "sha256": "c5d3aefa1f4e01968d19cc979b29b33527ae6f0da8a2f6811ad966939ade987c"
+            "byteLength": 12226448,
+            "sha256": "8940a4cb89ec7412c96fca69797b1f93a3e359a214913e5ce569f74b3bfdb921"
           },
           "warnings": {
-            "approximate-fill": 177,
             "font-substitution": 389,
-            "approximate-table": 32,
-            "approximate-media": 9,
-            "approximate-shape": 1
+            "approximate-table": 32
           }
         }
       },
       "slideCount": 31,
       "source": {
         "pptx": {
-          "byteLength": 1285690,
-          "sha256": "d7e4e700aafeb6d552894ec897bcc59a08b81bed7741eb0d818b54bde9c8cb6b"
+          "byteLength": 1285693,
+          "sha256": "0e4530660a178062e52f462969f2b57acd720409da7c1d516e9e29efd1d4d8e4"
         },
         "render": {
           "representativePngs": [
             {
-              "byteLength": 35757,
-              "sha256": "1b16165c47fa3d770281529e34dba245bcc5728e684d6eefef8595d80762f0b1",
+              "byteLength": 35577,
+              "sha256": "8da731891fcb496e3c412a79c93fb7023187cdf7d6dd210294762e11fbc371c4",
               "slideNumber": 1,
-              "warningCount": 15
+              "warningCount": 12
             },
             {
-              "byteLength": 32944,
-              "sha256": "d72853b931f452722fddf7a4c0a099304df1466e399a43e4737beaac7b52661e",
+              "byteLength": 33936,
+              "sha256": "52cb854b6507393c7c0a03270f20835baa6dab3239778569b3c033ee355e7d6d",
               "slideNumber": 16,
-              "warningCount": 19
+              "warningCount": 13
             },
             {
-              "byteLength": 25099,
-              "sha256": "9c7c84e02b8788ae4693f2ccffadf33228db7ea9ff4f79e4f2aa5fc377fc3d66",
+              "byteLength": 24660,
+              "sha256": "293311e09cf80348b4ae40331a4c225b93501c34b208068010de1149946fa300",
               "slideNumber": 31,
-              "warningCount": 17
+              "warningCount": 12
             }
           ],
           "svg": {
-            "byteLength": 11933645,
-            "sha256": "37c4bca0ad2d028dd3b109e2e132b5ce921e40a3515cf9be722af1fb6c981b16"
+            "byteLength": 12226343,
+            "sha256": "8d7f97b5fd49f45ed5140bd8c7d6d1c1b5b01bad09c4a6858e1ee00082723361"
           },
           "warnings": {
-            "approximate-fill": 177,
             "font-substitution": 389,
-            "approximate-table": 32,
-            "approximate-media": 7,
-            "approximate-shape": 1
+            "approximate-table": 32
           }
         }
       },
@@ -546,8 +512,8 @@
       "index": 7,
       "output": {
         "pptx": {
-          "byteLength": 1163586,
-          "sha256": "64df6e0df52190ae93c9531348022a46529687a1cd1859b7281b72b53189da4c"
+          "byteLength": 1163338,
+          "sha256": "927c5e0bee5f61683f52e03e1f4aa2a409de52b24d0d1d861d43f9bdac54a3ef"
         },
         "render": {
           "representativePngs": [
@@ -558,8 +524,8 @@
               "warningCount": 23
             },
             {
-              "byteLength": 23618,
-              "sha256": "9d1f0dbb5018c75eb18a1d33a12c6798c6b9f55855c146148ae471e334d959da",
+              "byteLength": 23621,
+              "sha256": "3950c557af241f7bc0907e9b8dff9327003af7c7100e62175789c21d9e0958e0",
               "slideNumber": 22,
               "warningCount": 31
             },
@@ -567,26 +533,24 @@
               "byteLength": 18671,
               "sha256": "9dcf001249843d4f61f9adf72333ddb505287282dfb8b579f790e9cf79775fdc",
               "slideNumber": 44,
-              "warningCount": 19
+              "warningCount": 14
             }
           ],
           "svg": {
-            "byteLength": 2545401,
-            "sha256": "465c5a8dd14a91fe98f68f0d1568b219da167d3ee1034aaf64908379615c636c"
+            "byteLength": 2826984,
+            "sha256": "bbb412305537f8554a104d84c55709fd3a4529d7eef3f10535c7252347b2e5da"
           },
           "warnings": {
             "font-substitution": 1606,
-            "approximate-table": 42,
-            "approximate-shape": 2,
-            "approximate-media": 5
+            "approximate-table": 42
           }
         }
       },
       "slideCount": 44,
       "source": {
         "pptx": {
-          "byteLength": 287354,
-          "sha256": "0695f94cb6c0f88b3ca30b9e2b92a4e5249b5006b03914b4fa65f413b3a33828"
+          "byteLength": 287339,
+          "sha256": "e4ea5f6579d48a124da37d93e49fcb3a60f3f0f89d4be661caea5d9c07787e4e"
         },
         "render": {
           "representativePngs": [
@@ -597,8 +561,8 @@
               "warningCount": 23
             },
             {
-              "byteLength": 23618,
-              "sha256": "9d1f0dbb5018c75eb18a1d33a12c6798c6b9f55855c146148ae471e334d959da",
+              "byteLength": 23621,
+              "sha256": "3950c557af241f7bc0907e9b8dff9327003af7c7100e62175789c21d9e0958e0",
               "slideNumber": 22,
               "warningCount": 31
             },
@@ -606,18 +570,16 @@
               "byteLength": 18671,
               "sha256": "9dcf001249843d4f61f9adf72333ddb505287282dfb8b579f790e9cf79775fdc",
               "slideNumber": 44,
-              "warningCount": 15
+              "warningCount": 14
             }
           ],
           "svg": {
-            "byteLength": 2545319,
-            "sha256": "003beb8d538065133c8f5ead0ca942c9b3f0725c7fe07cca6d28501e5009d02d"
+            "byteLength": 2826652,
+            "sha256": "df7a54df7e2a7893f46a36dc1dd1d72678af4c0f6180c58754c22a29f137b501"
           },
           "warnings": {
             "font-substitution": 1606,
-            "approximate-table": 42,
-            "approximate-shape": 2,
-            "approximate-media": 1
+            "approximate-table": 42
           }
         }
       },
@@ -635,39 +597,36 @@
       "index": 8,
       "output": {
         "pptx": {
-          "byteLength": 1135980,
-          "sha256": "0ecadabf3f95aa3fb4400d8fbd0f9cf1c206b7b489fc1ea830d77e92ef809d73"
+          "byteLength": 1144719,
+          "sha256": "867c2addc81a1e6d2175e555ba9f950af2435527953d08dc656ebe03a2de4bab"
         },
         "render": {
           "representativePngs": [
             {
-              "byteLength": 70575,
-              "sha256": "ad40ba36462f629a848cbc136e987ca1191ce5488f00a26955e1cdfefebeacbd",
+              "byteLength": 85816,
+              "sha256": "11ba52f05d7258ccd85db4a09136b0cc030d000c6fde1b549f71c5a146d657fb",
               "slideNumber": 1,
-              "warningCount": 118
+              "warningCount": 18
             },
             {
-              "byteLength": 62519,
-              "sha256": "b5e7e9b3239c1ab2ad268cf6aaca5e4f21106b351a6e558b3505196822317982",
+              "byteLength": 77702,
+              "sha256": "da9ec919b15a4b73b8809636e2ea9fa8d60adc6a11eac78a01d1259ab1217828",
               "slideNumber": 18,
-              "warningCount": 64
+              "warningCount": 29
             },
             {
-              "byteLength": 57232,
-              "sha256": "b132d96eb99caff274d7a9af08691d090568c8860a9e3e8d6d315f24d85b95ed",
+              "byteLength": 72596,
+              "sha256": "59dd47d7533f3e60e46b23d2f734aba97bf13b5f40b59bfd8047d6dc38bd884c",
               "slideNumber": 36,
-              "warningCount": 58
+              "warningCount": 18
             }
           ],
           "svg": {
-            "byteLength": 5690876,
-            "sha256": "7f7d99f54679b77c06cfd07958a6dd601bef36702cf0d0fb621acc76a7ad48e2"
+            "byteLength": 6503811,
+            "sha256": "ecdb4b64292ee1529283b2bdadeb7f21dec020e4ccc3c7ae1d7f40b6ae009474"
           },
           "warnings": {
-            "approximate-fill": 1178,
-            "approximate-media": 157,
             "font-substitution": 1340,
-            "approximate-shape": 80,
             "approximate-table": 57
           }
         }
@@ -675,39 +634,36 @@
       "slideCount": 36,
       "source": {
         "pptx": {
-          "byteLength": 407475,
-          "sha256": "391ff54070283724639964d88ff26e2ea1069ae3822f2430fe6f0701e7198543"
+          "byteLength": 407452,
+          "sha256": "457c3c44b5c1f4d9a260fe531aad5c83508b29770af9bedca49e92d9ae7a2b9c"
         },
         "render": {
           "representativePngs": [
             {
-              "byteLength": 70578,
-              "sha256": "e5dc74ae692d8c810ffb4ebb168233e801726d44578e0f9ab6c18f8807c4e53a",
+              "byteLength": 85818,
+              "sha256": "314e706921f022140237ad92c7fdb57a3af8993761ce8aaca6e2a4a807c1383d",
               "slideNumber": 1,
-              "warningCount": 118
+              "warningCount": 18
             },
             {
-              "byteLength": 62523,
-              "sha256": "2e63a0b233f3944d4e6708c0e6acdb9adca78cfbeb96b3b05a1b0af114d75030",
+              "byteLength": 77704,
+              "sha256": "cf546142c7574fa664d95df86d9652576c736929c051ddcdec365d1cda6f5a14",
               "slideNumber": 18,
-              "warningCount": 64
+              "warningCount": 29
             },
             {
-              "byteLength": 57236,
-              "sha256": "3ecda69f89d84956eef9acc28205798ee31da5f81c2aacebed540285d657dee4",
+              "byteLength": 72596,
+              "sha256": "bfa5ffaea259f8141f824110d593610381d45a44f273f1f3665eaa7ecb770541",
               "slideNumber": 36,
-              "warningCount": 54
+              "warningCount": 18
             }
           ],
           "svg": {
-            "byteLength": 5690150,
-            "sha256": "a3067d14cee0ffe41681d2c1de32a0817d79f6d08fec5ce7f80cb6378e974d96"
+            "byteLength": 6502500,
+            "sha256": "48c771aed022975f4ad2b4a91d5b7b0f342e62fe619e08f8cdfc31b4a4c53aeb"
           },
           "warnings": {
-            "approximate-fill": 1178,
-            "approximate-media": 148,
             "font-substitution": 1344,
-            "approximate-shape": 80,
             "approximate-table": 57
           }
         }
@@ -726,37 +682,35 @@
       "index": 9,
       "output": {
         "pptx": {
-          "byteLength": 6573793,
-          "sha256": "3cfc4a17cae506d44fabf2a6d92054098303453a07dfb017a4de7e3696c86540"
+          "byteLength": 6575740,
+          "sha256": "77b8d151aa96072172bb6f6a39d8d0ddd9974082ba1469b01a384822f4f15e2c"
         },
         "render": {
           "representativePngs": [
             {
-              "byteLength": 46397,
-              "sha256": "6f0e09da4f025bc7c697f3b8fcc4d87b971ccf1da8bbc66468affbfae4a7ac0a",
+              "byteLength": 57400,
+              "sha256": "ddcbeb5b686e2e19eddf953e7c69c5f3d1d8ed879f4f764e95f2b5cb1b26a852",
               "slideNumber": 1,
-              "warningCount": 54
+              "warningCount": 3
             },
             {
-              "byteLength": 45130,
-              "sha256": "ab399029ac780b5749b0764913f3036948d5e3110c2d003ff147981e8b1d93af",
+              "byteLength": 56283,
+              "sha256": "457c9097050d614c1468d3e245ccb4448f0c28c3fd0eee11a7cc5cd9202f6309",
               "slideNumber": 11,
-              "warningCount": 54
+              "warningCount": 3
             },
             {
-              "byteLength": 34701,
-              "sha256": "f9b332227193e4aa915fc00073a501b03614b327401fee3654dceedba1d0a111",
+              "byteLength": 47751,
+              "sha256": "926f2127e5ac2236024c9c578b53de11af909c22a1de01b197f88d54c4521e7a",
               "slideNumber": 22,
-              "warningCount": 59
+              "warningCount": 3
             }
           ],
           "svg": {
-            "byteLength": 9397036,
-            "sha256": "377c0dd0322de71cbc20d934dd34779ec39bd54dcaf003e595707903b6959f8b"
+            "byteLength": 9684546,
+            "sha256": "bb96c4e6b54f241ef11a23b2e83ea797582950d397c8bc9df78554011fe2ca66"
           },
           "warnings": {
-            "approximate-shape": 1090,
-            "approximate-media": 57,
             "approximate-table": 22,
             "font-substitution": 100
           }
@@ -765,39 +719,37 @@
       "slideCount": 22,
       "source": {
         "pptx": {
-          "byteLength": 5842520,
-          "sha256": "7cbe03e4efb3caeb0daa0c3a3be7d4db13b53b04c5fc75ee9b1ef0b4acc9c661"
+          "byteLength": 5842517,
+          "sha256": "5fca1b720c70027c33c3e7cc19d9e347133479a6754ef486215499624e728672"
         },
         "render": {
           "representativePngs": [
             {
-              "byteLength": 46397,
-              "sha256": "6f0e09da4f025bc7c697f3b8fcc4d87b971ccf1da8bbc66468affbfae4a7ac0a",
+              "byteLength": 53436,
+              "sha256": "7b5cbae2951498497a885cbd5b055536eba7553e13b99f20387da1d479de2de9",
               "slideNumber": 1,
-              "warningCount": 52
+              "warningCount": 3
             },
             {
-              "byteLength": 45130,
-              "sha256": "ab399029ac780b5749b0764913f3036948d5e3110c2d003ff147981e8b1d93af",
+              "byteLength": 52578,
+              "sha256": "1e48721fc6562871afa4ce725dd7adbbed29685b4166f6e84bd4fff8fdb0c455",
               "slideNumber": 11,
-              "warningCount": 52
+              "warningCount": 3
             },
             {
-              "byteLength": 34701,
-              "sha256": "f9b332227193e4aa915fc00073a501b03614b327401fee3654dceedba1d0a111",
+              "byteLength": 43629,
+              "sha256": "407ed94444a7f8c718ecc106b224764b09fa8c9698acf07116771b1f3e9fc022",
               "slideNumber": 22,
-              "warningCount": 53
+              "warningCount": 3
             }
           ],
           "svg": {
-            "byteLength": 9397036,
-            "sha256": "8408253a6ba378f9c75077b6059197e89296bb4cf59c8a964dffe8cd5c49c1d5"
+            "byteLength": 9681410,
+            "sha256": "fd48a0473f51b51d470519764d8d693f5da968455f4d9cd1c0b5830719f5eee4"
           },
           "warnings": {
-            "approximate-shape": 1090,
             "approximate-table": 22,
-            "font-substitution": 100,
-            "approximate-media": 9
+            "font-substitution": 100
           }
         }
       },
@@ -815,8 +767,8 @@
       "index": 10,
       "output": {
         "pptx": {
-          "byteLength": 2448616,
-          "sha256": "64ec1ec4614918ca231b93945e66e2c46707843864cf015ebf8c1524cf44949e"
+          "byteLength": 2448617,
+          "sha256": "bad152cd883596f03a11b5ba7df6a37a9d7c866bea73de17eafe428837a9d841"
         },
         "render": {
           "representativePngs": [
@@ -833,19 +785,18 @@
               "warningCount": 2
             },
             {
-              "byteLength": 50226,
-              "sha256": "06229b20a2129b97fae450fd998189af3e97a2115579e1f6d0389229b45ec6ba",
+              "byteLength": 61528,
+              "sha256": "a3e531ce360aaf6bde0ae5f702746b783be7b8b8feac2ee7461a4e50fe7bad9a",
               "slideNumber": 22,
-              "warningCount": 7
+              "warningCount": 2
             }
           ],
           "svg": {
-            "byteLength": 5513122,
-            "sha256": "354308947a23475adecd4c324064d4f6fe70f7e65c10f48c315f1501aa3393f8"
+            "byteLength": 5516515,
+            "sha256": "4b1ae426af03df36adc447eec977867ccf8e52009e44d605e7a7d2598e8e6a62"
           },
           "warnings": {
-            "font-substitution": 85,
-            "approximate-media": 9
+            "font-substitution": 85
           }
         }
       },
@@ -853,7 +804,7 @@
       "source": {
         "pptx": {
           "byteLength": 1944158,
-          "sha256": "228a128a32f50aee6de5cadf31afc6f3e3a896455cadf724844877582c9015ef"
+          "sha256": "7331a45bbbee05d94b4e3a0b8fc924ede93273f09a3e35682b642fe6d0de1ef3"
         },
         "render": {
           "representativePngs": [
@@ -870,19 +821,18 @@
               "warningCount": 2
             },
             {
-              "byteLength": 49871,
-              "sha256": "5b32ed7311cfb58ce39957a58b1c36304fe9096382fb31a93f65f04ae09edc6c",
+              "byteLength": 61221,
+              "sha256": "a0e4aefcf22000647334b3cc4f4af1b2c89243b0c763c50d0cde78c55be15eb6",
               "slideNumber": 22,
-              "warningCount": 3
+              "warningCount": 2
             }
           ],
           "svg": {
-            "byteLength": 5513101,
-            "sha256": "16c24c8cd7a5039c92a47ef2e816de87dcfc5204905d1e230710f04db0ee0b9c"
+            "byteLength": 5516175,
+            "sha256": "9a4a461d298face584a2f65c9ca8a68544fc1b65bbe4970c04c0392886d71861"
           },
           "warnings": {
-            "font-substitution": 85,
-            "approximate-media": 4
+            "font-substitution": 85
           }
         }
       },
@@ -900,8 +850,8 @@
       "index": 11,
       "output": {
         "pptx": {
-          "byteLength": 8016250,
-          "sha256": "42fd2ae52aa0e1c6e90384e782734e89a214a629b1fdcc24b0f1c16f8f469ccf"
+          "byteLength": 8014697,
+          "sha256": "fe9292cfb08411a0a4166138efa20978eec95aa527441629b6b488384c5b411e"
         },
         "render": {
           "representativePngs": [
@@ -912,36 +862,33 @@
               "warningCount": 2
             },
             {
-              "byteLength": 34998,
-              "sha256": "23c471ffa2826d32fa7cd8a319f60e112a984f45eecd8e81219d4df7ed1acd8b",
+              "byteLength": 34738,
+              "sha256": "38f33a34e9157b868dce70231fcb07fdfcd4113bcd6541a7cb740c51321086f7",
               "slideNumber": 13,
               "warningCount": 2
             },
             {
-              "byteLength": 50224,
-              "sha256": "1f025723ee62bb768145b55590959bb45164e467d51beaefcac680fabcf270bd",
+              "byteLength": 61525,
+              "sha256": "24031efd068c90fe27010f72406ab62d8b5938a78241a452f2513f2a1f6060f0",
               "slideNumber": 26,
-              "warningCount": 7
+              "warningCount": 2
             }
           ],
           "svg": {
-            "byteLength": 10209609,
-            "sha256": "5b72f7e10ae0d763138a7e38ce99202b06976552433bbbea3da4cfc11a718cee"
+            "byteLength": 10232944,
+            "sha256": "127775bd18b3d9ab5b671f4c39239156f241e134b754db815633943ba15f668f"
           },
           "warnings": {
             "font-substitution": 110,
-            "approximate-media": 12,
-            "approximate-shape": 21,
-            "approximate-table": 1,
-            "approximate-fill": 4
+            "approximate-table": 1
           }
         }
       },
       "slideCount": 26,
       "source": {
         "pptx": {
-          "byteLength": 6782925,
-          "sha256": "a83b81a096c5a46722932748a512a45e24eff6fa4c99d7f8be5a560584bf204c"
+          "byteLength": 6782920,
+          "sha256": "fdb9af6bf7bda9940b266306690f1e9123539206921c705d619ad5a7c0045a0d"
         },
         "render": {
           "representativePngs": [
@@ -952,28 +899,25 @@
               "warningCount": 2
             },
             {
-              "byteLength": 34998,
-              "sha256": "23c471ffa2826d32fa7cd8a319f60e112a984f45eecd8e81219d4df7ed1acd8b",
+              "byteLength": 34738,
+              "sha256": "38f33a34e9157b868dce70231fcb07fdfcd4113bcd6541a7cb740c51321086f7",
               "slideNumber": 13,
               "warningCount": 2
             },
             {
-              "byteLength": 49900,
-              "sha256": "53a93018bc062fd25e1e8961692110e37e6f3393889666b7dfcd8831d8904a5b",
+              "byteLength": 61253,
+              "sha256": "ed678e45104562ea65636b7b5b20ea0015e1b609f40f97fc3909c007aa69fb81",
               "slideNumber": 26,
-              "warningCount": 3
+              "warningCount": 2
             }
           ],
           "svg": {
-            "byteLength": 10209002,
-            "sha256": "81d9400fd1926bff9be3d63c2183062fc203c2c9af94c53bd3a6a5e2b278a453"
+            "byteLength": 10232051,
+            "sha256": "e271d63c9bd3f239e56bd4a9b9165e54979d50760f6a5e2f6c48ca0e9161796a"
           },
           "warnings": {
             "font-substitution": 110,
-            "approximate-media": 8,
-            "approximate-shape": 21,
-            "approximate-table": 1,
-            "approximate-fill": 4
+            "approximate-table": 1
           }
         }
       },
@@ -991,78 +935,72 @@
       "index": 12,
       "output": {
         "pptx": {
-          "byteLength": 7455417,
-          "sha256": "d19f41c82f25c499ed90410377021367797d9c9867d032c4620e1043ad65874c"
+          "byteLength": 7455562,
+          "sha256": "7b31235d3cf9fbb6aab2b421ac49a8ec88e798e42fecd99f63e35322c7105351"
         },
         "render": {
           "representativePngs": [
             {
-              "byteLength": 394383,
-              "sha256": "5702df3791c5fe75fb549cc42d2d76c02a99d826581ee9ae53e39b9151028b20",
+              "byteLength": 484033,
+              "sha256": "64b8ef4d34f18e3fa985640cbb5458f69dfab2586224ab37b44f1d803681c3d5",
               "slideNumber": 1,
-              "warningCount": 4
+              "warningCount": 3
             },
             {
-              "byteLength": 342543,
-              "sha256": "85075cfbd4291ec51d6a46513ff64ea9c9a9246a45e0a7331254fc25486b4e09",
+              "byteLength": 435634,
+              "sha256": "e1bddeafd212824fd61975a2741572883c49cb89d2ea617ba9db49efb0981b06",
               "slideNumber": 13,
-              "warningCount": 20
+              "warningCount": 13
             },
             {
-              "byteLength": 51724,
-              "sha256": "e3821566b519bac4248d4809305891fa843cac51a923bf3ca13d3757f3a226f2",
+              "byteLength": 62806,
+              "sha256": "7e8df0d2c259f16f1736395ad396ade879173568f7e4ccca4a2d96f175b6759b",
               "slideNumber": 25,
-              "warningCount": 8
+              "warningCount": 3
             }
           ],
           "svg": {
-            "byteLength": 60739906,
-            "sha256": "110bc35f437fb3cb7ef1ddf4f73bcea34a1777396a4875ee17f0427274261c96"
+            "byteLength": 60750461,
+            "sha256": "d2c6d55085c9ee347153fa2a14ec28ac5e857569298f94233bfc10358736b973"
           },
           "warnings": {
-            "approximate-media": 46,
-            "font-substitution": 133,
-            "approximate-shape": 12,
-            "approximate-fill": 4
+            "font-substitution": 133
           }
         }
       },
       "slideCount": 25,
       "source": {
         "pptx": {
-          "byteLength": 6929449,
-          "sha256": "6c6fa37144d43c6b942add705c043794efd57e744b5f9c868d0fad1b95bdedc3"
+          "byteLength": 6929450,
+          "sha256": "8999e2aed9f0b064962627833071424836aaa524e49891039f72f74126073cd3"
         },
         "render": {
           "representativePngs": [
             {
-              "byteLength": 394383,
-              "sha256": "5702df3791c5fe75fb549cc42d2d76c02a99d826581ee9ae53e39b9151028b20",
+              "byteLength": 484033,
+              "sha256": "64b8ef4d34f18e3fa985640cbb5458f69dfab2586224ab37b44f1d803681c3d5",
               "slideNumber": 1,
-              "warningCount": 4
+              "warningCount": 3
             },
             {
-              "byteLength": 342543,
-              "sha256": "85075cfbd4291ec51d6a46513ff64ea9c9a9246a45e0a7331254fc25486b4e09",
+              "byteLength": 435634,
+              "sha256": "e1bddeafd212824fd61975a2741572883c49cb89d2ea617ba9db49efb0981b06",
               "slideNumber": 13,
-              "warningCount": 20
+              "warningCount": 13
             },
             {
-              "byteLength": 51354,
-              "sha256": "0a963968886fce84fe0956ba60309bc92a6671c14ed4487c8b73183a768ac0a3",
+              "byteLength": 62549,
+              "sha256": "0d1c7d8a912f4ba8068d7618631f501957f130cfffd8039bc8bff1e90d599dba",
               "slideNumber": 25,
-              "warningCount": 4
+              "warningCount": 3
             }
           ],
           "svg": {
-            "byteLength": 60739904,
-            "sha256": "d70e92f4e7c1969a159d5c50f58d6f002a32329b2492c2a5bb1c8825b011da21"
+            "byteLength": 60750179,
+            "sha256": "3913302a80210673d04607defbd1f1f5f8f1bb57b9c7fea6b38a4279aa475b30"
           },
           "warnings": {
-            "approximate-media": 42,
-            "font-substitution": 133,
-            "approximate-shape": 12,
-            "approximate-fill": 4
+            "font-substitution": 133
           }
         }
       },
@@ -1080,8 +1018,8 @@
       "index": 13,
       "output": {
         "pptx": {
-          "byteLength": 3743554,
-          "sha256": "ca3586686d3ea0cd400d5c094e32ecf2e00b6ebdf64e2587709fc3791ce12ecd"
+          "byteLength": 3743466,
+          "sha256": "069c1b0a3cc1c6d0a86caf97c20984379e58fab1565c7e9b017b750c0a4860d6"
         },
         "render": {
           "representativePngs": [
@@ -1098,29 +1036,26 @@
               "warningCount": 1
             },
             {
-              "byteLength": 49894,
-              "sha256": "d8ef62e29d57ef6665e4da503bf65ce69661897dca4080e8f39fdd8840642136",
+              "byteLength": 61083,
+              "sha256": "989a2da7c522888204790c1102eb1b5cf7626460fdc1bda3c8becc29efa70337",
               "slideNumber": 21,
-              "warningCount": 7
+              "warningCount": 2
             }
           ],
           "svg": {
-            "byteLength": 5041150,
-            "sha256": "943f1473b1be23c760c7d118ea786d4ef04318ac08334de260cc30b5eea37668"
+            "byteLength": 5049342,
+            "sha256": "6d94746ff42834bfff1e071f3ab7ae8acda070a1215a13bd70d478c2e966abd9"
           },
           "warnings": {
-            "font-substitution": 140,
-            "approximate-media": 12,
-            "approximate-shape": 8,
-            "approximate-fill": 4
+            "font-substitution": 140
           }
         }
       },
       "slideCount": 21,
       "source": {
         "pptx": {
-          "byteLength": 2588046,
-          "sha256": "e84e72888a32ba21bb6dbe1dc2d6ba00da3f1a099e923efb5918323cd1493c88"
+          "byteLength": 2588045,
+          "sha256": "428b18a1f670cb5036512b8316156a27c7dd040c171cc925eb4bd698498f4b26"
         },
         "render": {
           "representativePngs": [
@@ -1137,21 +1072,18 @@
               "warningCount": 1
             },
             {
-              "byteLength": 49538,
-              "sha256": "894c7cacabf8bb63b1da5e01e6253dbcc15a944bc84953a5846e85860056976b",
+              "byteLength": 60822,
+              "sha256": "80147ffcb49be592d5c3e726eb2d7a7937b8c0f75c29e0becea9a93a7f30f490",
               "slideNumber": 21,
-              "warningCount": 3
+              "warningCount": 2
             }
           ],
           "svg": {
-            "byteLength": 5040966,
-            "sha256": "b01bae0232829b784ab1919b8a54ee60adb664f9c909a8a828fb4483ca26ae91"
+            "byteLength": 5048762,
+            "sha256": "55aadad6d3844e1edb529b7f7f20a3a08daf39e91f202cf411499423ef0c3ac6"
           },
           "warnings": {
-            "font-substitution": 140,
-            "approximate-media": 7,
-            "approximate-shape": 8,
-            "approximate-fill": 4
+            "font-substitution": 140
           }
         }
       },
@@ -1169,8 +1101,8 @@
       "index": 14,
       "output": {
         "pptx": {
-          "byteLength": 4848543,
-          "sha256": "4fb54daabb29e6c6612445c42664af1dfee3c02024e6230bf62509ca8295392e"
+          "byteLength": 4848705,
+          "sha256": "be5a7dc88a7386ba1c1c1461b74a96e4d959972100fdb9419f516068fcf3a5b6"
         },
         "render": {
           "representativePngs": [
@@ -1187,28 +1119,26 @@
               "warningCount": 8
             },
             {
-              "byteLength": 50760,
-              "sha256": "2de9730f15ca56b9f793eaedb8cb327d2d1ca30be932ff05a3b7f70ca9dc6bc1",
+              "byteLength": 61859,
+              "sha256": "db6c57dd3cebc97f0d7e70eebf4eb97f114bf21dde7389fe890d6bd12d50efea",
               "slideNumber": 24,
-              "warningCount": 8
+              "warningCount": 3
             }
           ],
           "svg": {
-            "byteLength": 8099487,
-            "sha256": "53e6e411ab4d6765680527281608f2c469bc4101340252d5885b785f46c7d3e5"
+            "byteLength": 8105396,
+            "sha256": "2759ae073145612bd34b2dc5f70543b16654280306c5e6a1d08513005dac293b"
           },
           "warnings": {
-            "font-substitution": 120,
-            "approximate-media": 12,
-            "approximate-fill": 4
+            "font-substitution": 120
           }
         }
       },
       "slideCount": 24,
       "source": {
         "pptx": {
-          "byteLength": 4121758,
-          "sha256": "cd83550c65ffef23e5baf3ceb2c1b792c2bf30799809c41e9b1073c47de48b88"
+          "byteLength": 4121759,
+          "sha256": "586ad4433aa97728fa406a5ce3134b64cce6311966a8d55b512b6fe017c04d55"
         },
         "render": {
           "representativePngs": [
@@ -1225,20 +1155,18 @@
               "warningCount": 8
             },
             {
-              "byteLength": 50366,
-              "sha256": "9c81d35d5b5dd5a1161bdb35a5879abc55a0be34e564ec57b62fcaca92c13fde",
+              "byteLength": 61596,
+              "sha256": "9b84e3018ae122783599d6314afb2760936e03db1199e2dcb054c70526dbd486",
               "slideNumber": 24,
-              "warningCount": 4
+              "warningCount": 3
             }
           ],
           "svg": {
-            "byteLength": 8099472,
-            "sha256": "7af416821309dbae9af6904b7e18da796c3e8a912ae1fef443425b45314ebff3"
+            "byteLength": 8105121,
+            "sha256": "25228d6799a265cfeaefb97a775eae948fd5545cca7cfe60be1d8d8be897cf59"
           },
           "warnings": {
-            "font-substitution": 120,
-            "approximate-media": 8,
-            "approximate-fill": 4
+            "font-substitution": 120
           }
         }
       },
@@ -1256,8 +1184,8 @@
       "index": 15,
       "output": {
         "pptx": {
-          "byteLength": 5437753,
-          "sha256": "898d4ba82d963f8b372dd61b6e2309fa432cdbb042a28c7de549dcccfdf3e480"
+          "byteLength": 5434940,
+          "sha256": "4a2f43fda69fa8ac165505c4c90295b75366b6a6e5d9384a5affbc975504f755"
         },
         "render": {
           "representativePngs": [
@@ -1274,29 +1202,26 @@
               "warningCount": 9
             },
             {
-              "byteLength": 54306,
-              "sha256": "aab9ad57addb98cc54aa91103059d7c2f816b0f0bb49daf411037b38a28937f6",
+              "byteLength": 66596,
+              "sha256": "1d3009ce9fb8e429a726f7689926a3e1cf30ed800efa834d99c004dbe6b5dbd1",
               "slideNumber": 24,
-              "warningCount": 7
+              "warningCount": 2
             }
           ],
           "svg": {
-            "byteLength": 10407528,
-            "sha256": "98d4fdc3b58fe8d69cd53d1f6eed1250a37cde577f641a506f1a8a9cf9940253"
+            "byteLength": 10415761,
+            "sha256": "d1ec32a5b1acf0adc30b6a23405de4784a64ace28a5439da4c89b73763602b31"
           },
           "warnings": {
-            "font-substitution": 112,
-            "approximate-media": 12,
-            "approximate-shape": 14,
-            "approximate-fill": 4
+            "font-substitution": 112
           }
         }
       },
       "slideCount": 24,
       "source": {
         "pptx": {
-          "byteLength": 4825407,
-          "sha256": "4aab14d1e51b1216fab646780f9b758e6e4234a94b3466f157eb1de60d423460"
+          "byteLength": 4825405,
+          "sha256": "995ab01f56e92786be11ff0ff6abcbe0759f742e80a56b8f2498723b0a2737a5"
         },
         "render": {
           "representativePngs": [
@@ -1313,21 +1238,18 @@
               "warningCount": 9
             },
             {
-              "byteLength": 53976,
-              "sha256": "78c5803db1d18716136f5ca83bdcc52d7852e5797d8e01fd9636c1dce7f80445",
+              "byteLength": 66340,
+              "sha256": "f85c08876fcd32cea0d3f87cf13a2a8ba1a4e50293547c588226cd7cbb580d8f",
               "slideNumber": 24,
-              "warningCount": 3
+              "warningCount": 2
             }
           ],
           "svg": {
-            "byteLength": 10407482,
-            "sha256": "97a59e22f2dd863b01fc42472d25c48daba25456a7a5e434db50c042feaa9bdb"
+            "byteLength": 10415399,
+            "sha256": "a4f90e8a7b3a69eb6d8e0de66b1290f1906d2030693bae107b7f0e66f3afbae0"
           },
           "warnings": {
-            "font-substitution": 112,
-            "approximate-media": 7,
-            "approximate-shape": 14,
-            "approximate-fill": 4
+            "font-substitution": 112
           }
         }
       },
@@ -1345,8 +1267,8 @@
       "index": 16,
       "output": {
         "pptx": {
-          "byteLength": 6573625,
-          "sha256": "45cd1ce67f1e559cc3dd926557dcc5beee3704fa3880edb6a1a06be1c3c38a05"
+          "byteLength": 6574188,
+          "sha256": "ca5576ab9020e1824ede18738c8a74482fd069be15fa59b4244e822bdaa76ac7"
         },
         "render": {
           "representativePngs": [
@@ -1363,29 +1285,26 @@
               "warningCount": 2
             },
             {
-              "byteLength": 49848,
-              "sha256": "7247de1cb53c8d40971ad9d973beb34c25b86f26bf9a22197e5201d0b5f4d111",
+              "byteLength": 61054,
+              "sha256": "1040500d0415d2d021eaf4abfbe6967c441dc66553b2e0ecf8d7c58e08b38399",
               "slideNumber": 25,
-              "warningCount": 7
+              "warningCount": 2
             }
           ],
           "svg": {
-            "byteLength": 10407141,
-            "sha256": "f77c11a78107a8ea118ddc9fff2318091e222c684a9c9cca0c9d804467125e75"
+            "byteLength": 10417998,
+            "sha256": "326e1558ea3dcdd4678bc17f810891794e61f3d9ff260ea03b4f0cad82b0f43d"
           },
           "warnings": {
-            "font-substitution": 115,
-            "approximate-media": 14,
-            "approximate-shape": 33,
-            "approximate-fill": 4
+            "font-substitution": 115
           }
         }
       },
       "slideCount": 25,
       "source": {
         "pptx": {
-          "byteLength": 6167987,
-          "sha256": "840e6a836891b5d47019698972e92cf72eb6fabfb731597b1c5a19ea1e796bc9"
+          "byteLength": 6167985,
+          "sha256": "60c67fe248fd3c5ddae34cb436b95a3e28aadf7514c5d8e7f54cfb2dfef2723b"
         },
         "render": {
           "representativePngs": [
@@ -1402,21 +1321,18 @@
               "warningCount": 2
             },
             {
-              "byteLength": 49583,
-              "sha256": "c68c7308717d614cf1449d6e41da5cb43f89e2313a272785dd0af24e6fe1033b",
+              "byteLength": 60881,
+              "sha256": "f7a1aadc60977ca075e3729535207f29d401cb33b228b45dbbcebeb118da9a93",
               "slideNumber": 25,
-              "warningCount": 3
+              "warningCount": 2
             }
           ],
           "svg": {
-            "byteLength": 10407139,
-            "sha256": "b8543cdcba7b26b6217e1105c757d6047d1625c0bf2e3c7d029134ca65a55377"
+            "byteLength": 10417672,
+            "sha256": "2b5a6d91303490a215111fc64c3a9c7af2ff0dd1384a8cc68960171706d0759c"
           },
           "warnings": {
-            "font-substitution": 115,
-            "approximate-media": 9,
-            "approximate-shape": 33,
-            "approximate-fill": 4
+            "font-substitution": 115
           }
         }
       },
@@ -1434,39 +1350,36 @@
       "index": 17,
       "output": {
         "pptx": {
-          "byteLength": 6784314,
-          "sha256": "5fc95b5b87c072232ad85f3cb90b023861b2022319e38427b9ee9c0f7c1fdc35"
+          "byteLength": 6777867,
+          "sha256": "ecaa7510dc2e990587fb53c8d65b12616130cdb5c356890fc6e0c1cff4f865ad"
         },
         "render": {
           "representativePngs": [
             {
-              "byteLength": 148945,
-              "sha256": "6f6dc1f56789df9bdb10f5ab8ae22800ec483c0f52509f4cfca7ebd223b8af91",
+              "byteLength": 158320,
+              "sha256": "2b7322931ed2eba0aab3a68e7c49d49b5c9c42c2b73ce51012a160eb8831ec68",
               "slideNumber": 1,
-              "warningCount": 4
+              "warningCount": 2
             },
             {
-              "byteLength": 96058,
-              "sha256": "7ad892fbfb819d1acd605fcf0aa11e4f791c2206b97cc069ee9cc016bbd07f14",
+              "byteLength": 101321,
+              "sha256": "77f69c0bccd0989554209703f7b27139fb39381b5653f2f2fe16d4486061cda3",
               "slideNumber": 12,
-              "warningCount": 3
+              "warningCount": 1
             },
             {
-              "byteLength": 50269,
-              "sha256": "2522ec3250c347cc896fc971b3b09ccb809c2223a47339980de3931daab75b2c",
+              "byteLength": 61577,
+              "sha256": "2540a96d76484eebb53a08af4c5d880e98543d0d5d552314542681f3b13200f1",
               "slideNumber": 23,
-              "warningCount": 7
+              "warningCount": 2
             }
           ],
           "svg": {
-            "byteLength": 12613361,
-            "sha256": "c992b841b83327359dc835a20a45f5a40dde338e8c92705630a7efadb32e4422"
+            "byteLength": 12630429,
+            "sha256": "18a40ca695cdf0d38020e5427a3988e08fc4cb5a0194ae14ed12834b257c8efd"
           },
           "warnings": {
-            "approximate-media": 37,
-            "approximate-fill": 25,
-            "font-substitution": 108,
-            "approximate-shape": 14
+            "font-substitution": 108
           }
         }
       },
@@ -1474,38 +1387,35 @@
       "source": {
         "pptx": {
           "byteLength": 6125766,
-          "sha256": "4c5675923b8b0a2bf7963f6a67cef2d3a2e9f8993bcf39f2a5d569db62a56a2a"
+          "sha256": "118ec4dc8a0c3ce31e683c7c9c7c8bb2aa0fab3d9e75eff56b65d36bfd4e17a2"
         },
         "render": {
           "representativePngs": [
             {
-              "byteLength": 148945,
-              "sha256": "6f6dc1f56789df9bdb10f5ab8ae22800ec483c0f52509f4cfca7ebd223b8af91",
+              "byteLength": 158320,
+              "sha256": "2b7322931ed2eba0aab3a68e7c49d49b5c9c42c2b73ce51012a160eb8831ec68",
               "slideNumber": 1,
-              "warningCount": 4
+              "warningCount": 2
             },
             {
-              "byteLength": 96058,
-              "sha256": "7ad892fbfb819d1acd605fcf0aa11e4f791c2206b97cc069ee9cc016bbd07f14",
+              "byteLength": 101321,
+              "sha256": "77f69c0bccd0989554209703f7b27139fb39381b5653f2f2fe16d4486061cda3",
               "slideNumber": 12,
-              "warningCount": 3
+              "warningCount": 1
             },
             {
-              "byteLength": 49898,
-              "sha256": "cace6adb878bb6021c601d8bd54bd903551a90ce17d1dc91b31d9d64d1cb3eef",
+              "byteLength": 61251,
+              "sha256": "26a23ae3e51826484c40da0e2232fed8604b4dcfb2612fec40c71201edde44f8",
               "slideNumber": 23,
-              "warningCount": 3
+              "warningCount": 2
             }
           ],
           "svg": {
-            "byteLength": 12613359,
-            "sha256": "6ac175d67e4cdeabdb993d37667a8721ac08f6de1d1aae014094488d02547c2a"
+            "byteLength": 12630111,
+            "sha256": "d467854a4bee0e7bd04eb2baaaf97bb5035aa2812499c043c1419eda1af74e36"
           },
           "warnings": {
-            "approximate-media": 32,
-            "approximate-fill": 25,
-            "font-substitution": 108,
-            "approximate-shape": 14
+            "font-substitution": 108
           }
         }
       },
@@ -1523,8 +1433,8 @@
       "index": 18,
       "output": {
         "pptx": {
-          "byteLength": 5503631,
-          "sha256": "7795ed743d985e328d2c82a1616c7b106a00480d8ef2c3937e1d6e1a2193708f"
+          "byteLength": 5509059,
+          "sha256": "8f174f6e8ae97238c89ac42272150020bcb67ba74b6f4b3595cd1a95bb8e5d72"
         },
         "render": {
           "representativePngs": [
@@ -1541,28 +1451,26 @@
               "warningCount": 3
             },
             {
-              "byteLength": 50542,
-              "sha256": "65e22f056a257efb7ba9029c39c582b59b91d712e3bfbf8404df9dfb5c97b396",
+              "byteLength": 61796,
+              "sha256": "7fb03cc0d8660c48d49648d222db07a939e264f77f07731ee8cc462c94668913",
               "slideNumber": 23,
-              "warningCount": 8
+              "warningCount": 3
             }
           ],
           "svg": {
-            "byteLength": 7283294,
-            "sha256": "19f58f2a1f1d4c918a8faa98caacc2321554d97b3a8e212dd4b423971b37b5b0"
+            "byteLength": 7290959,
+            "sha256": "2634040a208810425543583dd27d00f4a742e80f2005537718c1fd4f1bf3c406"
           },
           "warnings": {
-            "font-substitution": 123,
-            "approximate-media": 13,
-            "approximate-shape": 15
+            "font-substitution": 123
           }
         }
       },
       "slideCount": 23,
       "source": {
         "pptx": {
-          "byteLength": 4349251,
-          "sha256": "90382148d2d3a25a9321683738d32658481bd8e36d901cf0028c3124d54eeb56"
+          "byteLength": 4349249,
+          "sha256": "b837a12659f85b03f46fb19f40d9b66b1a6205555f7474ae7111377a5cc632f3"
         },
         "render": {
           "representativePngs": [
@@ -1579,20 +1487,18 @@
               "warningCount": 3
             },
             {
-              "byteLength": 50187,
-              "sha256": "b25c8301718ff051b4a176877d21144bf82cb485858053989046ad3c14f5096a",
+              "byteLength": 61548,
+              "sha256": "1953d5de3c2adf3a6b165b28dc8a67e516ec0018672891917b13f6a5d06462f2",
               "slideNumber": 23,
-              "warningCount": 4
+              "warningCount": 3
             }
           ],
           "svg": {
-            "byteLength": 7283294,
-            "sha256": "b15431b0580616480d4296f74dcb154f5bdc6e0908ebce3a5c95e24a1c0c1000"
+            "byteLength": 7290635,
+            "sha256": "d41f5490d503f8cf1b4f442d172ab4d114877175b87f3b748e1455761a6458c9"
           },
           "warnings": {
-            "font-substitution": 123,
-            "approximate-media": 8,
-            "approximate-shape": 15
+            "font-substitution": 123
           }
         }
       },
@@ -1610,78 +1516,72 @@
       "index": 19,
       "output": {
         "pptx": {
-          "byteLength": 3925541,
-          "sha256": "24a9b53f7209e6702f25902e1d385e436b81e4de4190ea41920dd4853e67b703"
+          "byteLength": 3925706,
+          "sha256": "cdd83e7d8d4d52e0e87530f91a4eb7dc3f8067cfefe4144394fda0045d988bbc"
         },
         "render": {
           "representativePngs": [
             {
-              "byteLength": 776386,
-              "sha256": "e1fcce88f8d512beb75cc9eb162cf9433dfb26e93e6e263e6f32054184001044",
+              "byteLength": 776689,
+              "sha256": "370ef1c763aa26b0f12b5cc33ffd31a98b66be2e98b6cd0eba1870f2691ebb3b",
               "slideNumber": 1,
-              "warningCount": 13
+              "warningCount": 2
             },
             {
-              "byteLength": 676885,
-              "sha256": "9b56fbc1760a7de9f76810cf01022e994767288516e22b9be981cf7212994195",
+              "byteLength": 748258,
+              "sha256": "89baff05458d3b15d8a74887fc92d94e27af579c14d4238c38b0bd1321d11642",
               "slideNumber": 13,
-              "warningCount": 24
+              "warningCount": 12
             },
             {
-              "byteLength": 767124,
-              "sha256": "9f1309e9c8f65815798aba64b47c3e7cc76519b0b381fdb6473e0e4202da9089",
+              "byteLength": 767629,
+              "sha256": "407d4f1c72150180217f0c529433ba603d1a8c0e951d9deea28b298358c76e42",
               "slideNumber": 25,
-              "warningCount": 8
+              "warningCount": 2
             }
           ],
           "svg": {
-            "byteLength": 308891987,
-            "sha256": "1be66c0f09e2226f4583c16de0fcdc7f5799542df880b4d9d69a981d1ff39246"
+            "byteLength": 308915561,
+            "sha256": "fafeb864a2a08538d12fae35b02a151580635195d93ded98ee0be64d56083e08"
           },
           "warnings": {
-            "approximate-media": 208,
-            "font-substitution": 113,
-            "approximate-shape": 15,
-            "approximate-fill": 4
+            "font-substitution": 113
           }
         }
       },
       "slideCount": 25,
       "source": {
         "pptx": {
-          "byteLength": 3512367,
-          "sha256": "d823846de7e8c12bec317254eac845c4e3058f9c6e56f60b08d3b81b40b8d56d"
+          "byteLength": 3512369,
+          "sha256": "a36b61cb838f4acf124054bc82cf49264d720bb9fecf8df624d514697beccb9d"
         },
         "render": {
           "representativePngs": [
             {
-              "byteLength": 776385,
-              "sha256": "c8b4334c6c2cba8d6372671006218803b1c2f2ac1caf92a1b83b7f46fa3ea28a",
+              "byteLength": 778920,
+              "sha256": "3f73371ac4a2ec1f05436b82b0abd54765aceec189a047a0b8339bb4c511a16a",
               "slideNumber": 1,
-              "warningCount": 12
+              "warningCount": 2
             },
             {
-              "byteLength": 676886,
-              "sha256": "a79762a6ca3679d803f20a82d2e0cd132aa5fdf4bd92f78810d1a3187427ef4e",
+              "byteLength": 747765,
+              "sha256": "4ec1372ce6b759fba59750dd4b4f81fbfa5a1f88012b502c340f03abe02661a1",
               "slideNumber": 13,
-              "warningCount": 23
+              "warningCount": 12
             },
             {
               "byteLength": 767124,
               "sha256": "9f1309e9c8f65815798aba64b47c3e7cc76519b0b381fdb6473e0e4202da9089",
               "slideNumber": 25,
-              "warningCount": 3
+              "warningCount": 2
             }
           ],
           "svg": {
-            "byteLength": 308891958,
-            "sha256": "0eee76041e6f12288d16f989e9bd4307e962de8ace00eac0344a90765d6f5593"
+            "byteLength": 308913442,
+            "sha256": "f9a75f057d5d90ab22ce6e572d1995701175310e78f1117e3e049523c7217eee"
           },
           "warnings": {
-            "approximate-media": 177,
-            "font-substitution": 113,
-            "approximate-shape": 15,
-            "approximate-fill": 4
+            "font-substitution": 113
           }
         }
       },
@@ -1699,8 +1599,8 @@
       "index": 20,
       "output": {
         "pptx": {
-          "byteLength": 4205228,
-          "sha256": "f5708821e7b5a643a05fee5245c65bde992b70d2ad4fac69f3b39e60f587c5bf"
+          "byteLength": 4205389,
+          "sha256": "e6c56eeab695d3fe7bb6aac8f02b73e36075656ac8c0bd128f511bdddec08e3a"
         },
         "render": {
           "representativePngs": [
@@ -1711,35 +1611,32 @@
               "warningCount": 3
             },
             {
-              "byteLength": 45310,
-              "sha256": "d55c668030bcc0c0ac48bf2cdb55d02ae9a5829c53b64e3841d49ee3eb8d5470",
+              "byteLength": 46065,
+              "sha256": "bad5edfba8ec40d1ca0fcd1e850c62f26c0f2901284979f0d37570fdf1ffd276",
               "slideNumber": 13,
-              "warningCount": 19
+              "warningCount": 13
             },
             {
-              "byteLength": 50301,
-              "sha256": "9ce0375130e6ac1416af8da10bdbefc2ee07d51ef8b3be8edc5b3287feff478c",
+              "byteLength": 61414,
+              "sha256": "4d3e4b45603e035f70c8eb5c4f7c71373848f5c1ed3c0b6b886da66d7f6ab85d",
               "slideNumber": 26,
-              "warningCount": 8
+              "warningCount": 3
             }
           ],
           "svg": {
-            "byteLength": 11676732,
-            "sha256": "bb6bf72aee9cd37a3ed5b53a57ff29d72039352d4b118283e04d6946bc13f863"
+            "byteLength": 11684575,
+            "sha256": "249223e966c2b13877b5700d93b2cd965570d560832f0b334fbf48b883b6bf18"
           },
           "warnings": {
-            "font-substitution": 142,
-            "approximate-media": 13,
-            "approximate-shape": 9,
-            "approximate-fill": 4
+            "font-substitution": 142
           }
         }
       },
       "slideCount": 26,
       "source": {
         "pptx": {
-          "byteLength": 3749731,
-          "sha256": "86319b63713e7bfa5b1fa033a858cb0517c24428a995ea65686f8b907e9640e9"
+          "byteLength": 3749730,
+          "sha256": "7c5273bf42dd04573d9f5bf0606d6308f41c4069486c84d146bca89f1f58e374"
         },
         "render": {
           "representativePngs": [
@@ -1750,27 +1647,24 @@
               "warningCount": 3
             },
             {
-              "byteLength": 45312,
-              "sha256": "55500730807d5884ddb4311f5ab55111d4755d447531ce4ba351ca3b231d6876",
+              "byteLength": 46067,
+              "sha256": "a4fd5ed914685c80ca643785de2579b0490d6c6e12490133982bb28abde0dee0",
               "slideNumber": 13,
-              "warningCount": 19
+              "warningCount": 13
             },
             {
-              "byteLength": 49897,
-              "sha256": "685c3c84166695f807e92d44f439e45638d3fbff43fbf1396aee61665c61dfa4",
+              "byteLength": 61137,
+              "sha256": "241dcea6cdd8104479f24f117eb4fb285208889e1addf8922c286b014370c76c",
               "slideNumber": 26,
-              "warningCount": 4
+              "warningCount": 3
             }
           ],
           "svg": {
-            "byteLength": 11676732,
-            "sha256": "d350412bea4ed5e9de344438866a26d64bf1d36a1a3373a0a4b5862e23dc015c"
+            "byteLength": 11684251,
+            "sha256": "be09fea09f7dfdebcac6d935ca0c2baa316692242b381fa45aad4a0b29659542"
           },
           "warnings": {
-            "font-substitution": 142,
-            "approximate-media": 8,
-            "approximate-shape": 9,
-            "approximate-fill": 4
+            "font-substitution": 142
           }
         }
       },
@@ -1788,74 +1682,72 @@
       "index": 21,
       "output": {
         "pptx": {
-          "byteLength": 4140675,
-          "sha256": "a49b29434c9c9db3ebd195963cb64e8e07706d09a4096222d53b7bb2f2a8ef36"
+          "byteLength": 4138661,
+          "sha256": "f5d2b82d9cbb6265edd788c0ed021da0de312c58967d99797c3732ceb1a82c85"
         },
         "render": {
           "representativePngs": [
             {
-              "byteLength": 102921,
-              "sha256": "d24591750e5c6629a47bc17f9caff44783ed111e15155ac86bc61146368ff53a",
+              "byteLength": 224285,
+              "sha256": "f0ce66e4aa11c8f9b760fa48f23d316508ef8100544d65b6554c22d7fa42ed42",
               "slideNumber": 1,
               "warningCount": 2
             },
             {
-              "byteLength": 115229,
-              "sha256": "40dd88e54bc3aa28d750e1dd6e6a64834c35cf1fd50b40cb3d4042bbe0ed38a5",
+              "byteLength": 245639,
+              "sha256": "432c113aa08299dd5539fa9bdf4498c946ab4d7bbd82b682153ba7dd67133532",
               "slideNumber": 8,
               "warningCount": 3
             },
             {
-              "byteLength": 78405,
-              "sha256": "9ddcd9126a43f143c3676cc4a8618c27530d9cbf11d35d6d1deb874f167a987b",
+              "byteLength": 91101,
+              "sha256": "3238dd99acaff32e2de058c82404c87b3e8f78f70e1ed6219b68394af11d241c",
               "slideNumber": 16,
-              "warningCount": 7
+              "warningCount": 2
             }
           ],
           "svg": {
-            "byteLength": 8703800,
-            "sha256": "6cf5d71e60986e91419c10cb89d8f5d898799b12e686102767e63c1f766e46c4"
+            "byteLength": 8714077,
+            "sha256": "3e7c0417fbb103dd5b613c9ff30272b2537f906a619c457b179720789f4558e6"
           },
           "warnings": {
-            "font-substitution": 49,
-            "approximate-media": 61
+            "font-substitution": 49
           }
         }
       },
       "slideCount": 16,
       "source": {
         "pptx": {
-          "byteLength": 3439882,
-          "sha256": "81c39743892e10c8486d2b679acb3cda61f55acce1a7954a70f6df6fd5d14ee5"
+          "byteLength": 3439878,
+          "sha256": "ac154220c2bf20e3d13ac8d06833b8c1e93fe9f942bccb8fc587d4c08445fa72"
         },
         "render": {
           "representativePngs": [
             {
-              "byteLength": 102933,
-              "sha256": "b90cafbbaf63584f7ee7df358ec08b0ccb69cbcd79a3ca9563b3c3b87a8897b1",
+              "byteLength": 224293,
+              "sha256": "12efe60f102548cc0309fba99449f5151945201925acfc91231cd53bff9ccfed",
               "slideNumber": 1,
               "warningCount": 2
             },
             {
-              "byteLength": 115237,
-              "sha256": "9d7bbd161cab0c62d1cc7d9c51b3dde09fc9159a30d5ef4458200fc836a3171d",
+              "byteLength": 245644,
+              "sha256": "cfe44709c1248a9d4125bf3664a56655e50fc860f2f238f436974b4d65574eee",
               "slideNumber": 8,
               "warningCount": 3
             },
             {
-              "byteLength": 77817,
-              "sha256": "31272dcb143028f570be82d01038b7c2be028ce722614d88f492e6ba2a61c10f",
+              "byteLength": 90572,
+              "sha256": "46a2ae7e3810fc6f4d511afcee851bf3623c9b4d217a063cfc09d5c9000218c7",
               "slideNumber": 16,
-              "warningCount": 3
+              "warningCount": 2
             }
           ],
           "svg": {
-            "byteLength": 8704416,
-            "sha256": "32a6c6c15af99f6e34faad8de7c655610ef48cd8ae801edc8a9770e9b4405285"
+            "byteLength": 8714436,
+            "sha256": "be44bc7c3966cf7caca66c5f25d70ee916ef0b375ac82b827df641f443793261"
           },
           "warnings": {
-            "font-substitution": 49,
-            "approximate-media": 57
+            "font-substitution": 49
           }
         }
       },
@@ -1873,78 +1765,74 @@
       "index": 22,
       "output": {
         "pptx": {
-          "byteLength": 2130261,
-          "sha256": "9fc51bce924fe56aff61e249541c15d424dccf4d2e24845015fa2b30d0f8be09"
+          "byteLength": 2128114,
+          "sha256": "037211ad0eba4c12c90cd81a9b4ab4b392014a58d44e772acbb4c43fce29d2d0"
         },
         "render": {
           "representativePngs": [
             {
-              "byteLength": 41661,
-              "sha256": "d93302476665ef0f0fac6b8e8d810d354b167118f34a4ea1c401459e4a103704",
+              "byteLength": 41127,
+              "sha256": "7f08e2d44cc714cc0d0e50171d8a11bc37e385b45789506be79dc1fd535869d2",
               "slideNumber": 1,
               "warningCount": 10
             },
             {
-              "byteLength": 35535,
-              "sha256": "a7ca4ab3217df2f87a5776b9b890d8b3aadcb059304759c54d0308cd3092e51a",
+              "byteLength": 35031,
+              "sha256": "f2708dc4d38715454c1f3dfd31088bb9270bc817b0d178e72da46cfae076b0ce",
               "slideNumber": 12,
               "warningCount": 10
             },
             {
-              "byteLength": 25480,
-              "sha256": "8aa5b9f8e10edee3310cee3c82b7c70143740d1b3930cd731ab14ee8ccecae15",
+              "byteLength": 26492,
+              "sha256": "fdff7335a9f094915e8a60dadd631078f4d62e60c61e9dca3e4f773f99d3c85f",
               "slideNumber": 24,
-              "warningCount": 14
+              "warningCount": 9
             }
           ],
           "svg": {
-            "byteLength": 2274651,
-            "sha256": "afed39501b036aee4e8517ca7644506904430d3e53ebe38e726f2b6bbca4bfba"
+            "byteLength": 2391215,
+            "sha256": "53593f36d4468168576c78ca5c92d1b02637279f736cd7b9b2dd5f95cca56a59"
           },
           "warnings": {
             "font-substitution": 278,
-            "approximate-table": 25,
-            "approximate-media": 9,
-            "approximate-shape": 12
+            "approximate-table": 25
           }
         }
       },
       "slideCount": 24,
       "source": {
         "pptx": {
-          "byteLength": 899113,
-          "sha256": "809fd61e1a63e4465597192b2aaadaf5a1264874651566337d936547dafb6541"
+          "byteLength": 899118,
+          "sha256": "dc3889144fcd9295583fbb6b4921b0bb2d130338a90e54ba157bbcec6f8a6fcb"
         },
         "render": {
           "representativePngs": [
             {
-              "byteLength": 41661,
-              "sha256": "d93302476665ef0f0fac6b8e8d810d354b167118f34a4ea1c401459e4a103704",
+              "byteLength": 41127,
+              "sha256": "7f08e2d44cc714cc0d0e50171d8a11bc37e385b45789506be79dc1fd535869d2",
               "slideNumber": 1,
               "warningCount": 10
             },
             {
-              "byteLength": 35535,
-              "sha256": "a7ca4ab3217df2f87a5776b9b890d8b3aadcb059304759c54d0308cd3092e51a",
+              "byteLength": 35031,
+              "sha256": "f2708dc4d38715454c1f3dfd31088bb9270bc817b0d178e72da46cfae076b0ce",
               "slideNumber": 12,
               "warningCount": 10
             },
             {
-              "byteLength": 25480,
-              "sha256": "8aa5b9f8e10edee3310cee3c82b7c70143740d1b3930cd731ab14ee8ccecae15",
+              "byteLength": 26506,
+              "sha256": "9dbfb6dfb822f58bd2ca9ff8d1c09befb27048f40a07f32caea18e6fe4d5487c",
               "slideNumber": 24,
-              "warningCount": 10
+              "warningCount": 9
             }
           ],
           "svg": {
-            "byteLength": 2274651,
-            "sha256": "a7078b9b16529cee3a38d0e0cd68630f3ede7a7aa1561c224e2d310b2557cb91"
+            "byteLength": 2390898,
+            "sha256": "209130d839e369cef7b84137109d93085a32ea6cebde3d421a70ed7b7cf04061"
           },
           "warnings": {
             "font-substitution": 278,
-            "approximate-table": 25,
-            "approximate-media": 4,
-            "approximate-shape": 12
+            "approximate-table": 25
           }
         }
       },
@@ -1962,39 +1850,37 @@
       "index": 23,
       "output": {
         "pptx": {
-          "byteLength": 5935487,
-          "sha256": "e187b935fc2e54dc9f1c5b62d58ff826aefb6892a0eec1fbb7b3d1c744ab2469"
+          "byteLength": 5935825,
+          "sha256": "08f18f22b772a955aa6f4be5a27682d085b84507972a652a16086fd855ffe73e"
         },
         "render": {
           "representativePngs": [
             {
-              "byteLength": 480827,
-              "sha256": "828589674409ade678bf77e862213efc25d1a3975e0b3121867113985ea5c77d",
+              "byteLength": 520597,
+              "sha256": "841433068218b82a43826428960cad34d13bebe6b1dd78104eb5a9730fb2ef3c",
               "slideNumber": 1,
-              "warningCount": 10
+              "warningCount": 9
             },
             {
-              "byteLength": 445245,
-              "sha256": "985ec557b8675d7dee972e5b42155a1380997f8748ad7e8afc37c5793443363f",
+              "byteLength": 487163,
+              "sha256": "35e0317678c6b2b3834250dcd6b5c42aef18e422f22d1b2c96f791ab53f54a9e",
               "slideNumber": 10,
-              "warningCount": 14
+              "warningCount": 13
             },
             {
-              "byteLength": 476341,
-              "sha256": "d2405529ff6bfc4c9eca245c90ea52eb102b1c6f12d8fec0f5b108b7e95b2093",
+              "byteLength": 517334,
+              "sha256": "43a82a6e42fe68e9f3c41b2d8142aca73d917aaf406fed6ba94c6c45889a70ae",
               "slideNumber": 19,
-              "warningCount": 14
+              "warningCount": 8
             }
           ],
           "svg": {
-            "byteLength": 36079003,
-            "sha256": "b96e00620ab559e0f16ea1534dc2d0d2f0a8472a64c99a492e753d1f2100b9cd"
+            "byteLength": 36104833,
+            "sha256": "56709e4522af4c9d8f74a7975f007066cb4e7c3e8be55ceac86798226056b85a"
           },
           "warnings": {
-            "approximate-media": 27,
             "font-substitution": 220,
-            "approximate-table": 2,
-            "approximate-shape": 1
+            "approximate-table": 2
           }
         }
       },
@@ -2019,21 +1905,19 @@
               "warningCount": 13
             },
             {
-              "byteLength": 476341,
-              "sha256": "d2405529ff6bfc4c9eca245c90ea52eb102b1c6f12d8fec0f5b108b7e95b2093",
+              "byteLength": 476995,
+              "sha256": "339e4e57d23a4518331257a0ab957f1b0a4ef336634b1cf4036ee469aad2128e",
               "slideNumber": 19,
-              "warningCount": 9
+              "warningCount": 8
             }
           ],
           "svg": {
-            "byteLength": 36078014,
-            "sha256": "c7edf260c6e374692198bad3940ee083c681c0a2ef00aa0d4abde00c312e411b"
+            "byteLength": 36102321,
+            "sha256": "0469c2d4cab045b996c5e2ec2360fb9d0d95af0bb58942d6e2543e3ec80dd76d"
           },
           "warnings": {
             "font-substitution": 220,
-            "approximate-media": 4,
-            "approximate-table": 2,
-            "approximate-shape": 1
+            "approximate-table": 2
           }
         }
       },
@@ -2051,74 +1935,72 @@
       "index": 24,
       "output": {
         "pptx": {
-          "byteLength": 5903862,
-          "sha256": "09c7455c9c55e5d32fc621a72e32feca5d561444d5ca4cd2bcf2abca26f06ea5"
+          "byteLength": 5902647,
+          "sha256": "f08341df4cc99bb2fbf61c329f610eae20ee0b9b6a9dd8d0c5a213b6d3c2c9eb"
         },
         "render": {
           "representativePngs": [
             {
-              "byteLength": 210655,
-              "sha256": "e6b82498f48956b56e9cbfa19a6a9d5a6d57952fe818c7eaf904cb8663ecad62",
+              "byteLength": 229906,
+              "sha256": "efcc770b3d9ca13d434916842257077b9d0f753e384d538c9f37189e6516735c",
               "slideNumber": 1,
-              "warningCount": 14
+              "warningCount": 10
             },
             {
-              "byteLength": 154146,
-              "sha256": "de2490921dd0a7166bf42edf8c437d83da3d7551c568475d956d9aa63569bb03",
+              "byteLength": 163789,
+              "sha256": "9a371e89229cfbe0c054fdf1a58e3b84f24d73c733bdf4a7b772e6622bc40820",
               "slideNumber": 9,
-              "warningCount": 6
+              "warningCount": 4
             },
             {
-              "byteLength": 49997,
-              "sha256": "994f97e98b74373d16ae5e21d5d6b9b6209bcb1ce50f27bbfb55c018b96df1fd",
+              "byteLength": 61216,
+              "sha256": "c9c36499690960d866bef3811b08a6868a49d80cad6d9b8fdeb078bc633207ef",
               "slideNumber": 17,
-              "warningCount": 8
+              "warningCount": 3
             }
           ],
           "svg": {
-            "byteLength": 17209172,
-            "sha256": "48faa5be5fae26049600e7418617abda3f303134389a7e6316cd23b851d8578d"
+            "byteLength": 17216011,
+            "sha256": "cb90cc0991409e8ede2f55088e5da9ebdcb7b0e058d2a5242bfa407d80ff3364"
           },
           "warnings": {
-            "font-substitution": 103,
-            "approximate-media": 47
+            "font-substitution": 103
           }
         }
       },
       "slideCount": 17,
       "source": {
         "pptx": {
-          "byteLength": 4998043,
-          "sha256": "17b8b2e999aa763cb41207d75c2042518cdab16510be9f237ba9ebbc1724c02f"
+          "byteLength": 4998045,
+          "sha256": "00a5b4d2ddd9a442b6b421a1f2dfbd067b1f03bc287fff1a1674b9ef2b6f84c5"
         },
         "render": {
           "representativePngs": [
             {
-              "byteLength": 210655,
-              "sha256": "e6b82498f48956b56e9cbfa19a6a9d5a6d57952fe818c7eaf904cb8663ecad62",
+              "byteLength": 229906,
+              "sha256": "efcc770b3d9ca13d434916842257077b9d0f753e384d538c9f37189e6516735c",
               "slideNumber": 1,
-              "warningCount": 14
+              "warningCount": 10
             },
             {
-              "byteLength": 154146,
-              "sha256": "de2490921dd0a7166bf42edf8c437d83da3d7551c568475d956d9aa63569bb03",
+              "byteLength": 163789,
+              "sha256": "9a371e89229cfbe0c054fdf1a58e3b84f24d73c733bdf4a7b772e6622bc40820",
               "slideNumber": 9,
-              "warningCount": 6
+              "warningCount": 4
             },
             {
-              "byteLength": 49609,
-              "sha256": "cd984dfe72b99191b8a49707281c1a5b2bb4035da7b759216ea9b98f86f9eba0",
+              "byteLength": 60893,
+              "sha256": "96f4017e4f57397f9346e354499d6392ab7dde7f08add5eafc2034c3cc4954c2",
               "slideNumber": 17,
-              "warningCount": 4
+              "warningCount": 3
             }
           ],
           "svg": {
-            "byteLength": 17209164,
-            "sha256": "6f865e2aa51b9d8769e72a969be4b13ccff3f1cee95bb83821a7dfce8fe610d2"
+            "byteLength": 17215561,
+            "sha256": "43296f6df7e0fa512c1c152e7c14bc98cecf07c76fc0b3964df25a46dc7a8095"
           },
           "warnings": {
-            "font-substitution": 103,
-            "approximate-media": 42
+            "font-substitution": 103
           }
         }
       },
@@ -2136,36 +2018,35 @@
       "index": 25,
       "output": {
         "pptx": {
-          "byteLength": 857366,
-          "sha256": "68e53642845dd923888929d6ebda06fb66abd788e3d0e48ae18fd5806a6632b5"
+          "byteLength": 853299,
+          "sha256": "8e01269d551ee9739dee00287c2c11d8423efddf794848e7ceefdf009207f2db"
         },
         "render": {
           "representativePngs": [
             {
-              "byteLength": 198933,
-              "sha256": "533f1f7e28add945dab00357e3861d574aa2d73ad651463bb5dc8bfc5c2a80fa",
+              "byteLength": 198945,
+              "sha256": "1ac175371110ee7da67de4a688b6dfe4c774b160ca23a3038a83787714696ad9",
               "slideNumber": 1,
-              "warningCount": 5
+              "warningCount": 4
             },
             {
-              "byteLength": 133036,
-              "sha256": "9bb6f8f8df5129bedfa67796edf338299a7df1262a5b52352a44e25f118c601e",
+              "byteLength": 133061,
+              "sha256": "19881b4b7bb9006e8628cbeb6ebcf5e219dc779b8c3d279c3ee0fca6ab051418",
               "slideNumber": 8,
-              "warningCount": 5
+              "warningCount": 4
             },
             {
-              "byteLength": 44612,
-              "sha256": "ca3587eaf8bbbc5817fd324498c2affaad87ccfc633672b4ddc07f40f740092b",
+              "byteLength": 55693,
+              "sha256": "b20438d808df20ff292a1d90e188da6f9e05ec4625ad29b9da85afb5f354ca16",
               "slideNumber": 15,
-              "warningCount": 8
+              "warningCount": 3
             }
           ],
           "svg": {
-            "byteLength": 5514917,
-            "sha256": "c65a09ba529516c17d1f781f43cc3cf233fe6da43b0f43dd4224a74cf28fdca0"
+            "byteLength": 5518432,
+            "sha256": "58f503728a7b8fb5b89fefb551968d2238bf468e7394100285aeb45abee91cea"
           },
           "warnings": {
-            "approximate-media": 19,
             "font-substitution": 68
           }
         }
@@ -2174,7 +2055,7 @@
       "source": {
         "pptx": {
           "byteLength": 417442,
-          "sha256": "0fd2e2aa3bc2b046bcef4872b1e269ddd0e67e55d85df022751deb5b0bc5c6cb"
+          "sha256": "c6cc75aeca270d8c44a9667910ee3d51c8f5611a5e9e2edefb5dcb90ba1e9ca2"
         },
         "render": {
           "representativePngs": [
@@ -2191,19 +2072,18 @@
               "warningCount": 4
             },
             {
-              "byteLength": 44336,
-              "sha256": "b28695e8922bd1e8f3502b1937e8a75abaf5920146f8de12bc6709f6b6ac6837",
+              "byteLength": 55427,
+              "sha256": "d0475effbc8febcc825ba1664c0760c4e5e82e8926b58ed602d52f3969f5b3d7",
               "slideNumber": 15,
-              "warningCount": 8
+              "warningCount": 3
             }
           ],
           "svg": {
-            "byteLength": 5514917,
-            "sha256": "4c4946599c6c40a4849538f4fdb41b1500b8ef82612afb0d8501b9d3b223ecc5"
+            "byteLength": 5517564,
+            "sha256": "016747cfdc53ecc1c45d5e089af55a8bbecdc94966fb539abd83315b3a5baa14"
           },
           "warnings": {
-            "font-substitution": 68,
-            "approximate-media": 5
+            "font-substitution": 68
           }
         }
       },
@@ -2222,77 +2102,71 @@
       "output": {
         "pptx": {
           "byteLength": 5962034,
-          "sha256": "4ec3fc887319c6ba6193fbc5443d509b599564511d0a63a2de48bbe0be0c3e8e"
+          "sha256": "6c3e66636f08846a43aa3f306855f1fde27e1624d85e24ee0838821c4b9ea253"
         },
         "render": {
           "representativePngs": [
             {
-              "byteLength": 26169,
-              "sha256": "7666bc4f24cc99c6254d62be19a71fb1db7a27fc650fbcd672d35909c114fb7d",
+              "byteLength": 28626,
+              "sha256": "140a41239fed54ad7f962b81919e18e7749b31e2a56d6f886e252ebb30eb0570",
               "slideNumber": 1,
-              "warningCount": 10
+              "warningCount": 4
             },
             {
-              "byteLength": 24893,
-              "sha256": "5a94199b7c3172dd6958c3f9100e283d74c168dcb8edee6e129b93c09d0f74f9",
+              "byteLength": 27621,
+              "sha256": "3f4a386664361521e6c39cb2cb049a5689e1b07952d485bac19d8bcd5b0a4687",
               "slideNumber": 13,
-              "warningCount": 26
+              "warningCount": 18
             },
             {
-              "byteLength": 50162,
-              "sha256": "aeb32505cebc1a1efd09ea60ff3b9a32097864da00596ac90fd76e9eb8205c96",
+              "byteLength": 61346,
+              "sha256": "aa642beabe57d0324a41bebc5182b8e09f00e90157f66890ed6f6f202862de56",
               "slideNumber": 25,
-              "warningCount": 8
+              "warningCount": 3
             }
           ],
           "svg": {
-            "byteLength": 8945015,
-            "sha256": "cf1b85d9386afa20e1ab569cf542bd51cb91675c4694b12e7135d2ffa0e3edfd"
+            "byteLength": 8966585,
+            "sha256": "e12e295f597dfa460553cfbd7482e3e8598852a4b102004a05693871ebf8d6de"
           },
           "warnings": {
-            "approximate-shape": 93,
-            "font-substitution": 144,
-            "approximate-media": 13,
-            "approximate-fill": 4
+            "font-substitution": 144
           }
         }
       },
       "slideCount": 25,
       "source": {
         "pptx": {
-          "byteLength": 5608741,
-          "sha256": "6616b4b7f398d59e35135d5563852f557b4f0443533649bc90864f27e2f5e8d3"
+          "byteLength": 5608739,
+          "sha256": "29005ebbf49cade7b6cadca60e54c62f670b9156f081481954ccbacefe9eccd3"
         },
         "render": {
           "representativePngs": [
             {
-              "byteLength": 26169,
-              "sha256": "7666bc4f24cc99c6254d62be19a71fb1db7a27fc650fbcd672d35909c114fb7d",
+              "byteLength": 28626,
+              "sha256": "140a41239fed54ad7f962b81919e18e7749b31e2a56d6f886e252ebb30eb0570",
               "slideNumber": 1,
-              "warningCount": 10
-            },
-            {
-              "byteLength": 24893,
-              "sha256": "5a94199b7c3172dd6958c3f9100e283d74c168dcb8edee6e129b93c09d0f74f9",
-              "slideNumber": 13,
-              "warningCount": 26
-            },
-            {
-              "byteLength": 49904,
-              "sha256": "b2b450443db3e4eb3740167c5934807a3ca4bbd220c5a0aa8c4e009658693caa",
-              "slideNumber": 25,
               "warningCount": 4
+            },
+            {
+              "byteLength": 27621,
+              "sha256": "3f4a386664361521e6c39cb2cb049a5689e1b07952d485bac19d8bcd5b0a4687",
+              "slideNumber": 13,
+              "warningCount": 18
+            },
+            {
+              "byteLength": 61186,
+              "sha256": "ba55908137eef08b95cb603c101734de11feaf862957ed1eb4101df3f2abb28f",
+              "slideNumber": 25,
+              "warningCount": 3
             }
           ],
           "svg": {
-            "byteLength": 8945013,
-            "sha256": "91451678bd008e926983988828e58151e0cbf0b1d0bcae668a59e2cda80acc3e"
+            "byteLength": 8966262,
+            "sha256": "f15900ec510a390613b881879e87930106e3cf88718924c76fcbe1585494dd3c"
           },
           "warnings": {
-            "approximate-shape": 93,
-            "font-substitution": 144,
-            "approximate-media": 8,
-            "approximate-fill": 4
+            "font-substitution": 144
           }
         }
       },
@@ -2310,78 +2184,72 @@
       "index": 27,
       "output": {
         "pptx": {
-          "byteLength": 4034253,
-          "sha256": "45593a58eb059fe08b35db8dad2603ae00d21bac36a8b8a1c2913deef98b8650"
+          "byteLength": 4033867,
+          "sha256": "7da73a0f9406fa7654eabc349b0faf0923c640d6d48fc36fd59526d6a819f610"
         },
         "render": {
           "representativePngs": [
             {
-              "byteLength": 255505,
-              "sha256": "741671486a455ba91d5fca6a9f4cd28fd89989ac98e42efe6fdc3cca6c2f09ed",
+              "byteLength": 261799,
+              "sha256": "7fba9a0afdfb822f3df544f1e7c6fa3ed8d800bb1b91fc16886c2a4cd553975c",
               "slideNumber": 1,
-              "warningCount": 5
+              "warningCount": 2
             },
             {
-              "byteLength": 56774,
-              "sha256": "9cfc9bfc39870c9075648221a472f2f2095a1fcfd5c667a5febfd963e840592f",
+              "byteLength": 56997,
+              "sha256": "5c8caf9bd7a6811badda0112ff6d567a79612e65928004c2cc130b32d642d07f",
               "slideNumber": 11,
-              "warningCount": 20
+              "warningCount": 17
             },
             {
-              "byteLength": 49894,
-              "sha256": "d8ef62e29d57ef6665e4da503bf65ce69661897dca4080e8f39fdd8840642136",
+              "byteLength": 61083,
+              "sha256": "989a2da7c522888204790c1102eb1b5cf7626460fdc1bda3c8becc29efa70337",
               "slideNumber": 22,
-              "warningCount": 7
+              "warningCount": 2
             }
           ],
           "svg": {
-            "byteLength": 8201217,
-            "sha256": "12a8d3400489716736d76315fdd13ae30198d780558e81f1757501f15f8a2b88"
+            "byteLength": 8218814,
+            "sha256": "834240444af3c05b6f3efb586940d0ce5a852d2de0f6bf4b24b2f67c9fe1da27"
           },
           "warnings": {
-            "approximate-shape": 72,
-            "font-substitution": 99,
-            "approximate-media": 20,
-            "approximate-fill": 4
+            "font-substitution": 99
           }
         }
       },
       "slideCount": 22,
       "source": {
         "pptx": {
-          "byteLength": 2831722,
-          "sha256": "3a46ab7b2fbd9e27ac77f015e8ab72df048a72fc008d0a24f9502a8cb396b8cd"
+          "byteLength": 2831723,
+          "sha256": "aef352d440fd6cc0f966a6529468c1f108651682bf8aa0604b8561f7a2ee8cda"
         },
         "render": {
           "representativePngs": [
             {
-              "byteLength": 255505,
-              "sha256": "741671486a455ba91d5fca6a9f4cd28fd89989ac98e42efe6fdc3cca6c2f09ed",
+              "byteLength": 261799,
+              "sha256": "7fba9a0afdfb822f3df544f1e7c6fa3ed8d800bb1b91fc16886c2a4cd553975c",
               "slideNumber": 1,
-              "warningCount": 5
+              "warningCount": 2
             },
             {
-              "byteLength": 56774,
-              "sha256": "9cfc9bfc39870c9075648221a472f2f2095a1fcfd5c667a5febfd963e840592f",
+              "byteLength": 56997,
+              "sha256": "5c8caf9bd7a6811badda0112ff6d567a79612e65928004c2cc130b32d642d07f",
               "slideNumber": 11,
-              "warningCount": 20
+              "warningCount": 17
             },
             {
-              "byteLength": 49538,
-              "sha256": "894c7cacabf8bb63b1da5e01e6253dbcc15a944bc84953a5846e85860056976b",
+              "byteLength": 60822,
+              "sha256": "80147ffcb49be592d5c3e726eb2d7a7937b8c0f75c29e0becea9a93a7f30f490",
               "slideNumber": 22,
-              "warningCount": 3
+              "warningCount": 2
             }
           ],
           "svg": {
-            "byteLength": 8201127,
-            "sha256": "80e257071aba9c327fac7ac40ef46b35643e173ab8c163f31bfc53057f65720a"
+            "byteLength": 8218474,
+            "sha256": "99f7e0af91f7e5cf502699e0fbf82e4a715d2a00b9f4debf3814d0db4a1856d0"
           },
           "warnings": {
-            "approximate-shape": 72,
-            "font-substitution": 99,
-            "approximate-media": 16,
-            "approximate-fill": 4
+            "font-substitution": 99
           }
         }
       },
@@ -2399,8 +2267,8 @@
       "index": 28,
       "output": {
         "pptx": {
-          "byteLength": 7140991,
-          "sha256": "7a0ee13c7dc1bc1550df9f085a23778e2d0eaf8c6d3d77ac9d92aeba56d9451d"
+          "byteLength": 7136942,
+          "sha256": "fad86a6599008efe761db810eeb5f37122cdef9d389a1feb5cf434b42da1c271"
         },
         "render": {
           "representativePngs": [
@@ -2411,27 +2279,24 @@
               "warningCount": 3
             },
             {
-              "byteLength": 76596,
-              "sha256": "dc294e84d75f26cd38d9b7b8c2b8d1faf01cdcf7aeef2c3fa11a90433781e270",
+              "byteLength": 77555,
+              "sha256": "55068902ba89d77f1fca066a01be446a2483ab55d1d9ca914160be1fa0d89329",
               "slideNumber": 13,
-              "warningCount": 24
+              "warningCount": 18
             },
             {
-              "byteLength": 50844,
-              "sha256": "351db05593fa0f4dd8fdaf2ea515b66366dd2ffbc7128f33ead95782f2abd386",
+              "byteLength": 62024,
+              "sha256": "0ed6c0a0146131096569ddc2f98c40c543a4a39355d9d4a3982b1b6a843effc3",
               "slideNumber": 25,
-              "warningCount": 8
+              "warningCount": 3
             }
           ],
           "svg": {
-            "byteLength": 11027464,
-            "sha256": "cd369a3ae99ca110b27fba80ec30b56a6b68c6b1c538b7dec95d0d6554511cc6"
+            "byteLength": 11036953,
+            "sha256": "4dd47833ca7248ef7728a73cc07977fa075db3cd1182b065456c8af3f4c6cdc0"
           },
           "warnings": {
-            "font-substitution": 145,
-            "approximate-media": 13,
-            "approximate-shape": 15,
-            "approximate-fill": 4
+            "font-substitution": 145
           }
         }
       },
@@ -2439,7 +2304,7 @@
       "source": {
         "pptx": {
           "byteLength": 5867209,
-          "sha256": "2e90d99d43c623dcb455e3fb2d1432b3e0945ca3ae6c3e398b93cd72e3f06d7e"
+          "sha256": "1e2bd02e3b7e7a28565c72a1a865048d4359ea7d1d254ee35298cc48ea9cef62"
         },
         "render": {
           "representativePngs": [
@@ -2450,27 +2315,24 @@
               "warningCount": 3
             },
             {
-              "byteLength": 76596,
-              "sha256": "dc294e84d75f26cd38d9b7b8c2b8d1faf01cdcf7aeef2c3fa11a90433781e270",
+              "byteLength": 77555,
+              "sha256": "55068902ba89d77f1fca066a01be446a2483ab55d1d9ca914160be1fa0d89329",
               "slideNumber": 13,
-              "warningCount": 24
+              "warningCount": 18
             },
             {
-              "byteLength": 50455,
-              "sha256": "0e4087c363ac20e8deae5ea266212e2b549af63b3d75e17cb2431bf56dda0bf1",
+              "byteLength": 61755,
+              "sha256": "6cd2db65ceebaa708be486c05d86a5add6a17242403280b3213d8c511127f7e9",
               "slideNumber": 25,
-              "warningCount": 4
+              "warningCount": 3
             }
           ],
           "svg": {
-            "byteLength": 11027462,
-            "sha256": "16f6c2440b981ebad5f7458188ccb32b153293fe0cf223acb6d8978b66e2aae1"
+            "byteLength": 11036428,
+            "sha256": "43f319f095b61af7cf2ca69c37152a0ca4772640fb4333071854102aaa142665"
           },
           "warnings": {
-            "font-substitution": 145,
-            "approximate-media": 8,
-            "approximate-shape": 15,
-            "approximate-fill": 4
+            "font-substitution": 145
           }
         }
       },
@@ -2488,8 +2350,8 @@
       "index": 29,
       "output": {
         "pptx": {
-          "byteLength": 6910227,
-          "sha256": "9dc0b61d6a3e41f255a43f46d347903f12e65c47447c3ec4ce80eb9f88da2cb1"
+          "byteLength": 6906570,
+          "sha256": "9e30338f1b854cc653ad97f499c4c27e070a3dec483ca944beaa94c06758c0b3"
         },
         "render": {
           "representativePngs": [
@@ -2500,27 +2362,24 @@
               "warningCount": 2
             },
             {
-              "byteLength": 98975,
-              "sha256": "c8d33d8b5562269e5052ae0725780d959f8e2173dd6614e921a06593efddcfa8",
+              "byteLength": 99907,
+              "sha256": "e3ec04e8460dcc4742ab61eb56e8a36c928fa36720e25a2a5987d9da477534e8",
               "slideNumber": 13,
-              "warningCount": 23
+              "warningCount": 17
             },
             {
-              "byteLength": 50104,
-              "sha256": "7a9596d24be6b2fa2995863b1dfc5ebc2cdd43535d6c7c52a73ab1de0499e5b6",
+              "byteLength": 61418,
+              "sha256": "32c62d2a97527535c67eb76397f13e5b0f3cd48ffe2bfb538fd5f1e71fe6f05a",
               "slideNumber": 25,
-              "warningCount": 7
+              "warningCount": 2
             }
           ],
           "svg": {
-            "byteLength": 11320709,
-            "sha256": "17bc5dbbe9a7f4339970873dac76e0f74d62f4f3d2f3765f09e36b873076a22b"
+            "byteLength": 11328127,
+            "sha256": "c27ce59c14b3dbd3116091b16e1a0a2a07c71857c2f8604fe277297692c79356"
           },
           "warnings": {
-            "font-substitution": 117,
-            "approximate-media": 12,
-            "approximate-shape": 12,
-            "approximate-fill": 4
+            "font-substitution": 117
           }
         }
       },
@@ -2528,7 +2387,7 @@
       "source": {
         "pptx": {
           "byteLength": 6261209,
-          "sha256": "dba2bee5e4ad05e37cb0bf630baa1af082a64fd35dc949d4cd434b3306af9f24"
+          "sha256": "b96b9f70f7808abf8ab61f1d8ef5ff52a4c31922552502108c0778d06e5cac37"
         },
         "render": {
           "representativePngs": [
@@ -2539,27 +2398,24 @@
               "warningCount": 2
             },
             {
-              "byteLength": 98975,
-              "sha256": "c8d33d8b5562269e5052ae0725780d959f8e2173dd6614e921a06593efddcfa8",
+              "byteLength": 99907,
+              "sha256": "e3ec04e8460dcc4742ab61eb56e8a36c928fa36720e25a2a5987d9da477534e8",
               "slideNumber": 13,
-              "warningCount": 23
+              "warningCount": 17
             },
             {
-              "byteLength": 49884,
-              "sha256": "d55580a09f31c1c81a93ebc88cd887d1f99a6c1aaa89244adb0e9cad440c72c2",
+              "byteLength": 61252,
+              "sha256": "9412b1c039ede295eb70c1a5c5740ecf271c42859a1d2e20bf2d62f8c1fa2a27",
               "slideNumber": 25,
-              "warningCount": 3
+              "warningCount": 2
             }
           ],
           "svg": {
-            "byteLength": 11320704,
-            "sha256": "a582b444b0fcac9859bf68c0bbf93acc9755529393dc2a625e8ecb7186b0e842"
+            "byteLength": 11327863,
+            "sha256": "6bf2a2f06ddbd0c62d0191c9f95ce075c7bf675ae317b304e3941ecf6326b3ac"
           },
           "warnings": {
-            "font-substitution": 117,
-            "approximate-media": 8,
-            "approximate-shape": 12,
-            "approximate-fill": 4
+            "font-substitution": 117
           }
         }
       },
@@ -2577,39 +2433,36 @@
       "index": 30,
       "output": {
         "pptx": {
-          "byteLength": 5936175,
-          "sha256": "5ee726a001869df29c626a38a0e0b7b03dce598736d69490b2cd66efe630c8f0"
+          "byteLength": 5935465,
+          "sha256": "11ac49b40af50aebb8acd5fbb93716be1f9d09aeb80858df00ee0c7f163974e0"
         },
         "render": {
           "representativePngs": [
             {
-              "byteLength": 52145,
-              "sha256": "b63eb28ce77c6b934624e71b5fd82b0ab47016caabb3f50bc502e4690bf7cb6b",
+              "byteLength": 57967,
+              "sha256": "a5d933b700e668a180adf47e11d3eb86008e1ea49b983309c87754666ed50b99",
               "slideNumber": 1,
-              "warningCount": 42
+              "warningCount": 2
             },
             {
-              "byteLength": 41600,
-              "sha256": "89e2f7bd13359f838dfe8fba1694c3b82a1f1fb54b2a30ecd99d3632f9cfc81c",
+              "byteLength": 44527,
+              "sha256": "7fd15ba1ddeeb0c17f76f6aa73a56617d74b05fcc188d5d7f34b79ae17874c09",
               "slideNumber": 12,
-              "warningCount": 22
+              "warningCount": 2
             },
             {
-              "byteLength": 50011,
-              "sha256": "8dc3b075c4dd4c7bc56c0fde593d2c6eb348a59b3d56da06a92be023a172d39b",
+              "byteLength": 61291,
+              "sha256": "bb786e1df6712b808e6e544be2ca8df80b01c15789af4bd9c2434aad87dc4103",
               "slideNumber": 23,
-              "warningCount": 7
+              "warningCount": 2
             }
           ],
           "svg": {
-            "byteLength": 8599888,
-            "sha256": "19d7301f80213af8698a4ac4b7608979134163d46dc479644168e7687ba4e86d"
+            "byteLength": 8711580,
+            "sha256": "d66f5096d39060a1550e589b93a11935bc1be4f57710fd02d4ba674f4ea1e112"
           },
           "warnings": {
-            "approximate-shape": 632,
-            "font-substitution": 99,
-            "approximate-media": 12,
-            "approximate-fill": 4
+            "font-substitution": 99
           }
         }
       },
@@ -2617,38 +2470,35 @@
       "source": {
         "pptx": {
           "byteLength": 5483876,
-          "sha256": "c23500858fadcc40ba4dcb961fce7c2d94c5fac0f115e78d5cbb83ac22c77521"
+          "sha256": "8141d64e923a441908ebcce26591d3fe842649264b3ea1325ef463353fefbf60"
         },
         "render": {
           "representativePngs": [
             {
-              "byteLength": 52145,
-              "sha256": "b63eb28ce77c6b934624e71b5fd82b0ab47016caabb3f50bc502e4690bf7cb6b",
+              "byteLength": 57967,
+              "sha256": "a5d933b700e668a180adf47e11d3eb86008e1ea49b983309c87754666ed50b99",
               "slideNumber": 1,
-              "warningCount": 42
+              "warningCount": 2
             },
             {
-              "byteLength": 41600,
-              "sha256": "89e2f7bd13359f838dfe8fba1694c3b82a1f1fb54b2a30ecd99d3632f9cfc81c",
+              "byteLength": 44527,
+              "sha256": "7fd15ba1ddeeb0c17f76f6aa73a56617d74b05fcc188d5d7f34b79ae17874c09",
               "slideNumber": 12,
-              "warningCount": 22
+              "warningCount": 2
             },
             {
-              "byteLength": 49655,
-              "sha256": "051a18f360ceae07339ba63e08af46dfb202540e3a2188e8d20dbf912b4b3dfb",
+              "byteLength": 60990,
+              "sha256": "d73dc8bc45da5a12f76be11abd33cfe711188b5fe49e1f29ee4cc5a35d0588f3",
               "slideNumber": 23,
-              "warningCount": 3
+              "warningCount": 2
             }
           ],
           "svg": {
-            "byteLength": 8599625,
-            "sha256": "3c17a300a2e67f87e702eee199afdb602f0d60fb83147e54d32180438e70ab9a"
+            "byteLength": 8711066,
+            "sha256": "877a1586ef8c6a4e4ae61cc7b970dbdcd1f103f82213a9a5eb6a02b088e3f015"
           },
           "warnings": {
-            "approximate-shape": 632,
-            "font-substitution": 99,
-            "approximate-media": 8,
-            "approximate-fill": 4
+            "font-substitution": 99
           }
         }
       },
@@ -2659,9 +2509,9 @@
   ],
   "execution": {
     "repository": "evoelsewhere/oakit",
-    "revision": "3d67c590c41f916b6081e99cd46be40832c4efd5",
+    "revision": "3e0f8047fbfbf0e2163efeeb6be10fcdd53348a0",
     "runAttempt": "1",
-    "runId": "32036893093",
+    "runId": "32045412714",
     "workflow": "Google Slides Producer Evidence"
   },
   "platform": {
@@ -2692,16 +2542,10 @@
     "minimumTextRetention": 1,
     "outputWarnings": {
       "font-substitution": 6733,
-      "approximate-shape": 3807,
-      "approximate-fill": 1496,
-      "approximate-media": 941,
       "approximate-table": 199
     },
     "sourceWarnings": {
       "font-substitution": 6738,
-      "approximate-shape": 3807,
-      "approximate-fill": 1496,
-      "approximate-media": 709,
       "approximate-table": 199
     },
     "temporaryPresentationsDeleted": true,
@@ -2709,5 +2553,5 @@
     "totalElements": 9285,
     "totalSlides": 733
   },
-  "verifiedAt": "2026-08-17T13:58:56.777Z"
+  "verifiedAt": "2026-08-17T16:32:45.172Z"
 }

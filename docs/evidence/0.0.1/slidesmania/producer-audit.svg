@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-labelledby="title description">
   <title id="title">OAKit real-world PowerPoint producer audit</title>
-  <desc id="description">Thirty SlidesMania templates containing 733 slides and 9,285 elements passed strict parsing, Google Slides import and export, attribution checks, and Office-free rendering. Approximation warnings remain visible as technical debt.</desc>
+  <desc id="description">Thirty SlidesMania templates containing 733 slides and 9,285 elements passed strict parsing, Google Slides import and export, attribution checks, and Office-free rendering. Shape, fill, and media approximation warnings are zero; authored fonts and table structure remain explicit portability boundaries.</desc>
   <rect width="1600" height="900" fill="#07111f"/>
   <rect x="0" y="0" width="16" height="900" fill="#41dfbd"/>
   <text x="72" y="84" fill="#41dfbd" font-family="Arial, sans-serif" font-size="24" font-weight="700">REAL-WORLD PRODUCER EVIDENCE</text>
@@ -53,33 +53,26 @@
   </g>
 
   <g font-family="Arial, sans-serif">
-    <text x="72" y="646" fill="#f8fafc" font-size="26" font-weight="700">Transparent rendering debt</text>
-    <text x="72" y="678" fill="#9cb0c8" font-size="17">Google-export warning counts · successful output, not a full-fidelity claim</text>
+    <text x="72" y="646" fill="#f8fafc" font-size="26" font-weight="700">Explicit portability boundaries</text>
+    <text x="72" y="678" fill="#9cb0c8" font-size="17">Google-export warning counts · authored content retained · no hidden fallback</text>
 
-    <text x="72" y="730" fill="#f8fafc" font-size="18">Shapes</text>
+    <text x="72" y="730" fill="#f8fafc" font-size="18">Fonts</text>
     <rect x="190" y="710" width="920" height="24" rx="12" fill="#1d334c"/>
     <rect x="190" y="710" width="920" height="24" rx="12" fill="#ffcf5a"/>
-    <text x="1130" y="730" fill="#f8fafc" font-size="18" font-weight="700">3,807</text>
+    <text x="1130" y="730" fill="#f8fafc" font-size="18" font-weight="700">6,733</text>
+    <text x="190" y="760" fill="#9cb0c8" font-size="15">Authored family preserved; substitution only when the font is unavailable</text>
 
-    <text x="72" y="774" fill="#f8fafc" font-size="18">Fills</text>
-    <rect x="190" y="754" width="920" height="24" rx="12" fill="#1d334c"/>
-    <rect x="190" y="754" width="361" height="24" rx="12" fill="#69d9c4"/>
-    <text x="1130" y="774" fill="#f8fafc" font-size="18" font-weight="700">1,496</text>
-
-    <text x="72" y="818" fill="#f8fafc" font-size="18">Media</text>
+    <text x="72" y="818" fill="#f8fafc" font-size="18">Tables</text>
     <rect x="190" y="798" width="920" height="24" rx="12" fill="#1d334c"/>
-    <rect x="190" y="798" width="227" height="24" rx="12" fill="#6ea8fe"/>
-    <text x="1130" y="818" fill="#f8fafc" font-size="18" font-weight="700">941</text>
+    <rect x="190" y="798" width="27" height="24" rx="12" fill="#b294f4"/>
+    <text x="1130" y="818" fill="#f8fafc" font-size="18" font-weight="700">199</text>
+    <text x="190" y="848" fill="#9cb0c8" font-size="15">Structure and layout retained; complete cell typography is not yet modeled</text>
 
-    <text x="72" y="862" fill="#f8fafc" font-size="18">Tables</text>
-    <rect x="190" y="842" width="920" height="24" rx="12" fill="#1d334c"/>
-    <rect x="190" y="842" width="48" height="24" rx="12" fill="#b294f4"/>
-    <text x="1130" y="862" fill="#f8fafc" font-size="18" font-weight="700">199</text>
-
-    <text x="1260" y="716" fill="#41dfbd" font-size="18" font-weight="700">PASS</text>
-    <text x="1260" y="750" fill="#9cb0c8" font-size="16">Run 32036893093</text>
-    <text x="1260" y="780" fill="#9cb0c8" font-size="16">Node 22 · Linux</text>
-    <text x="1260" y="810" fill="#9cb0c8" font-size="16">No Office runtime</text>
-    <text x="1260" y="840" fill="#9cb0c8" font-size="16">Attribution preserved</text>
+    <rect x="1260" y="696" width="268" height="48" rx="14" fill="#164b45"/>
+    <text x="1282" y="726" fill="#41dfbd" font-size="17" font-weight="700">SHAPE · FILL · MEDIA  0</text>
+    <text x="1260" y="778" fill="#41dfbd" font-size="18" font-weight="700">PASS</text>
+    <text x="1260" y="808" fill="#9cb0c8" font-size="16">Run 32045412714</text>
+    <text x="1260" y="838" fill="#9cb0c8" font-size="16">Node 22 · Linux · no Office</text>
+    <text x="1260" y="868" fill="#9cb0c8" font-size="16">Attribution preserved · cleanup 30/30</text>
   </g>
 </svg>

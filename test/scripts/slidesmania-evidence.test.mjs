@@ -25,8 +25,8 @@ describe('tracked SlidesMania producer evidence', () => {
     });
     expect(evidence.execution).toMatchObject({
       repository: 'evoelsewhere/oakit',
-      revision: '3d67c590c41f916b6081e99cd46be40832c4efd5',
-      runId: '32036893093',
+      revision: '3e0f8047fbfbf0e2163efeeb6be10fcdd53348a0',
+      runId: '32045412714',
     });
     expect(evidence.summary).toMatchObject({
       allAttributionPreserved: true,
@@ -38,6 +38,14 @@ describe('tracked SlidesMania producer evidence', () => {
       templateCount: 30,
       totalElements: 9285,
       totalSlides: 733,
+    });
+    expect(evidence.summary.sourceWarnings).toEqual({
+      'font-substitution': 6738,
+      'approximate-table': 199,
+    });
+    expect(evidence.summary.outputWarnings).toEqual({
+      'font-substitution': 6733,
+      'approximate-table': 199,
     });
     expect(evidence.corpus).toHaveLength(30);
     expect(evidence.corpus.map(({ sourcePage }) => sourcePage)).toEqual(
@@ -70,7 +78,7 @@ describe('tracked SlidesMania producer evidence', () => {
       expect(view.getUint32(20)).toBe(900);
       expect(candidate.byteLength).toBeGreaterThan(50_000);
     }
-    expect(svg.toString()).toContain('Run 32036893093');
+    expect(svg.toString()).toContain('Run 32045412714');
   });
 
   it('links the evidence, source license, and successful run from the README', async () => {
@@ -80,7 +88,7 @@ describe('tracked SlidesMania producer evidence', () => {
       'docs/evidence/0.0.1/slidesmania/producer-audit.png',
     );
     expect(readme).toContain(
-      'https://github.com/evoelsewhere/oakit/actions/runs/32036893093',
+      'https://github.com/evoelsewhere/oakit/actions/runs/32045412714',
     );
     expect(readme).toContain(
       'https://slidesmania.com/copyright-and-legal-information/#license',
