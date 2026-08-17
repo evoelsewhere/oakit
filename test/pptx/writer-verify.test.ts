@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type {
   PptxDocument,
   PptxParseOptions,
+  Text,
 } from '../../src/formats/pptx/types';
 import type { PptxSvgRenderResult } from '../../src/formats/pptx/render-types';
 import type {
@@ -73,9 +74,7 @@ function document(slideCount: number): PptxDocument {
   };
 }
 
-function generatedText(
-  text = 'Text',
-): PptxDocument['slides'][number]['elements'][number] {
+function generatedText(text = 'Text'): Text {
   return {
     borderColor: '#000000',
     borderStrokeDasharray: '0',
@@ -240,6 +239,105 @@ describe('PowerPoint creation verification', () => {
     ).resolves.toBeUndefined();
   });
 
+  it('verifies paragraph separators instead of concatenating paragraphs', async () => {
+    const inputSlide = textSlide('slide-1');
+    const element = inputSlide.elements[0];
+    if (element?.type !== 'text') throw new Error('Expected input text');
+    element.text.paragraphs.push({
+      children: [{ key: 'second-run', text: 'More', type: 'run' }],
+      key: 'second-paragraph',
+    });
+    const output = document(1);
+    const outputSlide = output.slides[0];
+    if (outputSlide === undefined) throw new Error('Expected output slide');
+    const generated = generatedText();
+    generated.content = '<p><span>Text</span></p><p><span>More</span></p>';
+    outputSlide.elements.push(generated);
+
+    await expect(
+      verifyPowerPointCreationWithParser(
+        new Uint8Array(),
+        scene([inputSlide]),
+        () => Promise.resolve(output),
+        rendered,
+      ),
+    ).resolves.toBeUndefined();
+  });
+
+  it('rejects a sparse generated text element with an exact location', async () => {
+    const output = document(1);
+    const outputSlide = output.slides[0];
+    if (outputSlide === undefined) throw new Error('Expected output slide');
+    outputSlide.elements = new Array<
+      PptxDocument['slides'][number]['elements'][number]
+    >(1);
+
+    await expect(
+      verifyPowerPointCreationWithParser(
+        new Uint8Array(),
+        scene([textSlide('slide-1')]),
+        () => Promise.resolve(output),
+        rendered,
+      ),
+    ).rejects.toThrow(
+      new Error(
+        'Generated PowerPoint text element missing at slide 1, element 1',
+      ),
+    );
+  });
+
+  it('rejects a source text element without an authored transform', async () => {
+    const inputSlide = textSlide('slide-1');
+    const element = inputSlide.elements[0];
+    if (element?.type !== 'text') throw new Error('Expected input text');
+    delete element.authored.transform;
+    const output = document(1);
+    const outputSlide = output.slides[0];
+    if (outputSlide === undefined) throw new Error('Expected output slide');
+    outputSlide.elements.push(generatedText());
+
+    await expect(
+      verifyPowerPointCreationWithParser(
+        new Uint8Array(),
+        scene([inputSlide]),
+        () => Promise.resolve(output),
+        rendered,
+      ),
+    ).rejects.toThrow(
+      new Error(
+        'Expected PowerPoint authored transform missing at slide 1, element 1',
+      ),
+    );
+  });
+
+  it('reports a non-text source element at its exact nested location', async () => {
+    const inputSlide = textSlide('slide-2');
+    inputSlide.elements.push({
+      authored: {},
+      feature: 'shape',
+      key: 'unsupported',
+      resolved: { hidden: false },
+      type: 'unsupported',
+    });
+    const output = document(2);
+    const outputSlide = output.slides[1];
+    if (outputSlide === undefined) throw new Error('Expected output slide');
+    outputSlide.elements.push(generatedText(), generatedText());
+
+    await expect(
+      verifyPowerPointCreationWithParser(
+        new Uint8Array(),
+        scene([emptySlide('slide-1'), inputSlide]),
+        () => Promise.resolve(output),
+        rendered,
+      ),
+    ).rejects.toThrow(
+      new Error(
+        'Expected PowerPoint text element missing at slide 2, element 2',
+      ),
+    );
+  });
+
   it('rejects a render that omits a generated slide', async () => {
     const output = document(1);
 
@@ -297,6 +395,46 @@ describe('PowerPoint creation verification', () => {
     const slide = result.slides[0];
     if (slide === undefined) throw new Error('Expected rendered slide');
     slide.data = new TextEncoder().encode(source);
+
+    await expect(
+      verifyPowerPointCreationWithParser(
+        new Uint8Array(),
+        scene([emptySlide('slide-1')]),
+        () => Promise.resolve(output),
+        () => result,
+      ),
+    ).rejects.toThrow(
+      new Error('Generated PowerPoint unsafe SVG output on slide 1'),
+    );
+  });
+
+  it('accepts an SVG root without an XML declaration', async () => {
+    const output = document(1);
+    const result = rendered(output);
+    const slide = result.slides[0];
+    if (slide === undefined) throw new Error('Expected rendered slide');
+    slide.data = new TextEncoder().encode(
+      '<svg xmlns="http://www.w3.org/2000/svg"></svg>',
+    );
+
+    await expect(
+      verifyPowerPointCreationWithParser(
+        new Uint8Array(),
+        scene([emptySlide('slide-1')]),
+        () => Promise.resolve(output),
+        () => result,
+      ),
+    ).resolves.toBeUndefined();
+  });
+
+  it('rejects bytes before an otherwise valid SVG root', async () => {
+    const output = document(1);
+    const result = rendered(output);
+    const slide = result.slides[0];
+    if (slide === undefined) throw new Error('Expected rendered slide');
+    slide.data = new TextEncoder().encode(
+      'unsafe<svg xmlns="http://www.w3.org/2000/svg"></svg>',
+    );
 
     await expect(
       verifyPowerPointCreationWithParser(
