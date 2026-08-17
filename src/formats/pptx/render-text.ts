@@ -12,6 +12,7 @@ interface HtmlTag {
 export interface PptxRenderedTextRun {
   bold: boolean;
   color?: string;
+  fontFamily?: string;
   fontSize?: number;
   italic: boolean;
   text: string;
@@ -24,11 +25,26 @@ export interface PptxRenderedTextParagraph {
 
 const RENDERED_CSS_PROPERTIES = new Set([
   'color',
+  'font-family',
   'font-size',
   'font-style',
   'font-weight',
   'text-align',
 ]);
+
+function renderedFontFamily(value: string | undefined): string | undefined {
+  if (value === undefined) return undefined;
+  let family = value;
+  const first = family.at(0);
+  const last = family.at(-1);
+  if (first === '"' || first === "'") {
+    if (last !== first) return undefined;
+    family = family.slice(1, -1);
+  }
+  return family.length <= 80 && /^[\p{Letter}\p{Number} ._-]+$/u.test(family)
+    ? family
+    : undefined;
+}
 
 function attribute(source: string, name: string): string | undefined {
   const match = new RegExp(
@@ -82,6 +98,7 @@ function renderedRun(attributes: string, body: string): PptxRenderedTextRun {
   }
   const style = cssDeclarations(styleSource);
   const color = style.get('color');
+  const fontFamily = renderedFontFamily(style.get('font-family'));
   const fontSizeValue = style.get('font-size');
   const fontSizeMatch =
     fontSizeValue === undefined
@@ -95,6 +112,7 @@ function renderedRun(attributes: string, body: string): PptxRenderedTextRun {
     ...(typeof color === 'string' && /^#[0-9a-f]{6}$/i.test(color)
       ? { color }
       : {}),
+    ...(fontFamily === undefined ? {} : { fontFamily }),
     ...(Number.isFinite(fontSize) && fontSize > 0 && fontSize <= 512
       ? { fontSize }
       : {}),

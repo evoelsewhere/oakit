@@ -158,9 +158,13 @@ function textBody(
       const spans = paragraph.runs
         .map((run) => {
           const color = svgColor(run.color) ?? '#111827';
+          const family =
+            run.fontFamily === undefined
+              ? ''
+              : ` font-family="${escapeSvgText(run.fontFamily)}"`;
           const weight = run.bold ? ' font-weight="700"' : '';
           const style = run.italic ? ' font-style="italic"' : '';
-          return `<tspan fill="${color}" font-size="${svgNumber(run.fontSize ?? 12)}"${weight}${style}>${escapeSvgText(run.text)}</tspan>`;
+          return `<tspan fill="${color}" font-size="${svgNumber(run.fontSize ?? 12)}"${family}${weight}${style}>${escapeSvgText(run.text)}</tspan>`;
         })
         .join('');
       return `<text x="${svgNumber(x)}" y="${svgNumber(baseline)}" text-anchor="${anchor}" font-family="sans-serif">${spans}</text>`;

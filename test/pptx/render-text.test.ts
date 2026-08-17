@@ -10,7 +10,7 @@ describe('PowerPoint render text', () => {
   it('extracts bounded rich span styles and paragraph alignment', () => {
     expect(
       renderedTextFromPowerPointHtml(
-        '<p data-kind="hero" STYLE="text-align: center;"><span data-kind="title" STYLE="color: #F8FAFC;font-size: 18pt;font-weight: 700;font-style: italic;">Hello&nbsp;AI</span></p>',
+        '<p data-kind="hero" STYLE="text-align: center;"><span data-kind="title" STYLE="color: #F8FAFC;font-family: &quot;Aptos Display&quot;;font-size: 18pt;font-weight: 700;font-style: italic;">Hello&nbsp;AI</span></p>',
       ),
     ).toEqual([
       {
@@ -19,6 +19,7 @@ describe('PowerPoint render text', () => {
           {
             bold: true,
             color: '#F8FAFC',
+            fontFamily: 'Aptos Display',
             fontSize: 18,
             italic: true,
             text: 'Hello AI',
@@ -39,6 +40,27 @@ describe('PowerPoint render text', () => {
         runs: [{ bold: false, italic: false, text: 'Safe' }],
       },
     ]);
+  });
+
+  it.each([
+    ['font-family: Arial', 'Arial'],
+    ['font-family: "Urbanist"', 'Urbanist'],
+    ["font-family: 'Aptos Display'", 'Aptos Display'],
+    ['font-family: Arial, sans-serif', undefined],
+    ['font-family: url(evil)', undefined],
+    [`font-family: ${'A'.repeat(80)}`, 'A'.repeat(80)],
+    [`font-family: ${'A'.repeat(81)}`, undefined],
+    ['font-family: ""', undefined],
+    ['font-family: "Arial', undefined],
+    ["font-family: Arial'", undefined],
+    ['font-family: "Arial\'', undefined],
+    ["font-family: '", undefined],
+  ])('bounds authored font family %j', (style, expected) => {
+    expect(
+      renderedTextFromPowerPointHtml(
+        `<p><span style="${style.replaceAll('"', '&quot;')}">Font</span></p>`,
+      )[0]?.runs[0]?.fontFamily,
+    ).toBe(expected);
   });
 
   it.each([

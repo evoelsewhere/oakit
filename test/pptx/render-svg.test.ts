@@ -130,6 +130,23 @@ describe('PowerPoint document SVG rendering', () => {
     );
   });
 
+  it('requests a bounded authored font family on its exact text run', () => {
+    const element = text(
+      '<p><span style="font-family: &quot;Aptos Display&quot;">Authored</span><span> fallback</span></p>',
+    );
+    element.width = 200;
+    const input = document();
+    input.slides = [{ ...slide(''), elements: [element] }];
+
+    const source = UTF8_DECODER.decode(
+      renderPptxDocumentToSvg(input).slides[0]?.data,
+    );
+
+    expect(source).toContain(
+      '<tspan fill="#111827" font-size="12" font-family="Aptos Display">Authored</tspan><tspan fill="#111827" font-size="12"> fallback</tspan>',
+    );
+  });
+
   it.each([
     ['mid', [46, 62, 78]],
     ['down', [64, 80, 96]],
