@@ -22,6 +22,7 @@ import {
 } from './internal/workbook-defined-names';
 import { parseXlsxWorkbookManifest } from './internal/workbook-manifest';
 import { loadXlsxSharedStrings } from './internal/workbook-tables';
+import { createXlsxTableRegistry, loadXlsxTables } from './internal/table';
 import { loadXlsxWorksheetRelationships } from './internal/worksheet-relationships';
 import {
   createXlsxWorksheetBudget,
@@ -169,6 +170,7 @@ export async function parseXlsxWithDiagnostics(
     );
   }
   const sheets: XlsxDocument['sheets'] = [];
+  const tableRegistry = createXlsxTableRegistry();
   try {
     for (const [index, sheet] of manifest.sheets.entries()) {
       const selection = selections[index]!;
@@ -196,6 +198,7 @@ export async function parseXlsxWithDiagnostics(
         reader,
         limits,
       );
+      const tableRelationshipIds: string[] = [];
       const payload = await parseXlsxWorksheetPart(
         manifest.sheetParts[index]!,
         discovery.dialect,
@@ -209,14 +212,28 @@ export async function parseXlsxWithDiagnostics(
           dialect: discovery.dialect,
           relationships: worksheetRelationships,
           styles,
+          tableRelationshipIds,
           workbookViewCount: manifest.properties.views.length,
         },
+      );
+      const tables = await loadXlsxTables(
+        tableRelationshipIds,
+        worksheetRelationships,
+        discovery,
+        reader,
+        limits,
+        tableRegistry,
+        styles.differentialStyles.length,
+        budget,
+        selection,
+        manifest.sheetParts[index]!,
       );
       sheets.push({
         ...sheet,
         ...payload,
         payload:
           selection.kind === 'full-sheet' ? 'full-sheet' : 'selected-ranges',
+        tables,
       });
     }
   } catch (error) {

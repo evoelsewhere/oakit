@@ -403,9 +403,236 @@ export interface XlsxWorkbookView {
   yWindow?: number;
 }
 
-export interface XlsxTable {
+export type XlsxTableTotalsFunction =
+  | 'average'
+  | 'count'
+  | 'count-numbers'
+  | 'custom'
+  | 'maximum'
+  | 'minimum'
+  | 'none'
+  | 'standard-deviation'
+  | 'sum'
+  | 'variance';
+
+export interface XlsxTableFormula {
+  array: boolean;
+  expression: string;
+}
+
+export interface XlsxTableColumn {
+  calculatedFormula?: XlsxTableFormula;
+  dataCellStyle?: string;
+  dataDifferentialStyle?: number;
+  headerCellStyle?: string;
+  headerDifferentialStyle?: number;
+  id: number;
   name: string;
+  queryTableFieldId?: number;
+  totalsCellStyle?: string;
+  totalsDifferentialStyle?: number;
+  totalsFormula?: XlsxTableFormula;
+  totalsLabel?: string;
+  totalsFunction: XlsxTableTotalsFunction;
+  uniqueName?: string;
+}
+
+export interface XlsxTableStyleInfo {
+  name?: string;
+  showColumnStripes: boolean;
+  showFirstColumn: boolean;
+  showLastColumn: boolean;
+  showRowStripes: boolean;
+}
+
+export interface XlsxDateGroupFilter {
+  day?: number;
+  grouping: 'day' | 'hour' | 'minute' | 'month' | 'second' | 'year';
+  hour?: number;
+  minute?: number;
+  month?: number;
+  second?: number;
+  year: number;
+}
+
+export type XlsxCalendarType =
+  | 'gregorian'
+  | 'gregorianArabic'
+  | 'gregorianMeFrench'
+  | 'gregorianUs'
+  | 'gregorianXlitEnglish'
+  | 'gregorianXlitFrench'
+  | 'hebrew'
+  | 'hijri'
+  | 'japan'
+  | 'korea'
+  | 'none'
+  | 'saka'
+  | 'taiwan'
+  | 'thai';
+
+export type XlsxDynamicFilterType =
+  | 'aboveAverage'
+  | 'belowAverage'
+  | 'lastMonth'
+  | 'lastQuarter'
+  | 'lastWeek'
+  | 'lastYear'
+  | 'M1'
+  | 'M2'
+  | 'M3'
+  | 'M4'
+  | 'M5'
+  | 'M6'
+  | 'M7'
+  | 'M8'
+  | 'M9'
+  | 'M10'
+  | 'M11'
+  | 'M12'
+  | 'nextMonth'
+  | 'nextQuarter'
+  | 'nextWeek'
+  | 'nextYear'
+  | 'null'
+  | 'Q1'
+  | 'Q2'
+  | 'Q3'
+  | 'Q4'
+  | 'thisMonth'
+  | 'thisQuarter'
+  | 'thisWeek'
+  | 'thisYear'
+  | 'today'
+  | 'tomorrow'
+  | 'yearToDate'
+  | 'yesterday';
+
+export type XlsxIconSet =
+  | '3Arrows'
+  | '3ArrowsGray'
+  | '3Flags'
+  | '3Signs'
+  | '3Symbols'
+  | '3Symbols2'
+  | '3TrafficLights1'
+  | '3TrafficLights2'
+  | '4Arrows'
+  | '4ArrowsGray'
+  | '4Rating'
+  | '4RedToBlack'
+  | '4TrafficLights'
+  | '5Arrows'
+  | '5ArrowsGray'
+  | '5Quarters'
+  | '5Rating';
+
+export type XlsxFilterRule =
+  | {
+      blank: boolean;
+      calendarType?: XlsxCalendarType;
+      dates: XlsxDateGroupFilter[];
+      kind: 'values';
+      values: string[];
+    }
+  | {
+      and: boolean;
+      conditions: Array<{
+        operator:
+          | 'equal'
+          | 'greater-than'
+          | 'greater-than-or-equal'
+          | 'less-than'
+          | 'less-than-or-equal'
+          | 'not-equal';
+        value: string;
+      }>;
+      kind: 'custom';
+    }
+  | {
+      kind: 'dynamic';
+      maxValue?: number;
+      type: XlsxDynamicFilterType;
+      value?: number;
+    }
+  | {
+      filterValue?: number;
+      kind: 'top';
+      percent: boolean;
+      top: boolean;
+      value: number;
+    }
+  | {
+      cellColor: boolean;
+      differentialStyle?: number;
+      kind: 'color';
+    }
+  | {
+      iconId: number;
+      iconSet: XlsxIconSet;
+      kind: 'icon';
+    }
+  | { kind: 'none' };
+
+export interface XlsxFilterColumn {
+  columnId: number;
+  hiddenButton: boolean;
+  rule: XlsxFilterRule;
+  showButton: boolean;
+}
+
+export interface XlsxSortCondition {
+  customList?: string;
+  descending: boolean;
+  differentialStyle?: number;
+  iconId?: number;
+  iconSet?: XlsxIconSet;
   range: XlsxRange;
+  sortBy: 'cell-color' | 'font-color' | 'icon' | 'value';
+}
+
+export interface XlsxSortState {
+  caseSensitive: boolean;
+  columnSort: boolean;
+  conditions: XlsxSortCondition[];
+  range: XlsxRange;
+  sortMethod: 'none' | 'pin-yin' | 'stroke';
+}
+
+export interface XlsxAutoFilter {
+  columns: XlsxFilterColumn[];
+  range: XlsxRange;
+  selectionRelation: 'full-sheet' | 'intersects-selection';
+  sort?: XlsxSortState;
+}
+
+export interface XlsxTable {
+  autoFilter?: XlsxAutoFilter;
+  columns: XlsxTableColumn[];
+  comment?: string;
+  connectionId?: number;
+  dataCellStyle?: string;
+  dataDifferentialStyle?: number;
+  displayName: string;
+  headerCellStyle?: string;
+  headerDifferentialStyle?: number;
+  headerRow: boolean;
+  headerRowBorderDifferentialStyle?: number;
+  id: number;
+  insertRow: boolean;
+  insertRowShift: boolean;
+  name: string;
+  published: boolean;
+  range: XlsxRange;
+  selectionRelation: 'full-sheet' | 'intersects-selection';
+  style?: XlsxTableStyleInfo;
+  tableBorderDifferentialStyle?: number;
+  tableType: 'query-table' | 'worksheet' | 'xml';
+  totalsCellStyle?: string;
+  totalsDifferentialStyle?: number;
+  totalsRow: boolean;
+  totalsRowBorderDifferentialStyle?: number;
+  totalsRowShown: boolean;
 }
 
 export interface XlsxDrawing {
@@ -432,6 +659,7 @@ export interface XlsxSheetBase {
 }
 
 export interface XlsxWorksheet extends XlsxSheetBase {
+  autoFilter?: XlsxAutoFilter;
   columns: XlsxColumnRange[];
   declaredDimension?: XlsxRange;
   drawings: XlsxDrawing[];

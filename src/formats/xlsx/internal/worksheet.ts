@@ -2,6 +2,7 @@ import { XlsxParseError } from '../errors';
 import type {
   XlsxCell,
   XlsxCellValue,
+  XlsxAutoFilter,
   XlsxColumnRange,
   XlsxFormula,
   XlsxHyperlink,
@@ -13,6 +14,7 @@ import type {
   XlsxWorksheetOutline,
   XlsxColor,
 } from '../types';
+import { XlsxAutoFilterCapture } from './auto-filter';
 import {
   parseXlsxCellReference,
   parseXlsxRangeReference,
@@ -65,6 +67,11 @@ import {
 const XML_NAMESPACE = 'http://www.w3.org/XML/1998/namespace';
 const UNSIGNED_INTEGER_PATTERN = /^(?:0|[1-9]\d*)$/u;
 const NONNEGATIVE_DECIMAL_PATTERN = /^(?:\d+(?:\.\d*)?|\.\d+)$/u;
+const TABLE_RELATIONSHIP_NAMESPACE = {
+  strict: 'http://purl.oclc.org/ooxml/officeDocument/relationships',
+  transitional:
+    'http://schemas.openxmlformats.org/officeDocument/2006/relationships',
+} as const;
 
 type CellType = XlsxScalarCellType | 'inlineStr';
 type TextCapture = 'formula' | 'inline' | 'value' | null;
@@ -115,6 +122,7 @@ interface SharedFormulaMaster {
 }
 
 export interface XlsxWorksheetPayload {
+  autoFilter?: XlsxAutoFilter;
   columns: XlsxColumnRange[];
   declaredDimension?: XlsxRange;
   hyperlinks: XlsxHyperlink[];
@@ -131,6 +139,7 @@ export interface XlsxWorksheetSemantics {
   dialect: 'strict' | 'transitional';
   relationships: ReadonlyMap<string, XlsxRelationship>;
   styles: XlsxStyleTable;
+  tableRelationshipIds?: string[];
   workbookViewCount: number;
 }
 
@@ -291,7 +300,7 @@ function validateXmlSpace(
   }
 }
 
-function consume(
+export function consumeXlsxWorksheetBudget(
   budget: XlsxWorksheetBudget,
   key: keyof XlsxWorksheetBudget,
   amount: number,
@@ -344,7 +353,39 @@ export function createXlsxWorksheetBudget(
   };
 }
 
+export function consumeXlsxWorksheetFormulaCharacters(
+  budget: XlsxWorksheetBudget,
+  expression: string,
+  limits: ResolvedXlsxResourceLimits,
+  part: string,
+): void {
+  if (expression.length > limits.maxFormulaCharacters) {
+    throw new XlsxResourceLimitError(
+      'maxFormulaCharacters',
+      expression.length,
+      limits.maxFormulaCharacters,
+      part,
+    );
+  }
+  const actual = budget.formulaCharacters + expression.length;
+  if (
+    !Number.isSafeInteger(actual) ||
+    actual > limits.maxTotalFormulaCharacters
+  ) {
+    throw new XlsxResourceLimitError(
+      'maxTotalFormulaCharacters',
+      actual,
+      limits.maxTotalFormulaCharacters,
+      part,
+    );
+  }
+  budget.formulaCharacters = actual;
+}
+
 class WorksheetSink implements XlsxXmlEventSink {
+  private autoFilter: XlsxAutoFilter | undefined;
+  private autoFilterCapture: XlsxAutoFilterCapture | undefined;
+  private autoFilterSeen = false;
   private readonly authoredColumns: XlsxAuthoredColumnRange[] = [];
   private capture: TextCapture = null;
   private columnsSeen = false;
@@ -377,6 +418,10 @@ class WorksheetSink implements XlsxXmlEventSink {
   private outlineSeen = false;
   private tabColor: XlsxColor | undefined;
   private tabColorSeen = false;
+  private tablePartsExpected: number | undefined;
+  private readonly tableRelationshipIds: string[] = [];
+  private readonly tableRelationshipIdSet = new Set<string>();
+  private tablePartsSeen = false;
   private readonly sharedFormulaMasters = new Map<
     number,
     SharedFormulaMaster
@@ -436,6 +481,11 @@ class WorksheetSink implements XlsxXmlEventSink {
         'Worksheet element has an unsupported namespace',
       );
     }
+    if (this.autoFilterCapture) {
+      this.autoFilterCapture.openElement(element);
+      this.stack.push(element);
+      return;
+    }
     const parent = this.stack.at(-1);
     if (!parent) {
       if (element.localName !== 'worksheet') {
@@ -455,6 +505,15 @@ class WorksheetSink implements XlsxXmlEventSink {
       this.stack.pop();
       return;
     }
+    if (this.autoFilterCapture) {
+      this.autoFilterCapture.closeElement(element);
+      if (element.localName === 'autoFilter') {
+        this.autoFilter = this.autoFilterCapture.result();
+        this.autoFilterCapture = undefined;
+      }
+      this.stack.pop();
+      return;
+    }
     this.capture = null;
     if (element.localName === 'r') this.closeInlineRun();
     if (element.localName === 'c') this.closeCell();
@@ -465,6 +524,10 @@ class WorksheetSink implements XlsxXmlEventSink {
 
   text(value: string): void {
     if (this.ignoredDepth > 0) return;
+    if (this.autoFilterCapture) {
+      this.autoFilterCapture.text(value);
+      return;
+    }
     if (this.capture === 'value') {
       this.currentCell!.valueText += value;
       return;
@@ -511,7 +574,18 @@ class WorksheetSink implements XlsxXmlEventSink {
     if (xlsxMergedRangesOverlap(this.mergedRanges)) {
       valueFailure(this.part, undefined, 'Worksheet merged ranges overlap');
     }
+    if (
+      this.tablePartsExpected !== undefined &&
+      this.tablePartsExpected !== this.tableRelationshipIds.length
+    ) {
+      structureFailure(
+        this.part,
+        undefined,
+        'Worksheet table-part count does not match',
+      );
+    }
     return {
+      ...(this.autoFilter === undefined ? {} : { autoFilter: this.autoFilter }),
       columns: normalizeXlsxColumnRanges(this.authoredColumns).filter((range) =>
         this.columnRangeSelected(range),
       ),
@@ -573,7 +647,7 @@ class WorksheetSink implements XlsxXmlEventSink {
       return this.selection.kind === 'full-sheet' ? 'full-sheet' : null;
     }
     for (const selected of this.selection.ranges) {
-      consume(
+      consumeXlsxWorksheetBudget(
         this.budget,
         'scannedCells',
         1,
@@ -609,7 +683,7 @@ class WorksheetSink implements XlsxXmlEventSink {
         }
         this.dimensionSeen = true;
         this.declaredDimension = parseXlsxDeclaredDimension(element, this.part);
-        consume(
+        consumeXlsxWorksheetBudget(
           this.budget,
           'rangeAreas',
           1,
@@ -714,6 +788,60 @@ class WorksheetSink implements XlsxXmlEventSink {
         this.hyperlinksSeen = true;
         return;
       }
+      if (element.localName === 'autoFilter') {
+        if (this.autoFilterSeen) {
+          structureFailure(
+            this.part,
+            undefined,
+            'Worksheet contains duplicate autoFilter elements',
+          );
+        }
+        this.autoFilterSeen = true;
+        this.autoFilterCapture = new XlsxAutoFilterCapture(
+          this.semantics.styles.differentialStyles.length,
+          this.selection,
+          this.budget,
+          this.limits,
+          this.part,
+        );
+        this.autoFilterCapture.openElement(element);
+        return;
+      }
+      if (element.localName === 'tableParts') {
+        if (this.tablePartsSeen) {
+          structureFailure(
+            this.part,
+            undefined,
+            'Worksheet contains duplicate tableParts elements',
+          );
+        }
+        this.tablePartsSeen = true;
+        this.tablePartsExpected = unsignedInteger(
+          attribute(element, 'count'),
+          this.part,
+          undefined,
+          'Worksheet table-part count is invalid',
+        );
+        if (
+          this.tablePartsExpected === undefined ||
+          this.tablePartsExpected === 0
+        ) {
+          valueFailure(
+            this.part,
+            undefined,
+            'Worksheet table-part count is invalid',
+          );
+        }
+        if (this.tablePartsExpected > this.limits.maxTables) {
+          throw new XlsxResourceLimitError(
+            'maxTables',
+            this.tablePartsExpected,
+            this.limits.maxTables,
+            this.part,
+          );
+        }
+        return;
+      }
       this.beginIgnore();
       return;
     }
@@ -757,6 +885,10 @@ class WorksheetSink implements XlsxXmlEventSink {
     }
     if (parent === 'hyperlinks' && element.localName === 'hyperlink') {
       this.openHyperlink(element);
+      return;
+    }
+    if (parent === 'tableParts' && element.localName === 'tablePart') {
+      this.openTablePart(element);
       return;
     }
     if (parent === 'sheetView') {
@@ -959,7 +1091,7 @@ class WorksheetSink implements XlsxXmlEventSink {
       this.semantics.relationships,
       this.part,
     );
-    consume(
+    consumeXlsxWorksheetBudget(
       this.budget,
       'rangeAreas',
       1,
@@ -967,7 +1099,7 @@ class WorksheetSink implements XlsxXmlEventSink {
       this.limits,
       this.part,
     );
-    consume(
+    consumeXlsxWorksheetBudget(
       this.budget,
       'textCharacters',
       hyperlink.textCharacters,
@@ -976,6 +1108,29 @@ class WorksheetSink implements XlsxXmlEventSink {
       this.part,
     );
     this.hyperlinks.push(hyperlink);
+  }
+
+  private openTablePart(element: XlsxXmlElement): void {
+    const relationshipId = element.attributes.get(
+      `{${TABLE_RELATIONSHIP_NAMESPACE[this.semantics.dialect]}}id`,
+    );
+    if (relationshipId === undefined || relationshipId.length === 0) {
+      valueFailure(
+        this.part,
+        undefined,
+        'Worksheet table relationship reference is invalid',
+      );
+    }
+    if (this.tableRelationshipIdSet.has(relationshipId)) {
+      valueFailure(
+        this.part,
+        undefined,
+        'Worksheet contains duplicate table relationship references',
+      );
+    }
+    this.tableRelationshipIdSet.add(relationshipId);
+    this.tableRelationshipIds.push(relationshipId);
+    this.semantics.tableRelationshipIds?.push(relationshipId);
   }
 
   private openView(element: XlsxXmlElement): void {
@@ -1016,7 +1171,7 @@ class WorksheetSink implements XlsxXmlEventSink {
 
   private openViewSelection(element: XlsxXmlElement): void {
     const parsed = parseXlsxWorksheetViewSelection(element, this.part);
-    consume(
+    consumeXlsxWorksheetBudget(
       this.budget,
       'rangeAreas',
       parsed.rangeAreaCount,
@@ -1214,7 +1369,7 @@ class WorksheetSink implements XlsxXmlEventSink {
       address,
       'Worksheet cell style reference is invalid',
     );
-    consume(
+    consumeXlsxWorksheetBudget(
       this.budget,
       'scannedCells',
       1,
@@ -1228,7 +1383,7 @@ class WorksheetSink implements XlsxXmlEventSink {
       column,
     );
     if (selected) {
-      consume(
+      consumeXlsxWorksheetBudget(
         this.budget,
         'returnedCells',
         1,
@@ -1341,7 +1496,7 @@ class WorksheetSink implements XlsxXmlEventSink {
       );
     }
     cell.inlineMode = 'rich';
-    consume(
+    consumeXlsxWorksheetBudget(
       this.budget,
       'richTextRuns',
       1,
@@ -1637,7 +1792,7 @@ class WorksheetSink implements XlsxXmlEventSink {
   }
 
   private consumeFormulaGroup(): void {
-    consume(
+    consumeXlsxWorksheetBudget(
       this.budget,
       'formulaGroups',
       1,
@@ -1648,31 +1803,16 @@ class WorksheetSink implements XlsxXmlEventSink {
   }
 
   private consumeFormulaCharacters(expression: string): void {
-    if (expression.length > this.limits.maxFormulaCharacters) {
-      throw new XlsxResourceLimitError(
-        'maxFormulaCharacters',
-        expression.length,
-        this.limits.maxFormulaCharacters,
-        this.part,
-      );
-    }
-    const actual = this.budget.formulaCharacters + expression.length;
-    if (
-      !Number.isSafeInteger(actual) ||
-      actual > this.limits.maxTotalFormulaCharacters
-    ) {
-      throw new XlsxResourceLimitError(
-        'maxTotalFormulaCharacters',
-        actual,
-        this.limits.maxTotalFormulaCharacters,
-        this.part,
-      );
-    }
-    this.budget.formulaCharacters = actual;
+    consumeXlsxWorksheetFormulaCharacters(
+      this.budget,
+      expression,
+      this.limits,
+      this.part,
+    );
   }
 
   private consumeTextCharacters(value: string): void {
-    consume(
+    consumeXlsxWorksheetBudget(
       this.budget,
       'textCharacters',
       value.length,
@@ -1686,7 +1826,7 @@ class WorksheetSink implements XlsxXmlEventSink {
     if (value.kind !== 'text') return;
     this.consumeTextCharacters(value.text);
     if (value.runs) {
-      consume(
+      consumeXlsxWorksheetBudget(
         this.budget,
         'richTextRuns',
         value.runs.length,
