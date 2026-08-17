@@ -336,6 +336,12 @@
       "testsCompleted": 407,
       "estimatedMilliseconds": 26666
     },
+    "src/formats/pptx/render-svg-gradient.ts": {
+      "mutants": 91,
+      "staticMutants": 0,
+      "testsCompleted": 192,
+      "estimatedMilliseconds": 193000
+    },
     "src/formats/pptx/render-svg-rich.ts": {
       "mutants": 180,
       "staticMutants": 0,
