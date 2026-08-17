@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { createPptx } from '../../src/formats/pptx/creator';
 import { parse } from '../../src/formats/pptx/parser';
+import type { PptxDocument } from '../../src/formats/pptx/types';
 import type { PptxSceneDocument } from '../../src/formats/pptx/scene-types';
 import { validatePptxScene } from '../../src/formats/pptx/scene-validation';
 import {
@@ -121,6 +122,117 @@ describe('PowerPoint round-trip semantic preview', () => {
         '<p><span>A&nbsp;&lt;&amp;</span><br><span>B</span></p><p>C&#x21;</p>',
       ),
     ).toBe('A <&\nB\nC!');
+    expect(plainTextFromPowerPointHtml('<p>A</p><p></p><p></p>')).toBe('A');
+  });
+
+  it.each([
+    ['down', 'bottom'],
+    ['mid', 'center'],
+    ['dist', 'distributed'],
+    ['just', 'justified'],
+    ['unknown', 'top'],
+  ])('maps vertical alignment %s to %s', async (vAlign, anchor) => {
+    const source = await createPptx(sourceScene());
+    const parsed = await parse(source.data, { imageMode: 'none' });
+    const element = parsed.slides[0]?.elements[0];
+    if (element?.type !== 'text') throw new Error('Expected text element');
+    element.vAlign = vAlign;
+
+    const preview = createPowerPointRoundTripPreview(parsed);
+
+    expect(preview.slides[0]?.elements[0]).toMatchObject({
+      text: { body: { anchor } },
+    });
+  });
+
+  it('includes a defined autofit mode and omits an absent one', async () => {
+    const source = await createPptx(sourceScene());
+    const parsed = await parse(source.data, { imageMode: 'none' });
+    const element = parsed.slides[0]?.elements[0];
+    if (element?.type !== 'text') throw new Error('Expected text element');
+    element.autoFit = { type: 'shape' };
+    expect(
+      createPowerPointRoundTripPreview(parsed).slides[0]?.elements[0],
+    ).toMatchObject({ text: { body: { autoFit: 'shape' } } });
+    delete element.autoFit;
+    const previewElement =
+      createPowerPointRoundTripPreview(parsed).slides[0]?.elements[0];
+    if (previewElement?.type !== 'text')
+      throw new Error('Expected preview text');
+    expect(previewElement.text.body).not.toHaveProperty('autoFit');
+  });
+
+  it('maps unsupported content, transform, and stable nested keys', () => {
+    const unsupportedWithText = {
+      content: 'Fallback',
+      height: 40,
+      isFlipH: false,
+      isFlipV: true,
+      left: 10,
+      name: 'Shape',
+      rotate: 5,
+      top: 20,
+      type: 'shape',
+      width: 30,
+    };
+    const unsupportedWithoutText = {
+      height: 0,
+      left: 1,
+      name: 'Broken',
+      top: 2,
+      type: 'image',
+      width: 30,
+    };
+    const document = {
+      size: { height: 540, width: 960 },
+      slides: [
+        {
+          elements: [],
+          fill: { type: 'color', value: '#ffffff' },
+          layoutElements: [],
+          note: '',
+        },
+        {
+          elements: [unsupportedWithText, unsupportedWithoutText],
+          fill: { type: 'color', value: '#ffffff' },
+          layoutElements: [],
+          note: '',
+        },
+      ],
+      themeColors: [],
+      usedFonts: [],
+    } as unknown as PptxDocument;
+
+    const preview = createPowerPointRoundTripPreview(document);
+
+    expect(preview.slides[1]?.elements).toEqual([
+      {
+        authored: {},
+        feature: 'shape',
+        key: 'slide-2-element-1',
+        previewText: 'Fallback',
+        resolved: {
+          hidden: false,
+          transform: {
+            flipHorizontal: false,
+            flipVertical: true,
+            height: 40,
+            rotation: 5,
+            width: 30,
+            x: 10,
+            y: 20,
+          },
+        },
+        type: 'unsupported',
+      },
+      {
+        authored: {},
+        feature: 'image',
+        key: 'slide-2-element-2',
+        resolved: { hidden: false },
+        type: 'unsupported',
+      },
+    ]);
   });
 
   it('does not mutate the parsed document', async () => {
