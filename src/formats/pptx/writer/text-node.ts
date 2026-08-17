@@ -1,4 +1,5 @@
 import type { PptxSceneRunProperties, PptxSceneTextNode } from '../scene-types';
+import { serializeSolidColorFill } from './color';
 import { pointsToFontSize } from './units';
 import { escapeXmlAttribute, serializeDrawingText } from './xml';
 
@@ -15,6 +16,7 @@ function serializeProperties(
   properties: PptxSceneRunProperties | undefined,
 ): string {
   const attributes: string[] = [];
+  const children: string[] = [];
   if (properties?.language !== undefined) {
     attributes.push(`lang="${escapeXmlAttribute(properties.language)}"`);
   }
@@ -27,12 +29,20 @@ function serializeProperties(
   if (properties?.italic !== undefined) {
     attributes.push(`i="${booleanAttribute(properties.italic)}"`);
   }
+  if (properties?.color !== undefined) {
+    children.push(serializeSolidColorFill(properties.color));
+  }
   const attributeText = attributes.length > 0 ? ` ${attributes.join(' ')}` : '';
-  if (properties?.fontFamily === undefined) {
+  if (properties?.fontFamily !== undefined) {
+    const typeface = escapeXmlAttribute(properties.fontFamily);
+    children.push(
+      `<a:latin typeface="${typeface}"/><a:ea typeface="${typeface}"/><a:cs typeface="${typeface}"/>`,
+    );
+  }
+  if (children.length === 0) {
     return `<${tagName}${attributeText}/>`;
   }
-  const typeface = escapeXmlAttribute(properties.fontFamily);
-  return `<${tagName}${attributeText}><a:latin typeface="${typeface}"/><a:ea typeface="${typeface}"/><a:cs typeface="${typeface}"/></${tagName}>`;
+  return `<${tagName}${attributeText}>${children.join('')}</${tagName}>`;
 }
 
 export function serializeRunProperties(

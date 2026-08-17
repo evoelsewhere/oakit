@@ -1,4 +1,5 @@
 import type { PptxSceneTextElement, PptxSceneTransform } from '../scene-types';
+import { serializeSolidColorFill } from './color';
 import { serializeTextBody } from './text-body';
 import type { PptxTextSerializationContext } from './text-node';
 import { degreesToAngle, pointsToEmu } from './units';
@@ -50,6 +51,16 @@ export function serializeTextShape(
   context: PptxTextSerializationContext,
 ): string {
   const nonVisual = serializeNonVisualProperties(element, shapeId);
-  const shapeProperties = `<p:spPr>${serializeShapeTransform(transform)}<a:prstGeom prst="rect"><a:avLst/></a:prstGeom><a:noFill/><a:ln><a:noFill/></a:ln></p:spPr>`;
+  const authored = element.authored;
+  const geometry = authored.geometry ?? 'rect';
+  const fill =
+    authored.fillColor === undefined
+      ? '<a:noFill/>'
+      : serializeSolidColorFill(authored.fillColor);
+  const line =
+    authored.lineColor === undefined && authored.lineWidth === undefined
+      ? '<a:ln><a:noFill/></a:ln>'
+      : `<a:ln${authored.lineWidth === undefined ? '' : ` w="${pointsToEmu(authored.lineWidth)}"`}>${serializeSolidColorFill(authored.lineColor ?? '#000000')}</a:ln>`;
+  const shapeProperties = `<p:spPr>${serializeShapeTransform(transform)}<a:prstGeom prst="${geometry}"><a:avLst/></a:prstGeom>${fill}${line}</p:spPr>`;
   return `<p:sp>${nonVisual}${shapeProperties}${serializeTextBody(element.text, context)}</p:sp>`;
 }

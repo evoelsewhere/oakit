@@ -73,6 +73,17 @@ describe('PowerPoint slide serialization', () => {
     ).toContain('<p:cSld name="Slide &lt;&amp;&quot;&apos; _x005F_x0041_">');
   });
 
+  it('serializes a solid slide background before the shape tree', () => {
+    expect(
+      serializeSlide(
+        { ...slide(), backgroundColor: '#0f172a' },
+        createFieldIdAllocator(),
+      ),
+    ).toContain(
+      '<p:cSld><p:bg><p:bgPr><a:solidFill><a:srgbClr val="0F172A"/></a:solidFill><a:effectLst/></p:bgPr></p:bg><p:spTree>',
+    );
+  });
+
   it('assigns owner-scoped shape IDs in authored z-order', () => {
     const xml = serializeSlide(
       slide([textElement('first', 'First'), textElement('second', 'Second')]),

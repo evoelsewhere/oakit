@@ -92,6 +92,36 @@ describe('PowerPoint text-shape serialization', () => {
     );
   });
 
+  it('serializes rich fill, border, and geometry styling', () => {
+    const element = textElement();
+    element.authored.fillColor = '#0f172a';
+    element.authored.geometry = 'roundRect';
+    element.authored.lineColor = '#38bdf8';
+    element.authored.lineWidth = 1.5;
+
+    expect(serializeTextShape(element, TRANSFORM, 2, context())).toContain(
+      '<a:prstGeom prst="roundRect"><a:avLst/></a:prstGeom><a:solidFill><a:srgbClr val="0F172A"/></a:solidFill><a:ln w="19050"><a:solidFill><a:srgbClr val="38BDF8"/></a:solidFill></a:ln>',
+    );
+  });
+
+  it('uses a deterministic black border when only width is authored', () => {
+    const element = textElement();
+    element.authored.lineWidth = 2;
+
+    expect(serializeTextShape(element, TRANSFORM, 2, context())).toContain(
+      '<a:ln w="25400"><a:solidFill><a:srgbClr val="000000"/></a:solidFill></a:ln>',
+    );
+  });
+
+  it('uses the OOXML default width when only border color is authored', () => {
+    const element = textElement();
+    element.authored.lineColor = '#F97316';
+
+    expect(serializeTextShape(element, TRANSFORM, 2, context())).toContain(
+      '<a:ln><a:solidFill><a:srgbClr val="F97316"/></a:solidFill></a:ln>',
+    );
+  });
+
   it('distinguishes explicit visible state from authored absence', () => {
     const visible = textElement();
     visible.authored.hidden = false;

@@ -49,17 +49,26 @@ describe('PowerPoint text-node serialization', () => {
     );
   });
 
+  it('serializes run color before font script mappings', () => {
+    expect(
+      serializeRunProperties({ color: '#f8FaFc', fontFamily: 'Aptos' }),
+    ).toBe(
+      '<a:rPr><a:solidFill><a:srgbClr val="F8FAFC"/></a:solidFill><a:latin typeface="Aptos"/><a:ea typeface="Aptos"/><a:cs typeface="Aptos"/></a:rPr>',
+    );
+  });
+
   it('uses the end-paragraph element without changing its properties', () => {
     expect(
       serializeEndParagraphProperties({
         bold: true,
+        color: '#112233',
         fontFamily: 'Aptos',
         fontSize: 12,
         italic: true,
         language: 'vi-VN',
       }),
     ).toBe(
-      '<a:endParaRPr lang="vi-VN" sz="1200" b="1" i="1"><a:latin typeface="Aptos"/><a:ea typeface="Aptos"/><a:cs typeface="Aptos"/></a:endParaRPr>',
+      '<a:endParaRPr lang="vi-VN" sz="1200" b="1" i="1"><a:solidFill><a:srgbClr val="112233"/></a:solidFill><a:latin typeface="Aptos"/><a:ea typeface="Aptos"/><a:cs typeface="Aptos"/></a:endParaRPr>',
     );
   });
 

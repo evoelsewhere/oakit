@@ -1,4 +1,5 @@
 import type { PptxSceneElement, PptxSceneSlide } from '../scene-types';
+import { serializeSolidColorFill } from './color';
 import type { PptxTextSerializationContext } from './text-node';
 import { serializeTextShape } from './text-shape';
 import { escapeXmlAttribute } from './xml';
@@ -44,8 +45,12 @@ export function serializeSlide(
   }
   const commonSlideName =
     slide.name === undefined ? '' : ` name="${escapeXmlAttribute(slide.name)}"`;
+  const background =
+    slide.backgroundColor === undefined
+      ? ''
+      : `<p:bg><p:bgPr>${serializeSolidColorFill(slide.backgroundColor)}<a:effectLst/></p:bgPr></p:bg>`;
   const elements = slide.elements
     .map((element, index) => serializeElement(element, index + 2, context))
     .join('');
-  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><p:sld ${rootAttributes.join(' ')}><p:cSld${commonSlideName}><p:spTree>${SHAPE_TREE_ROOT}${elements}</p:spTree></p:cSld><p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr></p:sld>`;
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><p:sld ${rootAttributes.join(' ')}><p:cSld${commonSlideName}>${background}<p:spTree>${SHAPE_TREE_ROOT}${elements}</p:spTree></p:cSld><p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr></p:sld>`;
 }
