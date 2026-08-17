@@ -407,6 +407,45 @@ describe('oakit portable PowerPoint CLI contract', () => {
     },
   );
 
+  it('accepts explicit false transform booleans in separated and inline forms', async () => {
+    const sourceIo = new PortableCliIo();
+    sourceIo.files.set('source.pptx', await createEditablePptx());
+    await runOakitCli(
+      ['snapshot', 'source.pptx', '--output', 'handoff.json'],
+      sourceIo,
+      '1.2.3',
+    );
+    const io = new PortableCliIo();
+    io.files.set('handoff.json', String(sourceIo.files.get('handoff.json')));
+
+    await expect(
+      runOakitCli(
+        [
+          'transform-text',
+          'handoff.json',
+          '--target=slide-1-element-1',
+          '--x',
+          '11',
+          '--flip-horizontal',
+          'false',
+          '--flip-vertical=false',
+        ],
+        io,
+        '1.2.3',
+      ),
+    ).resolves.toBe(0);
+    expect(json(io.stdout).operations).toMatchObject([
+      {
+        value: {
+          flipHorizontal: false,
+          flipVertical: false,
+          x: 11,
+        },
+      },
+    ]);
+    expect(io.stderr).toBe('');
+  });
+
   it('transforms portable JSON from stdin', async () => {
     const sourceIo = new PortableCliIo();
     sourceIo.files.set('source.pptx', await createEditablePptx());
@@ -592,6 +631,18 @@ describe('oakit portable PowerPoint CLI contract', () => {
         '--target',
         'slide-1-element-1',
         '--x=NaN',
+      ],
+      code: 'invalid-transform-number',
+      message: 'Option --x requires a finite number',
+    },
+    {
+      args: [
+        'transform-text',
+        'handoff.json',
+        '--target',
+        'slide-1-element-1',
+        '--x',
+        '   ',
       ],
       code: 'invalid-transform-number',
       message: 'Option --x requires a finite number',
