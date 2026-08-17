@@ -16,6 +16,7 @@ const KEY_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
 const EMUS_PER_POINT = 12_700;
 const ANGLE_UNITS_PER_DEGREE = 60_000;
 const FONT_SIZE_UNITS_PER_POINT = 100;
+const HEX_COLOR_PATTERN = /^#[0-9a-f]{6}$/i;
 
 function isObject(value: unknown): value is JsonObject {
   if (value === null) return false;
@@ -102,6 +103,23 @@ function optionalBoolean(
     'invalid-scene-document',
     `${path}.${key}`,
     'Expected a boolean',
+  );
+}
+
+function optionalColor(
+  value: JsonObject,
+  key: string,
+  path: string,
+  issues: PptxSceneValidationIssue[],
+): void {
+  const color = value[key];
+  if (color === undefined) return;
+  if (typeof color === 'string' && HEX_COLOR_PATTERN.test(color)) return;
+  addIssue(
+    issues,
+    'invalid-scene-document',
+    `${path}.${key}`,
+    'Expected a #RRGGBB color',
   );
 }
 
@@ -307,12 +325,13 @@ function validateRunProperties(
   if (!properties) return;
   rejectUnknownKeys(
     properties,
-    ['bold', 'fontFamily', 'fontSize', 'italic', 'language'],
+    ['bold', 'color', 'fontFamily', 'fontSize', 'italic', 'language'],
     path,
     issues,
   );
   optionalBoolean(properties, 'bold', path, issues);
   optionalBoolean(properties, 'italic', path, issues);
+  optionalColor(properties, 'color', path, issues);
   optionalString(properties, 'fontFamily', path, issues);
   optionalString(properties, 'language', path, issues);
   if (properties.fontSize !== undefined) {
@@ -692,11 +711,48 @@ function validateElement(
   if (authored) {
     rejectUnknownKeys(
       authored,
-      ['hidden', 'transform'],
+      [
+        'fillColor',
+        'geometry',
+        'hidden',
+        'lineColor',
+        'lineWidth',
+        'transform',
+      ],
       `${path}.authored`,
       issues,
     );
     optionalBoolean(authored, 'hidden', `${path}.authored`, issues);
+    optionalColor(authored, 'fillColor', `${path}.authored`, issues);
+    optionalColor(authored, 'lineColor', `${path}.authored`, issues);
+    if (
+      authored.geometry !== undefined &&
+      !isOneOf(authored.geometry, ['ellipse', 'rect', 'roundRect'])
+    ) {
+      addIssue(
+        issues,
+        'invalid-scene-document',
+        `${path}.authored.geometry`,
+        'Unknown text shape geometry',
+      );
+    }
+    if (authored.lineWidth !== undefined) {
+      requireFiniteNumber(
+        authored.lineWidth,
+        `${path}.authored.lineWidth`,
+        issues,
+        true,
+      );
+      if (profile === 'create-text-v1') {
+        requireSerializableInteger(
+          authored.lineWidth,
+          EMUS_PER_POINT,
+          `${path}.authored.lineWidth`,
+          issues,
+          true,
+        );
+      }
+    }
     if (authored.transform !== undefined) {
       validateTransform(
         authored.transform,
@@ -908,11 +964,12 @@ export function validatePptxScene(
     if (!slide) return;
     rejectUnknownKeys(
       slide,
-      ['elements', 'hidden', 'key', 'layoutKey', 'name'],
+      ['backgroundColor', 'elements', 'hidden', 'key', 'layoutKey', 'name'],
       path,
       issues,
     );
     registerKey(slide.key, `${path}.key`, keys, issues);
+    optionalColor(slide, 'backgroundColor', path, issues);
     optionalBoolean(slide, 'hidden', path, issues);
     optionalString(slide, 'name', path, issues);
     if (slide.layoutKey !== undefined && typeof slide.layoutKey !== 'string') {

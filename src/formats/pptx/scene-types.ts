@@ -16,7 +16,11 @@ export interface PptxSceneGroupTransform extends PptxSceneTransform {
 }
 
 export interface PptxSceneAuthoredElement {
+  fillColor?: string;
+  geometry?: 'ellipse' | 'rect' | 'roundRect';
   hidden?: boolean;
+  lineColor?: string;
+  lineWidth?: number;
   transform?: PptxSceneTransform;
 }
 
@@ -55,6 +59,7 @@ export interface PptxSceneTextBodyProperties {
 
 export interface PptxSceneRunProperties {
   bold?: boolean;
+  color?: string;
   fontFamily?: string;
   fontSize?: number;
   italic?: boolean;
@@ -137,6 +142,7 @@ export interface PptxSceneLayout {
 }
 
 export interface PptxSceneSlide {
+  backgroundColor?: string;
   elements: PptxSceneElement[];
   hidden?: boolean;
   key: string;
