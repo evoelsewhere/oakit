@@ -31,11 +31,12 @@ export function xlsxColumnName(column: number): string | undefined {
   }
   let remaining = column;
   let output = '';
-  while (remaining > 0) {
+  Array.from({ length: 3 }).forEach(() => {
+    if (remaining === 0) return;
     const offset = (remaining - 1) % 26;
     output = String.fromCodePoint(0x41 + offset) + output;
     remaining = Math.floor((remaining - 1) / 26);
-  }
+  });
   return output;
 }
 

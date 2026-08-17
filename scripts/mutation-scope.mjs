@@ -103,6 +103,21 @@ export const mutatedFiles = [
   'src/formats/xlsx/internal/worksheet-view.ts',
   'src/formats/xlsx/internal/worksheet.ts',
   'src/formats/xlsx/parser.ts',
+  'src/formats/xlsx/roundtrip/apply-edits.ts',
+  'src/formats/xlsx/roundtrip/canonical-json.ts',
+  'src/formats/xlsx/roundtrip/capability.ts',
+  'src/formats/xlsx/roundtrip/data-tree.ts',
+  'src/formats/xlsx/roundtrip/digest.ts',
+  'src/formats/xlsx/roundtrip/errors.ts',
+  'src/formats/xlsx/roundtrip/keys.ts',
+  'src/formats/xlsx/roundtrip/read-snapshot.ts',
+  'src/formats/xlsx/roundtrip/source.ts',
+  'src/formats/xlsx/roundtrip/validate-snapshot.ts',
+  'src/formats/xlsx/roundtrip/validate-json.ts',
+  'src/formats/xlsx/roundtrip/verify.ts',
+  'src/formats/xlsx/roundtrip/write.ts',
+  'src/formats/xlsx/roundtrip/write-limits.ts',
+  'src/formats/xlsx/roundtrip/internal/package-graph.ts',
 ];
 
 export const pendingMutationFiles = [];
@@ -150,6 +165,16 @@ export const excludedMutationFiles = [
   {
     file: 'src/formats/xlsx/types.ts',
     reason: 'Compile-time-only XLSX public interfaces and type aliases.',
+  },
+  {
+    file: 'src/formats/xlsx/roundtrip/types.ts',
+    reason:
+      'Compile-time-only XLSX round-trip contracts and discriminated unions.',
+  },
+  {
+    file: 'src/formats/xlsx/roundtrip/index.ts',
+    reason:
+      'Pure XLSX round-trip public re-export barrel with no runtime decisions.',
   },
   {
     file: 'src/index.ts',
