@@ -3,7 +3,7 @@ import path from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 
-import { mutatedFiles } from './mutation-scope.mjs';
+import { fileMutationShardFiles } from './mutation-release-scope.mjs';
 
 const projectRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -55,14 +55,54 @@ export function createMutationShards(files, count, weightOf) {
   return shards.map(({ files: shardFiles }) => shardFiles.sort());
 }
 
-function sourceBytes(file) {
-  return fs.statSync(path.join(projectRoot, file)).size;
+export function readMutationWorkloads(
+  file = path.join(projectRoot, 'scripts/mutation-workloads.json'),
+) {
+  const value = JSON.parse(fs.readFileSync(file, 'utf8'));
+  if (
+    value === null ||
+    typeof value !== 'object' ||
+    Array.isArray(value) ||
+    value.schemaVersion !== 1 ||
+    value.files === null ||
+    typeof value.files !== 'object' ||
+    Array.isArray(value.files)
+  ) {
+    throw new TypeError('Mutation workload history is invalid');
+  }
+  return value;
+}
+
+export function mutationWorkWeight(file, history) {
+  const workload = history.files[file];
+  if (
+    workload === null ||
+    typeof workload !== 'object' ||
+    Array.isArray(workload)
+  ) {
+    throw new Error(`Missing mutation workload history for ${file}`);
+  }
+  const values = [
+    workload.mutants,
+    workload.staticMutants,
+    workload.testsCompleted,
+  ];
+  if (
+    values.some((value) => !Number.isSafeInteger(value) || value < 0) ||
+    workload.mutants === 0
+  ) {
+    throw new RangeError(`Mutation workload history for ${file} is invalid`);
+  }
+  return workload.mutants + workload.testsCompleted;
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const index = positiveInteger(process.argv[2] ?? '', 'Shard number') - 1;
   const count = positiveInteger(process.argv[3] ?? '', 'Shard count');
-  const shards = createMutationShards(mutatedFiles, count, sourceBytes);
+  const history = readMutationWorkloads();
+  const shards = createMutationShards(fileMutationShardFiles, count, (file) =>
+    mutationWorkWeight(file, history),
+  );
   const shard = shards[index];
   if (shard === undefined) {
     throw new RangeError(`Shard number must be between 1 and ${count}`);

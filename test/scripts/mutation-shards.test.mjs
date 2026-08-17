@@ -1,17 +1,27 @@
 import { describe, expect, it } from 'vitest';
 
+import { collectMutationWorkloads } from '../../scripts/collect-mutation-workloads.mjs';
 import {
   mergeMutationReports,
   reportMutantFingerprint,
 } from '../../scripts/merge-mutation-reports.mjs';
+import {
+  fileMutationShardFiles,
+  moduleMutationFiles,
+} from '../../scripts/mutation-release-scope.mjs';
 import { mutationShardEnvironment } from '../../scripts/mutation-shard-environment.mjs';
 import { mutatedFiles } from '../../scripts/mutation-scope.mjs';
-import { createMutationShards } from '../../scripts/mutation-shards.mjs';
+import {
+  createMutationShards,
+  mutationWorkWeight,
+  readMutationWorkloads,
+} from '../../scripts/mutation-shards.mjs';
 import {
   createShapePathMutationJobs,
   instrumentShapePathMutants,
   mutationFingerprint,
   selectShapePathJobMutants,
+  shapePathMutationFile,
   verifyShapePathMutationJobs,
 } from '../../scripts/shape-path-mutation-jobs.mjs';
 
@@ -54,6 +64,58 @@ function reportMutant({
 }
 
 describe('mutation report sharding', () => {
+  it('partitions release files across disjoint mutation strategies', () => {
+    const strategies = [
+      ...fileMutationShardFiles,
+      ...moduleMutationFiles,
+      shapePathMutationFile,
+    ];
+
+    expect(new Set(strategies).size).toBe(mutatedFiles.length);
+    expect(strategies.toSorted()).toEqual(mutatedFiles.toSorted());
+  });
+
+  it('balances file shards using observed mutation test work', () => {
+    const history = readMutationWorkloads();
+    expect(history.sourceRun).toBe(31993252037);
+    expect(Object.keys(history.files).toSorted()).toEqual(
+      fileMutationShardFiles.toSorted(),
+    );
+    const shards = createMutationShards(fileMutationShardFiles, 7, (file) =>
+      mutationWorkWeight(file, history),
+    );
+    const weights = shards.map((files) =>
+      files.reduce(
+        (total, file) => total + mutationWorkWeight(file, history),
+        0,
+      ),
+    );
+
+    expect(Math.max(...weights) - Math.min(...weights)).toBeLessThan(50);
+  });
+
+  it('collects non-negative workload evidence for every expected file', () => {
+    const collected = collectMutationWorkloads(
+      [
+        report({
+          'a.ts': fileReport([
+            { ...reportMutant(), static: true, testsCompleted: 3 },
+          ]),
+        }),
+      ],
+      ['a.ts'],
+      42,
+    );
+
+    expect(collected).toEqual({
+      files: {
+        'a.ts': { mutants: 1, staticMutants: 1, testsCompleted: 3 },
+      },
+      schemaVersion: 1,
+      sourceRun: 42,
+    });
+  });
+
   it('parses an explicit shard selection and optional mutator exclusions', () => {
     expect(
       mutationShardEnvironment({

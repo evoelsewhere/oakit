@@ -1,0 +1,406 @@
+{
+  "files": {
+    "src/cli/launch.ts": {
+      "mutants": 8,
+      "staticMutants": 0,
+      "testsCompleted": 7
+    },
+    "src/cli/node-io.ts": {
+      "mutants": 30,
+      "staticMutants": 1,
+      "testsCompleted": 14
+    },
+    "src/cli/run.ts": {
+      "mutants": 1019,
+      "staticMutants": 2,
+      "testsCompleted": 2048
+    },
+    "src/common/archive/read-entry.ts": {
+      "mutants": 43,
+      "staticMutants": 29,
+      "testsCompleted": 76
+    },
+    "src/common/binary/base64.ts": {
+      "mutants": 164,
+      "staticMutants": 25,
+      "testsCompleted": 459
+    },
+    "src/common/media/media-type.ts": {
+      "mutants": 55,
+      "staticMutants": 18,
+      "testsCompleted": 3677
+    },
+    "src/common/numbers.ts": {
+      "mutants": 8,
+      "staticMutants": 5,
+      "testsCompleted": 11
+    },
+    "src/common/ooxml/units.ts": {
+      "mutants": 1,
+      "staticMutants": 1,
+      "testsCompleted": 1
+    },
+    "src/common/ooxml/text.ts": {
+      "mutants": 4,
+      "staticMutants": 4,
+      "testsCompleted": 1721
+    },
+    "src/common/opc/part-uri.ts": {
+      "mutants": 77,
+      "staticMutants": 65,
+      "testsCompleted": 2306
+    },
+    "src/common/text/css.ts": {
+      "mutants": 49,
+      "staticMutants": 43,
+      "testsCompleted": 1228
+    },
+    "src/common/text/html.ts": {
+      "mutants": 93,
+      "staticMutants": 30,
+      "testsCompleted": 242
+    },
+    "src/common/xml/normalize.ts": {
+      "mutants": 171,
+      "staticMutants": 136,
+      "testsCompleted": 4363
+    },
+    "src/common/xml/read-xml.ts": {
+      "mutants": 30,
+      "staticMutants": 12,
+      "testsCompleted": 8
+    },
+    "src/common/xml/tree.ts": {
+      "mutants": 62,
+      "staticMutants": 28,
+      "testsCompleted": 5812
+    },
+    "src/common/xml/types.ts": {
+      "mutants": 5,
+      "staticMutants": 0,
+      "testsCompleted": 6
+    },
+    "src/common/xml/validate.ts": {
+      "mutants": 94,
+      "staticMutants": 67,
+      "testsCompleted": 4927
+    },
+    "src/formats/pptx/creation-limits.ts": {
+      "mutants": 14,
+      "staticMutants": 2,
+      "testsCompleted": 480
+    },
+    "src/formats/pptx/creation-resource-validation.ts": {
+      "mutants": 59,
+      "staticMutants": 0,
+      "testsCompleted": 202
+    },
+    "src/formats/pptx/creator.ts": {
+      "mutants": 34,
+      "staticMutants": 1,
+      "testsCompleted": 618
+    },
+    "src/formats/pptx/errors.ts": {
+      "mutants": 2,
+      "staticMutants": 0,
+      "testsCompleted": 4
+    },
+    "src/formats/pptx/internal/animation.ts": {
+      "mutants": 93,
+      "staticMutants": 21,
+      "testsCompleted": 1056
+    },
+    "src/formats/pptx/internal/border.ts": {
+      "mutants": 145,
+      "staticMutants": 98,
+      "testsCompleted": 2682
+    },
+    "src/formats/pptx/internal/chart.ts": {
+      "mutants": 242,
+      "staticMutants": 0,
+      "testsCompleted": 1595
+    },
+    "src/formats/pptx/internal/color.ts": {
+      "mutants": 86,
+      "staticMutants": 0,
+      "testsCompleted": 149
+    },
+    "src/formats/pptx/internal/custom-geometry-guide.ts": {
+      "mutants": 263,
+      "staticMutants": 0,
+      "testsCompleted": 2491
+    },
+    "src/formats/pptx/internal/diagram.ts": {
+      "mutants": 137,
+      "staticMutants": 2,
+      "testsCompleted": 667
+    },
+    "src/formats/pptx/internal/fill.ts": {
+      "mutants": 688,
+      "staticMutants": 156,
+      "testsCompleted": 2258
+    },
+    "src/formats/pptx/internal/font-style.ts": {
+      "mutants": 398,
+      "staticMutants": 263,
+      "testsCompleted": 8021
+    },
+    "src/formats/pptx/internal/math.ts": {
+      "mutants": 227,
+      "staticMutants": 0,
+      "testsCompleted": 746
+    },
+    "src/formats/pptx/internal/paragraph.ts": {
+      "mutants": 418,
+      "staticMutants": 208,
+      "testsCompleted": 7893
+    },
+    "src/formats/pptx/internal/position.ts": {
+      "mutants": 92,
+      "staticMutants": 73,
+      "testsCompleted": 848
+    },
+    "src/formats/pptx/internal/resource-limits.ts": {
+      "mutants": 96,
+      "staticMutants": 68,
+      "testsCompleted": 9681
+    },
+    "src/formats/pptx/internal/scheme-color.ts": {
+      "mutants": 77,
+      "staticMutants": 55,
+      "testsCompleted": 1331
+    },
+    "src/formats/pptx/internal/shadow.ts": {
+      "mutants": 19,
+      "staticMutants": 0,
+      "testsCompleted": 37
+    },
+    "src/formats/pptx/internal/shape.ts": {
+      "mutants": 700,
+      "staticMutants": 0,
+      "testsCompleted": 3446
+    },
+    "src/formats/pptx/internal/table.ts": {
+      "mutants": 196,
+      "staticMutants": 25,
+      "testsCompleted": 1351
+    },
+    "src/formats/pptx/internal/text.ts": {
+      "mutants": 256,
+      "staticMutants": 162,
+      "testsCompleted": 3280
+    },
+    "src/formats/pptx/internal/text-insets.ts": {
+      "mutants": 45,
+      "staticMutants": 40,
+      "testsCompleted": 2836
+    },
+    "src/formats/pptx/internal/xml-reader.ts": {
+      "mutants": 114,
+      "staticMutants": 40,
+      "testsCompleted": 1575
+    },
+    "src/formats/pptx/node.ts": {
+      "mutants": 21,
+      "staticMutants": 0,
+      "testsCompleted": 10
+    },
+    "src/formats/pptx/parser.ts": {
+      "mutants": 1542,
+      "staticMutants": 545,
+      "testsCompleted": 10507
+    },
+    "src/formats/pptx/roundtrip/canonical-json.ts": {
+      "mutants": 51,
+      "staticMutants": 40,
+      "testsCompleted": 813
+    },
+    "src/formats/pptx/roundtrip/consistency.ts": {
+      "mutants": 42,
+      "staticMutants": 33,
+      "testsCompleted": 1301
+    },
+    "src/formats/pptx/roundtrip/data-tree.ts": {
+      "mutants": 153,
+      "staticMutants": 125,
+      "testsCompleted": 1228
+    },
+    "src/formats/pptx/roundtrip/digest.ts": {
+      "mutants": 8,
+      "staticMutants": 8,
+      "testsCompleted": 12
+    },
+    "src/formats/pptx/roundtrip/edit.ts": {
+      "mutants": 244,
+      "staticMutants": 0,
+      "testsCompleted": 569
+    },
+    "src/formats/pptx/roundtrip/portable.ts": {
+      "mutants": 120,
+      "staticMutants": 36,
+      "testsCompleted": 245
+    },
+    "src/formats/pptx/roundtrip/preview.ts": {
+      "mutants": 129,
+      "staticMutants": 105,
+      "testsCompleted": 6791
+    },
+    "src/formats/pptx/roundtrip/read.ts": {
+      "mutants": 20,
+      "staticMutants": 16,
+      "testsCompleted": 644
+    },
+    "src/formats/pptx/roundtrip/source.ts": {
+      "mutants": 74,
+      "staticMutants": 59,
+      "testsCompleted": 717
+    },
+    "src/formats/pptx/roundtrip/validate.ts": {
+      "mutants": 295,
+      "staticMutants": 132,
+      "testsCompleted": 3342
+    },
+    "src/formats/pptx/roundtrip/write.ts": {
+      "mutants": 79,
+      "staticMutants": 41,
+      "testsCompleted": 692
+    },
+    "src/formats/pptx/render-error.ts": {
+      "mutants": 2,
+      "staticMutants": 0,
+      "testsCompleted": 41
+    },
+    "src/formats/pptx/render-limits.ts": {
+      "mutants": 40,
+      "staticMutants": 7,
+      "testsCompleted": 583
+    },
+    "src/formats/pptx/render-request.ts": {
+      "mutants": 175,
+      "staticMutants": 0,
+      "testsCompleted": 407
+    },
+    "src/formats/pptx/render-svg-rich.ts": {
+      "mutants": 180,
+      "staticMutants": 0,
+      "testsCompleted": 163
+    },
+    "src/formats/pptx/render-svg.ts": {
+      "mutants": 20,
+      "staticMutants": 0,
+      "testsCompleted": 272
+    },
+    "src/formats/pptx/render-svg-slide.ts": {
+      "mutants": 269,
+      "staticMutants": 0,
+      "testsCompleted": 1334
+    },
+    "src/formats/pptx/render-svg-values.ts": {
+      "mutants": 124,
+      "staticMutants": 5,
+      "testsCompleted": 370
+    },
+    "src/formats/pptx/render-text.ts": {
+      "mutants": 124,
+      "staticMutants": 0,
+      "testsCompleted": 932
+    },
+    "src/formats/pptx/scene-validation.ts": {
+      "mutants": 934,
+      "staticMutants": 437,
+      "testsCompleted": 20721
+    },
+    "src/formats/pptx/write-error.ts": {
+      "mutants": 7,
+      "staticMutants": 0,
+      "testsCompleted": 193
+    },
+    "src/formats/pptx/writer/archive.ts": {
+      "mutants": 10,
+      "staticMutants": 0,
+      "testsCompleted": 372
+    },
+    "src/formats/pptx/writer/content-types.ts": {
+      "mutants": 29,
+      "staticMutants": 6,
+      "testsCompleted": 767
+    },
+    "src/formats/pptx/writer/hierarchy.ts": {
+      "mutants": 17,
+      "staticMutants": 17,
+      "testsCompleted": 1727
+    },
+    "src/formats/pptx/writer/identifiers.ts": {
+      "mutants": 28,
+      "staticMutants": 0,
+      "testsCompleted": 195
+    },
+    "src/formats/pptx/writer/package-relationships.ts": {
+      "mutants": 43,
+      "staticMutants": 1,
+      "testsCompleted": 307
+    },
+    "src/formats/pptx/writer/paragraph.ts": {
+      "mutants": 38,
+      "staticMutants": 6,
+      "testsCompleted": 636
+    },
+    "src/formats/pptx/writer/parts.ts": {
+      "mutants": 27,
+      "staticMutants": 0,
+      "testsCompleted": 408
+    },
+    "src/formats/pptx/writer/presentation.ts": {
+      "mutants": 29,
+      "staticMutants": 3,
+      "testsCompleted": 616
+    },
+    "src/formats/pptx/writer/relationships.ts": {
+      "mutants": 16,
+      "staticMutants": 1,
+      "testsCompleted": 693
+    },
+    "src/formats/pptx/writer/slide.ts": {
+      "mutants": 38,
+      "staticMutants": 4,
+      "testsCompleted": 1101
+    },
+    "src/formats/pptx/writer/text-body.ts": {
+      "mutants": 48,
+      "staticMutants": 10,
+      "testsCompleted": 766
+    },
+    "src/formats/pptx/writer/text-node.ts": {
+      "mutants": 57,
+      "staticMutants": 0,
+      "testsCompleted": 28
+    },
+    "src/formats/pptx/writer/text-shape.ts": {
+      "mutants": 54,
+      "staticMutants": 0,
+      "testsCompleted": 84
+    },
+    "src/formats/pptx/writer/theme.ts": {
+      "mutants": 46,
+      "staticMutants": 45,
+      "testsCompleted": 636
+    },
+    "src/formats/pptx/writer/xml.ts": {
+      "mutants": 40,
+      "staticMutants": 2,
+      "testsCompleted": 625
+    },
+    "src/formats/pptx/writer/units.ts": {
+      "mutants": 19,
+      "staticMutants": 1,
+      "testsCompleted": 279
+    },
+    "src/formats/pptx/writer/verify.ts": {
+      "mutants": 142,
+      "staticMutants": 0,
+      "testsCompleted": 689
+    }
+  },
+  "schemaVersion": 1,
+  "sourceRun": 31993252037
+}
