@@ -41,6 +41,7 @@ async function installPackedArtifact(directory) {
     { cwd: consumerDirectory, maxBuffer: 1024 * 1024 },
   );
   return {
+    binPath: path.join(consumerDirectory, 'node_modules', '.bin', 'oakit'),
     cliPath: path.join(
       consumerDirectory,
       'node_modules',
@@ -89,7 +90,7 @@ async function createSmokePptx() {
 
 const metadata = require('../package.json');
 assert.equal(metadata.name, '@evoelsewhere/oakit');
-assert.equal(metadata.bin.oakit, './dist/cli.js');
+assert.equal(metadata.bin.oakit, 'dist/cli.js');
 
 const esm = await import('@evoelsewhere/oakit');
 const esmPptx = await import('@evoelsewhere/oakit/pptx');
@@ -115,15 +116,17 @@ const smokeDirectory = await mkdtemp(
 );
 try {
   const installed = await installPackedArtifact(smokeDirectory);
+  const binPath = installed.binPath;
   const cliPath = installed.cliPath;
+  assert.equal(
+    (await readFile(binPath, 'utf8')).startsWith('#!/usr/bin/env node\n'),
+    true,
+  );
   assert.equal(
     (await readFile(cliPath, 'utf8')).startsWith('#!/usr/bin/env node\n'),
     true,
   );
-  const versionResult = await execFileAsync(process.execPath, [
-    cliPath,
-    '--version',
-  ]);
+  const versionResult = await execFileAsync(binPath, ['--version']);
   assert.equal(versionResult.stdout, `oakit ${metadata.version}\n`);
   assert.equal(versionResult.stderr, '');
 

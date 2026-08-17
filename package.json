@@ -18,7 +18,7 @@
     "LICENSE"
   ],
   "bin": {
-    "oakit": "./dist/cli.js"
+    "oakit": "dist/cli.js"
   },
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
