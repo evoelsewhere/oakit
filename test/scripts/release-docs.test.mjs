@@ -96,8 +96,13 @@ describe('release documentation', () => {
     });
     expect(checklist).toContain('- [x] Create tag `v0.0.1`');
     expect(checklist).toContain('package smoke now executes');
-    expect(
-      await readFile(path.resolve('docs', 'release-0.0.2.md'), 'utf8'),
-    ).toContain('node_modules/.bin/oakit');
+    const hotfixChecklist = await readFile(
+      path.resolve('docs', 'release-0.0.2.md'),
+      'utf8',
+    );
+    expect(hotfixChecklist).toContain('node_modules/.bin/oakit');
+    expect(hotfixChecklist).toContain(
+      '[run 32054867081](https://github.com/evoelsewhere/oakit/actions/runs/32054867081)',
+    );
   });
 });
