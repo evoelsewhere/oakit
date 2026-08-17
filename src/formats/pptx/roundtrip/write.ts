@@ -24,6 +24,18 @@ import type {
 } from './types';
 import { validatePptxRoundTripSnapshot } from './validate';
 
+interface PptxRoundTripWriterDependencies {
+  inspect: typeof inspectPptxRoundTripPackage;
+  parse: typeof parse;
+  patch: typeof patchPptxOperations;
+}
+
+const DEFAULT_DEPENDENCIES: PptxRoundTripWriterDependencies = {
+  inspect: inspectPptxRoundTripPackage,
+  parse,
+  patch: patchPptxOperations,
+};
+
 function consistencyMatches(
   actual: PptxSnapshotConsistency,
   expected: PptxSnapshotConsistency,
@@ -77,9 +89,10 @@ function r2Report(
   };
 }
 
-export async function writePptxRoundTripWithLimits(
+export async function writePptxRoundTripWithDependencies(
   value: PptxRoundTripSnapshot,
   limits: ResolvedPptxResourceLimits,
+  dependencies: PptxRoundTripWriterDependencies,
 ): Promise<PptxWriteResult> {
   const validated = validatePptxRoundTripSnapshot(value, limits);
   const snapshot = structuredClone(validated);
@@ -109,14 +122,14 @@ export async function writePptxRoundTripWithLimits(
   let parsed: Awaited<ReturnType<typeof parse>>;
   let inspection: Awaited<ReturnType<typeof inspectPptxRoundTripPackage>>;
   try {
-    parsed = await parse(normalized.bytes, {
+    parsed = await dependencies.parse(normalized.bytes, {
       audioMode: 'none',
       errorMode: 'strict',
       imageMode: 'none',
       limits,
       videoMode: 'none',
     });
-    inspection = await inspectPptxRoundTripPackage(normalized.bytes, limits);
+    inspection = await dependencies.inspect(normalized.bytes, limits);
   } catch (cause) {
     consistencyFailure(
       'PowerPoint round-trip source failed strict verification',
@@ -142,7 +155,7 @@ export async function writePptxRoundTripWithLimits(
   }
 
   if (snapshot.operations.length !== 0) {
-    const patched = await patchPptxOperations(
+    const patched = await dependencies.patch(
       normalized.bytes,
       parsed,
       snapshot.operations,
@@ -150,7 +163,7 @@ export async function writePptxRoundTripWithLimits(
     );
     let outputDocument: Awaited<ReturnType<typeof parse>>;
     try {
-      outputDocument = await parse(patched.data, {
+      outputDocument = await dependencies.parse(patched.data, {
         audioMode: 'none',
         errorMode: 'strict',
         imageMode: 'none',
@@ -186,6 +199,17 @@ export async function writePptxRoundTripWithLimits(
     data: normalized.bytes,
     report: r0Report(inspection.partCount),
   };
+}
+
+export function writePptxRoundTripWithLimits(
+  value: PptxRoundTripSnapshot,
+  limits: ResolvedPptxResourceLimits,
+): Promise<PptxWriteResult> {
+  return writePptxRoundTripWithDependencies(
+    value,
+    limits,
+    DEFAULT_DEPENDENCIES,
+  );
 }
 
 export async function writePptxRoundTrip(
