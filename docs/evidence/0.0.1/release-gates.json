@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "version": "0.0.1",
+  "sourceTree": "4b7c749f58f908967b9868716bddd78e05a0fbcd",
+  "producer": {
+    "conclusion": "success",
+    "revision": "3e0f8047fbfbf0e2163efeeb6be10fcdd53348a0",
+    "runId": "32045412714",
+    "templateCount": 30,
+    "totalSlides": 733,
+    "totalElements": 9285,
+    "minimumTextRetention": 1,
+    "minimumElementRetention": 1,
+    "temporaryPresentationsDeleted": true
+  },
+  "mutation": {
+    "conclusion": "success",
+    "revision": "cbae5e40a4f67b70ad18264e47c4566d4daae2d6",
+    "runId": "32049829830",
+    "files": 95,
+    "total": 21184,
+    "killed": 16734,
+    "compileError": 4450,
+    "missed": 0
+  },
+  "ci": {
+    "conclusion": "success",
+    "revision": "cbae5e40a4f67b70ad18264e47c4566d4daae2d6",
+    "runId": "32049822932",
+    "jobs": 11
+  }
+}

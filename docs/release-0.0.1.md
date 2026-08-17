@@ -1,8 +1,11 @@
 # Release 0.0.1 readiness
 
 OAKit `0.0.1` is not released merely because an individual gate is green. The
-release is ready only when every required item below is proven on the exact
-release revision.
+release is ready only when every required item below is proven for one immutable
+production source tree and the final metadata revision passes package and CI
+verification. Evidence files cannot contain the hash of the commit that contains
+them, so the release binds producer and Reliability runs through the shared
+`src/` Git tree `4b7c749f58f908967b9868716bddd78e05a0fbcd`.
 
 ## Capability claims
 
@@ -26,19 +29,26 @@ creation, arbitrary element editing, or pixel-identical rendering.
 - [x] Focused mutation modules pass at 100% without excluded mutants.
 - [x] Release mutation architecture includes forced dynamic and static mutants.
 - [x] Node 20/22/24, browser, fuzz, package, CLI, and resource-limit gates exist.
-- [ ] Refresh the controlled Google credential and regenerate producer/corpus
-      evidence on the final release revision.
-- [ ] Run the complete Reliability workflow on the final release revision and
-      audit the merged mutation artifact with zero missed mutants.
-- [ ] Require a fully green CI run on the final release revision; infrastructure
-      setup failures must be rerun rather than treated as product failures or
-      ignored.
-- [ ] Replace the `Unreleased` changelog heading with `0.0.1` and its release
+- [x] Refresh the controlled Google credential and regenerate producer/corpus
+      evidence for the release source tree in
+      [run 32045412714](https://github.com/evoelsewhere/oakit/actions/runs/32045412714).
+- [x] Run the complete Reliability workflow for the same source tree and audit
+      the merged mutation artifact with zero missed mutants in
+      [run 32049829830](https://github.com/evoelsewhere/oakit/actions/runs/32049829830):
+      21,184 mutants, 16,734 killed, 4,450 compile errors, and zero survived,
+      no-coverage, timeout, or runtime-error results.
+- [x] Require a fully green CI run on the Reliability revision; all 11 jobs
+      passed in
+      [run 32049822932](https://github.com/evoelsewhere/oakit/actions/runs/32049822932).
+- [x] Replace the `Unreleased` changelog heading with `0.0.1` and its release
       date.
-- [ ] Change `package.json` and lockfile metadata from `0.0.0` to `0.0.1` only
-      after the preceding evidence is attached to the same revision.
+- [x] Change `package.json` from `0.0.0` to `0.0.1` after attaching the preceding
+      evidence. The pnpm v9 lockfile does not store the root package version.
 - [ ] Pack and install the release tarball, verify ESM/CJS/subpath exports and
-      CLI version output, then create tag `v0.0.1`.
+      `oakit --version` output, and require a fully green CI run on the metadata
+      revision.
+- [ ] Verify the final tag target changes no production source from the audited
+      tree, then create tag `v0.0.1`.
 - [ ] Publish the GitHub release to trigger provenance-enabled npm publishing.
 
 ## Evidence
@@ -47,3 +57,4 @@ creation, arbitrary element editing, or pixel-identical rendering.
 - Producer notes and mutation audit: [`evidence/0.0.1/README.md`](evidence/0.0.1/README.md)
 - Real-world corpus evidence: [`evidence/0.0.1/slidesmania/evidence.json`](evidence/0.0.1/slidesmania/evidence.json)
 - Current corpus audit image: [`evidence/0.0.1/slidesmania/producer-audit.png`](evidence/0.0.1/slidesmania/producer-audit.png)
+- Machine-readable release gates: [`evidence/0.0.1/release-gates.json`](evidence/0.0.1/release-gates.json)

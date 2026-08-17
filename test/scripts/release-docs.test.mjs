@@ -20,21 +20,47 @@ describe('release documentation', () => {
     expect(readme).toContain('do not claim arbitrary PPTX editing');
   });
 
-  it('keeps the unreleased version blocked on final-revision evidence', async () => {
+  it('binds version 0.0.1 to producer, mutation, and CI evidence', async () => {
     const changelog = await readFile(path.resolve('CHANGELOG.md'), 'utf8');
     const checklist = await readFile(
       path.resolve('docs', 'release-0.0.1.md'),
       'utf8',
     );
     const metadata = JSON.parse(await readFile(path.resolve('package.json')));
+    const gates = JSON.parse(
+      await readFile(
+        path.resolve('docs', 'evidence', '0.0.1', 'release-gates.json'),
+        'utf8',
+      ),
+    );
 
-    expect(metadata.version).toBe('0.0.0');
-    expect(changelog).toContain('## Unreleased');
+    expect(metadata.version).toBe('0.0.1');
+    expect(changelog).toContain('## 0.0.1 - 2026-08-18');
+    expect(changelog).not.toContain('## Unreleased');
     expect(checklist).toContain(
-      '- [ ] Refresh the controlled Google credential',
+      '[run 32045412714](https://github.com/evoelsewhere/oakit/actions/runs/32045412714)',
     );
     expect(checklist).toContain(
-      '- [ ] Change `package.json` and lockfile metadata from `0.0.0` to `0.0.1`',
+      '[run 32049829830](https://github.com/evoelsewhere/oakit/actions/runs/32049829830)',
     );
+    expect(checklist).toContain('21,184 mutants');
+    expect(checklist).toContain('- [ ] Pack and install the release tarball');
+    expect(gates).toMatchObject({
+      ci: { conclusion: 'success', runId: '32049822932' },
+      mutation: {
+        compileError: 4450,
+        killed: 16734,
+        missed: 0,
+        runId: '32049829830',
+        total: 21184,
+      },
+      producer: {
+        runId: '32045412714',
+        templateCount: 30,
+        totalSlides: 733,
+      },
+      sourceTree: '4b7c749f58f908967b9868716bddd78e05a0fbcd',
+      version: '0.0.1',
+    });
   });
 });
