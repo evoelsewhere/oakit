@@ -1,0 +1,68 @@
+{
+  "artifacts": {
+    "creation": {
+      "output": {
+        "byteLength": 12788,
+        "sha256": "db72a3de14662664e7b7c939abdbd0ede69802f3ed53b9ff290ffb4021901187"
+      },
+      "source": {
+        "byteLength": 4628,
+        "sha256": "860b0f29de42ac3fde67f0b5618a5838a25b652e43d7a2d707559a5341ccc4b4"
+      }
+    },
+    "edit": {
+      "output": {
+        "byteLength": 12800,
+        "sha256": "851f90822c0967405113f9c7ed58b20e389c7208772783828f5f0adf3bfb9936"
+      },
+      "source": {
+        "byteLength": 4844,
+        "sha256": "3f24868dfd9753c224c84d11493f9065e93eae8193a4bc15094c0bc3479e7415"
+      }
+    }
+  },
+  "capabilities": {
+    "creation": {
+      "internalLevel": "C2",
+      "producerVerifiedLevel": "C3",
+      "profileId": "pptx-create-text-v1"
+    },
+    "edit": {
+      "internalLevel": "R2",
+      "operationCount": 2,
+      "producerVerifiedLevel": "R3",
+      "profileId": "pptx-roundtrip-text-v1"
+    }
+  },
+  "platform": {
+    "architecture": "x64",
+    "node": "v22.23.2",
+    "os": "linux"
+  },
+  "producer": {
+    "application": "Google Slides",
+    "transport": "Google Drive API v3 controlled import/export"
+  },
+  "schemaVersion": 1,
+  "validation": {
+    "geometryTolerancePoints": 0.5,
+    "openWithoutRepair": true,
+    "semanticTextPreserved": true,
+    "semanticTransformPreserved": true,
+    "strictParse": true,
+    "temporaryPresentationsDeleted": true,
+    "transformNormalization": {
+      "exported": {
+        "flipHorizontal": false,
+        "flipVertical": false,
+        "rotation": -135
+      },
+      "requested": {
+        "flipHorizontal": true,
+        "flipVertical": true,
+        "rotation": 45
+      }
+    }
+  },
+  "verifiedAt": "2026-08-17T11:03:41.053Z"
+}

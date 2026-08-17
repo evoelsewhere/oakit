@@ -1,0 +1,46 @@
+{
+  "artifacts": {
+    "firstSave": {
+      "byteLength": 8740,
+      "sha256": "8b7d0f7f65a203707f983b22422adb31947ac0f9c086907aa8ab044e5ba949bd"
+    },
+    "output": {
+      "byteLength": 9067,
+      "sha256": "aae099113497fe10955801f77e4601e8d4be1f370e71654d91c77bf797ca18ed"
+    },
+    "pdf": {
+      "byteLength": 19706,
+      "sha256": "232b36937906d5d6dc50a358782c5046a02b1c0afd57024e2e100bce37b271e0"
+    },
+    "source": {
+      "byteLength": 5794,
+      "sha256": "59bb383073cf7295d981220246024f65d67f2ad2d1882ae68068750614f1dacc"
+    }
+  },
+  "capability": {
+    "internalLevel": "R2",
+    "operationCount": 2,
+    "producerVerifiedLevel": "R3",
+    "profileId": "pptx-roundtrip-text-v1"
+  },
+  "platform": {
+    "architecture": "x64",
+    "node": "v24.18.0",
+    "os": "darwin"
+  },
+  "producer": {
+    "application": "LibreOffice Impress",
+    "version": "LibreOfficeDev 26.8.0.0.alpha0 2c87e51eeaa2b413ff4ae097b2705eea1995d8e5"
+  },
+  "schemaVersion": 1,
+  "validation": {
+    "geometryTolerancePoints": 0.2,
+    "openWithoutRepair": true,
+    "pdfExport": true,
+    "saveReopenCycles": 2,
+    "semanticTextPreserved": true,
+    "semanticTransformPreserved": true,
+    "slideCount": 2,
+    "strictParse": true
+  }
+}

@@ -1,0 +1,43 @@
+{
+  "profiles": {
+    "creation": {
+      "level": "C3",
+      "producerMatrix": [
+        "powerpoint-macos",
+        "libreoffice-impress",
+        "google-slides"
+      ],
+      "profileId": "pptx-create-text-v1"
+    },
+    "edit": {
+      "level": "R3",
+      "producerMatrix": [
+        "powerpoint-macos",
+        "libreoffice-impress",
+        "google-slides"
+      ],
+      "profileId": "pptx-roundtrip-text-v1"
+    }
+  },
+  "producers": [
+    {
+      "id": "powerpoint-macos",
+      "version": "Microsoft PowerPoint 16.112 (16.112.26081010)"
+    },
+    {
+      "id": "libreoffice-impress",
+      "version": "LibreOfficeDev 26.8.0.0.alpha0 2c87e51eeaa2b413ff4ae097b2705eea1995d8e5"
+    },
+    {
+      "id": "google-slides",
+      "version": "Google Drive API v3 controlled import/export"
+    }
+  ],
+  "schemaVersion": 1,
+  "evidenceSha256": {
+    "googleSlides": "e2918279be423823e6dc050e1997e5ab265c94e193ac09a6abcb3e557af7bb7e",
+    "libreOfficeCreation": "2c5cbc496b69fbabfad4f954b15f3386f8b697f20dc4e726a718bde5cd60b65c",
+    "libreOfficeEdit": "31e15ae2c82dda641ff9563654576c524af7178486801e116fd05ce7d4bc4b98",
+    "powerPoint": "9cd2a52d8929ee75adc252ec8fbac71a35d83cb6b9a6a5f4c9eba1481e1a2d50"
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "creation": {
+    "internalLevel": "C2",
+    "nativeReserialized": true,
+    "openWithoutRepair": true,
+    "outputSha256": "ec6227be74ceaf13f1e2d9682cd3a8daef9c879375a40e59cea8641592f357fa",
+    "saveReopen": true,
+    "semanticTextPreserved": true,
+    "sourceSha256": "5442a69c50cea2bcbd031c925f55e8ac49ee486da17c0d1ff9aaf96652655944"
+  },
+  "edit": {
+    "internalLevel": "R2",
+    "nativeReserialized": true,
+    "openWithoutRepair": true,
+    "operationCount": 2,
+    "outputSha256": "1e4abce40b751a215ed1cb6f325ef5283b45c860dffbaee049ec6224d316642d",
+    "saveReopen": true,
+    "semanticTextPreserved": true,
+    "semanticTransformPreserved": true,
+    "sourceSha256": "1904bb053a8c26f54b69436e59705d7bf564d047f346ede40c22bd7c3d3a837b"
+  },
+  "platform": {
+    "architecture": "x64",
+    "node": "v24.18.0",
+    "os": "darwin"
+  },
+  "producer": {
+    "application": "Microsoft PowerPoint",
+    "build": "16.112.26081010",
+    "version": "16.112"
+  }
+}

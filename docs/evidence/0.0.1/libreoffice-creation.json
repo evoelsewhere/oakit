@@ -1,0 +1,39 @@
+{
+  "artifacts": {
+    "output": {
+      "byteLength": 8721,
+      "sha256": "4384ae426a15b58360ab6e605623aeb595441fba2066fb50d7efa03eca6a1fcd"
+    },
+    "pdf": {
+      "byteLength": 19594,
+      "sha256": "01d7ef86db269c745827f3bd3d3b3567d20ba0e479a520fc0667e930078d7d1c"
+    },
+    "source": {
+      "byteLength": 5579,
+      "sha256": "75cc1dba076e5d662477c3ba458928e3df9cad011664f07fe1fc5b69764a5074"
+    }
+  },
+  "capability": {
+    "internalLevel": "C2",
+    "producerVerifiedLevel": "C3",
+    "profileId": "pptx-create-text-v1"
+  },
+  "platform": {
+    "architecture": "x64",
+    "node": "v24.18.0",
+    "os": "darwin"
+  },
+  "producer": {
+    "application": "LibreOffice Impress",
+    "version": "LibreOfficeDev 26.8.0.0.alpha0 2c87e51eeaa2b413ff4ae097b2705eea1995d8e5"
+  },
+  "schemaVersion": 1,
+  "validation": {
+    "openWithoutRepair": true,
+    "pdfExport": true,
+    "saveReopenCycles": 1,
+    "semanticTextPreserved": true,
+    "slideCount": 2,
+    "strictParse": true
+  }
+}
