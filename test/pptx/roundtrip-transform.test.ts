@@ -102,6 +102,10 @@ describe('PowerPoint part-preserving text transform editing', () => {
       payloads(bytes),
       payloads(output.data),
     ]);
+    const [sourceArchive, outputArchive] = await Promise.all([
+      JSZip.loadAsync(bytes),
+      JSZip.loadAsync(output.data),
+    ]);
 
     expect(output.report).toMatchObject({
       level: 'R2',
@@ -124,6 +128,9 @@ describe('PowerPoint part-preserving text transform editing', () => {
     );
     expect(slideXml).toContain(
       '<a:xfrm rot="2700000" flipH="1" flipV="1"><a:off x="635000" y="762000"/><a:ext cx="5080000" cy="1270000"/></a:xfrm>',
+    );
+    expect(outputArchive.file('ppt/slides/slide1.xml')?.date.getTime()).toBe(
+      sourceArchive.file('ppt/slides/slide1.xml')?.date.getTime(),
     );
     const verified = await readPptxRoundTrip(output.data);
     expect(verified.document.slides[0]?.elements[0]).toMatchObject({

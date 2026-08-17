@@ -11,7 +11,7 @@ import {
 } from './consistency';
 import { canonicalJson } from './canonical-json';
 import { applyPptxRoundTripOperationsToPreview } from './edit';
-import { patchPptxOperations } from './patch-text';
+import { patchPptxOperations } from './orchestration';
 import { createPowerPointRoundTripPreview } from './preview';
 import {
   inspectPptxRoundTripPackage,

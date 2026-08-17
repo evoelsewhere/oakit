@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { patchPptxShapeTransformXml } from '../../src/formats/pptx/roundtrip/patch-text';
+import { patchPptxShapeTransformXml } from '../../src/formats/pptx/roundtrip/transform-xml';
 import type { PptxRoundTripSetTransformOperation } from '../../src/formats/pptx/roundtrip/types';
 
 const PRESENTATION_NAMESPACE =
@@ -59,10 +59,14 @@ function operation(
 
 describe('PowerPoint literal shape transform patching', () => {
   it('serializes exact EMUs and omits false optional attributes', () => {
-    const output = patchPptxShapeTransformXml(slideXml(), '2', operation());
+    const input = slideXml();
+    const output = patchPptxShapeTransformXml(input, '2', operation());
 
-    expect(output).toContain(
-      '<a:xfrm><a:off x="635000" y="762000"/><a:ext cx="5080000" cy="1270000"/></a:xfrm>',
+    expect(output).toBe(
+      input.replace(
+        '<a:xfrm><a:off x="254000" y="381000"/><a:ext cx="3810000" cy="1016000"/></a:xfrm>',
+        '<a:xfrm><a:off x="635000" y="762000"/><a:ext cx="5080000" cy="1270000"/></a:xfrm>',
+      ),
     );
     expect(output).not.toContain(' rot=');
     expect(output).not.toContain(' flipH=');
@@ -172,14 +176,14 @@ describe('PowerPoint literal shape transform patching', () => {
   it('rejects missing namespaces, target shape, and simple transform', () => {
     expect(() =>
       patchPptxShapeTransformXml(
-        slideXml().replace(` xmlns:p="${PRESENTATION_NAMESPACE}"`, ''),
+        slideXml().replace(PRESENTATION_NAMESPACE, 'urn:missing-presentation'),
         '2',
         operation(),
       ),
     ).toThrow('PowerPoint text edit slide has no PresentationML namespace');
     expect(() =>
       patchPptxShapeTransformXml(
-        slideXml().replace(` xmlns:a="${DRAWING_NAMESPACE}"`, ''),
+        slideXml().replace(DRAWING_NAMESPACE, 'urn:missing-drawing'),
         '2',
         operation(),
       ),
