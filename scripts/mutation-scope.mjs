@@ -110,6 +110,8 @@ export const mutatedFiles = [
   'src/formats/xlsx/roundtrip/digest.ts',
   'src/formats/xlsx/roundtrip/errors.ts',
   'src/formats/xlsx/roundtrip/keys.ts',
+  'src/formats/xlsx/roundtrip/operation-planner.ts',
+  'src/formats/xlsx/roundtrip/operation-validation.ts',
   'src/formats/xlsx/roundtrip/read-snapshot.ts',
   'src/formats/xlsx/roundtrip/source.ts',
   'src/formats/xlsx/roundtrip/validate-snapshot.ts',
