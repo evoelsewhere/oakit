@@ -206,7 +206,7 @@ describe('PPTX public API in browsers', () => {
     });
 
     expect(second.data).toEqual(first.data);
-    expect(first.report.level).toBe('C1');
+    expect(first.report.level).toBe('C2');
     expect(first.report.addedPartCount).toBe(11);
     expect(parsed.size).toEqual({ height: 540, width: 960 });
     expect(parsed.slides).toHaveLength(1);

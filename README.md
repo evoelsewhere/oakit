@@ -16,7 +16,7 @@ malformed input, and producer differences—so agent workflows can operate on
 meaningful document data instead of raw XML.
 
 > **Project status:** pre-stable (`0.0.x`). Implemented PowerPoint capabilities
-> include bounded reading, text-focused `C1` creation, byte-exact `R0` portable
+> include bounded reading, text-focused `C2` creation, byte-exact `R0` portable
 > hand-offs, verified `R2` plain-text replacement, and Office-free SVG/PNG
 > previews. Excel and Word remain product direction rather than completed APIs.
 
@@ -44,16 +44,17 @@ agent runtime, tool-calling protocol, or vector database.
 
 | Format               | Read | Create          | Edit                       | Preserve      | Preview |
 | -------------------- | ---- | --------------- | -------------------------- | ------------- | ------- |
-| PowerPoint (`.pptx`) | Yes  | Text-focused C1 | Plain single-run text (R2) | Byte-exact R0 | SVG/PNG |
+| PowerPoint (`.pptx`) | Yes  | Text-focused C2 | Plain single-run text (R2) | Byte-exact R0 | SVG/PNG |
 | Excel (`.xlsx`)      | No   | No              | No                         | No            | No      |
 | Word (`.docx`)       | No   | No              | No                         | No            | No      |
 
-`C1` means a new package is valid and reparses to the supported source-free
-scene. `R0` means an unchanged source package is restored byte for byte through
-runtime or portable JSON. `R2` text replacement preserves every untouched part
-payload, reparses the edited package strictly, and verifies the complete
-semantic preview. These levels do not claim arbitrary PPTX editing, full
-reconstruction from normalized JSON, or pixel-identical PowerPoint rendering.
+`C2` means a new package is valid, reparses to the supported source-free
+semantics, and passes Office-free SVG visual verification for every slide. `R0`
+means an unchanged source package is restored byte for byte through runtime or
+portable JSON. `R2` text replacement preserves every untouched part payload,
+reparses the edited package strictly, and verifies the complete semantic
+preview. These levels do not claim arbitrary PPTX editing, full reconstruction
+from normalized JSON, or pixel-identical PowerPoint rendering.
 
 The PowerPoint reader currently handles:
 
@@ -466,7 +467,7 @@ depth.
 ### Create bounded text presentations
 
 `createPptx` accepts the versioned scene model, validates it strictly, and
-returns deterministic package bytes with a `C1` fidelity report. The current
+returns deterministic package bytes with a `C2` fidelity report. The current
 creation profile supports source-free slides containing structured text; it
 rejects unsupported scene elements rather than emitting a guessed package.
 
@@ -516,7 +517,7 @@ const scene: PptxSceneDocument = {
 
 const created = await createPptx(scene);
 await writeFile('created.pptx', created.data);
-console.log(created.report.level); // C1
+console.log(created.report.level); // C2
 ```
 
 ### Agent-ready slide previews without Office

@@ -1,7 +1,14 @@
 import { RATIO_EMUs_Points } from '../../../common/ooxml/units';
-import type { PptxSceneDocument } from '../scene-types';
+import { renderPptxDocumentToSvg } from '../render-svg';
+import type { PptxSvgRenderResult } from '../render-types';
+import type {
+  PptxSceneDocument,
+  PptxSceneTextElement,
+  PptxSceneTextNode,
+} from '../scene-types';
 import { parse } from '../parser';
 import type { PptxDocument, PptxParseOptions } from '../types';
+import { plainTextFromPowerPointHtml } from '../roundtrip/preview';
 import { pointsToEmu } from './units';
 
 type PptxCreationParser = (
@@ -9,14 +16,107 @@ type PptxCreationParser = (
   options: PptxParseOptions,
 ) => Promise<PptxDocument>;
 
+type PptxCreationRenderer = (document: PptxDocument) => PptxSvgRenderResult;
+
 function expectedPointValue(value: number): number {
   return pointsToEmu(value) * RATIO_EMUs_Points;
+}
+
+function textNodeValue(node: PptxSceneTextNode): string {
+  return node.type === 'break' ? '\n' : node.text;
+}
+
+function expectedPlainText(element: PptxSceneTextElement): string {
+  return element.text.paragraphs
+    .map((paragraph) => paragraph.children.map(textNodeValue).join(''))
+    .join('\n');
+}
+
+function verifyTextElement(
+  generated: PptxDocument['slides'][number]['elements'][number] | undefined,
+  expected: PptxSceneTextElement,
+  slideIndex: number,
+  elementIndex: number,
+): void {
+  const location = `slide ${slideIndex + 1}, element ${elementIndex + 1}`;
+  if (generated?.type !== 'text') {
+    throw new Error(`Generated PowerPoint text element missing at ${location}`);
+  }
+  const transform = expected.authored.transform;
+  if (transform === undefined) {
+    throw new Error(
+      `Expected PowerPoint authored transform missing at ${location}`,
+    );
+  }
+  const generatedTransform = {
+    flipHorizontal: generated.isFlipH,
+    flipVertical: generated.isFlipV,
+    height: generated.height,
+    rotation: generated.rotate,
+    width: generated.width,
+    x: generated.left,
+    y: generated.top,
+  };
+  const expectedTransform = {
+    flipHorizontal: transform.flipHorizontal ?? false,
+    flipVertical: transform.flipVertical ?? false,
+    height: expectedPointValue(transform.height),
+    rotation: transform.rotation ?? 0,
+    width: expectedPointValue(transform.width),
+    x: expectedPointValue(transform.x),
+    y: expectedPointValue(transform.y),
+  };
+  if (
+    JSON.stringify(generatedTransform) !== JSON.stringify(expectedTransform)
+  ) {
+    throw new Error(`Generated PowerPoint transform mismatch at ${location}`);
+  }
+  const actualText = plainTextFromPowerPointHtml(generated.content);
+  if (actualText !== expectedPlainText(expected)) {
+    throw new Error(`Generated PowerPoint text mismatch at ${location}`);
+  }
+}
+
+function verifyRenderedSlides(
+  document: PptxDocument,
+  rendered: PptxSvgRenderResult,
+): void {
+  if (rendered.slides.length !== document.slides.length) {
+    throw new Error(
+      `Generated PowerPoint render count mismatch: expected ${document.slides.length}, received ${rendered.slides.length}`,
+    );
+  }
+  for (const [index, slide] of rendered.slides.entries()) {
+    if (
+      slide.format !== 'svg' ||
+      slide.mimeType !== 'image/svg+xml' ||
+      slide.slideNumber !== index + 1 ||
+      slide.width !== document.size.width ||
+      slide.height !== document.size.height ||
+      slide.data.byteLength === 0
+    ) {
+      throw new Error(
+        `Generated PowerPoint visual invariant mismatch on slide ${index + 1}`,
+      );
+    }
+    const source = new TextDecoder().decode(slide.data);
+    if (
+      !/^(?:<\?xml[^>]*\?>)?<svg\b/.test(source) ||
+      /<(?:foreignObject|script)\b/i.test(source) ||
+      /(?:href|src)=["'](?:blob|file|https?):/i.test(source)
+    ) {
+      throw new Error(
+        `Generated PowerPoint unsafe SVG output on slide ${index + 1}`,
+      );
+    }
+  }
 }
 
 export async function verifyPowerPointCreationWithParser(
   data: Uint8Array,
   scene: PptxSceneDocument,
   parseDocument: PptxCreationParser,
+  renderDocument: PptxCreationRenderer = renderPptxDocumentToSvg,
 ): Promise<void> {
   const document = await parseDocument(data, {
     audioMode: 'none',
@@ -50,7 +150,21 @@ export async function verifyPowerPointCreationWithParser(
         `Generated PowerPoint element count mismatch on slide ${index + 1}: expected ${slide.elements.length}, received ${generated?.elements.length ?? 0}`,
       );
     }
+    slide.elements.forEach((element, elementIndex) => {
+      if (element.type !== 'text') {
+        throw new Error(
+          `Expected PowerPoint text element missing at slide ${index + 1}, element ${elementIndex + 1}`,
+        );
+      }
+      verifyTextElement(
+        generated.elements[elementIndex],
+        element,
+        index,
+        elementIndex,
+      );
+    });
   });
+  verifyRenderedSlides(document, renderDocument(document));
 }
 
 export function verifyPowerPointCreation(

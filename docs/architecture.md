@@ -11,7 +11,7 @@ The implemented PowerPoint production paths are:
 .pptx package ──snapshot───────> portable integrity-bound JSON ──restore──> R0 .pptx
                                        │
                                        └──replace-text operation──────────> part-preserved R2 .pptx
-scene JSON──── ──create─────────> bounded source-free .pptx
+scene JSON──── ──create─────────> bounded, semantic/render-verified C2 .pptx
 .pptx/model─── ──render─────────> self-contained SVG or Node-only PNG + warnings
 ```
 
@@ -45,7 +45,7 @@ source package and hashes its bound semantic preview, operation log, and source
 manifest. The same snapshot accepts a narrow `R2` single-run text operation
 with exact preconditions, part-preserving patching, strict output reparse, and
 semantic verification. Source-free creation currently accepts a bounded text
-profile and reports `C1`; arbitrary semantic editing, streaming ZIP processing,
+profile and reports `C2`; arbitrary semantic editing, streaming ZIP processing,
 full XSD validation, macro execution, and package repair are not implemented.
 
 ## System context
@@ -61,7 +61,7 @@ flowchart LR
     Snapshot["Portable R0/R2 snapshot"]
     Operation["Bound text operation"]
     Scene["Validated scene JSON"]
-    Writer["R0 restore, R2 patch, or C1 creator"]
+    Writer["R0 restore, R2 patch, or C2 creator"]
     PackageOutput["Verified PPTX bytes"]
     Preview["Safe SVG or PNG preview"]
     ConsumerOutput["Indexer, analyzer, or agent"]
@@ -77,7 +77,7 @@ flowchart LR
     Snapshot --> Operation
     Operation -->|"verify precondition and dirty part"| Writer
     Consumer -->|"source-free scene"| Scene
-    Scene -->|"strict C1 serialization"| Writer
+    Scene -->|"strict C2 verification"| Writer
     Writer --> PackageOutput
     PackageOutput --> ConsumerOutput
     Model --> Preview
@@ -129,7 +129,7 @@ src/
         ├── scene-validation.ts      Profile and resource validation
         ├── creator.ts               Strict source-free creation entry point
         ├── roundtrip/               R0/R2 read, edit, portable codec, and write
-        ├── writer/                  Deterministic C1 OOXML serialization
+        ├── writer/                  Deterministic C2 OOXML serialization
         └── internal/
             ├── context.ts           Per-slide parser state and caches
             ├── animation.ts         Slide transition parsing
@@ -839,7 +839,7 @@ PowerPoint public API
 ├── portable codec -> bounded JSON transport with canonical Base64
 ├── text operation -> stable target plus exact source precondition
 ├── round-trip writer -> verified R0 copy or part-preserving R2 package
-├── creation writer -> deterministic C1 text-profile package
+├── creation writer -> deterministic C2 text-profile package
 ├── preview renderer -> approximate SVG/PNG with warnings
 └── shared scene, package, and format-domain rules
 ```

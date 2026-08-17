@@ -71,7 +71,7 @@ describe('PowerPoint creation through the public API', () => {
     expect(level).toBe('C3');
   });
 
-  it('creates a strict-readable text presentation with an explicit C1 report', async () => {
+  it('creates a strict-readable and Office-free rendered text presentation with an explicit C2 report', async () => {
     const result = await createPptx(creationScene());
     const parsed = await parsePptx(result.data, {
       audioMode: 'none',
@@ -96,14 +96,14 @@ describe('PowerPoint creation through the public API', () => {
       addedPartCount: 13,
       copiedPartCount: 0,
       diagnostics: [],
-      level: 'C1',
+      level: 'C2',
       operations: [],
       patchedPartCount: 0,
       producerEvidence: [],
       rebuiltPartCount: 0,
       removedPartCount: 0,
       supportProfile: {
-        effectiveLevel: 'C1',
+        effectiveLevel: 'C2',
         id: 'pptx-create-text-v1',
         producerMatrix: [],
         version: '1',
