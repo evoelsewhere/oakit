@@ -13,11 +13,6 @@ import { roundTripGoogleSlidesPresentation } from './google-slides-drive.mjs';
 import { googleTemplateCatalog } from './pptx-google-template-catalog.mjs';
 
 const accessToken = process.env.GOOGLE_DRIVE_ACCESS_TOKEN;
-if (accessToken === undefined || accessToken.trim().length === 0) {
-  throw new Error(
-    'Google Slides template verification requires GOOGLE_DRIVE_ACCESS_TOKEN',
-  );
-}
 
 const reportDirectory = path.resolve(
   'reports',
@@ -147,6 +142,24 @@ assert.equal(
 const evidence = [];
 const sourceImages = [];
 const googleImages = [];
+const authoredTemplates = [];
+
+async function writeProgress(phase, completedGoogleTemplates) {
+  await writeFile(
+    path.join(reportDirectory, 'progress.json'),
+    `${JSON.stringify(
+      {
+        completedGoogleTemplates,
+        completedSourceTemplates: authoredTemplates.length,
+        phase,
+        schemaVersion: 1,
+        templateCount: googleTemplateCatalog.length,
+      },
+      null,
+      2,
+    )}\n`,
+  );
+}
 
 for (const template of googleTemplateCatalog) {
   const elementCount = template.scene.slides[0]?.elements.length ?? 0;
@@ -175,7 +188,63 @@ for (const template of googleTemplateCatalog) {
     `${template.slug} source lost authored elements`,
   );
   const sourceSlide = assertRenderable(sourceRender, `${template.slug} source`);
+  const sourcePptxPath = path.join(
+    decksDirectory,
+    `${template.slug}-source.pptx`,
+  );
+  const sourcePngPath = path.join(
+    imagesDirectory,
+    `${template.slug}-source.png`,
+  );
+  await Promise.all([
+    writeFile(sourcePptxPath, created.data),
+    writeFile(sourcePngPath, sourceSlide.data),
+  ]);
 
+  const shared = {
+    elementCount,
+    index: template.index,
+    marker: template.marker,
+    palette: template.palette,
+    slug: template.slug,
+    title: template.title,
+  };
+  sourceImages.push({ ...shared, png: sourceSlide.data });
+  authoredTemplates.push({
+    created,
+    source: {
+      documentElementCount: sourceDocument.slides[0]?.elements.length ?? 0,
+      png: artifactEvidence(sourceSlide.data),
+      pptx: artifactEvidence(created.data),
+      warnings: sourceSlide.warnings.map((warning) => warning.code),
+    },
+    ...shared,
+    template,
+  });
+  console.log(
+    `[source ${template.index.toString().padStart(2, '0')}/30] verified ${template.title}`,
+  );
+}
+
+const sourceContactSheet = contactSheet(
+  '30 authored PowerPoint templates',
+  'Created through OAKit · strict parsed · rendered without Office',
+  sourceImages,
+);
+await writeFile(
+  path.join(reportDirectory, 'contact-sheet-source.png'),
+  sourceContactSheet,
+);
+await writeProgress('google-import-export', 0);
+
+if (accessToken === undefined || accessToken.trim().length === 0) {
+  throw new Error(
+    'Google Slides template verification requires GOOGLE_DRIVE_ACCESS_TOKEN',
+  );
+}
+
+for (const authored of authoredTemplates) {
+  const { created, source, template, ...shared } = authored;
   const exported = await googleRoundTripWithRetry(
     created.data,
     `oakit-template-${template.index.toString().padStart(2, '0')}`,
@@ -207,39 +276,16 @@ for (const template of googleTemplateCatalog) {
     sha256(created.data),
     `${template.slug} did not pass through a distinct producer export`,
   );
-
-  const sourcePptxPath = path.join(
-    decksDirectory,
-    `${template.slug}-source.pptx`,
-  );
-  const googlePptxPath = path.join(
-    decksDirectory,
-    `${template.slug}-google.pptx`,
-  );
-  const sourcePngPath = path.join(
-    imagesDirectory,
-    `${template.slug}-source.png`,
-  );
-  const googlePngPath = path.join(
-    imagesDirectory,
-    `${template.slug}-google.png`,
-  );
   await Promise.all([
-    writeFile(sourcePptxPath, created.data),
-    writeFile(googlePptxPath, exported),
-    writeFile(sourcePngPath, sourceSlide.data),
-    writeFile(googlePngPath, googleSlide.data),
+    writeFile(
+      path.join(decksDirectory, `${template.slug}-google.pptx`),
+      exported,
+    ),
+    writeFile(
+      path.join(imagesDirectory, `${template.slug}-google.png`),
+      googleSlide.data,
+    ),
   ]);
-
-  const shared = {
-    elementCount,
-    index: template.index,
-    marker: template.marker,
-    palette: template.palette,
-    slug: template.slug,
-    title: template.title,
-  };
-  sourceImages.push({ ...shared, png: sourceSlide.data });
   googleImages.push({ ...shared, png: googleSlide.data });
   evidence.push({
     ...shared,
@@ -249,38 +295,24 @@ for (const template of googleTemplateCatalog) {
       pptx: artifactEvidence(exported),
       warnings: googleSlide.warnings.map((warning) => warning.code),
     },
-    source: {
-      documentElementCount: sourceDocument.slides[0]?.elements.length ?? 0,
-      png: artifactEvidence(sourceSlide.data),
-      pptx: artifactEvidence(created.data),
-      warnings: sourceSlide.warnings.map((warning) => warning.code),
-    },
+    source,
   });
+  await writeProgress('google-import-export', evidence.length);
   console.log(
-    `[${template.index.toString().padStart(2, '0')}/30] verified ${template.title}`,
+    `[google ${template.index.toString().padStart(2, '0')}/30] verified ${template.title}`,
   );
 }
 
-const sourceContactSheet = contactSheet(
-  '30 authored PowerPoint templates',
-  'Created through OAKit · strict parsed · rendered without Office',
-  sourceImages,
-);
 const googleContactSheet = contactSheet(
   '30 Google Slides round-trip exports',
   'Controlled Drive import/export · strict parsed · rendered without Office · temporary files deleted',
   googleImages,
 );
-await Promise.all([
-  writeFile(
-    path.join(reportDirectory, 'contact-sheet-source.png'),
-    sourceContactSheet,
-  ),
-  writeFile(
-    path.join(reportDirectory, 'contact-sheet-google.png'),
-    googleContactSheet,
-  ),
-]);
+await writeFile(
+  path.join(reportDirectory, 'contact-sheet-google.png'),
+  googleContactSheet,
+);
+await writeProgress('complete', evidence.length);
 
 const manifest = {
   artifacts: {
