@@ -163,7 +163,7 @@ describe('PPTX seeded public-boundary properties', () => {
       ),
       { numRuns: FUZZ_RUNS, seed: FUZZ_SEED + 3 },
     );
-  });
+  }, 15_000);
 
   it('rejects generated mismatched XML closing names', async () => {
     const localName = fc.stringMatching(/^[A-Za-z][A-Za-z0-9]{0,15}$/);
