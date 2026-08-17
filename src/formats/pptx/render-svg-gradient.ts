@@ -15,13 +15,13 @@ function gradientOffset(value: string): string | null {
     : null;
 }
 
-export function svgLinearGradientPaint(
+export function svgGradientPaint(
   fill: Fill,
   id: string,
 ): PptxSvgGradientPaint | null {
   if (
     fill.type !== 'gradient' ||
-    fill.value.path !== 'line' ||
+    (fill.value.path !== 'line' && fill.value.path !== 'circle') ||
     !Number.isFinite(fill.value.rot) ||
     fill.value.colors.length < 2 ||
     !/^pptx-gradient-[1-9]\d*-[1-9]\d*$/.test(id)
@@ -42,8 +42,12 @@ export function svgLinearGradientPaint(
     stops.push(`<stop offset="${offset}" stop-color="${color}"/>`);
   }
   const rotation = svgNumber(fill.value.rot) as string;
+  const definition =
+    fill.value.path === 'line'
+      ? `<linearGradient id="${id}" x1="0" y1="0" x2="1" y2="0" gradientTransform="rotate(${rotation} .5 .5)">${stops.join('')}</linearGradient>`
+      : `<radialGradient id="${id}" cx=".5" cy=".5" r=".5">${stops.join('')}</radialGradient>`;
   return {
-    definition: `<linearGradient id="${id}" x1="0" y1="0" x2="1" y2="0" gradientTransform="rotate(${rotation} .5 .5)">${stops.join('')}</linearGradient>`,
+    definition,
     value: `url(#${id})`,
   };
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { svgLinearGradientPaint } from '../../src/formats/pptx/render-svg-gradient';
+import { svgGradientPaint } from '../../src/formats/pptx/render-svg-gradient';
 import type { Fill } from '../../src/formats/pptx/types';
 
 function gradient(overrides = {}): Fill {
@@ -21,7 +21,7 @@ function gradient(overrides = {}): Fill {
 
 describe('PowerPoint SVG linear gradients', () => {
   it('serializes bounded ordered stops and rotation deterministically', () => {
-    expect(svgLinearGradientPaint(gradient(), 'pptx-gradient-2-1')).toEqual({
+    expect(svgGradientPaint(gradient(), 'pptx-gradient-2-1')).toEqual({
       definition:
         '<linearGradient id="pptx-gradient-2-1" x1="0" y1="0" x2="1" y2="0" gradientTransform="rotate(90 .5 .5)"><stop offset="0%" stop-color="#FFFFFF"/><stop offset="47%" stop-color="#F3F3F3"/><stop offset="100%" stop-color="#434343"/></linearGradient>',
       value: 'url(#pptx-gradient-2-1)',
@@ -30,7 +30,7 @@ describe('PowerPoint SVG linear gradients', () => {
 
   it('supports two stops, decimal offsets, and repeated hard-edge offsets', () => {
     expect(
-      svgLinearGradientPaint(
+      svgGradientPaint(
         gradient({
           colors: [
             { color: '#FFFFFF', pos: '47.25%' },
@@ -45,7 +45,8 @@ describe('PowerPoint SVG linear gradients', () => {
   });
 
   it.each([
-    [{ path: 'circle' }, 'non-linear path'],
+    [{ path: 'rect' }, 'unsupported rectangular path'],
+    [{ path: 'shape' }, 'unsupported shape path'],
     [{ rot: Number.NaN }, 'non-finite rotation'],
     [{ colors: [{ color: '#FFFFFF', pos: '0%' }] }, 'one stop'],
     [
@@ -132,7 +133,7 @@ describe('PowerPoint SVG linear gradients', () => {
   ])('rejects %j (%s)', (overrides, name) => {
     expect(name.length).toBeGreaterThan(0);
     expect(
-      svgLinearGradientPaint(gradient(overrides), 'pptx-gradient-2-1'),
+      svgGradientPaint(gradient(overrides), 'pptx-gradient-2-1'),
     ).toBeNull();
   });
 
@@ -146,15 +147,26 @@ describe('PowerPoint SVG linear gradients', () => {
     'pptx-gradient-2-1x',
     'pptx-gradient-2-1" onload="alert(1)',
   ])('rejects unsafe id %j', (id) => {
-    expect(svgLinearGradientPaint(gradient(), id)).toBeNull();
+    expect(svgGradientPaint(gradient(), id)).toBeNull();
   });
 
   it('rejects a non-gradient fill', () => {
     expect(
-      svgLinearGradientPaint(
+      svgGradientPaint(
         { type: 'color', value: '#FFFFFF' },
         'pptx-gradient-2-1',
       ),
     ).toBeNull();
+  });
+
+  it('serializes a safe circular gradient as a bounded radial definition', () => {
+    expect(
+      svgGradientPaint(
+        gradient({ path: 'circle', rot: 0 }),
+        'pptx-gradient-3-4',
+      )?.definition,
+    ).toBe(
+      '<radialGradient id="pptx-gradient-3-4" cx=".5" cy=".5" r=".5"><stop offset="0%" stop-color="#FFFFFF"/><stop offset="47%" stop-color="#F3F3F3"/><stop offset="100%" stop-color="#434343"/></radialGradient>',
+    );
   });
 });

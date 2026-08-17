@@ -1,7 +1,7 @@
 import type { Element, Fill, Image, PptxSlide, Shape, Text } from './types';
 import { escapeSvgText, renderedTextFromPowerPointHtml } from './render-text';
 import type { PptxRenderWarning } from './render-types';
-import { svgLinearGradientPaint } from './render-svg-gradient';
+import { svgGradientPaint } from './render-svg-gradient';
 import { renderPptxSvgRichElement } from './render-svg-rich';
 import {
   embeddedRasterDataUri,
@@ -61,7 +61,7 @@ function paint(
     if (color !== null) return color;
   }
   const gradientId = `pptx-gradient-${context.slideNumber}-${context.nextDefinitionId + 1}`;
-  const gradient = svgLinearGradientPaint(fill, gradientId);
+  const gradient = svgGradientPaint(fill, gradientId);
   if (gradient !== null) {
     context.definitions.push(gradient.definition);
     context.nextDefinitionId += 1;
