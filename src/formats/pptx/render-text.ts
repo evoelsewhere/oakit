@@ -9,6 +9,135 @@ interface HtmlTag {
   name?: string;
 }
 
+export interface PptxRenderedTextRun {
+  bold: boolean;
+  color?: string;
+  fontSize?: number;
+  italic: boolean;
+  text: string;
+}
+
+export interface PptxRenderedTextParagraph {
+  alignment: 'center' | 'left' | 'right';
+  runs: PptxRenderedTextRun[];
+}
+
+const RENDERED_CSS_PROPERTIES = new Set([
+  'color',
+  'font-size',
+  'font-style',
+  'font-weight',
+  'text-align',
+]);
+
+function attribute(source: string, name: string): string | undefined {
+  const match = new RegExp(
+    `(?:^|\\s)${name}\\s*=\\s*(?:"([^"]*)"|'([^']*)')`,
+    'i',
+  ).exec(source);
+  const value = match?.[1] ?? match?.[2];
+  return value === undefined ? undefined : decodeXmlEntities(value);
+}
+
+function cssDeclarations(source: string): Map<string, string> {
+  const result = new Map<string, string>();
+  for (const declaration of source.split(';')) {
+    const separator = declaration.indexOf(':');
+    if (separator === -1) continue;
+    const name = declaration.slice(0, separator).trim();
+    const value = declaration.slice(separator + 1).trim();
+    const normalizedName = name.toLowerCase();
+    if (!RENDERED_CSS_PROPERTIES.has(normalizedName) || value === '') continue;
+    result.set(normalizedName, value);
+  }
+  return result;
+}
+
+function paragraphAlignment(attributes: string) {
+  const styleSource = attribute(attributes, 'style');
+  if (styleSource === undefined) return 'left';
+  const style = cssDeclarations(styleSource);
+  const alignment = style.get('text-align');
+  return alignment === 'center' || alignment === 'right' ? alignment : 'left';
+}
+
+function inlineTextFromPowerPointHtml(input: string): string {
+  return decodeXmlEntities(
+    input
+      .replace(/<(?:[^"'<>]|"[^"]*"|'[^']*')*>/g, (source) =>
+        htmlTag(source.slice(1)).name === 'br' ? '\n' : '',
+      )
+      .replace(/&nbsp;/gi, '&#160;'),
+  ).replace(/\r\n?/g, '\n');
+}
+
+function renderedRun(attributes: string, body: string): PptxRenderedTextRun {
+  const styleSource = attribute(attributes, 'style');
+  if (styleSource === undefined) {
+    return {
+      bold: false,
+      italic: false,
+      text: inlineTextFromPowerPointHtml(body),
+    };
+  }
+  const style = cssDeclarations(styleSource);
+  const color = style.get('color');
+  const fontSizeValue = style.get('font-size');
+  const fontSizeMatch =
+    fontSizeValue === undefined
+      ? null
+      : /^([0-9]+(?:\.[0-9]+)?)pt$/i.exec(fontSizeValue);
+  const fontSize = Number(fontSizeMatch?.[1]);
+  const fontWeight = style.get('font-weight');
+  const fontStyle = style.get('font-style');
+  return {
+    bold: fontWeight !== undefined && /^(?:[6-9]00|bold)$/i.test(fontWeight),
+    ...(typeof color === 'string' && /^#[0-9a-f]{6}$/i.test(color)
+      ? { color }
+      : {}),
+    ...(Number.isFinite(fontSize) && fontSize > 0 && fontSize <= 512
+      ? { fontSize }
+      : {}),
+    italic: fontStyle !== undefined && /^italic$/i.test(fontStyle),
+    text: inlineTextFromPowerPointHtml(body),
+  };
+}
+
+export function renderedTextFromPowerPointHtml(
+  input: string,
+): PptxRenderedTextParagraph[] {
+  const paragraphs = [
+    ...input.matchAll(/<(p|li)\b([^>]*)>([\s\S]*?)<\/\1\s*>/gi),
+  ]
+    .map((paragraph) => {
+      const body = paragraph[3] as string;
+      const runs = [...body.matchAll(/<span\b([^>]*)>([\s\S]*?)<\/span\s*>/gi)]
+        .map((span) => renderedRun(span[1] as string, span[2] as string))
+        .filter((run) => run.text !== '');
+      if (runs.length === 0) {
+        const fallback = plainTextFromPowerPointHtml(body);
+        if (fallback !== '') {
+          runs.push({ bold: false, italic: false, text: fallback });
+        }
+      }
+      return {
+        alignment: paragraphAlignment(paragraph[2] as string),
+        runs,
+      } satisfies PptxRenderedTextParagraph;
+    })
+    .filter((paragraph) => paragraph.runs.length > 0);
+  if (paragraphs.length > 0) return paragraphs;
+  const fallback = plainTextFromPowerPointHtml(input);
+  return fallback === ''
+    ? []
+    : [
+        {
+          alignment: 'left',
+          runs: [{ bold: false, italic: false, text: fallback }],
+        },
+      ];
+}
+
 function htmlTag(source: string): HtmlTag {
   const trimmed = source.trimStart();
   const closing = trimmed.startsWith('/');

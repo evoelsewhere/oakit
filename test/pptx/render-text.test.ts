@@ -3,9 +3,254 @@ import { describe, expect, it } from 'vitest';
 import {
   escapeSvgText,
   plainTextFromPowerPointHtml,
+  renderedTextFromPowerPointHtml,
 } from '../../src/formats/pptx/render-text';
 
 describe('PowerPoint render text', () => {
+  it('extracts bounded rich span styles and paragraph alignment', () => {
+    expect(
+      renderedTextFromPowerPointHtml(
+        '<p data-kind="hero" STYLE="text-align: center;"><span data-kind="title" STYLE="color: #F8FAFC;font-size: 18pt;font-weight: 700;font-style: italic;">Hello&nbsp;AI</span></p>',
+      ),
+    ).toEqual([
+      {
+        alignment: 'center',
+        runs: [
+          {
+            bold: true,
+            color: '#F8FAFC',
+            fontSize: 18,
+            italic: true,
+            text: 'Hello AI',
+          },
+        ],
+      },
+    ]);
+  });
+
+  it('drops hostile or unbounded style values while preserving visible text', () => {
+    expect(
+      renderedTextFromPowerPointHtml(
+        '<p style="text-align: evil"><span style="color: url(https://evil);font-size: 9999pt">Safe</span></p>',
+      ),
+    ).toEqual([
+      {
+        alignment: 'left',
+        runs: [{ bold: false, italic: false, text: 'Safe' }],
+      },
+    ]);
+  });
+
+  it.each([
+    ['left', 'left'],
+    ['center', 'center'],
+    ['right', 'right'],
+    ['justify', 'left'],
+  ])('maps paragraph alignment %s to %s', (source, expected) => {
+    expect(
+      renderedTextFromPowerPointHtml(
+        `<p style='text-align: ${source}'><span>Aligned</span></p>`,
+      )[0]?.alignment,
+    ).toBe(expected);
+  });
+
+  it('keeps multiple rich runs and paragraphs in authored order', () => {
+    expect(
+      renderedTextFromPowerPointHtml(
+        '<p><span style="color: #112233;font-weight: 600">First</span><span style="font-size: 12.5pt;font-style: italic">Second</span></p>' +
+          '<li><span style="font-weight: 900">Third</span></li>',
+      ),
+    ).toEqual([
+      {
+        alignment: 'left',
+        runs: [
+          {
+            bold: true,
+            color: '#112233',
+            italic: false,
+            text: 'First',
+          },
+          {
+            bold: false,
+            fontSize: 12.5,
+            italic: true,
+            text: 'Second',
+          },
+        ],
+      },
+      {
+        alignment: 'left',
+        runs: [{ bold: true, italic: false, text: 'Third' }],
+      },
+    ]);
+  });
+
+  it('falls back for plain paragraph bodies and non-paragraph HTML', () => {
+    expect(renderedTextFromPowerPointHtml('<p>Plain&nbsp;text</p>')).toEqual([
+      {
+        alignment: 'left',
+        runs: [{ bold: false, italic: false, text: 'Plain text' }],
+      },
+    ]);
+    expect(renderedTextFromPowerPointHtml('<div>Loose</div>')).toEqual([
+      {
+        alignment: 'left',
+        runs: [{ bold: false, italic: false, text: 'Loose' }],
+      },
+    ]);
+    expect(renderedTextFromPowerPointHtml('<p><span></span></p>')).toEqual([]);
+    expect(renderedTextFromPowerPointHtml('')).toEqual([]);
+    expect(
+      renderedTextFromPowerPointHtml(
+        '<p style="text-align: center">Centered plain</p>',
+      ),
+    ).toEqual([
+      {
+        alignment: 'center',
+        runs: [{ bold: false, italic: false, text: 'Centered plain' }],
+      },
+    ]);
+  });
+
+  it.each([
+    ['font-size: 18pt', { fontSize: 18 }],
+    ['font-size: 18.25pt', { fontSize: 18.25 }],
+    ['font-size: 512pt', { fontSize: 512 }],
+    ['font-size: 0pt', {}],
+    ['font-size: 513pt', {}],
+    ['font-size: x18pt', {}],
+    ['font-size: 18ptx', {}],
+    ['font-size: 18.apt', {}],
+    ['color: #A1B2C3', { color: '#A1B2C3' }],
+    ['color: x#A1B2C3', {}],
+    ['color: #A1B2C3x', {}],
+    ['font-weight: 500', { bold: false }],
+    ['font-weight: 600', { bold: true }],
+    ['font-weight: bold', { bold: true }],
+    ['font-weight: xbold', { bold: false }],
+    ['font-weight: bolder', { bold: false }],
+    ['font-style: italic', { italic: true }],
+    ['font-style: xitalic', { italic: false }],
+    ['font-style: italicized', { italic: false }],
+  ])('bounds rich declaration %j', (style, expected) => {
+    const run = renderedTextFromPowerPointHtml(
+      `<p><span style="${style}">Value</span></p>`,
+    )[0]?.runs[0];
+    expect(run).toEqual({
+      bold: false,
+      italic: false,
+      text: 'Value',
+      ...expected,
+    });
+  });
+
+  it('ignores malformed and empty CSS declarations deterministically', () => {
+    expect(
+      renderedTextFromPowerPointHtml(
+        '<p style="broken; : empty; text-align: right; text-align: center"><span style="broken; color: #123456; color:">Value</span></p>',
+      ),
+    ).toEqual([
+      {
+        alignment: 'center',
+        runs: [
+          {
+            bold: false,
+            color: '#123456',
+            italic: false,
+            text: 'Value',
+          },
+        ],
+      },
+    ]);
+  });
+
+  it('requires an exact CSS property name and keeps the complete value', () => {
+    expect(
+      renderedTextFromPowerPointHtml(
+        '<p style="text-align:center trailing"><span style="!color:#123456;color!!!:#654321;color:#ABCDEF">Value</span></p>',
+      ),
+    ).toEqual([
+      {
+        alignment: 'left',
+        runs: [
+          {
+            bold: false,
+            color: '#ABCDEF',
+            italic: false,
+            text: 'Value',
+          },
+        ],
+      },
+    ]);
+  });
+
+  it('ignores declarations without a separator instead of overriding a valid value', () => {
+    expect(
+      renderedTextFromPowerPointHtml(
+        '<p><span style="font-weight:700;font-weightx">Bold</span></p>',
+      )[0]?.runs[0]?.bold,
+    ).toBe(true);
+  });
+
+  it('retains explicit false style defaults for spans without style', () => {
+    expect(
+      renderedTextFromPowerPointHtml('<p><span>Plain run</span></p>'),
+    ).toEqual([
+      {
+        alignment: 'left',
+        runs: [{ bold: false, italic: false, text: 'Plain run' }],
+      },
+    ]);
+  });
+
+  it('parses multiline spans and closing-tag whitespace without widening markup', () => {
+    expect(
+      renderedTextFromPowerPointHtml(
+        '<p><span style="color: #123456">Line\nbreak</span   ></p>',
+      ),
+    ).toEqual([
+      {
+        alignment: 'left',
+        runs: [
+          {
+            bold: false,
+            color: '#123456',
+            italic: false,
+            text: 'Line\nbreak',
+          },
+        ],
+      },
+    ]);
+  });
+
+  it('preserves inline spacing, entities, links, and breaks across runs', () => {
+    expect(
+      renderedTextFromPowerPointHtml(
+        '<p><span>First</span><span>&nbsp;second &amp; <a href="https://example.test">linked</a><br/>line</span></p>',
+      )[0]?.runs.map(({ text }) => text),
+    ).toEqual(['First', ' second & linked\nline']);
+  });
+
+  it.each([
+    '<br>',
+    '<br/>',
+    '<br />',
+    '<br data-kind="x">',
+    "<br data-kind='>'/>",
+  ])('maps rich inline break %s without retaining markup', (tag) => {
+    expect(
+      renderedTextFromPowerPointHtml(`<p><span>A${tag}B</span></p>`)[0]?.runs[0]
+        ?.text,
+    ).toBe('A\nB');
+  });
+
+  it('strips single-quoted inline tags and normalizes standalone carriage return', () => {
+    expect(
+      renderedTextFromPowerPointHtml(
+        "<p><span>A<a title='x > y'>B</a>\rC</span></p>",
+      )[0]?.runs[0]?.text,
+    ).toBe('AB\nC');
+  });
   it('flattens rich paragraphs, lists, breaks, whitespace, and entities', () => {
     expect(
       plainTextFromPowerPointHtml(

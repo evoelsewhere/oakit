@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type {
   PptxDocument,
   PptxParseOptions,
+  Shape,
   Text,
 } from '../../src/formats/pptx/types';
 import type { PptxSvgRenderResult } from '../../src/formats/pptx/render-types';
@@ -99,6 +100,14 @@ function generatedText(text = 'Text'): Text {
   };
 }
 
+function generatedShape(shapType: string, text = 'Text'): Shape {
+  return {
+    ...generatedText(text),
+    shapType,
+    type: 'shape',
+  };
+}
+
 function rendered(documentValue: PptxDocument): PptxSvgRenderResult {
   return {
     slides: documentValue.slides.map((_slide, index) => ({
@@ -163,6 +172,40 @@ describe('PowerPoint creation verification', () => {
         rendered,
       ),
     ).resolves.toBeUndefined();
+  });
+
+  it('accepts only the authored non-rect text geometry', async () => {
+    const inputSlide = textSlide('slide-1');
+    const expected = inputSlide.elements[0];
+    if (expected?.type !== 'text') throw new Error('Expected input text');
+    expected.authored.geometry = 'roundRect';
+    const output = document(1);
+    const outputSlide = output.slides[0];
+    if (outputSlide === undefined) throw new Error('Expected output slide');
+    outputSlide.elements.push(generatedShape('roundRect'));
+
+    await expect(
+      verifyPowerPointCreationWithParser(
+        new Uint8Array(),
+        scene([inputSlide]),
+        () => Promise.resolve(output),
+        rendered,
+      ),
+    ).resolves.toBeUndefined();
+
+    outputSlide.elements = [generatedShape('ellipse')];
+    await expect(
+      verifyPowerPointCreationWithParser(
+        new Uint8Array(),
+        scene([inputSlide]),
+        () => Promise.resolve(output),
+        rendered,
+      ),
+    ).rejects.toThrow(
+      new Error(
+        'Generated PowerPoint text element missing at slide 1, element 1',
+      ),
+    );
   });
 
   it('rejects a generated text value that differs from the source scene', async () => {

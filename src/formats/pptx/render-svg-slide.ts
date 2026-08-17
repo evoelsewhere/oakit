@@ -1,5 +1,5 @@
 import type { Element, Fill, Image, PptxSlide, Shape, Text } from './types';
-import { escapeSvgText, plainTextFromPowerPointHtml } from './render-text';
+import { escapeSvgText, renderedTextFromPowerPointHtml } from './render-text';
 import type { PptxRenderWarning } from './render-types';
 import { renderPptxSvgRichElement } from './render-svg-rich';
 import {
@@ -104,26 +104,44 @@ function localTransform(
   return transforms.join(' ');
 }
 
-function textLines(content: unknown): string[] {
-  if (typeof content !== 'string') return [];
-  const text = plainTextFromPowerPointHtml(content);
-  return text === '' ? [] : text.split('\n');
-}
-
 function textBody(content: unknown, box: PptxSvgBox): string {
-  const lines = textLines(content);
-  if (lines.length === 0) return '';
+  if (typeof content !== 'string') return '';
+  const paragraphs = renderedTextFromPowerPointHtml(content);
+  if (paragraphs.length === 0) return '';
   const width = svgNumber(box.width);
   const height = svgNumber(box.height);
-  const spans = lines
-    .map(
-      (line, index) =>
-        `<tspan x="4" dy="${index === 0 ? '14' : '16'}">${escapeSvgText(
-          line,
-        )}</tspan>`,
-    )
+  let baseline = 0;
+  const lines = paragraphs
+    .map((paragraph) => {
+      const fontSize = paragraph.runs.reduce(
+        (maximum, run) => Math.max(maximum, run.fontSize ?? 12),
+        12,
+      );
+      baseline += fontSize + 4;
+      const x =
+        paragraph.alignment === 'center'
+          ? box.width / 2
+          : paragraph.alignment === 'right'
+            ? box.width - 4
+            : 4;
+      const anchor =
+        paragraph.alignment === 'center'
+          ? 'middle'
+          : paragraph.alignment === 'right'
+            ? 'end'
+            : 'start';
+      const spans = paragraph.runs
+        .map((run) => {
+          const color = svgColor(run.color) ?? '#111827';
+          const weight = run.bold ? ' font-weight="700"' : '';
+          const style = run.italic ? ' font-style="italic"' : '';
+          return `<tspan fill="${color}" font-size="${svgNumber(run.fontSize ?? 12)}"${weight}${style}>${escapeSvgText(run.text)}</tspan>`;
+        })
+        .join('');
+      return `<text x="${svgNumber(x)}" y="${svgNumber(baseline)}" text-anchor="${anchor}" font-family="sans-serif">${spans}</text>`;
+    })
     .join('');
-  return `<svg x="0" y="0" width="${width}" height="${height}" overflow="hidden"><text font-family="sans-serif" font-size="12" fill="#111827">${spans}</text></svg>`;
+  return `<svg x="0" y="0" width="${width}" height="${height}" overflow="hidden">${lines}</svg>`;
 }
 
 function boxPlaceholder(box: PptxSvgBox, label: string): string {

@@ -5,6 +5,7 @@ import {
   createPptx,
   parsePptx,
   PptxWriteError,
+  renderPptxToSvg,
   type PptxElement,
   type PptxFidelityLevel,
   type PptxSceneDocument,
@@ -123,6 +124,51 @@ describe('PowerPoint creation through the public API', () => {
     expect(third.data).toEqual(first.data);
     expect(second.report).toEqual(first.report);
     expect(third.report).toEqual(first.report);
+  });
+
+  it('strict-parses and Office-free renders authored visual styling', async () => {
+    const scene = creationScene();
+    const first = scene.slides[0];
+    if (first === undefined) throw new Error('Expected first slide');
+    first.backgroundColor = '#0F172A';
+    const firstElement = first.elements[0];
+    if (firstElement?.type !== 'text') throw new Error('Expected text element');
+    firstElement.authored.fillColor = '#1E293B';
+    firstElement.authored.geometry = 'roundRect';
+    firstElement.authored.lineColor = '#38BDF8';
+    firstElement.authored.lineWidth = 1.5;
+    const firstRun = firstElement.text.paragraphs[0]?.children[0];
+    if (firstRun?.type !== 'run') throw new Error('Expected text run');
+    firstRun.properties = {
+      ...firstRun.properties,
+      color: '#F8FAFC',
+      fontFamily: 'Aptos Display',
+    };
+
+    const created = await createPptx(scene);
+    const [parsed, rendered] = await Promise.all([
+      parsePptx(created.data, { errorMode: 'strict', imageMode: 'none' }),
+      renderPptxToSvg(created.data, { slideNumbers: [1] }),
+    ]);
+    expect(parsed.slides[0]?.fill).toEqual({
+      type: 'color',
+      value: '#0F172A',
+    });
+    expect(parsed.slides[0]?.elements[0]).toMatchObject({
+      borderColor: '#38BDF8',
+      borderWidth: 1.5,
+      fill: { type: 'color', value: '#1E293B' },
+      shapType: 'roundRect',
+      type: 'shape',
+    });
+    const svg = new TextDecoder()
+      .decode(rendered.slides[0]?.data)
+      .toUpperCase();
+    expect(svg).toContain('#0F172A');
+    expect(svg).toContain('#1E293B');
+    expect(svg).toContain('#38BDF8');
+    expect(svg).toContain('#F8FAFC');
+    expect(svg).toContain('HELLO');
   });
 
   it('contains only the declared deterministic package inventory', async () => {

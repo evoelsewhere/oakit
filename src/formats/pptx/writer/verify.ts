@@ -7,7 +7,7 @@ import type {
   PptxSceneTextNode,
 } from '../scene-types';
 import { parse } from '../parser';
-import type { PptxDocument, PptxParseOptions } from '../types';
+import type { PptxDocument, PptxParseOptions, Shape, Text } from '../types';
 import { plainTextFromPowerPointHtml } from '../roundtrip/preview';
 import { pointsToEmu } from './units';
 
@@ -32,6 +32,22 @@ function expectedPlainText(element: PptxSceneTextElement): string {
     .join('\n');
 }
 
+function generatedTextElement(
+  generated: PptxDocument['slides'][number]['elements'][number] | undefined,
+  geometry: NonNullable<PptxSceneTextElement['authored']['geometry']>,
+  location: string,
+): Shape | Text {
+  if (generated === undefined) {
+    throw new Error(`Generated PowerPoint text element missing at ${location}`);
+  }
+  if (geometry === 'rect') {
+    if (generated.type === 'text') return generated;
+  } else if (generated.type === 'shape' && generated.shapType === geometry) {
+    return generated;
+  }
+  throw new Error(`Generated PowerPoint text element missing at ${location}`);
+}
+
 function verifyTextElement(
   generated: PptxDocument['slides'][number]['elements'][number] | undefined,
   expected: PptxSceneTextElement,
@@ -39,9 +55,8 @@ function verifyTextElement(
   elementIndex: number,
 ): void {
   const location = `slide ${slideIndex + 1}, element ${elementIndex + 1}`;
-  if (generated?.type !== 'text') {
-    throw new Error(`Generated PowerPoint text element missing at ${location}`);
-  }
+  const geometry = expected.authored.geometry ?? 'rect';
+  const textElement = generatedTextElement(generated, geometry, location);
   const transform = expected.authored.transform;
   if (transform === undefined) {
     throw new Error(
@@ -49,13 +64,13 @@ function verifyTextElement(
     );
   }
   const generatedTransform = {
-    flipHorizontal: generated.isFlipH,
-    flipVertical: generated.isFlipV,
-    height: generated.height,
-    rotation: generated.rotate,
-    width: generated.width,
-    x: generated.left,
-    y: generated.top,
+    flipHorizontal: textElement.isFlipH,
+    flipVertical: textElement.isFlipV,
+    height: textElement.height,
+    rotation: textElement.rotate,
+    width: textElement.width,
+    x: textElement.left,
+    y: textElement.top,
   };
   const expectedTransform = {
     flipHorizontal: transform.flipHorizontal ?? false,
@@ -71,7 +86,7 @@ function verifyTextElement(
   ) {
     throw new Error(`Generated PowerPoint transform mismatch at ${location}`);
   }
-  const actualText = plainTextFromPowerPointHtml(generated.content);
+  const actualText = plainTextFromPowerPointHtml(textElement.content);
   if (actualText !== expectedPlainText(expected)) {
     throw new Error(`Generated PowerPoint text mismatch at ${location}`);
   }

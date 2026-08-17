@@ -103,6 +103,48 @@ describe('PowerPoint document SVG rendering', () => {
     );
   });
 
+  it('renders rich text color, size, emphasis, and alignment deterministically', () => {
+    const element = text(
+      '<p style="text-align: left"><span style="color: #F8FAFC;font-size: 20pt;font-weight: 700;font-style: italic">First</span><span style="color: #F97316;font-size: 20pt"> pair</span></p>' +
+        '<p style="text-align: center"><span style="color: #38BDF8">Center</span></p>' +
+        '<p style="text-align: right"><span>Last</span></p>',
+    );
+    element.width = 200;
+    element.height = 100;
+    const input = document();
+    input.slides = [{ ...slide(''), elements: [element] }];
+
+    const source = UTF8_DECODER.decode(
+      renderPptxDocumentToSvg(input).slides[0]?.data,
+    );
+
+    expect(source).toContain(
+      '<text x="4" y="24" text-anchor="start" font-family="sans-serif"><tspan fill="#F8FAFC" font-size="20" font-weight="700" font-style="italic">First</tspan><tspan fill="#F97316" font-size="20"> pair</tspan></text>',
+    );
+    expect(source).toContain(
+      '<text x="100" y="40" text-anchor="middle" font-family="sans-serif"><tspan fill="#38BDF8" font-size="12">Center</tspan></text>',
+    );
+    expect(source).not.toContain('Stryker was here');
+    expect(source).toContain(
+      '<text x="196" y="56" text-anchor="end" font-family="sans-serif"><tspan fill="#111827" font-size="12">Last</tspan></text>',
+    );
+  });
+
+  it('omits a text body for non-string or empty content', () => {
+    const invalid = text('');
+    invalid.content = undefined as never;
+    const empty = text('<p><span></span></p>');
+    const input = document();
+    input.slides = [{ ...slide(''), elements: [invalid, empty] }];
+
+    const source = UTF8_DECODER.decode(
+      renderPptxDocumentToSvg(input).slides[0]?.data,
+    );
+    expect(source).not.toContain('<tspan');
+    expect(source).not.toContain('overflow="hidden"');
+    expect(source).not.toContain('Stryker was here');
+  });
+
   it('supports an explicit empty selection without allocating slide output', () => {
     expect(renderPptxDocumentToSvg(document(), { slideNumbers: [] })).toEqual({
       slides: [],
