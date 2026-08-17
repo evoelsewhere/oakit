@@ -9,9 +9,12 @@ const { excludedMutations, mutate, reportPath } = mutationShardEnvironment(
 
 export default {
   ...baseConfig,
-  excludedMutations,
   incremental: false,
   jsonReporter: { fileName: reportPath },
   mutate,
+  mutator: {
+    ...(baseConfig.mutator ?? {}),
+    excludedMutations,
+  },
   reporters: ['json'],
 };
