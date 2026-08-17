@@ -384,6 +384,12 @@
       "testsCompleted": 372,
       "estimatedMilliseconds": 17502
     },
+    "src/formats/pptx/writer/color.ts": {
+      "mutants": 14,
+      "staticMutants": 4,
+      "testsCompleted": 29,
+      "estimatedMilliseconds": 22000
+    },
     "src/formats/pptx/writer/content-types.ts": {
       "mutants": 29,
       "staticMutants": 6,
