@@ -8,6 +8,38 @@ permissions:
   contents: read
 
 jobs:
+  mutation:
+    name: Focused mutation (${{ matrix.module }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        module:
+          - orchestration
+          - package-preservation
+          - patch-error
+          - relationships
+          - shape-range
+          - text-xml
+          - transform-xml
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - uses: actions/cache@v4
+        with:
+          path: reports/mutation/cache/${{ matrix.module }}-dynamic.json
+          key: mutation-${{ runner.os }}-${{ matrix.module }}-${{ github.sha }}
+          restore-keys: mutation-${{ runner.os }}-${{ matrix.module }}-
+      - run: pnpm test:mutation:module -- ${{ matrix.module }} --dynamic
+
   node:
     name: Node ${{ matrix.node }}
     runs-on: ubuntu-latest

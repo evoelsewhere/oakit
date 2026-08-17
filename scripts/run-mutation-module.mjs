@@ -13,8 +13,12 @@ const args = process.argv.slice(2).filter((argument) => argument !== '--');
 const name = args.find((argument) => !argument.startsWith('--')) ?? '';
 resolveMutationModule(name);
 const force = args.includes('--force');
+const dynamicOnly = args.includes('--dynamic');
 const unknownFlags = args.filter(
-  (argument) => argument.startsWith('--') && argument !== '--force',
+  (argument) =>
+    argument.startsWith('--') &&
+    argument !== '--dynamic' &&
+    argument !== '--force',
 );
 if (unknownFlags.length > 0) {
   throw new Error(`Unknown mutation module option ${unknownFlags.join(', ')}`);
@@ -32,7 +36,11 @@ const result = spawnSync(
   ],
   {
     cwd: projectRoot,
-    env: { ...process.env, MUTATION_MODULE: name },
+    env: {
+      ...process.env,
+      MUTATION_DYNAMIC: dynamicOnly ? '1' : '0',
+      MUTATION_MODULE: name,
+    },
     stdio: 'inherit',
   },
 );

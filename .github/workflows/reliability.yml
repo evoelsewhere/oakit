@@ -115,13 +115,13 @@ jobs:
       - run: pnpm test:corpus:large
 
   mutation:
-    name: PowerPoint file mutation shard ${{ matrix.shard }} of 8
+    name: PowerPoint file mutation shard ${{ matrix.shard }} of 7
     runs-on: ubuntu-latest
     timeout-minutes: 120
     strategy:
       fail-fast: false
       matrix:
-        shard: [2, 3, 4, 5, 6, 7, 8]
+        shard: [1, 2, 3, 4, 5, 6, 7]
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -134,7 +134,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Run forced mutation shard
         run: |
-          mutate_files="$(node scripts/mutation-shards.mjs '${{ matrix.shard }}' 8)"
+          mutate_files="$(node scripts/mutation-shards.mjs '${{ matrix.shard }}' 7)"
           MUTATION_FILES="$mutate_files" \
           MUTATION_REPORT="reports/mutation/shard-${{ matrix.shard }}.json" \
             pnpm exec stryker run stryker.shard.config.mjs --force
@@ -143,6 +143,40 @@ jobs:
         with:
           name: mutation-shard-${{ matrix.shard }}
           path: reports/mutation/shard-${{ matrix.shard }}.json
+          if-no-files-found: error
+
+  patch-mutation:
+    name: PowerPoint patch static-inclusive mutation (${{ matrix.module }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        module:
+          - orchestration
+          - package-preservation
+          - patch-error
+          - relationships
+          - shape-range
+          - text-xml
+          - transform-xml
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Run forced static-inclusive module mutation
+        run: pnpm test:mutation:module -- ${{ matrix.module }} --force
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mutation-module-${{ matrix.module }}
+          path: reports/mutation/modules/${{ matrix.module }}.json
           if-no-files-found: error
 
   shape-mutation:
@@ -205,7 +239,7 @@ jobs:
 
   mutation-audit:
     name: Complete PowerPoint mutation audit
-    needs: [mutation, shape-mutation]
+    needs: [mutation, patch-mutation, shape-mutation]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:

@@ -4,14 +4,17 @@ import { resolveMutationModule } from './scripts/mutation-modules.mjs';
 import baseConfig from './stryker.config.mjs';
 
 const module = resolveMutationModule(process.env.MUTATION_MODULE ?? '');
+const dynamicOnly = process.env.MUTATION_DYNAMIC === '1';
 const reportPath =
-  process.env.MUTATION_REPORT ?? `reports/mutation/modules/${module.name}.json`;
+  process.env.MUTATION_REPORT ??
+  `reports/mutation/modules/${module.name}${dynamicOnly ? '-dynamic' : ''}.json`;
 process.env.MUTATION_TEST_FILES = module.tests.join(',');
 
 export default {
   ...baseConfig,
   incremental: true,
-  incrementalFile: `reports/mutation/cache/${module.name}.json`,
+  incrementalFile: `reports/mutation/cache/${module.name}-${dynamicOnly ? 'dynamic' : 'full'}.json`,
+  ignoreStatic: dynamicOnly,
   jsonReporter: { fileName: reportPath },
   mutate: [module.source],
   reporters: ['clear-text', 'progress', 'json'],
