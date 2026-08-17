@@ -155,11 +155,13 @@ describe('public XLSX parser', () => {
       </styleSheet>`,
       'xl/workbook.xml': workbook,
       'xl/worksheets/sheet1.xml': `<worksheet xmlns="${XLSX_SPREADSHEET_NS}">
-        <sheetData><row>
+        <cols><col min="1" max="2" width="14" hidden="1" style="1"/></cols>
+        <sheetData><row s="1" customFormat="1" collapsed="1">
           <c r="A1" s="1"><v>0</v></c>
           <c r="B1" s="2"><f>A1+1</f><v>1</v></c>
           <c r="C1"><v>2</v></c>
         </row></sheetData>
+        <mergeCells count="1"><mergeCell ref="A1:B1"/></mergeCells>
       </worksheet>`,
     });
 
@@ -175,6 +177,14 @@ describe('public XLSX parser', () => {
       },
     ]);
     expect(document.sheets[0]).toMatchObject({
+      columns: [{ end: 2, hidden: true, start: 1, style: 1, width: 14 }],
+      mergedRanges: [
+        {
+          end: { column: 2, row: 1 },
+          reference: 'A1:B1',
+          start: { column: 1, row: 1 },
+        },
+      ],
       rows: [
         {
           cells: [
@@ -221,6 +231,8 @@ describe('public XLSX parser', () => {
               },
             },
           ],
+          collapsed: true,
+          style: 1,
         },
       ],
     });

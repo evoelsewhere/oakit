@@ -177,6 +177,8 @@ export async function parseXlsxWithDiagnostics(
       );
       sheets.push({
         ...sheet,
+        columns: payload.columns,
+        mergedRanges: payload.mergedRanges,
         payload:
           selection.kind === 'full-sheet' ? 'full-sheet' : 'selected-ranges',
         rows: payload.rows,

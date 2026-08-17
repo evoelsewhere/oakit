@@ -145,6 +145,14 @@ describe('XLSX worksheet streaming', () => {
     `);
 
     await expect(parse(xml, { strings: SHARED_STRINGS })).resolves.toEqual({
+      columns: [],
+      mergedRanges: [
+        {
+          end: { column: 2, row: 1 },
+          reference: 'A1:B1',
+          start: { column: 1, row: 1 },
+        },
+      ],
       rows: [
         {
           cells: [
@@ -276,10 +284,20 @@ describe('XLSX worksheet streaming', () => {
 
   it('parses prefixed Strict worksheet elements', async () => {
     const xml = `<s:worksheet xmlns:s="${STRICT}">
-      <s:sheetData><s:row><s:c t="inlineStr"><s:is><s:t>Strict</s:t></s:is></s:c></s:row></s:sheetData>
+      <s:cols><s:col min="1" max="2" width="12" hidden="1"/></s:cols>
+      <s:sheetData><s:row s="1" customFormat="1" collapsed="1"><s:c t="inlineStr"><s:is><s:t>Strict</s:t></s:is></s:c></s:row></s:sheetData>
+      <s:mergeCells count="1"><s:mergeCell ref="A1:B1"/></s:mergeCells>
     </s:worksheet>`;
 
     await expect(parse(xml, { dialect: 'strict' })).resolves.toEqual({
+      columns: [{ end: 2, hidden: true, start: 1, width: 12 }],
+      mergedRanges: [
+        {
+          end: { column: 2, row: 1 },
+          reference: 'A1:B1',
+          start: { column: 1, row: 1 },
+        },
+      ],
       rows: [
         {
           cells: [
@@ -292,7 +310,9 @@ describe('XLSX worksheet streaming', () => {
               },
             },
           ],
+          collapsed: true,
           index: 1,
+          style: 1,
         },
       ],
     });
@@ -302,6 +322,8 @@ describe('XLSX worksheet streaming', () => {
     await expect(
       parse(worksheet('\n<sheetData> \n </sheetData>\n')),
     ).resolves.toEqual({
+      columns: [],
+      mergedRanges: [],
       rows: [],
     });
   });
@@ -503,6 +525,403 @@ describe('XLSX worksheet streaming', () => {
     });
   });
 
+  it('normalizes columns, row defaults, and merged ranges in authored order', async () => {
+    const result = await parse(
+      worksheet(`
+        <cols>
+          <col min="1" max="6" width="10" hidden="true" style="0"/>
+          <col min="3" max="4" width="20" style="1"/>
+          <col min="4" max="5" collapsed="1" outlineLevel="3"/>
+        </cols>
+        <sheetData>
+          <row r="1" s="1" customFormat="1" collapsed="true">
+            <c r="A1"><v>1</v></c>
+          </row>
+        </sheetData>
+        <mergeCells count="2">
+          <mergeCell ref="A1:B2"/>
+          <mergeCell ref="D1:E1"/>
+        </mergeCells>`),
+    );
+
+    expect(result).toEqual({
+      columns: [
+        { end: 2, hidden: true, start: 1, style: 0, width: 10 },
+        { end: 3, start: 3, style: 1, width: 20 },
+        { collapsed: true, end: 5, outlineLevel: 3, start: 4 },
+        { end: 6, hidden: true, start: 6, style: 0, width: 10 },
+      ],
+      mergedRanges: [
+        {
+          end: { column: 2, row: 2 },
+          reference: 'A1:B2',
+          start: { column: 1, row: 1 },
+        },
+        {
+          end: { column: 5, row: 1 },
+          reference: 'D1:E1',
+          start: { column: 4, row: 1 },
+        },
+      ],
+      rows: [
+        {
+          cells: [
+            {
+              address: 'A1',
+              column: 1,
+              content: { kind: 'value', value: { kind: 'number', value: 1 } },
+            },
+          ],
+          collapsed: true,
+          index: 1,
+          style: 1,
+        },
+      ],
+    });
+  });
+
+  it('filters column and merged-range payloads by selected range intersection', async () => {
+    const selection: XlsxResolvedSheetSelection = {
+      endRowPrefix: [4],
+      kind: 'selected-ranges',
+      ranges: [
+        {
+          end: { column: 4, row: 4 },
+          reference: 'D4',
+          start: { column: 4, row: 4 },
+        },
+      ],
+    };
+    const result = await parse(
+      worksheet(`
+        <cols>
+          <col min="1" max="2" width="10"/>
+          <col min="3" max="4" width="20"/>
+          <col min="5" max="6" width="30"/>
+        </cols>
+        <sheetData><row r="4"><c r="D4"><v>1</v></c></row></sheetData>
+        <mergeCells count="2">
+          <mergeCell ref="A1:B2"/>
+          <mergeCell ref="D4:E5"/>
+        </mergeCells>`),
+      { selection },
+    );
+
+    expect(result.columns).toEqual([{ end: 4, start: 3, width: 20 }]);
+    expect(result.mergedRanges).toEqual([
+      {
+        end: { column: 5, row: 5 },
+        reference: 'D4:E5',
+        start: { column: 4, row: 4 },
+      },
+    ]);
+  });
+
+  it('selects a terminal column at the configured worksheet boundary', async () => {
+    const selection: XlsxResolvedSheetSelection = {
+      endRowPrefix: [1],
+      kind: 'selected-ranges',
+      ranges: [
+        {
+          end: { column: 2, row: 1 },
+          reference: 'A1:B1',
+          start: { column: 1, row: 1 },
+        },
+      ],
+    };
+    const result = await parse(
+      worksheet('<cols><col min="2" max="2" width="10"/></cols><sheetData/>'),
+      { limits: { maxColumnsPerWorksheet: 2 }, selection },
+    );
+
+    expect(result.columns).toEqual([{ end: 2, start: 2, width: 10 }]);
+  });
+
+  it('omits worksheet layout for a non-selected payload', async () => {
+    const result = await parse(
+      worksheet(`
+        <cols><col min="1" max="2" width="10"/></cols>
+        <sheetData/>
+        <mergeCells><mergeCell ref="A1:B1"/></mergeCells>`),
+      { selection: { kind: 'not-selected' } },
+    );
+
+    expect(result).toEqual({ columns: [], mergedRanges: [], rows: [] });
+  });
+
+  it('charges merged-range selection checks to the scanned-work budget', async () => {
+    const selection: XlsxResolvedSheetSelection = {
+      endRowPrefix: [4],
+      kind: 'selected-ranges',
+      ranges: [
+        {
+          end: { column: 4, row: 4 },
+          reference: 'D4',
+          start: { column: 4, row: 4 },
+        },
+      ],
+    };
+    const xml = worksheet(`<sheetData/><mergeCells count="2">
+      <mergeCell ref="A1:B2"/><mergeCell ref="D4:E5"/>
+    </mergeCells>`);
+
+    await expect(
+      parse(xml, { limits: { maxScannedCells: 2 }, selection }),
+    ).resolves.toMatchObject({ mergedRanges: [{ reference: 'D4:E5' }] });
+    await expect(
+      parse(xml, { limits: { maxScannedCells: 1 }, selection }),
+    ).rejects.toMatchObject({
+      actual: 2,
+      limit: 1,
+      limitName: 'maxScannedCells',
+      name: 'XlsxResourceLimitError',
+    });
+  });
+
+  it.each([
+    ['D1:E2', false],
+    ['D6:E7', false],
+    ['A4:B5', false],
+    ['F4:G5', false],
+    ['D3:E4', true],
+    ['C4:D5', true],
+  ] as const)(
+    'classifies merged-range intersection %s as %s',
+    async (reference, intersects) => {
+      const selection: XlsxResolvedSheetSelection = {
+        endRowPrefix: [4],
+        kind: 'selected-ranges',
+        ranges: [
+          {
+            end: { column: 4, row: 4 },
+            reference: 'D4',
+            start: { column: 4, row: 4 },
+          },
+        ],
+      };
+      const result = await parse(
+        worksheet(
+          `<sheetData/><mergeCells><mergeCell ref="${reference}"/></mergeCells>`,
+        ),
+        { selection },
+      );
+
+      expect(result.mergedRanges.map((range) => range.reference)).toEqual(
+        intersects ? [reference] : [],
+      );
+    },
+  );
+
+  it.each([
+    ['<col max="1"/>', 'Worksheet column start is invalid'],
+    ['<col min="-1" max="1"/>', 'Worksheet column start is invalid'],
+    ['<col min="0" max="1"/>', 'Worksheet column start is invalid'],
+    ['<col min="1"/>', 'Worksheet column end is invalid'],
+    ['<col min="1" max="-1"/>', 'Worksheet column end is invalid'],
+    ['<col min="2" max="1"/>', 'Worksheet column end is invalid'],
+    ['<col min="1" max="1" width="-1"/>', 'Worksheet column width is invalid'],
+    ['<col min="1" max="1" width="256"/>', 'Worksheet column width is invalid'],
+    [
+      '<col min="1" max="1" width="1e309"/>',
+      'Worksheet column width is invalid',
+    ],
+    ['<col min="1" max="1" width="1x"/>', 'Worksheet column width is invalid'],
+    [
+      '<col min="1" max="1" outlineLevel="8"/>',
+      'Worksheet column outline level is invalid',
+    ],
+    [
+      '<col min="1" max="1" outlineLevel="-1"/>',
+      'Worksheet column outline level is invalid',
+    ],
+    [
+      '<col min="1" max="1" collapsed="yes"/>',
+      'Worksheet column collapsed flag is invalid',
+    ],
+    [
+      '<col min="1" max="1" hidden="yes"/>',
+      'Worksheet column hidden flag is invalid',
+    ],
+    [
+      '<col min="1" max="1" bestFit="yes"/>',
+      'Worksheet column bestFit flag is invalid',
+    ],
+    [
+      '<col min="1" max="1" customWidth="yes"/>',
+      'Worksheet column customWidth flag is invalid',
+    ],
+    [
+      '<col min="1" max="1" phonetic="yes"/>',
+      'Worksheet column phonetic flag is invalid',
+    ],
+    [
+      '<col min="1" max="1" style="-1"/>',
+      'Worksheet column style index is invalid',
+    ],
+    [
+      '<col min="1" max="1" style="5"/>',
+      'Worksheet column style reference is invalid',
+    ],
+  ] as const)('rejects invalid column layout %#', async (column, message) => {
+    const error = await captureParseError(
+      worksheet(`<cols>${column}</cols><sheetData/>`),
+    );
+    expect(error.diagnostic).toMatchObject({
+      code: 'invalid-document-value',
+      message,
+    });
+  });
+
+  it.each([
+    ['<mergeCells count="-1"/>', 'Worksheet merged-range count is invalid'],
+    [
+      '<mergeCells count="2"><mergeCell ref="A1:B1"/></mergeCells>',
+      'Worksheet merged-range count does not match',
+    ],
+    [
+      '<mergeCells><mergeCell/></mergeCells>',
+      'Worksheet merged-range reference is invalid',
+    ],
+    [
+      '<mergeCells><mergeCell ref="not-a-range"/></mergeCells>',
+      'Worksheet merged-range reference is invalid',
+    ],
+    [
+      '<mergeCells><mergeCell ref="$A$1:$B$1"/></mergeCells>',
+      'Worksheet merged-range reference is invalid',
+    ],
+    [
+      '<mergeCells><mergeCell ref="A1"/></mergeCells>',
+      'Worksheet merged range must contain multiple cells',
+    ],
+    [
+      '<mergeCells><mergeCell ref="A1:B2"/><mergeCell ref="B2:C3"/></mergeCells>',
+      'Worksheet merged ranges overlap',
+    ],
+  ] as const)('rejects invalid merged range %#', async (merges, message) => {
+    const error = await captureParseError(worksheet(`<sheetData/>${merges}`));
+    expect(error.diagnostic.message).toBe(message);
+  });
+
+  it.each([
+    [
+      '<cols/><cols/><sheetData/>',
+      'Worksheet contains duplicate cols elements',
+    ],
+    [
+      '<sheetData/><mergeCells/><mergeCells/>',
+      'Worksheet contains duplicate mergeCells elements',
+    ],
+    [
+      '<cols><mergeCell ref="A1:B1"/></cols><sheetData/>',
+      'Worksheet element nesting is invalid',
+    ],
+    [
+      '<sheetData/><mergeCells><col min="1" max="1"/></mergeCells>',
+      'Worksheet element nesting is invalid',
+    ],
+  ] as const)(
+    'rejects invalid worksheet layout structure %#',
+    async (body, message) => {
+      const error = await captureParseError(worksheet(body));
+      expect(error.diagnostic).toMatchObject({
+        code: 'invalid-document-structure',
+        message,
+      });
+    },
+  );
+
+  it.each([
+    ['collapsed="yes"', 'Worksheet row collapsed flag is invalid'],
+    ['customFormat="yes"', 'Worksheet row customFormat flag is invalid'],
+    ['customHeight="yes"', 'Worksheet row customHeight flag is invalid'],
+    ['s="-1"', 'Worksheet row style index is invalid'],
+    ['s="5"', 'Worksheet row style reference is invalid'],
+    ['customFormat="1"', 'Worksheet custom-formatted row style is missing'],
+  ] as const)('rejects invalid row layout %#', async (attributes, message) => {
+    const error = await captureParseError(
+      worksheet(`<sheetData><row ${attributes}/></sheetData>`),
+    );
+    expect(error.diagnostic).toMatchObject({
+      code: 'invalid-document-value',
+      message,
+    });
+  });
+
+  it('enforces merged-range and column boundaries exactly', async () => {
+    const twoMerges = worksheet(
+      '<sheetData/><mergeCells count="2"><mergeCell ref="A1:B1"/><mergeCell ref="A2:B2"/></mergeCells>',
+    );
+    await expect(
+      parse(twoMerges, { limits: { maxMergedRanges: 2 } }),
+    ).resolves.toMatchObject({ mergedRanges: [{}, {}] });
+    await expect(
+      parse(twoMerges, { limits: { maxMergedRanges: 1 } }),
+    ).rejects.toMatchObject({
+      actual: 2,
+      limit: 1,
+      limitName: 'maxMergedRanges',
+      name: 'XlsxResourceLimitError',
+    });
+    await expect(
+      parse(worksheet('<sheetData/><mergeCells count="2"/>'), {
+        limits: { maxMergedRanges: 1 },
+      }),
+    ).rejects.toMatchObject({
+      actual: 2,
+      limit: 1,
+      limitName: 'maxMergedRanges',
+      name: 'XlsxResourceLimitError',
+    });
+    await expect(
+      parse(
+        worksheet(
+          '<sheetData/><mergeCells><mergeCell ref="A1:B1"/><mergeCell ref="A2:B2"/></mergeCells>',
+        ),
+        { limits: { maxMergedRanges: 1 } },
+      ),
+    ).rejects.toMatchObject({
+      actual: 2,
+      limit: 1,
+      limitName: 'maxMergedRanges',
+      name: 'XlsxResourceLimitError',
+    });
+    await expect(
+      parse(worksheet('<cols><col min="1" max="3"/></cols><sheetData/>'), {
+        limits: { maxColumnsPerWorksheet: 2 },
+      }),
+    ).rejects.toMatchObject({
+      actual: 3,
+      limit: 2,
+      limitName: 'maxColumnsPerWorksheet',
+      name: 'XlsxResourceLimitError',
+    });
+    await expect(
+      parse(
+        worksheet(
+          '<cols><col min="1" max="1" width="255" outlineLevel="7"/></cols><sheetData/><mergeCells><mergeCell ref="A1:A2"/></mergeCells>',
+        ),
+      ),
+    ).resolves.toMatchObject({
+      columns: [{ end: 1, outlineLevel: 7, start: 1, width: 255 }],
+      mergedRanges: [{ reference: 'A1:A2' }],
+    });
+    const twoColumns = worksheet(
+      '<cols><col min="1" max="1"/><col min="1" max="1"/></cols><sheetData/>',
+    );
+    await expect(
+      parse(twoColumns, { limits: { maxColumnsPerWorksheet: 2 } }),
+    ).resolves.toMatchObject({ columns: [{ end: 1, start: 1 }] });
+    await expect(
+      parse(twoColumns, { limits: { maxColumnsPerWorksheet: 1 } }),
+    ).rejects.toMatchObject({
+      actual: 2,
+      limit: 1,
+      limitName: 'maxColumnsPerWorksheet',
+      name: 'XlsxResourceLimitError',
+    });
+  });
+
   it('ignores cell extension payload without treating nested foreign XML as cells', async () => {
     const result = await parse(
       worksheet(
@@ -510,6 +929,8 @@ describe('XLSX worksheet streaming', () => {
       ),
     );
     expect(result).toEqual({
+      columns: [],
+      mergedRanges: [],
       rows: [
         {
           cells: [{ address: 'A1', column: 1, content: { kind: 'blank' } }],
@@ -613,6 +1034,8 @@ describe('XLSX worksheet streaming', () => {
     );
 
     expect(result).toEqual({
+      columns: [],
+      mergedRanges: [],
       rows: [
         {
           cells: [
@@ -727,6 +1150,8 @@ describe('XLSX worksheet streaming', () => {
         selection: oneCell,
       }),
     ).resolves.toEqual({
+      columns: [],
+      mergedRanges: [],
       rows: [
         {
           cells: [{ address: 'A1', column: 1, content: { kind: 'blank' } }],
@@ -764,6 +1189,8 @@ describe('XLSX worksheet streaming', () => {
         selection: oneCell,
       }),
     ).resolves.toEqual({
+      columns: [],
+      mergedRanges: [],
       rows: [
         {
           cells: [{ address: 'A1', column: 1, content: { kind: 'blank' } }],
@@ -999,6 +1426,8 @@ describe('XLSX worksheet streaming', () => {
         </row></sheetData>`),
       ),
     ).resolves.toEqual({
+      columns: [],
+      mergedRanges: [],
       rows: [
         {
           cells: [
@@ -1096,6 +1525,8 @@ describe('XLSX worksheet streaming', () => {
     );
 
     expect(result).toEqual({
+      columns: [],
+      mergedRanges: [],
       rows: [
         {
           cells: [

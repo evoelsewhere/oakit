@@ -2,6 +2,7 @@ import { XlsxParseError } from '../errors';
 import type {
   XlsxCell,
   XlsxCellValue,
+  XlsxColumnRange,
   XlsxFormula,
   XlsxRange,
   XlsxRichTextRun,
@@ -36,6 +37,11 @@ import {
   type XlsxWorkbookDiscovery,
   XLSX_SPREADSHEET_NAMESPACES,
 } from './workbook-discovery';
+import {
+  normalizeXlsxColumnRanges,
+  type XlsxAuthoredColumnRange,
+  xlsxMergedRangesOverlap,
+} from './worksheet-layout';
 
 const XML_NAMESPACE = 'http://www.w3.org/XML/1998/namespace';
 const UNSIGNED_INTEGER_PATTERN = /^(?:0|[1-9]\d*)$/u;
@@ -89,6 +95,8 @@ interface SharedFormulaMaster {
 }
 
 export interface XlsxWorksheetPayload {
+  columns: XlsxColumnRange[];
+  mergedRanges: XlsxRange[];
   rows: XlsxRow[];
 }
 
@@ -192,6 +200,34 @@ function optionalHeight(
   return parsed;
 }
 
+function optionalWidth(
+  value: string | undefined,
+  part: string,
+): number | undefined {
+  if (value === undefined) return undefined;
+  if (!NONNEGATIVE_DECIMAL_PATTERN.test(value)) {
+    valueFailure(part, undefined, 'Worksheet column width is invalid');
+  }
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed > 255) {
+    valueFailure(part, undefined, 'Worksheet column width is invalid');
+  }
+  return parsed;
+}
+
+function resolvedStyle(
+  rawStyle: number | undefined,
+  styles: XlsxStyleTable,
+  part: string,
+  location: string | undefined,
+  message: string,
+) {
+  if (rawStyle === undefined) return undefined;
+  const style = styles.cellXfs[rawStyle];
+  if (!style) valueFailure(part, location, message);
+  return style;
+}
+
 function cellType(
   value: string | undefined,
   part: string,
@@ -272,7 +308,9 @@ export function createXlsxWorksheetBudget(
 }
 
 class WorksheetSink implements XlsxXmlEventSink {
+  private readonly authoredColumns: XlsxAuthoredColumnRange[] = [];
   private capture: TextCapture = null;
+  private columnsSeen = false;
   private currentCell: PendingCell | undefined;
   private currentInlineRun: PendingInlineRun | undefined;
   private currentRow: XlsxRow | undefined;
@@ -280,6 +318,10 @@ class WorksheetSink implements XlsxXmlEventSink {
   private ignoredDepth = 0;
   private lastCellColumn = 0;
   private lastRow = 0;
+  private mergeCellsExpected: number | undefined;
+  private mergeCellsSeen = false;
+  private readonly mergedRanges: XlsxRange[] = [];
+  private readonly selectedColumnPrefix: Uint32Array;
   private sheetDataSeen = false;
   private readonly stack: XlsxXmlElement[] = [];
   private readonly rows: XlsxRow[] = [];
@@ -296,7 +338,38 @@ class WorksheetSink implements XlsxXmlEventSink {
     private readonly limits: ResolvedXlsxResourceLimits,
     private readonly selection: XlsxResolvedSheetSelection,
     private readonly semantics: XlsxWorksheetSemantics,
-  ) {}
+  ) {
+    this.selectedColumnPrefix = new Uint32Array(
+      this.limits.maxColumnsPerWorksheet + 1,
+    );
+    if (selection.kind === 'selected-ranges') {
+      const differences = new Int32Array(
+        this.limits.maxColumnsPerWorksheet + 2,
+      );
+      for (const range of selection.ranges) {
+        const start = Math.min(
+          range.start.column,
+          this.limits.maxColumnsPerWorksheet,
+        );
+        const end = Math.min(
+          range.end.column,
+          this.limits.maxColumnsPerWorksheet,
+        );
+        differences[start]! += 1;
+        differences[end + 1]! -= 1;
+      }
+      let active = 0;
+      let selected = 0;
+      Array.from(
+        { length: this.limits.maxColumnsPerWorksheet },
+        (_, index) => index + 1,
+      ).forEach((column) => {
+        active += differences[column]!;
+        if (active > 0) selected += 1;
+        this.selectedColumnPrefix[column] = selected;
+      });
+    }
+  }
 
   openElement(element: XlsxXmlElement): void {
     if (this.ignoredDepth > 0) {
@@ -365,7 +438,64 @@ class WorksheetSink implements XlsxXmlEventSink {
     if (!this.sheetDataSeen) {
       structureFailure(this.part, undefined, 'Worksheet sheetData is missing');
     }
-    return { rows: this.rows };
+    if (
+      this.mergeCellsExpected !== undefined &&
+      this.mergeCellsExpected !== this.mergedRanges.length
+    ) {
+      structureFailure(
+        this.part,
+        undefined,
+        'Worksheet merged-range count does not match',
+      );
+    }
+    if (xlsxMergedRangesOverlap(this.mergedRanges)) {
+      valueFailure(this.part, undefined, 'Worksheet merged ranges overlap');
+    }
+    return {
+      columns: normalizeXlsxColumnRanges(this.authoredColumns).filter((range) =>
+        this.columnRangeSelected(range),
+      ),
+      mergedRanges: this.mergedRanges.filter((range) =>
+        this.mergedRangeSelected(range),
+      ),
+      rows: this.rows,
+    };
+  }
+
+  private columnRangeSelected(range: XlsxColumnRange): boolean {
+    if (this.selection.kind !== 'selected-ranges') {
+      return this.selection.kind === 'full-sheet';
+    }
+    return (
+      this.selectedColumnPrefix[range.end]! -
+        this.selectedColumnPrefix[range.start - 1]! >
+      0
+    );
+  }
+
+  private mergedRangeSelected(range: XlsxRange): boolean {
+    if (this.selection.kind !== 'selected-ranges') {
+      return this.selection.kind === 'full-sheet';
+    }
+    for (const selected of this.selection.ranges) {
+      consume(
+        this.budget,
+        'scannedCells',
+        1,
+        'maxScannedCells',
+        this.limits,
+        this.part,
+      );
+      if (
+        selected.start.row <= range.end.row &&
+        selected.end.row >= range.start.row &&
+        selected.start.column <= range.end.column &&
+        selected.end.column >= range.start.column
+      ) {
+        return true;
+      }
+    }
+    return false;
   }
 
   private beginIgnore(): void {
@@ -374,6 +504,17 @@ class WorksheetSink implements XlsxXmlEventSink {
 
   private openChild(parent: string, element: XlsxXmlElement): void {
     if (parent === 'worksheet') {
+      if (element.localName === 'cols') {
+        if (this.columnsSeen) {
+          structureFailure(
+            this.part,
+            undefined,
+            'Worksheet contains duplicate cols elements',
+          );
+        }
+        this.columnsSeen = true;
+        return;
+      }
       if (element.localName === 'sheetData') {
         if (this.sheetDataSeen) {
           structureFailure(
@@ -385,7 +526,43 @@ class WorksheetSink implements XlsxXmlEventSink {
         this.sheetDataSeen = true;
         return;
       }
+      if (element.localName === 'mergeCells') {
+        if (this.mergeCellsSeen) {
+          structureFailure(
+            this.part,
+            undefined,
+            'Worksheet contains duplicate mergeCells elements',
+          );
+        }
+        this.mergeCellsSeen = true;
+        this.mergeCellsExpected = unsignedInteger(
+          attribute(element, 'count'),
+          this.part,
+          undefined,
+          'Worksheet merged-range count is invalid',
+        );
+        if (
+          this.mergeCellsExpected !== undefined &&
+          this.mergeCellsExpected > this.limits.maxMergedRanges
+        ) {
+          throw new XlsxResourceLimitError(
+            'maxMergedRanges',
+            this.mergeCellsExpected,
+            this.limits.maxMergedRanges,
+            this.part,
+          );
+        }
+        return;
+      }
       this.beginIgnore();
+      return;
+    }
+    if (parent === 'cols' && element.localName === 'col') {
+      this.openColumn(element);
+      return;
+    }
+    if (parent === 'mergeCells' && element.localName === 'mergeCell') {
+      this.openMergedRange(element);
       return;
     }
     if (parent === 'sheetData' && element.localName === 'row') {
@@ -451,6 +628,138 @@ class WorksheetSink implements XlsxXmlEventSink {
     );
   }
 
+  private openColumn(element: XlsxXmlElement): void {
+    const start = unsignedInteger(
+      attribute(element, 'min'),
+      this.part,
+      undefined,
+      'Worksheet column start is invalid',
+    );
+    const end = unsignedInteger(
+      attribute(element, 'max'),
+      this.part,
+      undefined,
+      'Worksheet column end is invalid',
+    );
+    if (start === undefined || start === 0) {
+      valueFailure(this.part, undefined, 'Worksheet column start is invalid');
+    }
+    if (end === undefined || end < start) {
+      valueFailure(this.part, undefined, 'Worksheet column end is invalid');
+    }
+    if (end > this.limits.maxColumnsPerWorksheet) {
+      throw new XlsxResourceLimitError(
+        'maxColumnsPerWorksheet',
+        end,
+        this.limits.maxColumnsPerWorksheet,
+        this.part,
+      );
+    }
+    const actualRanges = this.authoredColumns.length + 1;
+    if (actualRanges > this.limits.maxColumnsPerWorksheet) {
+      throw new XlsxResourceLimitError(
+        'maxColumnsPerWorksheet',
+        actualRanges,
+        this.limits.maxColumnsPerWorksheet,
+        this.part,
+      );
+    }
+    const outlineLevel = unsignedInteger(
+      attribute(element, 'outlineLevel'),
+      this.part,
+      undefined,
+      'Worksheet column outline level is invalid',
+    );
+    if (outlineLevel !== undefined && outlineLevel > 7) {
+      valueFailure(
+        this.part,
+        undefined,
+        'Worksheet column outline level is invalid',
+      );
+    }
+    const collapsed = optionalBoolean(
+      attribute(element, 'collapsed'),
+      this.part,
+      'Worksheet column collapsed flag is invalid',
+    );
+    const hidden = optionalBoolean(
+      attribute(element, 'hidden'),
+      this.part,
+      'Worksheet column hidden flag is invalid',
+    );
+    optionalBoolean(
+      attribute(element, 'bestFit'),
+      this.part,
+      'Worksheet column bestFit flag is invalid',
+    );
+    optionalBoolean(
+      attribute(element, 'customWidth'),
+      this.part,
+      'Worksheet column customWidth flag is invalid',
+    );
+    optionalBoolean(
+      attribute(element, 'phonetic'),
+      this.part,
+      'Worksheet column phonetic flag is invalid',
+    );
+    const width = optionalWidth(attribute(element, 'width'), this.part);
+    const rawStyle = unsignedInteger(
+      attribute(element, 'style'),
+      this.part,
+      undefined,
+      'Worksheet column style index is invalid',
+    );
+    const style = resolvedStyle(
+      rawStyle,
+      this.semantics.styles,
+      this.part,
+      undefined,
+      'Worksheet column style reference is invalid',
+    );
+    this.authoredColumns.push({
+      ...(collapsed === undefined ? {} : { collapsed }),
+      end,
+      ...(hidden === undefined ? {} : { hidden }),
+      order: this.authoredColumns.length,
+      ...(outlineLevel === undefined ? {} : { outlineLevel }),
+      start,
+      ...(style === undefined ? {} : { style: style.normalizedStyle }),
+      ...(width === undefined ? {} : { width }),
+    });
+  }
+
+  private openMergedRange(element: XlsxXmlElement): void {
+    const source = attribute(element, 'ref');
+    const range = parseXlsxRangeReference(source);
+    if (!range || source?.includes('$')) {
+      valueFailure(
+        this.part,
+        undefined,
+        'Worksheet merged-range reference is invalid',
+      );
+    }
+    if (
+      range.start.row === range.end.row &&
+      range.start.column === range.end.column
+    ) {
+      valueFailure(
+        this.part,
+        undefined,
+        'Worksheet merged range must contain multiple cells',
+      );
+    }
+    const actual = this.mergedRanges.length + 1;
+    if (actual > this.limits.maxMergedRanges) {
+      throw new XlsxResourceLimitError(
+        'maxMergedRanges',
+        actual,
+        this.limits.maxMergedRanges,
+        this.part,
+      );
+    }
+    this.mergedRanges.push(range);
+  }
+
   private openRow(element: XlsxXmlElement): void {
     const reference = unsignedInteger(
       attribute(element, 'r'),
@@ -484,17 +793,54 @@ class WorksheetSink implements XlsxXmlEventSink {
       );
     }
     const height = optionalHeight(attribute(element, 'ht'), this.part);
+    const collapsed = optionalBoolean(
+      attribute(element, 'collapsed'),
+      this.part,
+      'Worksheet row collapsed flag is invalid',
+    );
+    const customFormat = optionalBoolean(
+      attribute(element, 'customFormat'),
+      this.part,
+      'Worksheet row customFormat flag is invalid',
+    );
+    optionalBoolean(
+      attribute(element, 'customHeight'),
+      this.part,
+      'Worksheet row customHeight flag is invalid',
+    );
     const hidden = optionalBoolean(
       attribute(element, 'hidden'),
       this.part,
       'Worksheet row hidden flag is invalid',
     );
+    const rawStyle = unsignedInteger(
+      attribute(element, 's'),
+      this.part,
+      undefined,
+      'Worksheet row style index is invalid',
+    );
+    if (customFormat === true && rawStyle === undefined) {
+      valueFailure(
+        this.part,
+        undefined,
+        'Worksheet custom-formatted row style is missing',
+      );
+    }
+    const style = resolvedStyle(
+      rawStyle,
+      this.semantics.styles,
+      this.part,
+      undefined,
+      'Worksheet row style reference is invalid',
+    );
     this.currentRow = {
       cells: [],
+      ...(collapsed === undefined ? {} : { collapsed }),
       ...(height === undefined ? {} : { height }),
       ...(hidden === undefined ? {} : { hidden }),
       index,
       ...(outlineLevel === undefined ? {} : { outlineLevel }),
+      ...(style === undefined ? {} : { style: style.normalizedStyle }),
     };
     this.currentRowSelected = xlsxSelectionIncludesRow(this.selection, index);
     this.lastCellColumn = 0;
@@ -557,17 +903,13 @@ class WorksheetSink implements XlsxXmlEventSink {
       address,
       'Worksheet cell style index is invalid',
     );
-    const styleXf =
-      rawStyle === undefined
-        ? undefined
-        : this.semantics.styles.cellXfs[rawStyle];
-    if (rawStyle !== undefined && styleXf === undefined) {
-      valueFailure(
-        this.part,
-        address,
-        'Worksheet cell style reference is invalid',
-      );
-    }
+    const styleXf = resolvedStyle(
+      rawStyle,
+      this.semantics.styles,
+      this.part,
+      address,
+      'Worksheet cell style reference is invalid',
+    );
     consume(
       this.budget,
       'scannedCells',

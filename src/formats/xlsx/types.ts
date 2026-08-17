@@ -141,10 +141,12 @@ export type XlsxCell = XlsxCellBase &
 
 export interface XlsxRow {
   cells: XlsxCell[];
+  collapsed?: boolean;
   height?: number;
   hidden?: boolean;
   index: number;
   outlineLevel?: number;
+  style?: number;
 }
 
 export interface XlsxColumnRange {
