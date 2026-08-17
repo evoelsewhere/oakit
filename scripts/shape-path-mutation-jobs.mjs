@@ -9,7 +9,22 @@ export const shapePathMutationFile = 'src/formats/pptx/internal/shape-path.ts';
 
 const arithmeticJobCount = 4;
 const stringJobCount = 2;
-const remainingJobCount = 4;
+const remainingJobDefinitions = [
+  { count: 3, names: ['ConditionalExpression'] },
+  { count: 3, names: ['ArrowFunction', 'MethodExpression'] },
+  { count: 1, names: ['BlockStatement'] },
+  { count: 1, names: ['BooleanLiteral', 'LogicalOperator'] },
+  { count: 2, names: ['ArrayDeclaration'] },
+  {
+    count: 2,
+    names: [
+      'AssignmentOperator',
+      'EqualityOperator',
+      'ObjectLiteral',
+      'UnaryOperator',
+    ],
+  },
+];
 
 const projectRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -77,43 +92,94 @@ function createRangeJobs(mutants, mutatorName, count, allMutatorNames) {
 }
 
 function createRemainingJobs(mutants, excludedNames, allMutatorNames) {
-  const counts = new Map();
-  for (const mutant of mutants) {
-    if (!excludedNames.has(mutant.mutatorName)) {
-      counts.set(mutant.mutatorName, (counts.get(mutant.mutatorName) ?? 0) + 1);
+  const remainingNames = allMutatorNames.filter(
+    (name) => !excludedNames.has(name),
+  );
+  const configuredNames = remainingJobDefinitions
+    .flatMap(({ names }) => names)
+    .toSorted();
+  if (JSON.stringify(configuredNames) !== JSON.stringify(remainingNames)) {
+    throw new Error(
+      'Shape path remaining mutator families do not match their job definitions',
+    );
+  }
+  return remainingJobDefinitions.flatMap(({ count, names }, index) =>
+    createLocationRangeJobs(
+      mutants,
+      names,
+      count,
+      allMutatorNames,
+      `remaining-${index + 1}`,
+    ),
+  );
+}
+
+function overlappingLineComponents(mutants) {
+  const ordered = mutants.toSorted(locationOrder);
+  const components = [];
+  for (const mutant of ordered) {
+    const startLine = mutant.location.start.line + 1;
+    const endLine = mutant.location.end.line + 1;
+    const current = components.at(-1);
+    if (current !== undefined && startLine <= current.endLine) {
+      current.endLine = Math.max(current.endLine, endLine);
+      current.mutants.push(mutant);
+    } else {
+      components.push({ endLine, mutants: [mutant], startLine });
     }
   }
-  if (counts.size < remainingJobCount) {
+  return components;
+}
+
+function createLocationRangeJobs(
+  mutants,
+  allowedMutations,
+  count,
+  allMutatorNames,
+  idPrefix,
+) {
+  const allowed = new Set(allowedMutations);
+  const selected = mutants.filter((mutant) => allowed.has(mutant.mutatorName));
+  const components = overlappingLineComponents(selected);
+  if (components.length < count) {
     throw new Error(
-      `Shape path requires at least ${remainingJobCount} remaining mutator families`,
+      `${idPrefix} requires at least ${count} disjoint line components`,
     );
   }
-
-  const groups = Array.from({ length: remainingJobCount }, () => ({
-    allowedMutations: [],
-    weight: 0,
-  }));
-  const weightedNames = [...counts].sort(
-    ([leftName, leftCount], [rightName, rightCount]) =>
-      rightCount - leftCount || leftName.localeCompare(rightName),
+  const excludedMutations = allMutatorNames.filter(
+    (name) => !allowed.has(name),
   );
-  for (const [name, count] of weightedNames) {
-    const target = groups.reduce((lightest, candidate) =>
-      candidate.weight < lightest.weight ? candidate : lightest,
-    );
-    target.allowedMutations.push(name);
-    target.weight += count;
+  const jobs = [];
+  let componentIndex = 0;
+  let assignedMutants = 0;
+  for (let index = 0; index < count; index += 1) {
+    const startIndex = componentIndex;
+    const remainingJobs = count - index - 1;
+    const target = Math.ceil((selected.length * (index + 1)) / count);
+    while (
+      componentIndex < components.length - remainingJobs &&
+      (assignedMutants < target || componentIndex === startIndex)
+    ) {
+      const component = components[componentIndex];
+      if (component === undefined) break;
+      assignedMutants += component.mutants.length;
+      componentIndex += 1;
+    }
+    const slice = components.slice(startIndex, componentIndex);
+    const first = slice[0];
+    const last = slice.at(-1);
+    if (first === undefined || last === undefined) {
+      throw new Error(`${idPrefix} produced an empty mutation range`);
+    }
+    jobs.push({
+      allowedMutations,
+      excludedMutations,
+      id: `${idPrefix}-${index + 1}`,
+      mutate: `${shapePathMutationFile}:${first.startLine}-${last.endLine}`,
+      range: { endLine: last.endLine, startLine: first.startLine },
+    });
   }
-
-  return groups.map(({ allowedMutations }, index) => ({
-    allowedMutations: allowedMutations.sort(),
-    excludedMutations: allMutatorNames.filter(
-      (name) => !allowedMutations.includes(name),
-    ),
-    id: `remaining-${index + 1}`,
-    mutate: shapePathMutationFile,
-    range: null,
-  }));
+  return jobs;
 }
 
 export function createShapePathMutationJobs(mutants) {

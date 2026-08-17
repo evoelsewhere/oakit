@@ -202,16 +202,20 @@ describe('mutation report sharding', () => {
 });
 
 describe('shape path mutation workload', () => {
-  it('partitions every instrumented mutant into ten bounded jobs', async () => {
+  it('partitions every instrumented mutant into eighteen bounded jobs', async () => {
     const mutants = await instrumentShapePathMutants();
     const jobs = createShapePathMutationJobs(mutants);
     const verification = verifyShapePathMutationJobs(mutants, jobs);
 
     expect(mutants).toHaveLength(8195);
     expect(new Set(mutants.map(mutationFingerprint)).size).toBe(mutants.length);
-    expect(jobs).toHaveLength(10);
+    expect(jobs).toHaveLength(18);
     expect(verification.coveredMutants).toBe(mutants.length);
+    expect(verification.duplicateSelections).toBe(0);
     expect(Math.max(...verification.workloads)).toBeLessThanOrEqual(1100);
+    expect(Math.max(...verification.workloads.slice(6))).toBeLessThanOrEqual(
+      450,
+    );
     expect(verification.workloads.every((count) => count > 0)).toBe(true);
   }, 15_000);
 
