@@ -2,6 +2,15 @@
 
 All notable changes to OAKit are documented here.
 
+## 0.0.2 - 2026-08-18
+
+### Fixed
+
+- preserve the installed `oakit` command when npm 11 normalizes the published
+  package manifest;
+- execute `node_modules/.bin/oakit` in packed-consumer smoke tests so missing bin
+  mappings fail before publication.
+
 ## 0.0.1 - 2026-08-18
 
 ### Added

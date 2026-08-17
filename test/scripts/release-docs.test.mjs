@@ -20,7 +20,7 @@ describe('release documentation', () => {
     expect(readme).toContain('do not claim arbitrary PPTX editing');
   });
 
-  it('binds version 0.0.1 to producer, mutation, and CI evidence', async () => {
+  it('binds 0.0.1 evidence while preparing the CLI packaging hotfix', async () => {
     const changelog = await readFile(path.resolve('CHANGELOG.md'), 'utf8');
     const checklist = await readFile(
       path.resolve('docs', 'release-0.0.1.md'),
@@ -34,7 +34,8 @@ describe('release documentation', () => {
       ),
     );
 
-    expect(metadata.version).toBe('0.0.1');
+    expect(metadata.version).toBe('0.0.2');
+    expect(changelog).toContain('## 0.0.2 - 2026-08-18');
     expect(changelog).toContain('## 0.0.1 - 2026-08-18');
     expect(changelog).not.toContain('## Unreleased');
     expect(checklist).toContain(
@@ -95,5 +96,8 @@ describe('release documentation', () => {
     });
     expect(checklist).toContain('- [x] Create tag `v0.0.1`');
     expect(checklist).toContain('package smoke now executes');
+    expect(
+      await readFile(path.resolve('docs', 'release-0.0.2.md'), 'utf8'),
+    ).toContain('node_modules/.bin/oakit');
   });
 });
