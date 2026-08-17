@@ -84,7 +84,7 @@ describe('PowerPoint SVG slide source', () => {
     const result = render(slide([text()], [shape({ id: 'layout' })]));
 
     expect(result.source).toBe(
-      '<?xml version="1.0" encoding="UTF-8"?><svg xmlns="http://www.w3.org/2000/svg" role="img" width="160" height="90" viewBox="0 0 160 90"><title>PowerPoint slide 2</title><rect width="160" height="90" fill="#ffffff"/><g transform="translate(1 2)"><rect x="0" y="0" width="80" height="40" rx="0" fill="#abcdef" stroke="#112233" stroke-width="1" stroke-dasharray="2 3"/></g><g transform="translate(10 20)"><rect x="0" y="0" width="100" height="40" fill="none" stroke="none"/><svg x="0" y="0" width="100" height="40" overflow="hidden"><text font-family="sans-serif" font-size="12" fill="#111827"><tspan x="4" dy="14">Hello &amp; welcome</tspan><tspan x="4" dy="16">Second</tspan></text></svg></g></svg>',
+      '<?xml version="1.0" encoding="UTF-8"?><svg xmlns="http://www.w3.org/2000/svg" role="img" width="160" height="90" viewBox="0 0 160 90"><title>PowerPoint slide 2</title><rect width="160" height="90" fill="#ffffff"/><g transform="translate(1 2)"><rect x="0" y="0" width="80" height="40" rx="0" fill="#abcdef" stroke="#112233" stroke-width="1" stroke-dasharray="2 3"/></g><g transform="translate(10 20)"><rect x="0" y="0" width="100" height="40" fill="none" stroke="none"/><svg x="0" y="0" width="100" height="40" overflow="hidden"><text x="4" y="16" text-anchor="start" font-family="sans-serif"><tspan fill="#111827" font-size="12">Hello &amp; welcome</tspan></text><text x="4" y="32" text-anchor="start" font-family="sans-serif"><tspan fill="#111827" font-size="12">Second</tspan></text></svg></g></svg>',
     );
     expect(result.warnings).toEqual([
       {
