@@ -162,6 +162,24 @@ export type XlsxColor =
   | { index: number; kind: 'indexed'; tint?: number }
   | { kind: 'automatic' };
 
+export interface XlsxFont {
+  bold?: boolean;
+  charset?: number;
+  color?: XlsxColor;
+  condense?: boolean;
+  extend?: boolean;
+  family?: number;
+  italic?: boolean;
+  name?: string;
+  outline?: boolean;
+  scheme?: 'major' | 'minor';
+  shadow?: boolean;
+  size?: number;
+  strike?: boolean;
+  underline?: 'double' | 'double-accounting' | 'single' | 'single-accounting';
+  verticalAlignment?: 'subscript' | 'superscript';
+}
+
 export interface XlsxStyle {
   numberFormat?: string;
 }
