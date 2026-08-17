@@ -564,4 +564,36 @@ describe('PowerPoint SVG slide source', () => {
     );
     expect(result.warnings).toEqual([]);
   });
+
+  it('defines and applies safe linear gradients without approximation warnings', () => {
+    const first = shape({ id: 'gradient-1' });
+    first.fill = {
+      type: 'gradient',
+      value: {
+        colors: [
+          { color: '#FFFFFF', pos: '0%' },
+          { color: '#434343', pos: '100%' },
+        ],
+        path: 'line',
+        rot: 90,
+      },
+    };
+    const second = shape({ id: 'gradient-2', left: 90 });
+    second.fill = first.fill;
+
+    const result = render(slide([first, second]));
+
+    expect(result.source).toContain(
+      '<defs><linearGradient id="pptx-gradient-2-1"',
+    );
+    expect(result.source).toContain('<linearGradient id="pptx-gradient-2-2"');
+    expect(result.source).toContain('fill="url(#pptx-gradient-2-1)"');
+    expect(result.source).toContain('fill="url(#pptx-gradient-2-2)"');
+    expect(result.source).not.toContain('Stryker was here');
+    expect(result.warnings).toEqual([]);
+
+    const solid = render(slide([shape()]));
+    expect(solid.source).not.toContain('<defs>');
+    expect(solid.source).not.toContain('Stryker was here');
+  });
 });

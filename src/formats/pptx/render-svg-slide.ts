@@ -1,6 +1,7 @@
 import type { Element, Fill, Image, PptxSlide, Shape, Text } from './types';
 import { escapeSvgText, renderedTextFromPowerPointHtml } from './render-text';
 import type { PptxRenderWarning } from './render-types';
+import { svgLinearGradientPaint } from './render-svg-gradient';
 import { renderPptxSvgRichElement } from './render-svg-rich';
 import {
   embeddedRasterDataUri,
@@ -26,6 +27,8 @@ export interface PptxSvgSlideSourceOptions {
 }
 
 interface RenderContext {
+  definitions: string[];
+  nextDefinitionId: number;
   slideNumber: number;
   warnings: PptxRenderWarning[];
 }
@@ -56,6 +59,13 @@ function paint(
   if (fill.type === 'color') {
     const color = svgColor(fill.value);
     if (color !== null) return color;
+  }
+  const gradientId = `pptx-gradient-${context.slideNumber}-${context.nextDefinitionId + 1}`;
+  const gradient = svgLinearGradientPaint(fill, gradientId);
+  if (gradient !== null) {
+    context.definitions.push(gradient.definition);
+    context.nextDefinitionId += 1;
+    return gradient.value;
   }
   if (element !== undefined) {
     warning(
@@ -333,6 +343,8 @@ export function renderPptxSvgSlideSource(
   options: PptxSvgSlideSourceOptions,
 ): PptxSvgSlideSource {
   const context: RenderContext = {
+    definitions: [],
+    nextDefinitionId: 0,
     slideNumber: options.slideNumber,
     warnings: [],
   };
@@ -344,6 +356,10 @@ export function renderPptxSvgSlideSource(
   const sourceHeight = svgNumber(options.sourceHeight);
   const outputWidth = svgNumber(options.outputWidth);
   const outputHeight = svgNumber(options.outputHeight);
-  const source = `<?xml version="1.0" encoding="UTF-8"?><svg xmlns="http://www.w3.org/2000/svg" role="img" width="${outputWidth}" height="${outputHeight}" viewBox="0 0 ${sourceWidth} ${sourceHeight}"><title>PowerPoint slide ${options.slideNumber}</title><rect width="${sourceWidth}" height="${sourceHeight}" fill="${background}"/>${elements}</svg>`;
+  const definitions =
+    context.definitions.length === 0
+      ? ''
+      : `<defs>${context.definitions.join('')}</defs>`;
+  const source = `<?xml version="1.0" encoding="UTF-8"?><svg xmlns="http://www.w3.org/2000/svg" role="img" width="${outputWidth}" height="${outputHeight}" viewBox="0 0 ${sourceWidth} ${sourceHeight}"><title>PowerPoint slide ${options.slideNumber}</title>${definitions}<rect width="${sourceWidth}" height="${sourceHeight}" fill="${background}"/>${elements}</svg>`;
   return { source, warnings: context.warnings };
 }
