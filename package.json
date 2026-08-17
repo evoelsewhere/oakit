@@ -53,6 +53,7 @@
     "test:corpus:large": "node scripts/corpus/fetch-pptx-corpus.mjs --include-large && vitest run --config vitest.corpus.config.ts",
     "test:fuzz": "vitest run --config vitest.fuzz.config.ts",
     "test:mutation": "stryker run --force && pnpm test:mutation:audit",
+    "test:mutation:module": "node scripts/run-mutation-module.mjs",
     "test:mutation:audit": "pnpm test:mutation:scope:complete && node scripts/check-mutation-report.mjs",
     "test:mutation:scope": "node scripts/check-mutation-scope.mjs",
     "test:mutation:scope:complete": "node scripts/check-mutation-scope.mjs --complete",
