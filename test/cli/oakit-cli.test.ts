@@ -6,6 +6,7 @@ import { type OakitCliIo, runOakitCli } from '../../src/cli/run';
 const EXPECTED_HELP = `Usage: oakit [convert] <input.pptx|-> [options]
        oakit render <input.pptx|-> --output <directory> [options]
        oakit snapshot <input.pptx|-> [--output <file>]
+       oakit edit-text <input.json|-> --target <run-key> --value <text> [options]
        oakit restore <input.json|-> --output <file.pptx>
 
 Convert a PowerPoint Open XML presentation into deterministic JSON.
@@ -27,6 +28,12 @@ Render options:
 
 Snapshot options:
   -o, --output <file>          Write portable JSON instead of stdout
+      --pretty                 Format portable JSON with two-space indentation
+
+Edit text options:
+  -o, --output <file>          Write edited portable JSON instead of stdout
+      --target <run-key>       Stable text run key from the portable document
+      --value <text>           Replacement text; use --value=-5 for leading -
       --pretty                 Format portable JSON with two-space indentation
 
 Restore options:

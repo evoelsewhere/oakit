@@ -8,6 +8,7 @@ import {
   PptxRoundTripPortableLimitError,
   PptxWriteError,
   readPptxRoundTrip,
+  replacePptxRoundTripText,
   renderPptxToSvg,
   serializePptxRoundTripJson,
   type PptxDiagnostic,
@@ -63,8 +64,18 @@ interface RestoreCommand {
   output: string;
 }
 
+interface EditTextCommand {
+  action: 'edit-text';
+  input: string;
+  output?: string;
+  pretty: boolean;
+  targetKey: string;
+  value: string;
+}
+
 type CliCommand =
   | ConvertCommand
+  | EditTextCommand
   | RenderCommand
   | RestoreCommand
   | SnapshotCommand
@@ -75,6 +86,7 @@ export interface OakitCliOperations {
   parseRoundTripJson: typeof parsePptxRoundTripJson;
   parsePptx: typeof parsePptxWithDiagnostics;
   readRoundTrip: typeof readPptxRoundTrip;
+  replaceRoundTripText: typeof replacePptxRoundTripText;
   renderPng: typeof renderPptxToPng;
   renderSvg: typeof renderPptxToSvg;
   serializeRoundTripJson: typeof serializePptxRoundTripJson;
@@ -85,6 +97,7 @@ const DEFAULT_OPERATIONS: OakitCliOperations = {
   parseRoundTripJson: parsePptxRoundTripJson,
   parsePptx: parsePptxWithDiagnostics,
   readRoundTrip: readPptxRoundTrip,
+  replaceRoundTripText: replacePptxRoundTripText,
   renderPng: renderPptxToPng,
   renderSvg: renderPptxToSvg,
   serializeRoundTripJson: serializePptxRoundTripJson,
@@ -103,6 +116,7 @@ class CliUsageError extends Error {
 const HELP = `Usage: oakit [convert] <input.pptx|-> [options]
        oakit render <input.pptx|-> --output <directory> [options]
        oakit snapshot <input.pptx|-> [--output <file>]
+       oakit edit-text <input.json|-> --target <run-key> --value <text> [options]
        oakit restore <input.json|-> --output <file.pptx>
 
 Convert a PowerPoint Open XML presentation into deterministic JSON.
@@ -124,6 +138,12 @@ Render options:
 
 Snapshot options:
   -o, --output <file>          Write portable JSON instead of stdout
+      --pretty                 Format portable JSON with two-space indentation
+
+Edit text options:
+  -o, --output <file>          Write edited portable JSON instead of stdout
+      --target <run-key>       Stable text run key from the portable document
+      --value <text>           Replacement text; use --value=-5 for leading -
       --pretty                 Format portable JSON with two-space indentation
 
 Restore options:
@@ -229,11 +249,15 @@ function parseCommand(args: readonly string[]): CliCommand {
   }
 
   const action =
-    args[0] === 'render' || args[0] === 'restore' || args[0] === 'snapshot'
+    args[0] === 'edit-text' ||
+    args[0] === 'render' ||
+    args[0] === 'restore' ||
+    args[0] === 'snapshot'
       ? args[0]
       : 'convert';
   const values =
     args[0] === 'convert' ||
+    args[0] === 'edit-text' ||
     args[0] === 'render' ||
     args[0] === 'restore' ||
     args[0] === 'snapshot'
@@ -249,6 +273,8 @@ function parseCommand(args: readonly string[]): CliCommand {
   let scale = 1;
   let slideNumbers: readonly number[] | undefined;
   let strict = false;
+  let targetKey: string | undefined;
+  let textValue: string | undefined;
 
   const iterator = values.values();
   for (const value of iterator) {
@@ -258,13 +284,25 @@ function parseCommand(args: readonly string[]): CliCommand {
       strict = true;
     } else if (
       value === '--pretty' &&
-      (action === 'convert' || action === 'snapshot')
+      (action === 'convert' || action === 'edit-text' || action === 'snapshot')
     ) {
       pretty = true;
     } else if (value === '--output' || value === '-o') {
       output = optionValue(iterator, value);
-    } else if (value === '--format' && action !== 'restore') {
+    } else if (
+      value === '--format' &&
+      action !== 'edit-text' &&
+      action !== 'restore'
+    ) {
       explicitFormat = optionValue(iterator, value);
+    } else if (value === '--target' && action === 'edit-text') {
+      targetKey = optionValue(iterator, value);
+    } else if (value.startsWith('--target=') && action === 'edit-text') {
+      targetKey = value.slice('--target='.length);
+    } else if (value === '--value' && action === 'edit-text') {
+      textValue = optionValue(iterator, value);
+    } else if (value.startsWith('--value=') && action === 'edit-text') {
+      textValue = value.slice('--value='.length);
     } else if (value === '--image-mode' && action === 'convert') {
       const selectedMode = optionValue(iterator, value);
       if (selectedMode !== 'none' && selectedMode !== 'base64') {
@@ -293,7 +331,9 @@ function parseCommand(args: readonly string[]): CliCommand {
       'input-required',
       action === 'restore'
         ? 'A portable JSON input path is required'
-        : 'A PPTX input path is required',
+        : action === 'edit-text'
+          ? 'A portable JSON input path is required'
+          : 'A PPTX input path is required',
     );
   }
   if (additionalInputs.length > 0) {
@@ -315,7 +355,9 @@ function parseCommand(args: readonly string[]): CliCommand {
         ? 'The render output directory must not overwrite the input document'
         : action === 'restore'
           ? 'The PowerPoint output path must not overwrite the portable JSON input'
-          : 'The JSON output path must not overwrite the input document',
+          : action === 'edit-text'
+            ? 'The JSON output path must not overwrite the portable JSON input'
+            : 'The JSON output path must not overwrite the input document',
     );
   }
 
@@ -327,6 +369,29 @@ function parseCommand(args: readonly string[]): CliCommand {
       );
     }
     return { action, input, output };
+  }
+
+  if (action === 'edit-text') {
+    if (targetKey === undefined || targetKey.length === 0) {
+      throw new CliUsageError(
+        'edit-target-required',
+        'Editing text requires a non-empty --target run key',
+      );
+    }
+    if (textValue === undefined) {
+      throw new CliUsageError(
+        'edit-value-required',
+        'Editing text requires --value',
+      );
+    }
+    return {
+      action,
+      input,
+      ...(output === undefined ? {} : { output }),
+      pretty,
+      targetKey,
+      value: textValue,
+    };
   }
 
   const format = inferFormat(input, explicitFormat);
@@ -598,21 +663,20 @@ async function snapshotPortableJson(
   }
 }
 
-async function restorePortableJson(
-  command: RestoreCommand,
+type PortableJsonInput = { ok: false } | { ok: true; value: unknown };
+
+async function readPortableJsonInput(
+  inputPath: string,
   io: OakitCliIo,
-  operations: OakitCliOperations,
-): Promise<number> {
+): Promise<PortableJsonInput> {
   let input: Uint8Array;
   try {
     input =
-      command.input === '-'
-        ? await io.readStdin()
-        : await io.readFile(command.input);
+      inputPath === '-' ? await io.readStdin() : await io.readFile(inputPath);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     io.writeStderr(errorJson('input-read-failed', message));
-    return 1;
+    return { ok: false };
   }
 
   let source: string;
@@ -625,21 +689,72 @@ async function restorePortableJson(
         'Portable JSON input must be valid UTF-8',
       ),
     );
-    return 1;
+    return { ok: false };
   }
 
-  let wireValue: unknown;
   try {
-    wireValue = JSON.parse(source) as unknown;
+    return { ok: true, value: JSON.parse(source) as unknown };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     io.writeStderr(errorJson('invalid-portable-json', message));
+    return { ok: false };
+  }
+}
+
+async function editPortableText(
+  command: EditTextCommand,
+  io: OakitCliIo,
+  operations: OakitCliOperations,
+): Promise<number> {
+  const input = await readPortableJsonInput(command.input, io);
+  if (!input.ok) return 1;
+
+  let json: string;
+  try {
+    const runtime = await operations.parseRoundTripJson(input.value);
+    const edited = await operations.replaceRoundTripText(runtime, {
+      targetKey: command.targetKey,
+      value: command.value,
+    });
+    const portable = await operations.serializeRoundTripJson(edited);
+    json = `${JSON.stringify(portable, null, command.pretty ? 2 : undefined)}\n`;
+  } catch (error) {
+    if (error instanceof PptxRoundTripPortableLimitError) {
+      io.writeStderr(portableLimitJson(error));
+    } else if (error instanceof PptxWriteError) {
+      io.writeStderr(errorJson(error.code, error.message));
+    } else {
+      const message = error instanceof Error ? error.message : String(error);
+      io.writeStderr(errorJson('edit-text-failed', message));
+    }
     return 1;
   }
 
+  try {
+    if (command.output === undefined || command.output === '-') {
+      io.writeStdout(json);
+    } else {
+      await io.writeFile(command.output, json);
+    }
+    return 0;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    io.writeStderr(errorJson('output-write-failed', message));
+    return 1;
+  }
+}
+
+async function restorePortableJson(
+  command: RestoreCommand,
+  io: OakitCliIo,
+  operations: OakitCliOperations,
+): Promise<number> {
+  const input = await readPortableJsonInput(command.input, io);
+  if (!input.ok) return 1;
+
   let output: Uint8Array;
   try {
-    const runtime = await operations.parseRoundTripJson(wireValue);
+    const runtime = await operations.parseRoundTripJson(input.value);
     const result = await operations.writeRoundTrip(runtime);
     output = result.data;
   } catch (error) {
@@ -690,6 +805,9 @@ export async function runOakitCli(
   }
   if (command.action === 'render') {
     return renderSlides(command, io, operations);
+  }
+  if (command.action === 'edit-text') {
+    return editPortableText(command, io, operations);
   }
   if (command.action === 'restore') {
     return restorePortableJson(command, io, operations);

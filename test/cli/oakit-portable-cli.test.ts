@@ -8,8 +8,11 @@ import {
   runOakitCli,
 } from '../../src/cli/run';
 import {
+  createPptx,
   PptxRoundTripPortableLimitError,
   PptxWriteError,
+  readPptxRoundTrip,
+  type PptxSceneDocument,
 } from '../../src/formats/pptx';
 import { createMinimalPptx } from '../pptx/fixture';
 
@@ -67,6 +70,44 @@ class PortableCliIo implements OakitCliIo {
 
 function json(value: string): Record<string, unknown> {
   return JSON.parse(value) as Record<string, unknown>;
+}
+
+async function createEditablePptx(): Promise<Uint8Array> {
+  const document: PptxSceneDocument = {
+    layouts: [],
+    masters: [],
+    media: [],
+    schemaVersion: 2,
+    size: { height: 540, width: 960 },
+    slides: [
+      {
+        elements: [
+          {
+            authored: {
+              transform: { height: 80, width: 300, x: 20, y: 30 },
+            },
+            key: 'cli-text',
+            resolved: { hidden: false },
+            text: {
+              body: {},
+              paragraphs: [
+                {
+                  children: [
+                    { key: 'cli-run', text: 'Before CLI edit', type: 'run' },
+                  ],
+                  key: 'cli-paragraph',
+                },
+              ],
+            },
+            type: 'text',
+          },
+        ],
+        key: 'cli-slide',
+      },
+    ],
+    themes: [],
+  };
+  return (await createPptx(document)).data;
 }
 
 describe('oakit portable PowerPoint CLI contract', () => {
@@ -139,6 +180,90 @@ describe('oakit portable PowerPoint CLI contract', () => {
     expect(io.stderr).toBe('');
   });
 
+  it('schedules, restores, and verifies a text edit using only portable commands', async () => {
+    const io = new PortableCliIo();
+    const source = await createEditablePptx();
+    io.files.set('source.pptx', source);
+    await runOakitCli(
+      ['snapshot', 'source.pptx', '--output', 'handoff.json'],
+      io,
+      '1.2.3',
+    );
+
+    await expect(
+      runOakitCli(
+        [
+          'edit-text',
+          'handoff.json',
+          '--target',
+          'slide-1-element-1-run-1',
+          '--value',
+          'After <& CLI edit',
+          '--pretty',
+          '--output',
+          'edited.json',
+        ],
+        io,
+        '1.2.3',
+      ),
+    ).resolves.toBe(0);
+    const portable = json(String(io.files.get('edited.json')));
+    expect(portable.operations).toEqual([
+      {
+        expectedText: 'Before CLI edit',
+        id: 'replace-text-1',
+        kind: 'replace-text',
+        targetKey: 'slide-1-element-1-run-1',
+        value: 'After <& CLI edit',
+      },
+    ]);
+    expect(portable.source).toMatchObject({
+      byteLength: source.byteLength,
+      packageBase64: Buffer.from(source).toString('base64'),
+    });
+
+    await expect(
+      runOakitCli(
+        ['restore', 'edited.json', '--output', 'edited.pptx'],
+        io,
+        '1.2.3',
+      ),
+    ).resolves.toBe(0);
+    const output = io.files.get('edited.pptx');
+    if (!(output instanceof Uint8Array))
+      throw new Error('Expected PPTX output');
+    const verified = await readPptxRoundTrip(output);
+    expect(verified.document.slides[0]?.elements[0]).toMatchObject({
+      type: 'text',
+      text: {
+        paragraphs: [
+          { children: [{ text: 'After <& CLI edit', type: 'run' }] },
+        ],
+      },
+    });
+    expect(output).not.toEqual(source);
+    expect(io.stdout).toBe('');
+    expect(io.stderr).toBe('');
+  });
+
+  it('accepts leading-hyphen replacement text using inline option syntax', async () => {
+    const io = new PortableCliIo();
+    io.files.set('source.pptx', await createEditablePptx());
+    await runOakitCli(['snapshot', 'source.pptx'], io, '1.2.3');
+    io.stdin = new TextEncoder().encode(io.stdout);
+    io.stdout = '';
+
+    await expect(
+      runOakitCli(
+        ['edit-text', '-', '--target=slide-1-element-1-run-1', '--value=-5'],
+        io,
+        '1.2.3',
+      ),
+    ).resolves.toBe(0);
+    expect(json(io.stdout).operations).toMatchObject([{ value: '-5' }]);
+    expect(io.stderr).toBe('');
+  });
+
   it('writes pretty portable JSON to stdout from explicit-format stdin', async () => {
     const io = new PortableCliIo();
     io.stdin = await createMinimalPptx();
@@ -194,6 +319,11 @@ describe('oakit portable PowerPoint CLI contract', () => {
       message: 'A portable JSON input path is required',
     },
     {
+      args: ['edit-text'],
+      code: 'input-required',
+      message: 'A portable JSON input path is required',
+    },
+    {
       args: ['snapshot', '-'],
       code: 'format-required',
       message: 'Reading stdin requires --format pptx',
@@ -207,6 +337,21 @@ describe('oakit portable PowerPoint CLI contract', () => {
       args: ['snapshot', 'source.pptx', '--image-mode', 'none'],
       code: 'unknown-option',
       message: 'Unknown option: --image-mode',
+    },
+    {
+      args: ['edit-text', 'handoff.json', '--value', 'After'],
+      code: 'edit-target-required',
+      message: 'Editing text requires a non-empty --target run key',
+    },
+    {
+      args: [
+        'edit-text',
+        'handoff.json',
+        '--target',
+        'slide-1-element-1-run-1',
+      ],
+      code: 'edit-value-required',
+      message: 'Editing text requires --value',
     },
     {
       args: ['restore', 'handoff.json'],
@@ -245,6 +390,21 @@ describe('oakit portable PowerPoint CLI contract', () => {
       code: 'output-overwrites-input',
       message:
         'The PowerPoint output path must not overwrite the portable JSON input',
+    },
+    {
+      args: [
+        'edit-text',
+        'handoff.json',
+        '--target',
+        'slide-1-element-1-run-1',
+        '--value',
+        'After',
+        '--output',
+        'handoff.json',
+      ],
+      code: 'output-overwrites-input',
+      message:
+        'The JSON output path must not overwrite the portable JSON input',
     },
   ])('rejects invalid portable usage with $code', async (testCase) => {
     const io = new PortableCliIo();
