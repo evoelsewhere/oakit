@@ -114,7 +114,7 @@ describe('XLSX round-trip snapshot schema', () => {
     expect(capture(snapshot).diagnostic.message).toBe(message);
   });
 
-  it('validates operations type, exact count boundary, and R0 support', () => {
+  it('validates operations type and exact count boundary', () => {
     const wrong = clone(source) as unknown as Record<string, unknown>;
     wrong.operations = {};
     expect(capture(wrong).diagnostic.message).toBe(
@@ -128,12 +128,12 @@ describe('XLSX round-trip snapshot schema', () => {
     };
     const one = clone(source);
     one.operations = [operation] as never;
-    expect(captureWithLimits(one, { maxOperations: 1 }).diagnostic.code).toBe(
-      'unsupported-edit-operation',
-    );
-    expect(
-      captureWithLimits(one, { maxOperations: 1 }).diagnostic.message,
-    ).toBe('The XLSX R0 profile does not support edit operations');
+    expect(() =>
+      validateXlsxSnapshotShape(one, {
+        ...defaultXlsxWriteLimits(),
+        maxOperations: 1,
+      }),
+    ).not.toThrow();
     const two = clone(source);
     two.operations = [operation, { ...operation, operationId: 'two' }] as never;
     expect(

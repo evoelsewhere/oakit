@@ -106,13 +106,6 @@ export function validateXlsxSnapshotShape(
       },
     );
   }
-  if (root.operations.length !== 0) {
-    throw new XlsxWriteError(
-      'unsupported-edit-operation',
-      'The XLSX R0 profile does not support edit operations',
-    );
-  }
-
   const source = exactRecord(
     root.source,
     SOURCE_KEYS,

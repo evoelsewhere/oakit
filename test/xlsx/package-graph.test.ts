@@ -5,6 +5,7 @@ import {
   XlsxResourceLimitError,
 } from '../../src/formats/xlsx/internal/resource-limits';
 import {
+  assertXlsxGraphRelationshipTargets,
   consumeXlsxGraphExpandedBytes,
   inspectXlsxPackageGraph,
   xlsxActiveContent,
@@ -152,6 +153,75 @@ describe('XLSX canonical package graph', () => {
       },
       name: 'XlsxWriteError',
     });
+  });
+
+  it('rejects missing internal relationship targets and owners', async () => {
+    await expect(
+      inspectXlsxPackageGraph(
+        await createIndependentXlsx({
+          'xl/_rels/workbook.xml.rels': `<?xml version="1.0"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rIdSheet1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/missing.xml"/></Relationships>`,
+        }),
+        defaultXlsxResourceLimits(),
+      ),
+    ).rejects.toMatchObject({
+      diagnostic: {
+        code: 'relationship-graph-invalid',
+        message: 'XLSX internal relationship target part is missing',
+        part: 'xl/workbook.xml',
+      },
+    });
+    try {
+      assertXlsxGraphRelationshipTargets(
+        [{ name: 'target.xml' }],
+        [
+          {
+            id: 'one',
+            mode: 'external',
+            owner: 'missing.xml',
+            target: 'https://example.invalid',
+            type: 'hyperlink',
+          },
+        ],
+      );
+      throw new Error('Expected owner validation to fail');
+    } catch (error) {
+      expect(error).toMatchObject({
+        diagnostic: {
+          message: 'XLSX relationship owner part is missing',
+          part: 'missing.xml',
+        },
+      });
+    }
+    expect(() =>
+      assertXlsxGraphRelationshipTargets(
+        [{ name: 'other.xml' }],
+        [
+          {
+            id: 'root',
+            mode: 'internal',
+            owner: null,
+            target: 'missing.xml',
+            type: 'officeDocument',
+          },
+        ],
+      ),
+    ).toThrow('XLSX internal relationship target part is missing');
+    try {
+      assertXlsxGraphRelationshipTargets(
+        [{ name: 'other.xml' }],
+        [
+          {
+            id: 'root',
+            mode: 'internal',
+            owner: null,
+            target: 'missing.xml',
+            type: 'officeDocument',
+          },
+        ],
+      );
+    } catch (error) {
+      expect(error).toMatchObject({ diagnostic: { part: '_rels/.rels' } });
+    }
   });
 
   it('detects digital signature part identities', async () => {

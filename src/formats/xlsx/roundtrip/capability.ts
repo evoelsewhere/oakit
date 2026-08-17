@@ -55,14 +55,29 @@ const OPERATIONS: Array<XlsxEditOperation['kind']> = [
 export function createXlsxCapabilityManifest(): XlsxCapabilityManifest {
   const domains: XlsxCapabilityEntry[] = DOMAINS.map((domain) => ({
     domain,
-    level: 'preservation-only',
+    level:
+      domain === 'cells' || domain === 'formulas'
+        ? 'verified-R2'
+        : 'preservation-only',
   }));
   return {
     domains,
-    effectiveLevel: 'R0',
+    effectiveLevel: 'R2',
     id: 'xlsx-agent-ready',
     operations: OPERATIONS.map((operation) => ({
-      level: 'unsupported',
+      ...(operation === 'clear-cell' || operation === 'set-cell'
+        ? {
+            constraints: [
+              'existing-explicit-cell',
+              'clean-supported-package-closure',
+              'no-unaffected-formulas-or-defined-names',
+              'no-grouped-formula-target',
+              'no-date-or-rich-text-value',
+              'no-external-capable-formula',
+            ],
+            level: 'verified-R2' as const,
+          }
+        : { level: 'unsupported' as const }),
       operation,
     })),
     producerEvidence: [],

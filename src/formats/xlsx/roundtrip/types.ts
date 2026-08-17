@@ -22,6 +22,7 @@ export interface XlsxCapabilityEntry {
 }
 
 export interface XlsxOperationCapability {
+  constraints?: string[];
   level: XlsxCapabilityLevel;
   operation: XlsxEditOperation['kind'];
 }
@@ -167,14 +168,16 @@ export interface XlsxWriteOptions {
 
 export interface XlsxPartFidelity {
   byteLength: number;
-  disposition: 'copy';
+  disposition: 'copy' | 'patch';
   name: string;
   sha256: string;
+  sourceByteLength: number;
+  sourceSha256: string;
 }
 
 export interface XlsxWriteReport {
   diagnostics: XlsxWriteDiagnostic[];
-  level: 'R0';
+  level: 'R0' | 'R2';
   outputSha256: string;
   parts: XlsxPartFidelity[];
   sourceSha256: string;

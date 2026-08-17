@@ -135,7 +135,7 @@ function applyCellOperation(
           },
           kind: 'formula',
         }
-      : { kind: 'value', value: operation.content.value };
+      : { kind: 'value', value: structuredClone(operation.content.value) };
 }
 
 export async function replayXlsxCellOperations(

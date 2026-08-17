@@ -106,6 +106,29 @@ export function consumeXlsxGraphExpandedBytes(
   return actual;
 }
 
+export function assertXlsxGraphRelationshipTargets(
+  parts: readonly Pick<XlsxPackageGraphPart, 'name'>[],
+  relationships: readonly XlsxPackageGraphRelationship[],
+): void {
+  const names = new Set(parts.map((part) => part.name));
+  for (const relationship of relationships) {
+    if (relationship.owner !== null && !names.has(relationship.owner)) {
+      throw new XlsxWriteError(
+        'relationship-graph-invalid',
+        'XLSX relationship owner part is missing',
+        { part: relationship.owner },
+      );
+    }
+    if (relationship.mode === 'internal' && !names.has(relationship.target)) {
+      throw new XlsxWriteError(
+        'relationship-graph-invalid',
+        'XLSX internal relationship target part is missing',
+        { part: relationship.owner ?? '_rels/.rels' },
+      );
+    }
+  }
+}
+
 export async function inspectXlsxPackageGraph(
   bytes: Uint8Array,
   limits: ResolvedXlsxResourceLimits,
@@ -173,6 +196,7 @@ export async function inspectXlsxPackageGraph(
       xlsxLexicalCompare(String(left.owner), String(right.owner)) ||
       xlsxLexicalCompare(left.id, right.id),
   );
+  assertXlsxGraphRelationshipTargets(parts, relationships);
 
   const containsActiveContent = parts.some((part) =>
     xlsxActiveContent(part.name, part.contentType),

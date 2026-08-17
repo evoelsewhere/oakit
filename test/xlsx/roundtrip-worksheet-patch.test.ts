@@ -7,6 +7,7 @@ import type { XlsxWorksheetCellPatch } from '../../src/formats/xlsx/roundtrip/wo
 import {
   escapeXlsxCellText,
   patchXlsxWorksheetPart,
+  patchXlsxWorksheetPartWithReport,
 } from '../../src/formats/xlsx/roundtrip/worksheet-patch';
 import { defaultXlsxWriteLimits } from '../../src/formats/xlsx/roundtrip/write-limits';
 import type { XlsxCell } from '../../src/formats/xlsx/types';
@@ -291,6 +292,9 @@ describe('XLSX worksheet cell patching', () => {
     expect(patchXlsxWorksheetPart(malformed, [], limits, PART)).toEqual(
       malformed,
     );
+    expect(
+      patchXlsxWorksheetPartWithReport(malformed, [], limits, PART),
+    ).toEqual({ data: malformed, patchBytes: 0, patchCount: 0 });
   });
 
   it('skips comments and processing instructions outside patch tokens', () => {
@@ -743,6 +747,12 @@ describe('XLSX worksheet cell patching', () => {
     const source = new TextEncoder().encode(worksheetXml('<c r="A1"/>'));
     const patch = requested(cell('A1', 1, { kind: 'blank' }));
     const replacementBytes = new TextEncoder().encode('<c r="A1"/>').byteLength;
+    expect(
+      patchXlsxWorksheetPartWithReport(source, [patch], limits, PART),
+    ).toMatchObject({
+      patchBytes: replacementBytes,
+      patchCount: 1,
+    });
     expect(() =>
       patchXlsxWorksheetPart(
         source,

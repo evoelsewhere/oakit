@@ -11,6 +11,10 @@ import {
   type XlsxPackageGraph,
 } from './internal/package-graph';
 import { createXlsxRoundTripDocument } from './keys';
+import {
+  replayXlsxCellOperations,
+  type XlsxCellOperationPlan,
+} from './operation-planner';
 import { normalizeXlsxRoundTripSource } from './source';
 import type {
   ResolvedXlsxWriteLimits,
@@ -20,8 +24,10 @@ import type {
 import { validateXlsxSnapshotShape } from './validate-snapshot';
 
 export interface VerifiedXlsxSnapshot {
+  baseDocument: Awaited<ReturnType<typeof createXlsxRoundTripDocument>>;
   bytes: Uint8Array;
   graph: XlsxPackageGraph;
+  plan: XlsxCellOperationPlan;
   snapshot: XlsxRoundTripSnapshot;
 }
 
@@ -92,18 +98,26 @@ export async function verifyXlsxRoundTripSnapshot(
     );
   }
   const profile = createXlsxCapabilityManifest();
-  const document = await createXlsxRoundTripDocument(
+  const baseDocument = await createXlsxRoundTripDocument(
     parsed,
     normalized.sha256,
     profile.id,
   );
-  const baseDocumentHash = await canonicalXlsxSha256(document);
+  const baseDocumentHash = await canonicalXlsxSha256(baseDocument);
+  if (baseDocumentHash !== snapshot.baseDocumentHash) {
+    integrityFailure('XLSX semantic preview does not match its source');
+  }
+  const plan = await replayXlsxCellOperations(
+    baseDocument,
+    snapshot.operations,
+    writeLimits,
+    readerLimits,
+  );
   if (
-    baseDocumentHash !== snapshot.baseDocumentHash ||
-    baseDocumentHash !== snapshot.stateHash ||
-    canonicalXlsxJson(document) !== canonicalXlsxJson(snapshot.document)
+    plan.stateHash !== snapshot.stateHash ||
+    canonicalXlsxJson(plan.document) !== canonicalXlsxJson(snapshot.document)
   ) {
     integrityFailure('XLSX semantic preview does not match its source');
   }
-  return { bytes: normalized.bytes, graph, snapshot };
+  return { baseDocument, bytes: normalized.bytes, graph, plan, snapshot };
 }

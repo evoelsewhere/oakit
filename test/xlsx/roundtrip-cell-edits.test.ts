@@ -1,0 +1,693 @@
+import JSZip from 'jszip';
+import { describe, expect, it } from 'vitest';
+
+import {
+  applyXlsxEdits,
+  parseXlsx,
+  readXlsxRoundTrip,
+  validateXlsxRoundTripJson,
+  writeXlsxRoundTrip,
+  XlsxWriteError,
+} from '../../src/formats/xlsx';
+import type {
+  XlsxEditOperation,
+  XlsxRoundTripSnapshot,
+} from '../../src/formats/xlsx/roundtrip';
+import { sha256XlsxBytes } from '../../src/formats/xlsx/roundtrip/digest';
+import {
+  createIndependentXlsx,
+  independentWorksheet,
+  XLSX_CONTENT_TYPES_NS,
+  XLSX_OFFICE_REL_NS,
+  XLSX_OFFICE_REL_TYPE,
+  XLSX_PACKAGE_REL_NS,
+  XLSX_SPREADSHEET_NS,
+} from '../black-box/xlsx-package';
+
+function portable<T>(value: T): T {
+  return JSON.parse(JSON.stringify(value)) as T;
+}
+
+async function capture(
+  action: () => Promise<unknown>,
+): Promise<XlsxWriteError> {
+  try {
+    await action();
+  } catch (error) {
+    expect(error).toBeInstanceOf(XlsxWriteError);
+    return error as XlsxWriteError;
+  }
+  throw new Error('Expected XLSX cell edit to fail');
+}
+
+function operation(
+  snapshot: XlsxRoundTripSnapshot,
+  overrides: Partial<Extract<XlsxEditOperation, { kind: 'set-cell' }>> = {},
+): Extract<XlsxEditOperation, { kind: 'set-cell' }> {
+  return {
+    cell: 'A1',
+    content: { kind: 'value', value: { kind: 'text', text: 'updated' } },
+    kind: 'set-cell',
+    operationId: 'edit-1',
+    sheetKey: snapshot.document.sheets[0]!.key,
+    ...overrides,
+  };
+}
+
+async function zipPart(bytes: Uint8Array, name: string): Promise<Uint8Array> {
+  return (await JSZip.loadAsync(bytes)).file(name)!.async('uint8array');
+}
+
+async function createTwoSheetXlsx(): Promise<Uint8Array> {
+  return createIndependentXlsx({
+    '[Content_Types].xml': `<?xml version="1.0"?><Types xmlns="${XLSX_CONTENT_TYPES_NS}"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/worksheets/sheet2.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/><Override PartName="/xl/sharedStrings.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sharedStrings+xml"/></Types>`,
+    'xl/_rels/workbook.xml.rels': `<Relationships xmlns="${XLSX_PACKAGE_REL_NS}"><Relationship Id="rIdSheet1" Type="${XLSX_OFFICE_REL_TYPE}worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rIdSheet2" Type="${XLSX_OFFICE_REL_TYPE}worksheet" Target="worksheets/sheet2.xml"/><Relationship Id="rIdStyles" Type="${XLSX_OFFICE_REL_TYPE}styles" Target="styles.xml"/><Relationship Id="rIdSharedStrings" Type="${XLSX_OFFICE_REL_TYPE}sharedStrings" Target="sharedStrings.xml"/></Relationships>`,
+    'xl/workbook.xml': `<?xml version="1.0"?><workbook xmlns="${XLSX_SPREADSHEET_NS}" xmlns:r="${XLSX_OFFICE_REL_NS}"><sheets><sheet name="Sheet1" sheetId="1" r:id="rIdSheet1"/><sheet name="Sheet2" sheetId="2" r:id="rIdSheet2"/></sheets></workbook>`,
+    'xl/worksheets/sheet1.xml': independentWorksheet(
+      '<row r="1"><c r="A1"><v>1</v></c></row>',
+    ),
+    'xl/worksheets/sheet2.xml': independentWorksheet(
+      '<row r="1"><c r="A1"><v>2</v></c></row>',
+    ),
+  });
+}
+
+describe('XLSX verified cell edits', () => {
+  it.each([
+    [
+      'text',
+      { kind: 'value', value: { kind: 'text', text: ' <new> &\rline ' } },
+    ],
+    ['number', { kind: 'value', value: { kind: 'number', value: -12.5 } }],
+    ['boolean', { kind: 'value', value: { kind: 'boolean', value: false } }],
+    ['error', { kind: 'value', value: { code: '#N/A', kind: 'error' } }],
+    ['formula', { expression: 'SUM(B2:C3)', kind: 'formula' }],
+  ] as const)(
+    'applies portable %s edits with R1 and R2 evidence',
+    async (_name, content) => {
+      const source = await createIndependentXlsx();
+      const sourceBefore = source.slice();
+      const snapshot = await readXlsxRoundTrip(source);
+      const edited = await applyXlsxEdits(snapshot, [
+        operation(snapshot, { content }),
+      ]);
+      expect(snapshot.operations).toEqual([]);
+      expect(source).toEqual(sourceBefore);
+      expect(edited.operations).toHaveLength(1);
+      expect(edited.stateHash).not.toBe(edited.baseDocumentHash);
+      expect(edited.document.key).toBe(snapshot.document.key);
+      expect(edited.document.sheets[0]!.key).toBe(
+        snapshot.document.sheets[0]!.key,
+      );
+
+      const validated = await validateXlsxRoundTripJson(portable(edited));
+      const result = await writeXlsxRoundTrip(validated);
+      expect(result.report.level).toBe('R2');
+      expect(result.report.sourceSha256).toBe(snapshot.source.sha256);
+      expect(result.report.outputSha256).toBe(
+        await sha256XlsxBytes(result.data),
+      );
+      expect(
+        result.report.parts.filter((part) => part.disposition === 'patch'),
+      ).toEqual([
+        expect.objectContaining({ name: 'xl/worksheets/sheet1.xml' }),
+      ]);
+      expect(
+        result.report.parts.filter((part) => part.disposition === 'copy')
+          .length,
+      ).toBe(result.report.parts.length - 1);
+      for (const part of result.report.parts.filter(
+        (candidate) => candidate.disposition === 'copy',
+      )) {
+        expect(part.sha256).toBe(part.sourceSha256);
+        expect(part.byteLength).toBe(part.sourceByteLength);
+        expect(await zipPart(result.data, part.name)).toEqual(
+          await zipPart(source, part.name),
+        );
+      }
+      const parsed = await parseXlsx(result.data, { errorMode: 'strict' });
+      const sheet = parsed.sheets[0]!;
+      expect(sheet.kind).toBe('worksheet');
+      expect(
+        sheet.kind === 'worksheet' ? sheet.rows[0]!.cells[0]!.content : null,
+      ).toEqual(
+        content.kind === 'formula'
+          ? {
+              cached: { kind: 'missing' },
+              formula: { expression: content.expression, kind: 'normal' },
+              kind: 'formula',
+            }
+          : content,
+      );
+      expect(result.report.diagnostics).toEqual(
+        content.kind === 'formula'
+          ? [
+              expect.objectContaining({
+                code: 'recalculation-required',
+                message:
+                  'The edited XLSX formula has no cached result and requires producer recalculation',
+                operationId: 'edit-1',
+                severity: 'warning',
+              }),
+            ]
+          : [],
+      );
+    },
+  );
+
+  it('clears cells and preserves their authored style attribute', async () => {
+    const source = await createIndependentXlsx({
+      'xl/worksheets/sheet1.xml': independentWorksheet(
+        '<row r="1"><c r="A1" s="0" t="s"><v>0</v></c></row>',
+      ),
+    });
+    const snapshot = await readXlsxRoundTrip(source);
+    const edited = await applyXlsxEdits(snapshot, [
+      {
+        cell: 'A1',
+        kind: 'clear-cell',
+        operationId: 'clear-1',
+        sheetKey: snapshot.document.sheets[0]!.key,
+      },
+    ]);
+    const result = await writeXlsxRoundTrip(edited);
+    expect(
+      new TextDecoder().decode(
+        await zipPart(result.data, 'xl/worksheets/sheet1.xml'),
+      ),
+    ).toContain('<c r="A1" s="0"/>');
+    const parsed = await parseXlsx(result.data);
+    const sheet = parsed.sheets[0]!;
+    expect(
+      sheet.kind === 'worksheet' ? sheet.rows[0]!.cells[0]!.content : null,
+    ).toEqual({
+      kind: 'blank',
+    });
+  });
+
+  it('is deterministic and isolated across repeated concurrent writes', async () => {
+    const snapshot = await readXlsxRoundTrip(await createIndependentXlsx());
+    const edited = await applyXlsxEdits(snapshot, [operation(snapshot)]);
+    const before = portable(edited);
+    const results = await Promise.all(
+      Array.from({ length: 6 }, () => writeXlsxRoundTrip(edited)),
+    );
+    for (const result of results) {
+      expect(result.data).toEqual(results[0]!.data);
+      expect(result.report).toEqual(results[0]!.report);
+    }
+    expect(edited).toEqual(before);
+    expect(new Set(results.map((result) => result.data)).size).toBe(6);
+  });
+
+  it('replays sequential operations and validates edited JSON independently', async () => {
+    const snapshot = await readXlsxRoundTrip(await createIndependentXlsx());
+    const first = await applyXlsxEdits(snapshot, [
+      operation(snapshot, {
+        content: { kind: 'value', value: { kind: 'number', value: 1 } },
+      }),
+    ]);
+    const second = await applyXlsxEdits(first, [
+      operation(snapshot, {
+        content: { kind: 'value', value: { kind: 'number', value: 2 } },
+        operationId: 'edit-2',
+      }),
+    ]);
+    expect(second.operations.map((item) => item.operationId)).toEqual([
+      'edit-1',
+      'edit-2',
+    ]);
+    await expect(validateXlsxRoundTripJson(portable(second))).resolves.toEqual(
+      second,
+    );
+    const result = await writeXlsxRoundTrip(second);
+    const parsed = await parseXlsx(result.data);
+    const sheet = parsed.sheets[0]!;
+    expect(
+      sheet.kind === 'worksheet' ? sheet.rows[0]!.cells[0]!.content : null,
+    ).toEqual({ kind: 'value', value: { kind: 'number', value: 2 } });
+  });
+
+  it('patches distinct cells on the same worksheet in one atomic closure', async () => {
+    const snapshot = await readXlsxRoundTrip(await createIndependentXlsx());
+    const edited = await applyXlsxEdits(snapshot, [
+      operation(snapshot, {
+        content: { kind: 'value', value: { kind: 'number', value: 10 } },
+      }),
+      operation(snapshot, {
+        cell: 'B2',
+        content: { kind: 'value', value: { kind: 'number', value: 20 } },
+        operationId: 'edit-2',
+      }),
+    ]);
+    const result = await writeXlsxRoundTrip(edited);
+    const parsed = await parseXlsx(result.data);
+    const sheet = parsed.sheets[0]!;
+    expect(sheet.kind).toBe('worksheet');
+    if (sheet.kind !== 'worksheet') throw new Error('Expected worksheet');
+    expect(sheet.rows[0]!.cells[0]!.content).toEqual({
+      kind: 'value',
+      value: { kind: 'number', value: 10 },
+    });
+    expect(sheet.rows[1]!.cells[0]!.content).toEqual({
+      kind: 'value',
+      value: { kind: 'number', value: 20 },
+    });
+  });
+
+  it('preserves the source ZIP timestamp for patched worksheet parts', async () => {
+    const original = await createIndependentXlsx();
+    const archive = await JSZip.loadAsync(original);
+    const entry = archive.file('xl/worksheets/sheet1.xml')!;
+    const authoredDate = new Date('2001-02-03T04:05:06.000Z');
+    archive.file('xl/worksheets/sheet1.xml', await entry.async('uint8array'), {
+      date: authoredDate,
+    });
+    const source = await archive.generateAsync({
+      compression: 'DEFLATE',
+      type: 'uint8array',
+    });
+    const snapshot = await readXlsxRoundTrip(source);
+    const edited = await applyXlsxEdits(snapshot, [operation(snapshot)]);
+    const result = await writeXlsxRoundTrip(edited);
+    const outputEntry = (await JSZip.loadAsync(result.data)).file(
+      'xl/worksheets/sheet1.xml',
+    )!;
+    expect(outputEntry.date.toISOString()).toBe(authoredDate.toISOString());
+  });
+
+  it('rejects R3 requests and exact validation-pass/output boundaries', async () => {
+    const snapshot = await readXlsxRoundTrip(await createIndependentXlsx());
+    const edited = await applyXlsxEdits(snapshot, [operation(snapshot)]);
+    expect(
+      (
+        await capture(() =>
+          writeXlsxRoundTrip(edited, { minimumEditedFidelity: 'R3' }),
+        )
+      ).diagnostic,
+    ).toMatchObject({
+      code: 'producer-verification-failed',
+      fidelity: 'R3',
+      message: 'The XLSX cell-edit profile has no producer R3 evidence',
+    });
+    await expect(
+      writeXlsxRoundTrip(edited, {
+        limits: { maxValidationPasses: 4 },
+      }),
+    ).resolves.toMatchObject({ report: { level: 'R2' } });
+    expect(
+      (
+        await capture(() =>
+          writeXlsxRoundTrip(edited, {
+            limits: { maxValidationPasses: 3 },
+          }),
+        )
+      ).diagnostic,
+    ).toMatchObject({
+      actual: 4,
+      code: 'resource-limit-exceeded',
+      limit: 3,
+      limitName: 'maxValidationPasses',
+    });
+    const successful = await writeXlsxRoundTrip(edited);
+    await expect(
+      writeXlsxRoundTrip(edited, {
+        limits: {
+          maxOutputBytes: successful.data.byteLength,
+          maxSourcePackageBytes: snapshot.source.byteLength,
+        },
+      }),
+    ).resolves.toMatchObject({ report: { level: 'R2' } });
+    expect(
+      (
+        await capture(() =>
+          writeXlsxRoundTrip(edited, {
+            limits: {
+              maxOutputBytes: successful.data.byteLength - 1,
+              maxSourcePackageBytes: snapshot.source.byteLength,
+            },
+          }),
+        )
+      ).diagnostic.limitName,
+    ).toBe('maxOutputBytes');
+  });
+
+  it('enforces dirty-part, patched-part, and dependency budgets exactly', async () => {
+    const snapshot = await readXlsxRoundTrip(await createTwoSheetXlsx());
+    const edited = await applyXlsxEdits(snapshot, [
+      operation(snapshot, {
+        content: { kind: 'value', value: { kind: 'number', value: 10 } },
+      }),
+      operation(snapshot, {
+        content: { kind: 'value', value: { kind: 'number', value: 20 } },
+        operationId: 'edit-2',
+        sheetKey: snapshot.document.sheets[1]!.key,
+      }),
+    ]);
+    const successful = await writeXlsxRoundTrip(edited, {
+      limits: {
+        maxDependencyEdges: 2,
+        maxDirtyParts: 2,
+        maxPatchCount: 2,
+        maxPatchedParts: 2,
+      },
+    });
+    expect(successful.report.level).toBe('R2');
+    expect(
+      successful.report.parts
+        .filter((part) => part.disposition === 'patch')
+        .map((part) => part.name),
+    ).toEqual(['xl/worksheets/sheet1.xml', 'xl/worksheets/sheet2.xml']);
+    for (const limitName of [
+      'maxDependencyEdges',
+      'maxDirtyParts',
+      'maxPatchCount',
+      'maxPatchedParts',
+    ] as const) {
+      const error = await capture(() =>
+        writeXlsxRoundTrip(edited, { limits: { [limitName]: 1 } }),
+      );
+      expect(error.diagnostic).toMatchObject({
+        actual: 2,
+        code: 'resource-limit-exceeded',
+        limit: 1,
+        limitName,
+      });
+    }
+    const patchedParts = successful.report.parts.filter(
+      (part) => part.disposition === 'patch',
+    );
+    const generatedXmlBytes = patchedParts.reduce(
+      (total, part) => total + part.byteLength,
+      0,
+    );
+    await expect(
+      writeXlsxRoundTrip(edited, {
+        limits: { maxGeneratedXmlBytes: generatedXmlBytes },
+      }),
+    ).resolves.toMatchObject({ report: { level: 'R2' } });
+    expect(
+      (
+        await capture(() =>
+          writeXlsxRoundTrip(edited, {
+            limits: { maxGeneratedXmlBytes: generatedXmlBytes - 1 },
+          }),
+        )
+      ).diagnostic,
+    ).toMatchObject({
+      actual: generatedXmlBytes,
+      limit: generatedXmlBytes - 1,
+      limitName: 'maxGeneratedXmlBytes',
+    });
+    const replacementBytes = new TextEncoder().encode(
+      '<c r="A1"><v>10</v></c>',
+    ).byteLength;
+    await expect(
+      writeXlsxRoundTrip(edited, {
+        limits: { maxPatchBytes: replacementBytes * 2 },
+      }),
+    ).resolves.toMatchObject({ report: { level: 'R2' } });
+    expect(
+      (
+        await capture(() =>
+          writeXlsxRoundTrip(edited, {
+            limits: { maxPatchBytes: replacementBytes * 2 - 1 },
+          }),
+        )
+      ).diagnostic,
+    ).toMatchObject({
+      actual: replacementBytes * 2,
+      limit: replacementBytes * 2 - 1,
+      limitName: 'maxPatchBytes',
+    });
+  });
+
+  it('blocks date-formatted numbers, grouped formulas, and target extensions', async () => {
+    const styles = `<styleSheet xmlns="${XLSX_SPREADSHEET_NS}"><numFmts count="1"><numFmt numFmtId="164" formatCode="yyyy-mm-dd"/></numFmts><fonts count="1"><font><sz val="11"/><name val="Calibri"/></font></fonts><fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>`;
+    const dateSnapshot = await readXlsxRoundTrip(
+      await createIndependentXlsx({
+        'xl/styles.xml': styles,
+        'xl/worksheets/sheet1.xml': independentWorksheet(
+          '<row r="1"><c r="A1" s="1"><v>2</v></c></row>',
+        ),
+      }),
+    );
+    const dateEdited = await applyXlsxEdits(dateSnapshot, [
+      operation(dateSnapshot, {
+        content: { kind: 'value', value: { kind: 'number', value: 3 } },
+      }),
+    ]);
+    expect(
+      (await capture(() => writeXlsxRoundTrip(dateEdited))).diagnostic,
+    ).toMatchObject({
+      code: 'preservation-conflict',
+      featureClass: 'date-formatted-cell',
+      message: 'XLSX number edit targets a date-formatted cell',
+    });
+    const numberSnapshot = await readXlsxRoundTrip(
+      await createIndependentXlsx({
+        'xl/styles.xml': styles.replace('yyyy-mm-dd', '0.00'),
+        'xl/worksheets/sheet1.xml': independentWorksheet(
+          '<row r="1"><c r="A1" s="1"><v>2</v></c></row>',
+        ),
+      }),
+    );
+    const numberEdited = await applyXlsxEdits(numberSnapshot, [
+      operation(numberSnapshot, {
+        content: { kind: 'value', value: { kind: 'number', value: 3 } },
+      }),
+    ]);
+    await expect(writeXlsxRoundTrip(numberEdited)).resolves.toMatchObject({
+      report: { level: 'R2' },
+    });
+
+    const groupedSnapshot = await readXlsxRoundTrip(
+      await createIndependentXlsx({
+        'xl/worksheets/sheet1.xml': independentWorksheet(
+          '<row r="1"><c r="A1"><f t="array" ref="A1">1+1</f></c></row>',
+        ),
+      }),
+    );
+    const groupedEdited = await applyXlsxEdits(groupedSnapshot, [
+      operation(groupedSnapshot, {
+        content: { expression: '2+2', kind: 'formula' },
+      }),
+    ]);
+    expect(
+      (await capture(() => writeXlsxRoundTrip(groupedEdited))).diagnostic,
+    ).toMatchObject({
+      code: 'formula-rewrite-unsupported',
+      featureClass: 'formula-group',
+    });
+
+    const extensionSnapshot = await readXlsxRoundTrip(
+      await createIndependentXlsx({
+        'xl/worksheets/sheet1.xml': independentWorksheet(
+          '<row r="1"><c r="A1" custom="x"><v>1</v></c></row>',
+        ),
+      }),
+    );
+    const extensionEdited = await applyXlsxEdits(extensionSnapshot, [
+      operation(extensionSnapshot),
+    ]);
+    expect(
+      (await capture(() => writeXlsxRoundTrip(extensionEdited))).diagnostic,
+    ).toMatchObject({
+      code: 'preservation-conflict',
+      featureClass: 'cell-extension',
+    });
+  });
+
+  it('validates options consistently across edit, JSON, and write APIs', async () => {
+    const snapshot = await readXlsxRoundTrip(await createIndependentXlsx());
+    const invalid = { unknown: true } as never;
+    await expect(applyXlsxEdits(snapshot, [], invalid)).rejects.toThrow(
+      'Unknown XLSX write option unknown',
+    );
+    await expect(validateXlsxRoundTripJson(snapshot, invalid)).rejects.toThrow(
+      'Unknown XLSX write option unknown',
+    );
+    await expect(writeXlsxRoundTrip(snapshot, invalid)).rejects.toThrow(
+      'Unknown XLSX write option unknown',
+    );
+  });
+
+  it('edits Strict workbooks and preserves safe external hyperlinks without fetching', async () => {
+    const strictSheetNs = 'http://purl.oclc.org/ooxml/spreadsheetml/main';
+    const strictRelNs =
+      'http://purl.oclc.org/ooxml/officeDocument/relationships';
+    const strict = await createIndependentXlsx({
+      '[Content_Types].xml': `<Types xmlns="${XLSX_CONTENT_TYPES_NS}"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/></Types>`,
+      '_rels/.rels': `<Relationships xmlns="${XLSX_PACKAGE_REL_NS}"><Relationship Id="root" Type="${strictRelNs}/officeDocument" Target="xl/workbook.xml"/></Relationships>`,
+      'xl/_rels/workbook.xml.rels': `<Relationships xmlns="${XLSX_PACKAGE_REL_NS}"><Relationship Id="sheet" Type="${strictRelNs}/worksheet" Target="worksheets/sheet1.xml"/></Relationships>`,
+      'xl/sharedStrings.xml': null,
+      'xl/styles.xml': null,
+      'xl/workbook.xml': `<s:workbook xmlns:s="${strictSheetNs}" xmlns:r="${strictRelNs}"><s:sheets><s:sheet name="Strict" sheetId="1" r:id="sheet"/></s:sheets></s:workbook>`,
+      'xl/worksheets/sheet1.xml': `<s:worksheet xmlns:s="${strictSheetNs}"><s:sheetData><s:row r="1"><s:c r="A1"><s:v>1</s:v></s:c></s:row></s:sheetData></s:worksheet>`,
+    });
+    const strictSnapshot = await readXlsxRoundTrip(strict);
+    const strictEdited = await applyXlsxEdits(strictSnapshot, [
+      operation(strictSnapshot, {
+        content: { kind: 'value', value: { kind: 'number', value: 2 } },
+      }),
+    ]);
+    const strictResult = await writeXlsxRoundTrip(strictEdited);
+    expect(strictResult.report.level).toBe('R2');
+    expect(
+      (await readXlsxRoundTrip(strictResult.data)).source.conformance,
+    ).toBe('strict');
+
+    const external = await createIndependentXlsx({
+      'xl/worksheets/_rels/sheet1.xml.rels': `<Relationships xmlns="${XLSX_PACKAGE_REL_NS}"><Relationship Id="link" Type="${XLSX_OFFICE_REL_TYPE}hyperlink" Target="https://example.invalid/never-fetched" TargetMode="External"/></Relationships>`,
+      'xl/worksheets/sheet1.xml': `<worksheet xmlns="${XLSX_SPREADSHEET_NS}" xmlns:r="${XLSX_OFFICE_REL_NS}"><sheetData><row r="1"><c r="A1"><v>1</v></c></row></sheetData><hyperlinks><hyperlink ref="A1" r:id="link"/></hyperlinks></worksheet>`,
+    });
+    const externalSnapshot = await readXlsxRoundTrip(external);
+    const externalEdited = await applyXlsxEdits(externalSnapshot, [
+      operation(externalSnapshot, {
+        content: { kind: 'value', value: { kind: 'number', value: 2 } },
+      }),
+    ]);
+    const externalResult = await writeXlsxRoundTrip(externalEdited);
+    expect(externalResult.report.level).toBe('R2');
+    const reparsed = await parseXlsx(externalResult.data);
+    const sheet = reparsed.sheets[0]!;
+    expect(sheet.kind === 'worksheet' ? sheet.hyperlinks : []).toEqual([
+      expect.objectContaining({
+        target: {
+          kind: 'external',
+          url: 'https://example.invalid/never-fetched',
+        },
+      }),
+    ]);
+  });
+
+  it('blocks unaffected formulas, defined names, and external-capable formulas', async () => {
+    const formulaSource = await createIndependentXlsx({
+      'xl/worksheets/sheet1.xml': independentWorksheet(
+        '<row r="1"><c r="A1"><v>1</v></c><c r="B1"><f>A1+1</f><v>2</v></c></row>',
+      ),
+    });
+    const formulaSnapshot = await readXlsxRoundTrip(formulaSource);
+    const formulaEdited = await applyXlsxEdits(formulaSnapshot, [
+      operation(formulaSnapshot),
+    ]);
+    expect(
+      (await capture(() => writeXlsxRoundTrip(formulaEdited))).diagnostic,
+    ).toMatchObject({
+      code: 'formula-rewrite-unsupported',
+      featureClass: 'formula-dependency',
+      message:
+        'XLSX cell edit dependency closure contains an unaffected formula',
+    });
+
+    const namesSource = await createIndependentXlsx({
+      'xl/workbook.xml': `<?xml version="1.0"?><workbook xmlns="${XLSX_SPREADSHEET_NS}" xmlns:r="${XLSX_OFFICE_REL_NS}"><sheets><sheet name="Sheet1" sheetId="1" r:id="rIdSheet1"/></sheets><definedNames><definedName name="Value">Sheet1!$A$1</definedName></definedNames></workbook>`,
+    });
+    const namesSnapshot = await readXlsxRoundTrip(namesSource);
+    const namesEdited = await applyXlsxEdits(namesSnapshot, [
+      operation(namesSnapshot),
+    ]);
+    expect(
+      (await capture(() => writeXlsxRoundTrip(namesEdited))).diagnostic,
+    ).toMatchObject({
+      code: 'formula-rewrite-unsupported',
+      featureClass: 'defined-name',
+      message:
+        'XLSX cell edit dependency closure contains defined-name formulas',
+    });
+
+    const snapshot = await readXlsxRoundTrip(await createIndependentXlsx());
+    const edited = await applyXlsxEdits(snapshot, [
+      operation(snapshot, {
+        content: {
+          expression: 'WEBSERVICE("https://example.invalid")',
+          kind: 'formula',
+        },
+      }),
+    ]);
+    expect(
+      (await capture(() => writeXlsxRoundTrip(edited))).diagnostic,
+    ).toMatchObject({
+      code: 'formula-rewrite-unsupported',
+      featureClass: 'external-formula',
+      message:
+        'XLSX cell edit formula uses an external-capable function or reference',
+      operationId: 'edit-1',
+    });
+  });
+
+  it('blocks signed, opaque, active, unknown-part, and relationship closures', async () => {
+    const activeTypes = `<?xml version="1.0"?><Types xmlns="${XLSX_CONTENT_TYPES_NS}"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/><Override PartName="/xl/sharedStrings.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sharedStrings+xml"/><Override PartName="/xl/embeddings/item.bin" ContentType="application/vnd.openxmlformats-officedocument.oleObject"/></Types>`;
+    const cases: Array<{
+      expected: string;
+      expectedMessage?: string;
+      options?: Parameters<typeof readXlsxRoundTrip>[1];
+      overrides: Record<string, string | Uint8Array | null>;
+      writeOptions?: Parameters<typeof writeXlsxRoundTrip>[1];
+    }> = [
+      {
+        expected: 'signed-package-conflict',
+        overrides: { '_xmlsignatures/sig1.xml': '<Signature/>' },
+      },
+      {
+        expected: 'preservation-conflict',
+        options: { securityMode: 'preserve-opaque' },
+        overrides: {
+          '[Content_Types].xml': activeTypes,
+          'xl/embeddings/item.bin': new Uint8Array([1, 2, 3]),
+        },
+      },
+      {
+        expected: 'opaque-content-conflict',
+        expectedMessage:
+          'Opaque XLSX content has no proven independent cell-edit closure',
+        options: { securityMode: 'preserve-opaque' },
+        overrides: {
+          '[Content_Types].xml': activeTypes.replace(
+            '/xl/embeddings/item.bin" ContentType="application/vnd.openxmlformats-officedocument.oleObject',
+            '/xl/opaque/item.bin" ContentType="application/octet-stream',
+          ),
+          'xl/opaque/item.bin': new Uint8Array([1, 2, 3]),
+        },
+        writeOptions: { acknowledgeOpaqueContent: true },
+      },
+      {
+        expected: 'opaque-content-conflict',
+        expectedMessage:
+          'Opaque XLSX content requires acknowledgement and a proven independent closure',
+        options: { securityMode: 'preserve-opaque' },
+        overrides: {
+          '[Content_Types].xml': activeTypes.replace(
+            '/xl/embeddings/item.bin" ContentType="application/vnd.openxmlformats-officedocument.oleObject',
+            '/xl/opaque/item.bin" ContentType="application/octet-stream',
+          ),
+          'xl/opaque/item.bin': new Uint8Array([1, 2, 3]),
+        },
+      },
+      {
+        expected: 'opaque-content-conflict',
+        overrides: { 'xl/custom.xml': '<custom/>' },
+      },
+      {
+        expected: 'opaque-content-conflict',
+        overrides: {
+          'xl/worksheets/_rels/sheet1.xml.rels': `<Relationships xmlns="${XLSX_PACKAGE_REL_NS}"><Relationship Id="custom" Type="${XLSX_OFFICE_REL_TYPE}customXml" Target="https://example.invalid/data" TargetMode="External"/></Relationships>`,
+        },
+      },
+    ];
+    for (const item of cases) {
+      const snapshot = await readXlsxRoundTrip(
+        await createIndependentXlsx(item.overrides),
+        item.options,
+      );
+      const edited = await applyXlsxEdits(snapshot, [operation(snapshot)]);
+      const error = await capture(() =>
+        writeXlsxRoundTrip(edited, item.writeOptions),
+      );
+      expect(error.diagnostic.code).toBe(item.expected);
+      if (item.expectedMessage !== undefined) {
+        expect(error.diagnostic.message).toBe(item.expectedMessage);
+      }
+    }
+  });
+});

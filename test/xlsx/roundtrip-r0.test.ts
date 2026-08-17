@@ -56,7 +56,7 @@ describe('XLSX exact R0 round-trip', () => {
         conformance: 'transitional',
       },
       supportProfile: {
-        effectiveLevel: 'R0',
+        effectiveLevel: 'R2',
         id: 'xlsx-agent-ready',
         producerEvidence: [],
         version: '1',
@@ -254,7 +254,7 @@ describe('XLSX exact R0 round-trip', () => {
     expect(
       (await captureWriteError(() => validateXlsxRoundTripJson(operation)))
         .diagnostic.code,
-    ).toBe('unsupported-edit-operation');
+    ).toBe('snapshot-integrity-failed');
   });
 
   it('enforces source and snapshot limits at exact boundaries', async () => {
@@ -284,14 +284,37 @@ describe('XLSX exact R0 round-trip', () => {
     });
   });
 
-  it('publishes a deterministic honest preservation-only capability manifest', () => {
+  it('publishes a deterministic constrained R2 cell capability manifest', () => {
     const manifest = createXlsxCapabilityManifest();
     expect(manifest.domains.length).toBeGreaterThan(20);
+    expect(manifest.effectiveLevel).toBe('R2');
     expect(
-      manifest.domains.every((entry) => entry.level === 'preservation-only'),
-    ).toBe(true);
+      manifest.domains.filter((entry) => entry.level === 'verified-R2'),
+    ).toEqual([
+      { domain: 'cells', level: 'verified-R2' },
+      { domain: 'formulas', level: 'verified-R2' },
+    ]);
     expect(
-      manifest.operations.every((entry) => entry.level === 'unsupported'),
+      manifest.operations.filter((entry) => entry.level === 'verified-R2'),
+    ).toEqual([
+      expect.objectContaining({ operation: 'clear-cell' }),
+      expect.objectContaining({ operation: 'set-cell' }),
+    ]);
+    expect(
+      manifest.operations
+        .filter((entry) => entry.level === 'verified-R2')
+        .every(
+          (entry) =>
+            JSON.stringify(entry.constraints) ===
+            JSON.stringify([
+              'existing-explicit-cell',
+              'clean-supported-package-closure',
+              'no-unaffected-formulas-or-defined-names',
+              'no-grouped-formula-target',
+              'no-date-or-rich-text-value',
+              'no-external-capable-formula',
+            ]),
+        ),
     ).toBe(true);
     expect(new Set(manifest.domains.map((entry) => entry.domain)).size).toBe(
       manifest.domains.length,
@@ -302,10 +325,10 @@ describe('XLSX exact R0 round-trip', () => {
     expect(JSON.parse(JSON.stringify(manifest))).toEqual(manifest);
   });
 
-  it('accepts empty edit batches and rejects typed edits honestly', async () => {
+  it('accepts empty and supported typed edit batches honestly', async () => {
     const snapshot = await readXlsxRoundTrip(await createIndependentXlsx());
     await expect(applyXlsxEdits(snapshot, [])).resolves.toEqual(snapshot);
-    const error = await captureWriteError(() =>
+    await expect(
       applyXlsxEdits(snapshot, [
         {
           cell: 'A1',
@@ -314,12 +337,8 @@ describe('XLSX exact R0 round-trip', () => {
           sheetKey: snapshot.document.sheets[0]!.key,
         },
       ]),
-    );
-    expect(error.diagnostic).toMatchObject({
-      code: 'unsupported-edit-operation',
-      message:
-        'The XLSX R0 capability profile does not support edit operations',
-      operationId: 'clear-a1',
+    ).resolves.toMatchObject({
+      operations: [{ kind: 'clear-cell', operationId: 'clear-a1' }],
     });
     await expect(applyXlsxEdits(snapshot, {} as never)).rejects.toThrow(
       'XLSX edit operations must be an array',

@@ -33,6 +33,12 @@ export interface XlsxWorksheetCellPatch {
   operationId: string;
 }
 
+export interface XlsxWorksheetPatchResult {
+  data: Uint8Array;
+  patchBytes: number;
+  patchCount: number;
+}
+
 const ALLOWED_CELL_ATTRIBUTES = new Set(['cm', 'ph', 'r', 's', 't', 'vm']);
 const INDEX_NOT_FOUND = -1;
 
@@ -497,12 +503,12 @@ interface XlsxTextPatch {
   start: number;
 }
 
-export function patchXlsxWorksheetPart(
+export function patchXlsxWorksheetPartWithReport(
   bytes: Uint8Array,
   requested: readonly XlsxWorksheetCellPatch[],
   limits: ResolvedXlsxWriteLimits,
   part: string,
-): Uint8Array {
+): XlsxWorksheetPatchResult {
   if (requested.length > limits.maxPatchCount) {
     writeLimitFailure(
       'maxPatchCount',
@@ -511,7 +517,9 @@ export function patchXlsxWorksheetPart(
       part,
     );
   }
-  if (requested.length === 0) return bytes.slice();
+  if (requested.length === 0) {
+    return { data: bytes.slice(), patchBytes: 0, patchCount: 0 };
+  }
   const patchesByAddress = new Map<string, XlsxWorksheetCellPatch>();
   for (const patch of requested) {
     if (patchesByAddress.has(patch.cell.address)) {
@@ -588,5 +596,18 @@ export function patchXlsxWorksheetPart(
       part,
     );
   }
-  return encoded;
+  return {
+    data: encoded,
+    patchBytes,
+    patchCount: textPatches.length,
+  };
+}
+
+export function patchXlsxWorksheetPart(
+  bytes: Uint8Array,
+  requested: readonly XlsxWorksheetCellPatch[],
+  limits: ResolvedXlsxWriteLimits,
+  part: string,
+): Uint8Array {
+  return patchXlsxWorksheetPartWithReport(bytes, requested, limits, part).data;
 }
