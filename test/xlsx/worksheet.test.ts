@@ -1163,6 +1163,23 @@ describe('XLSX worksheet streaming', () => {
     });
   });
 
+  it('seeds worksheet formula and text accounting from workbook metadata', () => {
+    expect(
+      createXlsxWorksheetBudget(
+        { part: 'strings.xml', values: [{ text: 'abc' }] },
+        { formulaCharacters: 5, textCharacters: 7 },
+      ),
+    ).toEqual({
+      formulaCharacters: 5,
+      formulaGroups: 0,
+      rangeAreas: 0,
+      returnedCells: 0,
+      richTextRuns: 0,
+      scannedCells: 0,
+      textCharacters: 10,
+    });
+  });
+
   it('shares cell and text budgets across worksheets', async () => {
     const strings: XlsxSharedStringTable = {
       part: 'strings.xml',

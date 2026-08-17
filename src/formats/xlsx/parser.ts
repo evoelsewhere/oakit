@@ -16,6 +16,10 @@ import {
 import { resolveXlsxSelection } from './internal/selection';
 import { loadXlsxStyles } from './internal/styles';
 import { discoverXlsxWorkbook } from './internal/workbook-discovery';
+import {
+  xlsxDefinedNameFormulaCharacters,
+  xlsxDefinedNameTextCharacters,
+} from './internal/workbook-defined-names';
 import { parseXlsxWorkbookManifest } from './internal/workbook-manifest';
 import { loadXlsxSharedStrings } from './internal/workbook-tables';
 import {
@@ -141,7 +145,28 @@ export async function parseXlsxWithDiagnostics(
     }
     throw error;
   }
-  const budget = createXlsxWorksheetBudget(sharedStrings);
+  const budget = createXlsxWorksheetBudget(sharedStrings, {
+    formulaCharacters: xlsxDefinedNameFormulaCharacters(
+      manifest.properties.definedNames,
+    ),
+    textCharacters: xlsxDefinedNameTextCharacters(
+      manifest.properties.definedNames,
+    ),
+  });
+  if (
+    !Number.isSafeInteger(budget.textCharacters) ||
+    budget.textCharacters > limits.maxTextCharacters
+  ) {
+    failResource(
+      new XlsxResourceLimitError(
+        'maxTextCharacters',
+        budget.textCharacters,
+        limits.maxTextCharacters,
+        discovery.part,
+      ),
+      diagnostics,
+    );
+  }
   const sheets: XlsxDocument['sheets'] = [];
   try {
     for (const [index, sheet] of manifest.sheets.entries()) {

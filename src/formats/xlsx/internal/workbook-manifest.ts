@@ -14,6 +14,7 @@ import {
   XlsxResourceLimitError,
 } from './resource-limits';
 import type { XlsxWorkbookDiscovery } from './workbook-discovery';
+import { parseXlsxDefinedNames } from './workbook-defined-names';
 
 const RELATIONSHIP_BASE = {
   strict: 'http://purl.oclc.org/ooxml/officeDocument/relationships',
@@ -93,6 +94,7 @@ function parseProperties(
   root: XmlRecord,
   prefix: string,
   part: string,
+  definedNames: XlsxWorkbookProperties['definedNames'],
 ): XlsxWorkbookProperties {
   const workbookPr = record(child(root, prefix, 'workbookPr'));
   const workbookAttrs = workbookPr ? attributes(workbookPr) : {};
@@ -129,7 +131,7 @@ function parseProperties(
             : 'automatic',
     },
     dateSystem: date1904 ? '1904' : '1900',
-    definedNames: [],
+    definedNames,
   };
 }
 
@@ -293,8 +295,20 @@ export async function parseXlsxWorkbookManifest(
     sheetParts.push(relationship.target);
   }
 
+  const definedNames = parseXlsxDefinedNames(
+    child(root, prefix, 'definedNames'),
+    prefix,
+    discovery.part,
+    sheets.length,
+    limits,
+  );
   return {
-    properties: parseProperties(root, prefix, discovery.part),
+    properties: parseProperties(
+      root,
+      prefix,
+      discovery.part,
+      definedNames.definedNames,
+    ),
     sheetParts,
     sheets,
   };

@@ -296,6 +296,9 @@ function consume(
 
 export function createXlsxWorksheetBudget(
   sharedStrings: XlsxSharedStringTable,
+  initial: Partial<
+    Pick<XlsxWorksheetBudget, 'formulaCharacters' | 'textCharacters'>
+  > = {},
 ): XlsxWorksheetBudget {
   let richTextRuns = 0;
   let textCharacters = 0;
@@ -308,13 +311,13 @@ export function createXlsxWorksheetBudget(
     }
   }
   return {
-    formulaCharacters: 0,
+    formulaCharacters: initial.formulaCharacters ?? 0,
     formulaGroups: 0,
     rangeAreas: 0,
     returnedCells: 0,
     richTextRuns,
     scannedCells: 0,
-    textCharacters,
+    textCharacters: textCharacters + (initial.textCharacters ?? 0),
   };
 }
 

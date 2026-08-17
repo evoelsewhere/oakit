@@ -339,10 +339,22 @@ export interface XlsxNamedStyle {
 }
 
 export interface XlsxDefinedName {
+  comment?: string;
+  customMenu?: string;
+  description?: string;
   expression: string;
+  function?: boolean;
+  functionGroupId?: number;
+  help?: string;
   hidden: boolean;
   name: string;
+  publishToServer?: boolean;
   sheetIndex?: number;
+  shortcutKey?: string;
+  statusBar?: string;
+  vbProcedure?: boolean;
+  workbookParameter?: boolean;
+  xlm?: boolean;
 }
 
 export interface XlsxWorkbookProperties {

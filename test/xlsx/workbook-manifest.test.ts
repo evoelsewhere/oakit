@@ -133,6 +133,41 @@ describe('XLSX workbook manifest', () => {
     });
   });
 
+  it('parses workbook and sheet-scoped defined names from authored XML', async () => {
+    const workbook = independentWorkbook(
+      '<sheet name="Sheet1" sheetId="1" r:id="rIdSheet1"/>',
+    ).replace(
+      '<calcPr',
+      `<definedNames>
+        <definedName name="Global" hidden="1" comment="A &amp; B">SUM(Sheet1!$A$1:$A$2)</definedName>
+        <definedName name="Local" localSheetId="0">Sheet1!$B$2</definedName>
+        <definedName name="_xlnm.Print_Titles" localSheetId="0">Sheet1!$1:$2</definedName>
+      </definedNames><calcPr`,
+    );
+    const result = await manifest({ 'xl/workbook.xml': workbook });
+
+    expect(result.properties.definedNames).toEqual([
+      {
+        comment: 'A & B',
+        expression: 'SUM(Sheet1!$A$1:$A$2)',
+        hidden: true,
+        name: 'Global',
+      },
+      {
+        expression: 'Sheet1!$B$2',
+        hidden: false,
+        name: 'Local',
+        sheetIndex: 0,
+      },
+      {
+        expression: 'Sheet1!$1:$2',
+        hidden: false,
+        name: '_xlnm.Print_Titles',
+        sheetIndex: 0,
+      },
+    ]);
+  });
+
   it('preserves authored order, sheet kinds, states, and calculation flags', async () => {
     const workbook = `
       <workbook xmlns="${XLSX_SPREADSHEET_NS}" xmlns:r="${XLSX_OFFICE_REL_NS}">
@@ -197,6 +232,7 @@ describe('XLSX workbook manifest', () => {
         <s:sheet name="Strict data" sheetId="1" q:id="sheet"/>
         <s:sheet name="Strict chart" sheetId="2" q:id="chart"/>
       </s:sheets>
+      <s:definedNames><s:definedName name="StrictName">'Strict data'!$A$1</s:definedName></s:definedNames>
       <s:calcPr calcMode="autoNoTable" forceFullCalc="false" fullCalcOnLoad="0"/>
     </s:workbook>`;
     const strictSheet = `<s:worksheet xmlns:s="${STRICT_SPREADSHEET_NS}"><s:sheetData/></s:worksheet>`;
@@ -222,6 +258,13 @@ describe('XLSX workbook manifest', () => {
     });
 
     expect(result.properties.calculation.mode).toBe('automatic-except-tables');
+    expect(result.properties.definedNames).toEqual([
+      {
+        expression: "'Strict data'!$A$1",
+        hidden: false,
+        name: 'StrictName',
+      },
+    ]);
     expect(result.sheets.map((sheet) => sheet.kind)).toEqual([
       'worksheet',
       'chart-sheet',

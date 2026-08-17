@@ -307,6 +307,89 @@ describe('public XLSX parser', () => {
     });
   });
 
+  it('returns portable defined names and shares their formula and text budgets', async () => {
+    const workbook = independentWorkbook(
+      '<sheet name="Sheet1" sheetId="1" r:id="rIdSheet1"/>',
+    ).replace(
+      '<calcPr',
+      `<definedNames>
+        <definedName name="Sum" comment="note">ABC</definedName>
+        <definedName name="Local" localSheetId="0">Sheet1!$A$1</definedName>
+      </definedNames><calcPr`,
+    );
+    const bytes = await createIndependentXlsx({
+      'xl/workbook.xml': workbook,
+      'xl/worksheets/sheet1.xml': `<worksheet xmlns="${XLSX_SPREADSHEET_NS}">
+        <sheetData><row><c><f>DEF</f><v>1</v></c></row></sheetData>
+      </worksheet>`,
+    });
+
+    const document = await parseXlsx(bytes);
+    expect(document.workbook.definedNames).toEqual([
+      {
+        comment: 'note',
+        expression: 'ABC',
+        hidden: false,
+        name: 'Sum',
+      },
+      {
+        expression: 'Sheet1!$A$1',
+        hidden: false,
+        name: 'Local',
+        sheetIndex: 0,
+      },
+    ]);
+    expect(JSON.parse(JSON.stringify(document.workbook.definedNames))).toEqual(
+      document.workbook.definedNames,
+    );
+
+    await expect(
+      parseXlsx(bytes, {
+        limits: {
+          maxFormulaCharacters: 13,
+          maxTotalFormulaCharacters: 16,
+        },
+      }),
+    ).rejects.toMatchObject({
+      cause: {
+        actual: 17,
+        limit: 16,
+        limitName: 'maxTotalFormulaCharacters',
+        name: 'XlsxResourceLimitError',
+      },
+      diagnostic: {
+        code: 'resource-limit-exceeded',
+        limitName: 'maxTotalFormulaCharacters',
+      },
+      name: 'XlsxParseError',
+    });
+
+    await expect(
+      parseXlsx(bytes, {
+        limits: { maxTextCharacters: 21 },
+        selection: {},
+      }),
+    ).resolves.toMatchObject({ workbook: { definedNames: [{}, {}] } });
+    await expect(
+      parseXlsx(bytes, {
+        limits: { maxTextCharacters: 20 },
+        selection: {},
+      }),
+    ).rejects.toMatchObject({
+      cause: {
+        actual: 21,
+        limit: 20,
+        limitName: 'maxTextCharacters',
+        name: 'XlsxResourceLimitError',
+      },
+      diagnostic: {
+        code: 'resource-limit-exceeded',
+        limitName: 'maxTextCharacters',
+      },
+      name: 'XlsxParseError',
+    });
+  });
+
   it('treats ArrayBuffer, Uint8Array, subarray, and Blob inputs identically', async () => {
     const bytes = await createIndependentXlsx();
     const padded = new Uint8Array(bytes.byteLength + 2);
