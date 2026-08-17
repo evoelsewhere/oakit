@@ -59,6 +59,14 @@ describe('public XLSX parser', () => {
     expect(result).toEqual({
       diagnostics: [],
       document: {
+        differentialStyles: [],
+        namedStyles: [
+          {
+            builtinId: 0,
+            name: 'Normal',
+            style: { font: { name: 'Calibri', size: 11 } },
+          },
+        ],
         sheets: [
           {
             columns: [],
@@ -143,6 +151,7 @@ describe('public XLSX parser', () => {
           <xf numFmtId="14"/>
           <xf numFmtId="14"/>
         </cellXfs>
+        <dxfs count="1"><dxf><font><b/><color rgb="FFFF0000"/></font></dxf></dxfs>
       </styleSheet>`,
       'xl/workbook.xml': workbook,
       'xl/worksheets/sheet1.xml': `<worksheet xmlns="${XLSX_SPREADSHEET_NS}">
@@ -157,6 +166,14 @@ describe('public XLSX parser', () => {
     const document = await parseXlsx(bytes);
 
     expect(document.styles).toEqual([{}, { numberFormat: 'mm-dd-yy' }]);
+    expect(document.differentialStyles).toEqual([
+      {
+        font: {
+          bold: true,
+          color: { argb: 'FFFF0000', kind: 'rgb' },
+        },
+      },
+    ]);
     expect(document.sheets[0]).toMatchObject({
       rows: [
         {

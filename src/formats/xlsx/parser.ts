@@ -189,6 +189,8 @@ export async function parseXlsxWithDiagnostics(
     throw error;
   }
   const document: XlsxDocument = {
+    differentialStyles: [...styles.differentialStyles],
+    namedStyles: [...styles.namedStyles],
     sheets,
     styles: [...styles.styles],
     workbook: manifest.properties,

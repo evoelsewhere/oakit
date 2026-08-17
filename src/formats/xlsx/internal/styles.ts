@@ -1,6 +1,6 @@
 import type { XmlLookupValue } from '../../../common/xml/tree';
 import { XlsxParseError } from '../errors';
-import type { XlsxStyle } from '../types';
+import type { XlsxNamedStyle, XlsxStyle } from '../types';
 import { xlsxBuiltinNumberFormatCode } from './number-format';
 import { getXlsxRelationshipPartName } from './package-identity';
 import { XlsxPartReader } from './part-reader';
@@ -10,6 +10,7 @@ import {
   XlsxResourceLimitError,
 } from './resource-limits';
 import { parseXlsxStyleBorder } from './style-border';
+import { parseXlsxDifferentialStyle } from './style-differential';
 import { parseXlsxStyleFont } from './style-font';
 import { parseXlsxStyleFill } from './style-fill';
 import { parseXlsxXfFormatting } from './style-formatting';
@@ -39,12 +40,16 @@ export interface XlsxCellXf {
 
 export interface XlsxStyleTable {
   cellXfs: readonly XlsxCellXf[];
+  differentialStyles: readonly XlsxStyle[];
+  namedStyles: readonly XlsxNamedStyle[];
   part: string | null;
   styles: readonly XlsxStyle[];
 }
 
 export const EMPTY_XLSX_STYLE_TABLE: XlsxStyleTable = Object.freeze({
   cellXfs: Object.freeze([]),
+  differentialStyles: Object.freeze([]),
+  namedStyles: Object.freeze([]),
   part: null,
   styles: Object.freeze([]),
 });
@@ -386,6 +391,72 @@ function resolvedCellStyle(
   return style;
 }
 
+function parseNamedStyles(
+  values: readonly XmlRecord[],
+  baseStyles: readonly XlsxStyle[],
+  part: string,
+): XlsxNamedStyle[] {
+  const names = new Set<string>();
+  const output: XlsxNamedStyle[] = [];
+  for (const value of values) {
+    const attrs = attributes(value);
+    if (typeof attrs.name !== 'string' || attrs.name.length === 0) {
+      valueFailure('Named style name is invalid', part);
+    }
+    const normalizedName = attrs.name.toLowerCase();
+    if (names.has(normalizedName)) {
+      structureFailure('Styles contain a duplicate named-style name', part);
+    }
+    names.add(normalizedName);
+    if (attrs.xfId === undefined) {
+      valueFailure('Named style base-style reference is invalid', part);
+    }
+    const baseIndex = referencedIndex(
+      attrs.xfId,
+      baseStyles.length,
+      'Named style base-style reference is invalid',
+      part,
+    );
+    const builtinId =
+      attrs.builtinId === undefined
+        ? undefined
+        : unsignedInteger(
+            attrs.builtinId,
+            'Named style builtin ID is invalid',
+            part,
+          );
+    const customBuiltin = optionalBoolean(
+      attrs.customBuiltin,
+      'Named style customBuiltin flag is invalid',
+      part,
+    );
+    const hidden = optionalBoolean(
+      attrs.hidden,
+      'Named style hidden flag is invalid',
+      part,
+    );
+    const outlineLevel =
+      attrs.iLevel === undefined
+        ? undefined
+        : unsignedInteger(
+            attrs.iLevel,
+            'Named style outline level is invalid',
+            part,
+          );
+    output.push(
+      Object.freeze({
+        ...(builtinId === undefined ? {} : { builtinId }),
+        ...(customBuiltin ? { customBuiltin: true } : {}),
+        ...(hidden ? { hidden: true } : {}),
+        name: attrs.name,
+        ...(outlineLevel === undefined ? {} : { outlineLevel }),
+        style: baseStyles[baseIndex]!,
+      }),
+    );
+  }
+  return output;
+}
+
 export function parseXlsxStylePart(
   value: XmlLookupValue,
   dialect: XlsxWorkbookDiscovery['dialect'],
@@ -405,13 +476,31 @@ export function parseXlsxStylePart(
   );
   const baseXfs = collection(root, prefix, 'cellStyleXfs', 'xf', part, true);
   const xfs = collection(root, prefix, 'cellXfs', 'xf', part, true);
+  const differentialNodes = collection(
+    root,
+    prefix,
+    'dxfs',
+    'dxf',
+    part,
+    false,
+  );
+  const namedNodes = collection(
+    root,
+    prefix,
+    'cellStyles',
+    'cellStyle',
+    part,
+    false,
+  );
   const totalStyles =
     custom.size +
     fonts.length +
     fills.length +
     borders.length +
     baseXfs.length +
-    xfs.length;
+    xfs.length +
+    differentialNodes.length +
+    namedNodes.length;
   if (totalStyles > limits.maxStyles) {
     throw new XlsxResourceLimitError(
       'maxStyles',
@@ -430,6 +519,10 @@ export function parseXlsxStylePart(
       directXfStyle(xf, prefix, part, custom, fonts, fills, borders).style,
     );
   });
+  const differentialStyles = differentialNodes.map((dxf) =>
+    parseXlsxDifferentialStyle(dxf, prefix, part),
+  );
+  const namedStyles = parseNamedStyles(namedNodes, baseStyles, part);
   for (const xf of xfs) {
     const attrs = attributes(xf);
     const baseIndex = referencedIndex(
@@ -470,6 +563,8 @@ export function parseXlsxStylePart(
   }
   return Object.freeze({
     cellXfs: Object.freeze(cellXfs),
+    differentialStyles: Object.freeze(differentialStyles),
+    namedStyles: Object.freeze(namedStyles),
     part,
     styles: Object.freeze(styles),
   });

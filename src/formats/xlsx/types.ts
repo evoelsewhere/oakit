@@ -292,6 +292,15 @@ export interface XlsxStyle {
   protection?: XlsxProtection;
 }
 
+export interface XlsxNamedStyle {
+  builtinId?: number;
+  customBuiltin?: boolean;
+  hidden?: boolean;
+  name: string;
+  outlineLevel?: number;
+  style: XlsxStyle;
+}
+
 export interface XlsxDefinedName {
   expression: string;
   hidden: boolean;
@@ -341,6 +350,8 @@ export interface XlsxChartSheet extends XlsxSheetBase {
 export type XlsxSheet = XlsxChartSheet | XlsxWorksheet;
 
 export interface XlsxDocument {
+  differentialStyles: XlsxStyle[];
+  namedStyles: XlsxNamedStyle[];
   sheets: XlsxSheet[];
   styles: XlsxStyle[];
   workbook: XlsxWorkbookProperties;

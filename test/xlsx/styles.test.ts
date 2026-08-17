@@ -126,6 +126,8 @@ describe('XLSX styles table', () => {
         { normalizedStyle: 3, numberFormat: '[h]:mm:ss' },
         { normalizedStyle: 1, numberFormat: 'mm-dd-yy' },
       ],
+      differentialStyles: [],
+      namedStyles: [],
       part: 'xl/styles.xml',
       styles: [
         {},
@@ -207,6 +209,8 @@ describe('XLSX styles table', () => {
         { normalizedStyle: 1 },
         { normalizedStyle: 2, numberFormat: 'mm-dd-yy' },
       ],
+      differentialStyles: [],
+      namedStyles: [],
       part: 'xl/styles.xml',
       styles: [
         {},
@@ -420,6 +424,121 @@ describe('XLSX styles table', () => {
     expect('numberFormat' in result.cellXfs[1]!).toBe(false);
     expect('numberFormat' in result.cellXfs[3]!).toBe(false);
   });
+
+  it('preserves named-style identity and differential-style authored order', async () => {
+    const xml = styleSheet(`
+      <fonts count="2"><font/><font><b/><name val="Accent"/></font></fonts>
+      <fills count="1"><fill/></fills>
+      <borders count="1"><border/></borders>
+      <cellStyleXfs count="2"><xf/><xf fontId="1"/></cellStyleXfs>
+      <cellXfs count="1"><xf/></cellXfs>
+      <cellStyles count="2">
+        <cellStyle name="Normal" xfId="0" builtinId="0"/>
+        <cellStyle name="Accent" xfId="1" builtinId="5" customBuiltin="1"
+          hidden="true" iLevel="2"/>
+      </cellStyles>
+      <dxfs count="2">
+        <dxf><font><color rgb="FFFF0000"/></font></dxf>
+        <dxf><font><color rgb="FFFF0000"/></font></dxf>
+      </dxfs>`);
+    const result = await load({ 'xl/styles.xml': xml });
+
+    expect(result.namedStyles).toEqual([
+      { builtinId: 0, name: 'Normal', style: {} },
+      {
+        builtinId: 5,
+        customBuiltin: true,
+        hidden: true,
+        name: 'Accent',
+        outlineLevel: 2,
+        style: { font: { bold: true, name: 'Accent' } },
+      },
+    ]);
+    expect(result.differentialStyles).toEqual([
+      { font: { color: { argb: 'FFFF0000', kind: 'rgb' } } },
+      { font: { color: { argb: 'FFFF0000', kind: 'rgb' } } },
+    ]);
+    expect(result.differentialStyles[0]).not.toBe(result.differentialStyles[1]);
+    expect(Object.isFrozen(result.namedStyles)).toBe(true);
+    expect(Object.isFrozen(result.namedStyles[1])).toBe(true);
+    expect(Object.isFrozen(result.differentialStyles)).toBe(true);
+    expect(Object.isFrozen(result.differentialStyles[0])).toBe(true);
+    await expect(
+      load({ 'xl/styles.xml': xml }, { maxStyles: 11 }),
+    ).resolves.toMatchObject({ namedStyles: result.namedStyles });
+    await expect(
+      load({ 'xl/styles.xml': xml }, { maxStyles: 10 }),
+    ).rejects.toMatchObject({
+      actual: 11,
+      limit: 10,
+      limitName: 'maxStyles',
+      part: 'xl/styles.xml',
+    });
+  });
+
+  it.each([
+    [
+      '<cellStyle xfId="0"/>',
+      'invalid-document-value',
+      'Named style name is invalid',
+    ],
+    [
+      '<cellStyle name="" xfId="0"/>',
+      'invalid-document-value',
+      'Named style name is invalid',
+    ],
+    [
+      '<cellStyle name="Missing"/>',
+      'invalid-document-value',
+      'Named style base-style reference is invalid',
+    ],
+    [
+      '<cellStyle name="Missing" xfId="1"/>',
+      'invalid-document-value',
+      'Named style base-style reference is invalid',
+    ],
+    [
+      '<cellStyle name="A" xfId="0"/><cellStyle name="a" xfId="0"/>',
+      'invalid-document-structure',
+      'Styles contain a duplicate named-style name',
+    ],
+    [
+      '<cellStyle name="İ" xfId="0"/><cellStyle name="i̇" xfId="0"/>',
+      'invalid-document-structure',
+      'Styles contain a duplicate named-style name',
+    ],
+    [
+      '<cellStyle name="A" xfId="0" builtinId="-1"/>',
+      'invalid-document-value',
+      'Named style builtin ID is invalid',
+    ],
+    [
+      '<cellStyle name="A" xfId="0" customBuiltin="yes"/>',
+      'invalid-document-value',
+      'Named style customBuiltin flag is invalid',
+    ],
+    [
+      '<cellStyle name="A" xfId="0" hidden="yes"/>',
+      'invalid-document-value',
+      'Named style hidden flag is invalid',
+    ],
+    [
+      '<cellStyle name="A" xfId="0" iLevel="-1"/>',
+      'invalid-document-value',
+      'Named style outline level is invalid',
+    ],
+  ] as const)(
+    'rejects invalid named style %#',
+    async (entries, code, message) => {
+      const count = entries.split('<cellStyle ').length - 1;
+      const error = await capture({
+        'xl/styles.xml': styleSheet(
+          `${CORE}<cellXfs count="1"><xf/></cellXfs><cellStyles count="${count}">${entries}</cellStyles>`,
+        ),
+      });
+      expect(error.diagnostic).toMatchObject({ code, message });
+    },
+  );
 
   it.each([
     'applyAlignment',

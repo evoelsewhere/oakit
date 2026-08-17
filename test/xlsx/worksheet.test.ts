@@ -40,6 +40,8 @@ const TEST_STYLES: XlsxStyleTable = {
     { normalizedStyle: 3, numberFormat: '0.00' },
     { normalizedStyle: 4, numberFormat: '0.000' },
   ],
+  differentialStyles: [],
+  namedStyles: [],
   part: 'xl/styles.xml',
   styles: [
     {},
@@ -383,6 +385,8 @@ describe('XLSX worksheet streaming', () => {
         { normalizedStyle: 3, numberFormat: 'h:mm' },
         { normalizedStyle: 4, numberFormat: 'm/d/yy h:mm' },
       ],
+      differentialStyles: [],
+      namedStyles: [],
       part: 'xl/styles.xml',
       styles: [
         {},
@@ -478,6 +482,8 @@ describe('XLSX worksheet streaming', () => {
   it('uses the workbook 1904 date system for serial normalization', async () => {
     const styles: XlsxStyleTable = {
       cellXfs: [{ normalizedStyle: 0, numberFormat: 'mm-dd-yy' }],
+      differentialStyles: [],
+      namedStyles: [],
       part: 'xl/styles.xml',
       styles: [{ numberFormat: 'mm-dd-yy' }],
     };
