@@ -2,6 +2,12 @@ name: Google Slides Producer Evidence
 
 on:
   workflow_dispatch:
+    inputs:
+      corpus:
+        description: Verify the 30-template visual corpus
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -10,7 +16,7 @@ jobs:
   producer:
     name: Controlled Google Slides import and export
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 35
     environment: producer-validation
     steps:
       - uses: actions/checkout@v4
@@ -23,12 +29,18 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - name: Import, export, verify, and delete temporary presentations
+        if: ${{ !inputs.corpus }}
         env:
           GOOGLE_DRIVE_ACCESS_TOKEN: ${{ secrets.GOOGLE_DRIVE_ACCESS_TOKEN }}
         run: pnpm test:producer:google-slides
+      - name: Verify 30 complex visual templates through Google Slides
+        if: ${{ inputs.corpus }}
+        env:
+          GOOGLE_DRIVE_ACCESS_TOKEN: ${{ secrets.GOOGLE_DRIVE_ACCESS_TOKEN }}
+        run: pnpm test:producer:google-templates
       - if: always()
         uses: actions/upload-artifact@v4
         with:
           name: google-slides-powerpoint-producer-evidence
-          path: reports/reliability/pptx-google-slides
+          path: reports/reliability/pptx-google-*
           if-no-files-found: error
