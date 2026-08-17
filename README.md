@@ -16,9 +16,10 @@ malformed input, and producer differences—so agent workflows can operate on
 meaningful document data instead of raw XML.
 
 > **Project status:** pre-stable (`0.0.x`). Implemented PowerPoint capabilities
-> include bounded reading, text-focused `C2` creation, byte-exact `R0` portable
-> hand-offs, verified `R2` plain-text replacement, and Office-free SVG/PNG
-> previews. Excel and Word remain product direction rather than completed APIs.
+> include bounded reading, producer-verified text-profile `C3` creation,
+> byte-exact `R0` portable hand-offs, producer-verified `R3` plain-text and text
+> transform editing, and Office-free SVG/PNG previews. Excel and Word remain
+> product direction rather than completed APIs.
 
 ## Real-world PowerPoint evidence
 
@@ -68,20 +69,21 @@ agent runtime, tool-calling protocol, or vector database.
 
 ## Format support
 
-| Format               | Read | Create          | Edit                             | Preserve      | Preview |
-| -------------------- | ---- | --------------- | -------------------------------- | ------------- | ------- |
-| PowerPoint (`.pptx`) | Yes  | Text-focused C2 | Plain text + text transform (R2) | Byte-exact R0 | SVG/PNG |
-| Excel (`.xlsx`)      | No   | No              | No                               | No            | No      |
-| Word (`.docx`)       | No   | No              | No                               | No            | No      |
+| Format               | Read | Create          | Edit                                   | Preserve      | Preview |
+| -------------------- | ---- | --------------- | -------------------------------------- | ------------- | ------- |
+| PowerPoint (`.pptx`) | Yes  | Text profile C3 | Plain text + text transform profile R3 | Byte-exact R0 | SVG/PNG |
+| Excel (`.xlsx`)      | No   | No              | No                                     | No            | No      |
+| Word (`.docx`)       | No   | No              | No                                     | No            | No      |
 
-`C2` means a new package is valid, reparses to the supported source-free
-semantics, and passes Office-free SVG visual verification for every slide. `R0`
-means an unchanged source package is restored byte for byte through runtime or
-portable JSON. `R2` text replacement preserves every untouched part payload,
-as do move/resize/rotate/flip operations on the same supported text elements.
-Every result reparses strictly and verifies the complete semantic preview.
-These levels do not claim arbitrary PPTX editing, full reconstruction from
-normalized JSON, or pixel-identical PowerPoint rendering.
+The runtime reports `C2` after deterministic package construction, strict
+reparse, semantic comparison, and Office-free rendering. The declared
+`pptx-create-text-v1` capability is certified at effective `C3` by controlled
+PowerPoint, LibreOffice, and Google Slides save/reopen evidence. Likewise, the
+runtime's `R2` verification is certified at effective `R3` for the
+`pptx-roundtrip-text-v1` plain-text and text-transform operations. `R0` means an
+unchanged source package is restored byte for byte through runtime or portable
+JSON. These profile levels do not claim arbitrary PPTX editing, full
+reconstruction from normalized JSON, or pixel-identical rendering.
 
 The PowerPoint reader currently handles:
 
@@ -526,9 +528,11 @@ depth.
 ### Create bounded text presentations
 
 `createPptx` accepts the versioned scene model, validates it strictly, and
-returns deterministic package bytes with a `C2` fidelity report. The current
-creation profile supports source-free slides containing structured text; it
-rejects unsupported scene elements rather than emitting a guessed package.
+returns deterministic package bytes with a `C2` runtime fidelity report. The
+current creation profile supports source-free slides containing structured
+text; it rejects unsupported scene elements rather than emitting a guessed
+package. The release capability matrix certifies this exact
+`pptx-create-text-v1` profile at effective `C3`.
 
 ```ts
 import { writeFile } from 'node:fs/promises';
