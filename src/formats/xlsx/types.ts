@@ -224,6 +224,41 @@ export type XlsxFill =
       type: 'linear' | 'path';
     };
 
+export type XlsxBorderStyle =
+  | 'dashDot'
+  | 'dashDotDot'
+  | 'dashed'
+  | 'dotted'
+  | 'double'
+  | 'hair'
+  | 'medium'
+  | 'mediumDashDot'
+  | 'mediumDashDotDot'
+  | 'mediumDashed'
+  | 'slantDashDot'
+  | 'thick'
+  | 'thin';
+
+export interface XlsxBorderSide {
+  color?: XlsxColor;
+  style?: XlsxBorderStyle;
+}
+
+export interface XlsxBorder {
+  bottom?: XlsxBorderSide;
+  diagonal?: XlsxBorderSide;
+  diagonalDown?: boolean;
+  diagonalUp?: boolean;
+  end?: XlsxBorderSide;
+  horizontal?: XlsxBorderSide;
+  left?: XlsxBorderSide;
+  outline?: boolean;
+  right?: XlsxBorderSide;
+  start?: XlsxBorderSide;
+  top?: XlsxBorderSide;
+  vertical?: XlsxBorderSide;
+}
+
 export interface XlsxStyle {
   fill?: XlsxFill;
   font?: XlsxFont;
