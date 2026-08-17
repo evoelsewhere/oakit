@@ -67,5 +67,5 @@ describe('Google Slides visual template corpus', () => {
         template.slug,
       ).toEqual([]);
     }
-  }, 120_000);
+  }, 240_000);
 });

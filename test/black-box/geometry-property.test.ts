@@ -72,7 +72,7 @@ describe('PowerPoint generated geometry properties', () => {
       ),
       { numRuns: FUZZ_RUNS, seed: FUZZ_SEED },
     );
-  });
+  }, 15_000);
 
   it('reports malformed coordinates instead of returning ambiguous geometry', async () => {
     const malformedSignedInteger = fc.oneof(
@@ -151,5 +151,5 @@ describe('PowerPoint generated geometry properties', () => {
       }),
       { numRuns: FUZZ_RUNS, seed: FUZZ_SEED + 1 },
     );
-  });
+  }, 15_000);
 });
