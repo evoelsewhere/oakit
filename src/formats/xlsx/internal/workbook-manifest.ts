@@ -283,6 +283,7 @@ export async function parseXlsxWorkbookManifest(
       const worksheet: XlsxWorksheet = {
         ...base,
         columns: [],
+        conditionalFormattings: [],
         dataValidations: [],
         drawings: [],
         hyperlinks: [],

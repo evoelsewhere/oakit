@@ -114,6 +114,7 @@ describe('XLSX workbook manifest', () => {
       sheets: [
         {
           columns: [],
+          conditionalFormattings: [],
           dataValidations: [],
           drawings: [],
           hyperlinks: [],

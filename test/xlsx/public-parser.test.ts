@@ -70,6 +70,7 @@ describe('public XLSX parser', () => {
         sheets: [
           {
             columns: [],
+            conditionalFormattings: [],
             dataValidations: [],
             declaredDimension: {
               end: { column: 3, row: 3 },
@@ -824,6 +825,7 @@ describe('public XLSX parser', () => {
     expect(document.sheets).toEqual([
       {
         columns: [],
+        conditionalFormattings: [],
         dataValidations: [],
         declaredDimension: {
           end: { column: 3, row: 3 },

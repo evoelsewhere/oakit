@@ -4,6 +4,7 @@ import type {
   XlsxCellValue,
   XlsxAutoFilter,
   XlsxColumnRange,
+  XlsxConditionalFormatting,
   XlsxDataValidation,
   XlsxDataValidationSettings,
   XlsxFormula,
@@ -28,6 +29,7 @@ import {
 } from './cell-value';
 import { normalizeXlsxSerialDate } from './date-system';
 import { XlsxDataValidationsCapture } from './data-validation';
+import { XlsxConditionalFormattingCapture } from './conditional-format';
 import { translateXlsxSharedFormula } from './formula';
 import { parseXlsxHyperlink, type ParsedXlsxHyperlink } from './hyperlink';
 import { xlsxNumberFormatDatePrecision } from './number-format';
@@ -129,6 +131,7 @@ interface SharedFormulaMaster {
 export interface XlsxWorksheetPayload {
   autoFilter?: XlsxAutoFilter;
   columns: XlsxColumnRange[];
+  conditionalFormattings: XlsxConditionalFormatting[];
   declaredDimension?: XlsxRange;
   dataValidationSettings?: XlsxDataValidationSettings;
   dataValidations: XlsxDataValidation[];
@@ -400,6 +403,10 @@ class WorksheetSink implements XlsxXmlEventSink {
   private readonly authoredColumns: XlsxAuthoredColumnRange[] = [];
   private capture: TextCapture = null;
   private columnsSeen = false;
+  private readonly conditionalFormattingPriorities = new Set<number>();
+  private conditionalFormattingCapture:
+    XlsxConditionalFormattingCapture | undefined;
+  private readonly conditionalFormattings: XlsxConditionalFormatting[] = [];
   private dataValidationSettings: XlsxDataValidationSettings | undefined;
   private dataValidations: XlsxDataValidation[] = [];
   private dataValidationsCapture: XlsxDataValidationsCapture | undefined;
@@ -506,6 +513,11 @@ class WorksheetSink implements XlsxXmlEventSink {
       this.stack.push(element);
       return;
     }
+    if (this.conditionalFormattingCapture) {
+      this.conditionalFormattingCapture.openElement(element);
+      this.stack.push(element);
+      return;
+    }
     const parent = this.stack.at(-1);
     if (!parent) {
       if (element.localName !== 'worksheet') {
@@ -545,6 +557,16 @@ class WorksheetSink implements XlsxXmlEventSink {
       this.stack.pop();
       return;
     }
+    if (this.conditionalFormattingCapture) {
+      this.conditionalFormattingCapture.closeElement(element);
+      if (element.localName === 'conditionalFormatting') {
+        const result = this.conditionalFormattingCapture.result();
+        if (result) this.conditionalFormattings.push(result);
+        this.conditionalFormattingCapture = undefined;
+      }
+      this.stack.pop();
+      return;
+    }
     this.capture = null;
     if (element.localName === 'r') this.closeInlineRun();
     if (element.localName === 'c') this.closeCell();
@@ -561,6 +583,10 @@ class WorksheetSink implements XlsxXmlEventSink {
     }
     if (this.dataValidationsCapture) {
       this.dataValidationsCapture.text(value);
+      return;
+    }
+    if (this.conditionalFormattingCapture) {
+      this.conditionalFormattingCapture.text(value);
       return;
     }
     if (this.capture === 'value') {
@@ -624,6 +650,7 @@ class WorksheetSink implements XlsxXmlEventSink {
       columns: normalizeXlsxColumnRanges(this.authoredColumns).filter((range) =>
         this.columnRangeSelected(range),
       ),
+      conditionalFormattings: this.conditionalFormattings,
       ...(this.declaredDimension === undefined
         ? {}
         : { declaredDimension: this.declaredDimension }),
@@ -862,6 +889,19 @@ class WorksheetSink implements XlsxXmlEventSink {
           this.part,
         );
         this.dataValidationsCapture.openElement(element);
+        return;
+      }
+      if (element.localName === 'conditionalFormatting') {
+        this.conditionalFormattingCapture =
+          new XlsxConditionalFormattingCapture(
+            this.semantics.styles.differentialStyles.length,
+            this.conditionalFormattingPriorities,
+            this.selection,
+            this.budget,
+            this.limits,
+            this.part,
+          );
+        this.conditionalFormattingCapture.openElement(element);
         return;
       }
       if (element.localName === 'tableParts') {

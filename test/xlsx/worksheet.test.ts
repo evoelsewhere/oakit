@@ -153,6 +153,7 @@ describe('XLSX worksheet streaming', () => {
 
     await expect(parse(xml, { strings: SHARED_STRINGS })).resolves.toEqual({
       columns: [],
+      conditionalFormattings: [],
       dataValidations: [],
       declaredDimension: {
         end: { column: 16_384, row: 1_048_576 },
@@ -318,6 +319,7 @@ describe('XLSX worksheet streaming', () => {
 
     await expect(parse(xml, { dialect: 'strict' })).resolves.toEqual({
       columns: [{ end: 2, hidden: true, start: 1, width: 12 }],
+      conditionalFormattings: [],
       dataValidations: [],
       hyperlinks: [],
       mergedRanges: [
@@ -364,6 +366,7 @@ describe('XLSX worksheet streaming', () => {
       parse(worksheet('\n<sheetData> \n </sheetData>\n')),
     ).resolves.toEqual({
       columns: [],
+      conditionalFormattings: [],
       dataValidations: [],
       hyperlinks: [],
       mergedRanges: [],
@@ -988,6 +991,7 @@ describe('XLSX worksheet streaming', () => {
         { collapsed: true, end: 5, outlineLevel: 3, start: 4 },
         { end: 6, hidden: true, start: 6, style: 0, width: 10 },
       ],
+      conditionalFormattings: [],
       dataValidations: [],
       hyperlinks: [],
       mergedRanges: [
@@ -1088,6 +1092,7 @@ describe('XLSX worksheet streaming', () => {
 
     expect(result).toEqual({
       columns: [],
+      conditionalFormattings: [],
       dataValidations: [],
       hyperlinks: [],
       mergedRanges: [],
@@ -1377,6 +1382,7 @@ describe('XLSX worksheet streaming', () => {
     );
     expect(result).toEqual({
       columns: [],
+      conditionalFormattings: [],
       dataValidations: [],
       hyperlinks: [],
       mergedRanges: [],
@@ -1510,6 +1516,7 @@ describe('XLSX worksheet streaming', () => {
 
     expect(result).toEqual({
       columns: [],
+      conditionalFormattings: [],
       dataValidations: [],
       hyperlinks: [],
       mergedRanges: [],
@@ -1632,6 +1639,7 @@ describe('XLSX worksheet streaming', () => {
       }),
     ).resolves.toEqual({
       columns: [],
+      conditionalFormattings: [],
       dataValidations: [],
       hyperlinks: [],
       mergedRanges: [],
@@ -1674,6 +1682,7 @@ describe('XLSX worksheet streaming', () => {
       }),
     ).resolves.toEqual({
       columns: [],
+      conditionalFormattings: [],
       dataValidations: [],
       hyperlinks: [],
       mergedRanges: [],
@@ -1914,6 +1923,7 @@ describe('XLSX worksheet streaming', () => {
       ),
     ).resolves.toEqual({
       columns: [],
+      conditionalFormattings: [],
       dataValidations: [],
       hyperlinks: [],
       mergedRanges: [],
@@ -2016,6 +2026,7 @@ describe('XLSX worksheet streaming', () => {
 
     expect(result).toEqual({
       columns: [],
+      conditionalFormattings: [],
       dataValidations: [],
       hyperlinks: [],
       mergedRanges: [],

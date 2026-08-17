@@ -664,6 +664,109 @@ export interface XlsxDataValidationSettings {
   yWindow?: number;
 }
 
+export type XlsxConditionalFormattingRuleType =
+  | 'above-average'
+  | 'begins-with'
+  | 'cell-is'
+  | 'color-scale'
+  | 'contains-blanks'
+  | 'contains-errors'
+  | 'contains-text'
+  | 'data-bar'
+  | 'duplicate-values'
+  | 'ends-with'
+  | 'expression'
+  | 'icon-set'
+  | 'not-contains-blanks'
+  | 'not-contains-errors'
+  | 'not-contains-text'
+  | 'time-period'
+  | 'top'
+  | 'unique-values';
+
+export type XlsxConditionalFormattingOperator =
+  | 'between'
+  | 'equal'
+  | 'greater-than'
+  | 'greater-than-or-equal'
+  | 'less-than'
+  | 'less-than-or-equal'
+  | 'not-between'
+  | 'not-equal';
+
+export type XlsxConditionalValueObject =
+  | { greaterThanOrEqual: boolean; kind: 'maximum' | 'minimum' }
+  | {
+      greaterThanOrEqual: boolean;
+      kind: 'number' | 'percent' | 'percentile';
+      value: number;
+    }
+  | {
+      expression: string;
+      greaterThanOrEqual: boolean;
+      kind: 'formula';
+    };
+
+export interface XlsxConditionalColorScale {
+  stops: Array<{
+    color: XlsxColor;
+    threshold: XlsxConditionalValueObject;
+  }>;
+}
+
+export interface XlsxConditionalDataBar {
+  color: XlsxColor;
+  maximumLength: number;
+  minimumLength: number;
+  showValue: boolean;
+  thresholds: [XlsxConditionalValueObject, XlsxConditionalValueObject];
+}
+
+export interface XlsxConditionalIconSet {
+  iconSet: XlsxIconSet;
+  percent: boolean;
+  reverse: boolean;
+  showValue: boolean;
+  thresholds: XlsxConditionalValueObject[];
+}
+
+export interface XlsxConditionalFormattingRule {
+  aboveAverage?: boolean;
+  bottom?: boolean;
+  colorScale?: XlsxConditionalColorScale;
+  dataBar?: XlsxConditionalDataBar;
+  differentialStyle?: number;
+  equalAverage?: boolean;
+  formulas: string[];
+  iconSet?: XlsxConditionalIconSet;
+  operator?: XlsxConditionalFormattingOperator;
+  percent?: boolean;
+  priority: number;
+  rank?: number;
+  standardDeviations?: number;
+  stopIfTrue: boolean;
+  text?: string;
+  timePeriod?:
+    | 'last-7-days'
+    | 'last-month'
+    | 'last-week'
+    | 'next-month'
+    | 'next-week'
+    | 'this-month'
+    | 'this-week'
+    | 'today'
+    | 'tomorrow'
+    | 'yesterday';
+  type: XlsxConditionalFormattingRuleType;
+}
+
+export interface XlsxConditionalFormatting {
+  pivot: boolean;
+  ranges: XlsxRange[];
+  rules: XlsxConditionalFormattingRule[];
+  selectionRelation: 'full-sheet' | 'intersects-selection';
+}
+
 export interface XlsxTable {
   autoFilter?: XlsxAutoFilter;
   columns: XlsxTableColumn[];
@@ -719,6 +822,7 @@ export interface XlsxSheetBase {
 export interface XlsxWorksheet extends XlsxSheetBase {
   autoFilter?: XlsxAutoFilter;
   columns: XlsxColumnRange[];
+  conditionalFormattings: XlsxConditionalFormatting[];
   declaredDimension?: XlsxRange;
   dataValidationSettings?: XlsxDataValidationSettings;
   dataValidations: XlsxDataValidation[];
