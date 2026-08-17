@@ -9,6 +9,7 @@ import {
 } from '../internal/resource-limits';
 import { PptxWriteError } from '../write-error';
 import { assertPptxRoundTripDataTree } from './data-tree';
+import { normalizePptxRoundTripInput } from './source';
 import type {
   PptxRoundTripPortableJson,
   PptxRoundTripPortableLimits,
@@ -157,16 +158,19 @@ export async function serializePptxRoundTripJson(
     limits.maxBase64Characters,
   );
 
-  const verified = await writePptxRoundTripWithLimits(
-    snapshot,
-    resolveInputLimits(limits.maxDecodedBytes),
+  const runtimeLimits = resolveInputLimits(limits.maxDecodedBytes);
+  const normalized = await normalizePptxRoundTripInput(
+    snapshot.source.data,
+    runtimeLimits,
   );
-  const packageBase64 = encodeBase64(verified.data);
+  snapshot.source.data = normalized.bytes;
+  await writePptxRoundTripWithLimits(snapshot, runtimeLimits);
+  const packageBase64 = encodeBase64(normalized.bytes);
   return {
     consistency: snapshot.consistency,
     document: snapshot.document,
     format: 'pptx',
-    operations: [],
+    operations: snapshot.operations,
     schemaVersion: 1,
     source: {
       byteLength: snapshot.source.byteLength,
@@ -244,9 +248,6 @@ export async function parsePptxRoundTripJson(
     supportProfile: owned.supportProfile,
   };
   const snapshot = validatePptxRoundTripSnapshot(runtimeValue, runtimeLimits);
-  const verified = await writePptxRoundTripWithLimits(snapshot, runtimeLimits);
-  return {
-    ...snapshot,
-    source: { ...snapshot.source, data: verified.data },
-  };
+  await writePptxRoundTripWithLimits(snapshot, runtimeLimits);
+  return snapshot;
 }

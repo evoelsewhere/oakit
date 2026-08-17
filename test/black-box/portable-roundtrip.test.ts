@@ -8,6 +8,7 @@ import {
   parsePptxRoundTripJson,
   PptxRoundTripPortableLimitError,
   readPptxRoundTrip,
+  replacePptxRoundTripText,
   serializePptxRoundTripJson,
   writePptxRoundTrip,
   type PptxRoundTripPortableJson,
@@ -144,6 +145,66 @@ describe('PowerPoint portable JSON round trips through the public API', () => {
     expect(restored.source.data).toEqual(bytes);
     expect(result.data).toEqual(bytes);
     expect(result.report.level).toBe('R0');
+  });
+
+  it('keeps original source bytes and an executable edit log through JSON', async () => {
+    const { bytes, snapshot } = await runtimeFixture();
+    const run = snapshot.document.slides[0]?.elements[0];
+    if (run?.type !== 'text') throw new Error('Expected editable text');
+    const target = run.text.paragraphs[0]?.children[0];
+    if (target?.type !== 'run') throw new Error('Expected editable run');
+    const edited = await replacePptxRoundTripText(snapshot, {
+      targetKey: target.key,
+      value: 'Edited through portable JSON',
+    });
+
+    const portable = await serializePptxRoundTripJson(edited);
+    const restored = await parsePptxRoundTripJson(
+      JSON.parse(JSON.stringify(portable)) as unknown,
+    );
+    const output = await writePptxRoundTrip(restored);
+    const verified = await readPptxRoundTrip(output.data);
+
+    expect(portable.source.packageBase64).toBe(
+      Buffer.from(bytes).toString('base64'),
+    );
+    expect(portable.operations).toEqual(edited.operations);
+    expect(restored.source.data).toEqual(bytes);
+    expect(restored.operations).toEqual(edited.operations);
+    expect(output.data).not.toEqual(bytes);
+    expect(output.report.level).toBe('R2');
+    expect(verified.document.slides[0]?.elements[0]).toMatchObject({
+      type: 'text',
+      text: {
+        paragraphs: [
+          {
+            children: [{ text: 'Edited through portable JSON', type: 'run' }],
+          },
+        ],
+      },
+    });
+  });
+
+  it('rejects a portable edit log changed after it was bound', async () => {
+    const { snapshot } = await runtimeFixture();
+    const element = snapshot.document.slides[0]?.elements[0];
+    if (element?.type !== 'text') throw new Error('Expected editable text');
+    const run = element.text.paragraphs[0]?.children[0];
+    if (run?.type !== 'run') throw new Error('Expected editable run');
+    const edited = await replacePptxRoundTripText(snapshot, {
+      targetKey: run.key,
+      value: 'Bound edit',
+    });
+    const portable = await serializePptxRoundTripJson(edited);
+    const operation = portable.operations[0];
+    if (operation === undefined) throw new Error('Expected portable operation');
+    operation.value = 'Tampered edit';
+
+    await expect(parsePptxRoundTripJson(portable)).rejects.toMatchObject({
+      code: 'snapshot-consistency-failed',
+      message:
+        'PowerPoint round-trip snapshot consistency does not match its bound state',
+    });
   });
 
   it('serializes Blob source without leaking a runtime-only value into JSON', async () => {
