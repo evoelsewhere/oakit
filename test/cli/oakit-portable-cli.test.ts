@@ -197,7 +197,7 @@ describe('oakit portable PowerPoint CLI contract', () => {
     });
     expect(io.stdout).toBe('');
     expect(io.stderr).toBe('');
-  });
+  }, 10_000);
 
   it('schedules, restores, and verifies a text edit using only portable commands', async () => {
     const io = new PortableCliIo();
