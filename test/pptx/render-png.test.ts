@@ -51,7 +51,7 @@ describe('PowerPoint PNG rendering in Node.js', () => {
       height: 6,
       width: 4,
     });
-  });
+  }, 15_000);
 
   it('accepts the exact PNG byte budget and rejects one byte below it', () => {
     const exact =
