@@ -6,6 +6,7 @@ import {
   stat,
   writeFile,
 } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -22,6 +23,54 @@ import {
   writePptxRoundTrip,
   type PptxSceneDocument,
 } from '../../src';
+
+const evidenceDirectory = join(
+  process.cwd(),
+  'reports',
+  'reliability',
+  'pptx-libreoffice',
+);
+
+function sha256(bytes: Uint8Array): string {
+  return createHash('sha256').update(bytes).digest('hex');
+}
+
+function libreOfficeVersion(executable: string): string {
+  const result = spawnSync(executable, ['--version'], { encoding: 'utf8' });
+  if (
+    result.error ||
+    result.status !== 0 ||
+    result.stdout.trim().length === 0
+  ) {
+    throw new Error(
+      `Cannot read LibreOffice version: ${result.error?.message ?? result.stderr ?? 'unknown error'}`,
+    );
+  }
+  return result.stdout.trim();
+}
+
+async function writeProducerEvidence(
+  filename: string,
+  evidence: unknown,
+): Promise<void> {
+  await mkdir(evidenceDirectory, { recursive: true });
+  await writeFile(
+    join(evidenceDirectory, filename),
+    `${JSON.stringify(evidence, null, 2)}\n`,
+  );
+}
+
+function artifactEvidence(bytes: Uint8Array) {
+  return { byteLength: bytes.byteLength, sha256: sha256(bytes) };
+}
+
+function platformEvidence() {
+  return {
+    architecture: process.arch,
+    node: process.version,
+    os: process.platform,
+  };
+}
 
 function producerScene(): PptxSceneDocument {
   return {
@@ -156,6 +205,9 @@ describe('PowerPoint writer producer compatibility', () => {
       );
 
       const resavedBytes = new Uint8Array(await readFile(resaved));
+      const pdfBytes = new Uint8Array(
+        await readFile(join(pdfDirectory, 'created.pdf')),
+      );
       const parsed = await parsePptx(resavedBytes, {
         errorMode: 'strict',
         imageMode: 'none',
@@ -174,6 +226,33 @@ describe('PowerPoint writer producer compatibility', () => {
       expect(
         (await stat(join(pdfDirectory, 'created.pdf'))).size,
       ).toBeGreaterThan(0);
+      expect(sha256(resavedBytes)).not.toBe(sha256(created.data));
+      await writeProducerEvidence('creation.json', {
+        artifacts: {
+          output: artifactEvidence(resavedBytes),
+          pdf: artifactEvidence(pdfBytes),
+          source: artifactEvidence(created.data),
+        },
+        capability: {
+          internalLevel: created.report.level,
+          producerVerifiedLevel: 'C3',
+          profileId: created.report.supportProfile.id,
+        },
+        platform: platformEvidence(),
+        producer: {
+          application: 'LibreOffice Impress',
+          version: libreOfficeVersion(executable),
+        },
+        schemaVersion: 1,
+        validation: {
+          openWithoutRepair: true,
+          pdfExport: true,
+          saveReopenCycles: 1,
+          semanticTextPreserved: true,
+          slideCount: parsed.slides.length,
+          strictParse: true,
+        },
+      });
     } finally {
       await rm(directory, { force: true, recursive: true });
     }
@@ -254,6 +333,11 @@ describe('PowerPoint writer producer compatibility', () => {
         new Uint8Array(await readFile(secondSave)),
         { errorMode: 'strict', imageMode: 'none' },
       );
+      const firstSaveBytes = new Uint8Array(await readFile(firstSave));
+      const secondSaveBytes = new Uint8Array(await readFile(secondSave));
+      const pdfBytes = new Uint8Array(
+        await readFile(join(pdfDirectory, 'edited.pdf')),
+      );
       const serialized = JSON.stringify(reopened);
       expect(reopened.size).toEqual({ height: 540, width: 960 });
       expect(reopened.slides).toHaveLength(2);
@@ -280,6 +364,37 @@ describe('PowerPoint writer producer compatibility', () => {
       expect(
         (await stat(join(pdfDirectory, 'edited.pdf'))).size,
       ).toBeGreaterThan(0);
+      expect(sha256(secondSaveBytes)).not.toBe(sha256(edited.data));
+      await writeProducerEvidence('edit.json', {
+        artifacts: {
+          firstSave: artifactEvidence(firstSaveBytes),
+          output: artifactEvidence(secondSaveBytes),
+          pdf: artifactEvidence(pdfBytes),
+          source: artifactEvidence(edited.data),
+        },
+        capability: {
+          internalLevel: edited.report.level,
+          operationCount: edited.report.operations.length,
+          producerVerifiedLevel: 'R3',
+          profileId: edited.report.supportProfile.id,
+        },
+        platform: platformEvidence(),
+        producer: {
+          application: 'LibreOffice Impress',
+          version: libreOfficeVersion(executable),
+        },
+        schemaVersion: 1,
+        validation: {
+          geometryTolerancePoints: 0.2,
+          openWithoutRepair: true,
+          pdfExport: true,
+          saveReopenCycles: 2,
+          semanticTextPreserved: true,
+          semanticTransformPreserved: true,
+          slideCount: reopened.slides.length,
+          strictParse: true,
+        },
+      });
     } finally {
       await rm(directory, { force: true, recursive: true });
     }

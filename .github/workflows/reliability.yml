@@ -113,6 +113,12 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: sudo apt-get update && sudo apt-get install --yes libreoffice-impress
       - run: pnpm test:corpus:large
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: libreoffice-powerpoint-producer-evidence
+          path: reports/reliability/pptx-libreoffice
+          if-no-files-found: error
 
   mutation:
     name: PowerPoint file mutation shard ${{ matrix.shard }} of 7
