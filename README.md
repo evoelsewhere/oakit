@@ -17,8 +17,8 @@ meaningful document data instead of raw XML.
 
 > **Project status:** pre-stable (`0.0.x`). Implemented PowerPoint capabilities
 > include bounded reading, text-focused `C1` creation, byte-exact `R0` portable
-> hand-offs, and Office-free SVG/PNG previews. Semantic editing, Excel, and Word
-> remain product direction rather than completed APIs.
+> hand-offs, verified `R2` plain-text replacement, and Office-free SVG/PNG
+> previews. Excel and Word remain product direction rather than completed APIs.
 
 ## Why OAKit
 
@@ -42,17 +42,18 @@ agent runtime, tool-calling protocol, or vector database.
 
 ## Format support
 
-| Format               | Read | Create          | Preserve      | Preview |
-| -------------------- | ---- | --------------- | ------------- | ------- |
-| PowerPoint (`.pptx`) | Yes  | Text-focused C1 | Byte-exact R0 | SVG/PNG |
-| Excel (`.xlsx`)      | No   | No              | No            | No      |
-| Word (`.docx`)       | No   | No              | No            | No      |
+| Format               | Read | Create          | Edit                       | Preserve      | Preview |
+| -------------------- | ---- | --------------- | -------------------------- | ------------- | ------- |
+| PowerPoint (`.pptx`) | Yes  | Text-focused C1 | Plain single-run text (R2) | Byte-exact R0 | SVG/PNG |
+| Excel (`.xlsx`)      | No   | No              | No                         | No            | No      |
+| Word (`.docx`)       | No   | No              | No                         | No            | No      |
 
 `C1` means a new package is valid and reparses to the supported source-free
 scene. `R0` means an unchanged source package is restored byte for byte through
-runtime or portable JSON. Neither level claims arbitrary semantic editing,
-full reconstruction from normalized JSON, or pixel-identical PowerPoint
-rendering.
+runtime or portable JSON. `R2` text replacement preserves every untouched part
+payload, reparses the edited package strictly, and verifies the complete
+semantic preview. These levels do not claim arbitrary PPTX editing, full
+reconstruction from normalized JSON, or pixel-identical PowerPoint rendering.
 
 The PowerPoint reader currently handles:
 
@@ -169,15 +170,39 @@ preview, and consistency metadata have been verified:
 oakit restore deck.oakit.json --output restored.pptx
 ```
 
-A successful restore is an `R0` hand-off: `restored.pptx` is byte-for-byte
+A successful no-op restore is an `R0` hand-off: `restored.pptx` is byte-for-byte
 identical to `deck.pptx`, including package parts OAKit does not interpret.
 The portable document preview is integrity-bound to the source. Editing that
-preview directly is rejected; semantic edit operations are not part of the
-current portable contract.
+preview directly is rejected; authorized changes are represented as bound,
+hash-protected operations.
 
-Both commands run in-process without Office software or a conversion service.
-`snapshot` can write JSON to stdout. `restore` requires an output file so
-binary data is never mixed with terminal text.
+### Replace supported text through portable JSON
+
+Inspect the snapshot's `document` for a stable run key, schedule an edit, then
+restore the edited portable snapshot:
+
+```bash
+oakit edit-text deck.oakit.json \
+  --target slide-1-element-1-run-1 \
+  --value "Updated by an agent" \
+  --output edited.oakit.json \
+  --pretty
+
+oakit restore edited.oakit.json --output edited.pptx
+```
+
+The portable JSON continues to carry the original PPTX bytes plus an operation
+log; it never hides an already-edited package behind stale operations. Restore
+checks the source hash and exact text precondition, patches only the owning
+slide part, verifies all untouched payloads byte-for-byte, strict-parses the
+result, and compares the full semantic preview. The current edit profile is
+deliberately narrow: one plain DrawingML text node in a slide-owned text shape.
+Fields, line breaks, multiple runs, compatibility extensions, signed packages,
+and macro-enabled packages fail closed with a typed error.
+
+All three commands run in-process without Office software or a conversion
+service. `snapshot` and `edit-text` can write JSON to stdout. `restore` requires
+an output file so binary data is never mixed with terminal text.
 
 ### Read from stdin
 
@@ -186,7 +211,8 @@ Use `-` as the input path and provide the format explicitly:
 ```bash
 cat deck.pptx | oakit - --format pptx --document-only > deck.json
 cat deck.pptx | oakit snapshot - --format pptx > deck.oakit.json
-cat deck.oakit.json | oakit restore - --output restored.pptx
+cat deck.oakit.json | oakit edit-text - --target slide-1-element-1-run-1 --value "Updated" > edited.oakit.json
+cat edited.oakit.json | oakit restore - --output edited.pptx
 ```
 
 `--format pptx` is required for stdin because there is no filename extension
@@ -198,6 +224,7 @@ from which to infer the format.
 Usage: oakit [convert] <input.pptx|-> [options]
        oakit render <input.pptx|-> --output <directory> [options]
        oakit snapshot <input.pptx|-> [--output <file>]
+       oakit edit-text <input.json|-> --target <run-key> --value <text> [options]
        oakit restore <input.json|-> --output <file.pptx>
 
 Convert options:
@@ -215,6 +242,12 @@ Render options:
 
 Snapshot options:
   -o, --output <file>          Write portable JSON instead of stdout
+      --pretty                 Format portable JSON with two-space indentation
+
+Edit text options:
+  -o, --output <file>          Write edited portable JSON instead of stdout
+      --target <run-key>       Stable text run key from the portable document
+      --value <text>           Replacement text; use --value=-5 for leading -
       --pretty                 Format portable JSON with two-space indentation
 
 Restore options:
@@ -522,23 +555,28 @@ For a JSON-safe, byte-exact agent hand-off, use the separate round-trip API:
 import {
   parsePptxRoundTripJson,
   readPptxRoundTrip,
+  replacePptxRoundTripText,
   serializePptxRoundTripJson,
   writePptxRoundTrip,
 } from '@evoelsewhere/oakit';
 
 const runtime = await readPptxRoundTrip(input);
-const portable = await serializePptxRoundTripJson(runtime);
+const edited = await replacePptxRoundTripText(runtime, {
+  targetKey: 'slide-1-element-1-run-1',
+  value: 'Updated by an agent',
+});
+const portable = await serializePptxRoundTripJson(edited);
 const wireValue: unknown = JSON.parse(JSON.stringify(portable));
 const restored = await parsePptxRoundTripJson(wireValue);
 const output = await writePptxRoundTrip(restored);
 
-console.log(output.report.level); // R0
+console.log(output.report.level); // R2
 ```
 
 The portable envelope validates its exact shape, canonical Base64, source
-digest, package inventory, semantic preview, and consistency hashes. Its
-`operations` array is currently required to remain empty; changing preview
-fields directly is detected as tampering rather than treated as an edit.
+digest, package inventory, semantic preview, operation log, and consistency
+hashes. Changing preview fields or operation values directly is detected as
+tampering rather than treated as an edit.
 
 Rendering is a portable visual aid for agents, not a claim of pixel-identical
 PowerPoint layout. Exact `R0` package preservation and preview rendering are
@@ -634,22 +672,24 @@ pnpm install
 pnpm check
 ```
 
-| Command                   | Purpose                                                 |
-| ------------------------- | ------------------------------------------------------- |
-| `pnpm dev`                | Rebuild in watch mode                                   |
-| `pnpm test`               | Run deterministic unit, integration, and property tests |
-| `pnpm test:browser`       | Run the public API suite in Chromium                    |
-| `pnpm test:corpus`        | Verify PowerPoint and LibreOffice documents             |
-| `pnpm test:corpus:large`  | Include the large Google Slides corpus                  |
-| `pnpm test:fuzz`          | Fuzz SVG/PNG safety using reproducible recorded seeds   |
-| `pnpm test:mutation`      | Measure whether tests detect behavioral mutations       |
-| `pnpm test:package`       | Smoke-test package exports and the bundled CLI          |
-| `pnpm test:render:memory` | Measure SVG/PNG memory at 1, 25, and 100 slides         |
-| `pnpm typecheck`          | Run strict type checking                                |
-| `pnpm lint`               | Run ESLint                                              |
-| `pnpm format:check`       | Verify formatting                                       |
-| `pnpm build`              | Build ESM, CommonJS, declarations, and source maps      |
-| `pnpm check`              | Run the required pull-request quality gates             |
+| Command                         | Purpose                                                 |
+| ------------------------------- | ------------------------------------------------------- |
+| `pnpm dev`                      | Rebuild in watch mode                                   |
+| `pnpm test`                     | Run deterministic unit, integration, and property tests |
+| `pnpm test:browser`             | Run the public API suite in Chromium                    |
+| `pnpm test:corpus`              | Verify PowerPoint and LibreOffice documents             |
+| `pnpm test:corpus:large`        | Include the large Google Slides corpus                  |
+| `pnpm test:fuzz`                | Fuzz SVG/PNG safety using reproducible recorded seeds   |
+| `pnpm test:mutation`            | Measure whether tests detect behavioral mutations       |
+| `pnpm test:package`             | Smoke-test package exports and the bundled CLI          |
+| `pnpm test:render:e2e`          | Prove Office-free portable edit and SVG/PNG rendering   |
+| `pnpm test:render:memory`       | Measure SVG/PNG memory at 1, 25, and 100 slides         |
+| `pnpm test:producer:powerpoint` | Run macOS PowerPoint save/reopen evidence               |
+| `pnpm typecheck`                | Run strict type checking                                |
+| `pnpm lint`                     | Run ESLint                                              |
+| `pnpm format:check`             | Verify formatting                                       |
+| `pnpm build`                    | Build ESM, CommonJS, declarations, and source maps      |
+| `pnpm check`                    | Run the required pull-request quality gates             |
 
 The fast CI matrix runs on Node.js 20, 22, and 24 plus Chromium. Producer
 corpus and mutation suites run in the reliability workflow.
@@ -662,9 +702,9 @@ rules for coding agents and contributors live in [AGENTS.md](AGENTS.md).
 
 - stabilize the normalized PowerPoint model;
 - expand real-producer fidelity and adversarial corpus coverage;
-- add a mutation-tested PowerPoint writer;
+- expand mutation-tested, part-preserving PowerPoint operations;
 - introduce Excel and Word as isolated format domains;
-- expose higher-level document operations suitable for agent tools;
+- expand higher-level document operations suitable for agent tools;
 - keep the core independent of model vendors and agent frameworks.
 
 Capabilities are documented only after their public API, implementation, and

@@ -8,7 +8,9 @@ The implemented PowerPoint production paths are:
 
 ```text
 .pptx package ──parse──────────> normalized typed JSON + diagnostics
-.pptx package ──snapshot───────> portable integrity-bound JSON ──restore──> byte-identical .pptx
+.pptx package ──snapshot───────> portable integrity-bound JSON ──restore──> R0 .pptx
+                                       │
+                                       └──replace-text operation──────────> part-preserved R2 .pptx
 scene JSON──── ──create─────────> bounded source-free .pptx
 .pptx/model─── ──render─────────> self-contained SVG or Node-only PNG + warnings
 ```
@@ -39,11 +41,12 @@ The architecture optimizes for the following goals:
 
 The normalized parser does not attempt byte-for-byte preservation. Exact `R0`
 preservation is implemented by a separate round-trip snapshot that owns the
-source package, hashes its bound semantic preview and package inventory, and
-allows no edit operations. Source-free creation currently accepts a bounded
-text profile and reports `C1`; arbitrary semantic editing, streaming ZIP
-processing, full XSD validation, macro execution, and package repair are not
-implemented.
+source package and hashes its bound semantic preview, operation log, and source
+manifest. The same snapshot accepts a narrow `R2` single-run text operation
+with exact preconditions, part-preserving patching, strict output reparse, and
+semantic verification. Source-free creation currently accepts a bounded text
+profile and reports `C1`; arbitrary semantic editing, streaming ZIP processing,
+full XSD validation, macro execution, and package repair are not implemented.
 
 ## System context
 
@@ -55,9 +58,10 @@ flowchart LR
     ZIP["OPC ZIP package"]
     XML["OOXML parts and relationships"]
     Model["Typed PptxDocument"]
-    Snapshot["Portable R0 snapshot"]
+    Snapshot["Portable R0/R2 snapshot"]
+    Operation["Bound text operation"]
     Scene["Validated scene JSON"]
-    Writer["R0 restore or C1 creator"]
+    Writer["R0 restore, R2 patch, or C1 creator"]
     PackageOutput["Verified PPTX bytes"]
     Preview["Safe SVG or PNG preview"]
     ConsumerOutput["Indexer, analyzer, or agent"]
@@ -69,7 +73,9 @@ flowchart LR
     ZIP --> XML
     XML -->|"resolve, inherit, normalize"| Model
     XML -->|"bind source bytes and hashes"| Snapshot
-    Snapshot -->|"verify and copy exact bytes"| Writer
+    Snapshot -->|"verify no-op and copy exact bytes"| Writer
+    Snapshot --> Operation
+    Operation -->|"verify precondition and dirty part"| Writer
     Consumer -->|"source-free scene"| Scene
     Scene -->|"strict C1 serialization"| Writer
     Writer --> PackageOutput
@@ -122,7 +128,7 @@ src/
         ├── scene-types.ts           Source-free and round-trip scene model
         ├── scene-validation.ts      Profile and resource validation
         ├── creator.ts               Strict source-free creation entry point
-        ├── roundtrip/               R0 read, portable JSON, consistency, write
+        ├── roundtrip/               R0/R2 read, edit, portable codec, and write
         ├── writer/                  Deterministic C1 OOXML serialization
         └── internal/
             ├── context.ts           Per-slide parser state and caches
@@ -667,23 +673,31 @@ dimensions, MIME types, byte lengths, slide numbers, and approximation
 warnings. Multi-slide binary output is directory-only so files are never
 ambiguously concatenated on stdout.
 
-`oakit snapshot <input.pptx|->` strict-reads a package and serializes the `R0`
-runtime snapshot into ordinary JSON. The portable envelope contains canonical
-Base64 source bytes plus the source hash, package conformance, semantic preview,
-support profile, and consistency hashes. The `restore` command accepts a JSON
-file or stdin and requires an explicit PowerPoint output path. It applies fatal
-UTF-8 decoding, strict JSON/envelope validation, bounded Base64 decoding,
-source/hash verification, and consistency verification before writing
-byte-identical package data. It never interprets a modified preview as an
-authorized edit.
+`oakit snapshot <input.pptx|->` strict-reads a package and serializes the
+round-trip runtime snapshot into ordinary JSON. The portable envelope contains
+canonical Base64 source bytes plus the source hash, package conformance,
+semantic preview, operation log, support profile, and consistency hashes.
 
-Command parsing, conversion, hand-off, and render orchestration live in `cli/run.ts`
-behind the injected `OakitCliIo` contract. The contract separates UTF-8 and
-binary writes and exposes recursive directory creation. This keeps argument
-behavior independently testable and confines direct filesystem and process
-access to `cli/node-io.ts` and `cli.ts`. Usage errors exit with status 2; read,
-parse, render, and write failures exit with status 1 and emit structured JSON
-to stderr. The CLI refuses an output path that resolves to the input path.
+`oakit edit-text <input.json|->` parses and verifies that envelope, binds an
+exact source-text precondition to a stable run key, and serializes the original
+source plus the new operation. It never treats direct preview mutation as an
+authorized edit and never replaces the original source bytes with an already
+edited package.
+
+`oakit restore <input.json|->` requires an explicit PowerPoint output path. It
+applies fatal UTF-8 decoding, strict JSON/envelope validation, bounded Base64
+decoding, source/hash verification, and consistency verification. With no
+operations it writes byte-identical `R0` data. For the supported `R2` text
+profile it patches one owning slide part, verifies every untouched part payload,
+strict-parses the output, and compares the complete semantic preview.
+
+Command parsing, conversion, hand-off, edit, and render orchestration live in
+`cli/run.ts` behind the injected `OakitCliIo` contract. The contract separates
+UTF-8 and binary writes and exposes recursive directory creation. This keeps
+argument behavior independently testable and confines direct filesystem and
+process access to `cli/node-io.ts` and `cli.ts`. Usage errors exit with status 2;
+read, parse, render, and write failures exit with status 1 and emit structured
+JSON to stderr. The CLI refuses an output path that resolves to the input path.
 
 Strict compiler and lint settings are architecture constraints. Compatibility
 work should add local guards and explicit types rather than disable rules or
@@ -823,19 +837,23 @@ PowerPoint public API
 ├── normalized reader -> PptxDocument + optional diagnostics
 ├── round-trip reader -> source-bound R0 runtime snapshot
 ├── portable codec -> bounded JSON transport with canonical Base64
-├── round-trip writer -> verified byte-identical R0 package
+├── text operation -> stable target plus exact source precondition
+├── round-trip writer -> verified R0 copy or part-preserving R2 package
 ├── creation writer -> deterministic C1 text-profile package
 ├── preview renderer -> approximate SVG/PNG with warnings
 └── shared scene, package, and format-domain rules
 ```
 
 The creation writer owns deterministic IDs, relationships, content types, XML
-escaping, archive generation, limits, and strict reparse verification. The
-round-trip writer instead verifies the complete bound state and returns an
-owned copy of the original package; this is how unknown parts remain exact
-without leaking raw OOXML into the normalized model. `operations` is currently
-required to be empty, so `R1+` semantic edits and broader creation profiles
-remain future work rather than implied capabilities.
+escaping, archive generation, limits, and strict reparse verification. For an
+`R0` snapshot, the round-trip writer verifies the complete bound state and
+returns an owned copy of the original package; this is how unknown parts remain
+exact without leaking raw OOXML into the normalized model. For the declared
+`R2` text profile, it resolves slide ownership through relationships, rejects
+ambiguous or extension-bearing targets, patches one DrawingML text node, proves
+every untouched payload remains exact, and verifies the full output preview.
+Broader edit and creation profiles remain future work rather than implied
+capabilities.
 
 ## Stability and migration policy
 
