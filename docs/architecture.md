@@ -128,7 +128,17 @@ src/
         ├── scene-types.ts           Source-free and round-trip scene model
         ├── scene-validation.ts      Profile and resource validation
         ├── creator.ts               Strict source-free creation entry point
-        ├── roundtrip/               R0/R2 read, edit, portable codec, and write
+        ├── roundtrip/
+        │   ├── read.ts              Source-bound R0 snapshot entry point
+        │   ├── edit.ts              Ordered text and transform operations
+        │   ├── portable.ts          Integrity-bound JSON transport
+        │   ├── relationships.ts     Presentation-order slide resolution
+        │   ├── shape-range.ts       Namespace-aware editable shape ranges
+        │   ├── text-xml.ts          Literal single-run text patching
+        │   ├── transform-xml.ts     Literal simple-transform patching
+        │   ├── package-preservation.ts Exact untouched-part verification
+        │   ├── orchestration.ts     Operation targeting and dirty-part writes
+        │   └── write.ts             R0/R2 verification and report boundary
         ├── writer/                  Deterministic C2 OOXML serialization
         └── internal/
             ├── context.ts           Per-slide parser state and caches
@@ -746,9 +756,25 @@ pass it.
 
 The mutation gate targets every production source file unless a line-specific
 exclusion is justified and audited. Fresh reports fail on survived,
-no-coverage, or timeout outcomes; killed and TypeScript compile-error mutants
-are accepted evidence. Reports are retained as CI artifacts so every miss can
-be converted into a focused public-contract test.
+no-coverage, or timeout outcomes; killed and compile-error mutants are accepted
+evidence. Reports are retained as CI artifacts so every miss can be converted
+into a focused public-contract test.
+
+The patch pipeline has one mutation module per responsibility. Local runs use
+`pnpm test:mutation:module -- <module>` with a module-owned incremental cache
+and an explicit focused test list. Pull requests add `--dynamic`: static
+mutants are identified but deferred to the release workflow, keeping feedback
+under ten minutes without redefining release coverage. Release runs use
+`--force`, include static mutants, and merge the module reports into the same
+complete 100% audit as every other production source.
+
+General file shards are balanced with recorded Stryker elapsed seconds rather
+than source byte size. The checked-in history records its source run, and the
+calibration test proves that the release scope is partitioned exactly once
+across file shards, focused patch modules, and shape-path jobs. Mutator-family
+exclusions may partition one large file across jobs, but the merged report must
+contain every instrumented mutant; they are never used to inflate the final
+score.
 
 Every change must pass:
 
