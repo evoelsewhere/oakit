@@ -62,6 +62,7 @@
     "test:producer:powerpoint": "pnpm build && node scripts/reliability/check-pptx-powerpoint-macos.mjs",
     "test:producer:google-slides": "pnpm build && node scripts/reliability/check-pptx-google-slides.mjs",
     "test:producer:google-templates": "pnpm build && node scripts/reliability/check-pptx-google-template-corpus.mjs",
+    "test:producer:slidesmania": "pnpm build && node scripts/reliability/check-pptx-slidesmania-corpus.mjs",
     "test:producer:evidence": "node scripts/reliability/pptx-producer-evidence.mjs",
     "test:render:e2e": "pnpm build && node scripts/reliability/check-pptx-render-e2e.mjs",
     "test:render:memory": "pnpm build && node --expose-gc scripts/reliability/check-pptx-render-memory.mjs",
