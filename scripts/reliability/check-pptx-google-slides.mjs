@@ -142,15 +142,53 @@ const [createdDocument, editedDocument] = await Promise.all([
     videoMode: 'none',
   }),
 ]);
-assert.equal(createdDocument.slides.length, 1);
-assert.equal(editedDocument.slides.length, 1);
-assertText(createdDocument, 'Before Google producer', 'After Google producer');
-assertText(editedDocument, 'After Google producer', 'Before Google producer');
 const editedElement = editedDocument.slides[0]?.elements.find(
   (candidate) =>
     candidate.type === 'text' &&
     JSON.stringify(candidate).includes('After&nbsp;Google&nbsp;producer'),
 );
+await mkdir(reportDirectory, { recursive: true });
+await Promise.all([
+  writeFile(path.join(reportDirectory, 'created-export.pptx'), createdExport),
+  writeFile(path.join(reportDirectory, 'edited-export.pptx'), editedExport),
+  writeFile(
+    path.join(reportDirectory, 'diagnostic.json'),
+    `${JSON.stringify(
+      {
+        artifacts: {
+          creation: {
+            output: artifactEvidence(createdExport),
+            source: artifactEvidence(created.data),
+          },
+          edit: {
+            output: artifactEvidence(editedExport),
+            source: artifactEvidence(edited.data),
+          },
+        },
+        editedTransform:
+          editedElement?.type === 'text'
+            ? {
+                flipHorizontal: editedElement.isFlipH,
+                flipVertical: editedElement.isFlipV,
+                height: editedElement.height,
+                rotation: editedElement.rotate,
+                width: editedElement.width,
+                x: editedElement.left,
+                y: editedElement.top,
+              }
+            : null,
+        schemaVersion: 1,
+        temporaryPresentationsDeleted: true,
+      },
+      null,
+      2,
+    )}\n`,
+  ),
+]);
+assert.equal(createdDocument.slides.length, 1);
+assert.equal(editedDocument.slides.length, 1);
+assertText(createdDocument, 'Before Google producer', 'After Google producer');
+assertText(editedDocument, 'After Google producer', 'Before Google producer');
 assert.equal(editedElement?.type, 'text');
 assert.equal(editedElement.isFlipH, true);
 assert.equal(editedElement.isFlipV, true);
@@ -206,7 +244,6 @@ const evidence = {
   },
   verifiedAt: new Date().toISOString(),
 };
-await mkdir(reportDirectory, { recursive: true });
 await writeFile(
   path.join(reportDirectory, 'evidence.json'),
   `${JSON.stringify(evidence, null, 2)}\n`,
