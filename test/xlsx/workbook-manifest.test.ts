@@ -110,12 +110,14 @@ describe('XLSX workbook manifest', () => {
         definedNames: [],
         views: DEFAULT_WORKBOOK_VIEWS,
       },
+      protectionTextCharacters: 0,
       sheetParts: ['xl/worksheets/sheet1.xml'],
       sheets: [
         {
           columns: [],
           conditionalFormattings: [],
           dataValidations: [],
+          protectedRanges: [],
           drawings: [],
           hyperlinks: [],
           index: 0,

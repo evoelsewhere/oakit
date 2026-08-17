@@ -21,6 +21,7 @@ function worksheet(
     mergedRanges: [],
     name: `Sheet${index + 1}`,
     payload: 'full-sheet',
+    protectedRanges: [],
     rows: [],
     state,
     tables: [],

@@ -155,6 +155,7 @@ describe('XLSX worksheet streaming', () => {
       columns: [],
       conditionalFormattings: [],
       dataValidations: [],
+      protectedRanges: [],
       declaredDimension: {
         end: { column: 16_384, row: 1_048_576 },
         reference: 'A1:XFD1048576',
@@ -321,6 +322,7 @@ describe('XLSX worksheet streaming', () => {
       columns: [{ end: 2, hidden: true, start: 1, width: 12 }],
       conditionalFormattings: [],
       dataValidations: [],
+      protectedRanges: [],
       hyperlinks: [],
       mergedRanges: [
         {
@@ -368,6 +370,7 @@ describe('XLSX worksheet streaming', () => {
       columns: [],
       conditionalFormattings: [],
       dataValidations: [],
+      protectedRanges: [],
       hyperlinks: [],
       mergedRanges: [],
       rows: [],
@@ -993,6 +996,7 @@ describe('XLSX worksheet streaming', () => {
       ],
       conditionalFormattings: [],
       dataValidations: [],
+      protectedRanges: [],
       hyperlinks: [],
       mergedRanges: [
         {
@@ -1094,6 +1098,7 @@ describe('XLSX worksheet streaming', () => {
       columns: [],
       conditionalFormattings: [],
       dataValidations: [],
+      protectedRanges: [],
       hyperlinks: [],
       mergedRanges: [],
       rows: [],
@@ -1384,6 +1389,7 @@ describe('XLSX worksheet streaming', () => {
       columns: [],
       conditionalFormattings: [],
       dataValidations: [],
+      protectedRanges: [],
       hyperlinks: [],
       mergedRanges: [],
       rows: [
@@ -1518,6 +1524,7 @@ describe('XLSX worksheet streaming', () => {
       columns: [],
       conditionalFormattings: [],
       dataValidations: [],
+      protectedRanges: [],
       hyperlinks: [],
       mergedRanges: [],
       rows: [
@@ -1641,6 +1648,7 @@ describe('XLSX worksheet streaming', () => {
       columns: [],
       conditionalFormattings: [],
       dataValidations: [],
+      protectedRanges: [],
       hyperlinks: [],
       mergedRanges: [],
       rows: [
@@ -1684,6 +1692,7 @@ describe('XLSX worksheet streaming', () => {
       columns: [],
       conditionalFormattings: [],
       dataValidations: [],
+      protectedRanges: [],
       hyperlinks: [],
       mergedRanges: [],
       rows: [
@@ -1925,6 +1934,7 @@ describe('XLSX worksheet streaming', () => {
       columns: [],
       conditionalFormattings: [],
       dataValidations: [],
+      protectedRanges: [],
       hyperlinks: [],
       mergedRanges: [],
       rows: [
@@ -2028,6 +2038,7 @@ describe('XLSX worksheet streaming', () => {
       columns: [],
       conditionalFormattings: [],
       dataValidations: [],
+      protectedRanges: [],
       hyperlinks: [],
       mergedRanges: [],
       rows: [

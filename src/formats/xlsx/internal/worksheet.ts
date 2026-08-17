@@ -9,12 +9,14 @@ import type {
   XlsxDataValidationSettings,
   XlsxFormula,
   XlsxHyperlink,
+  XlsxProtectedRange,
   XlsxRange,
   XlsxRichTextRun,
   XlsxRow,
   XlsxWorksheetView,
   XlsxWorksheetFormat,
   XlsxWorksheetOutline,
+  XlsxWorksheetProtection,
   XlsxColor,
 } from '../types';
 import { XlsxAutoFilterCapture } from './auto-filter';
@@ -32,6 +34,10 @@ import { XlsxDataValidationsCapture } from './data-validation';
 import { XlsxConditionalFormattingCapture } from './conditional-format';
 import { translateXlsxSharedFormula } from './formula';
 import { parseXlsxHyperlink, type ParsedXlsxHyperlink } from './hyperlink';
+import {
+  parseXlsxWorksheetProtection,
+  XlsxProtectedRangesCapture,
+} from './worksheet-protection';
 import { xlsxNumberFormatDatePrecision } from './number-format';
 import { XlsxPartReader } from './part-reader';
 import {
@@ -138,6 +144,8 @@ export interface XlsxWorksheetPayload {
   hyperlinks: XlsxHyperlink[];
   mergedRanges: XlsxRange[];
   outline?: XlsxWorksheetOutline;
+  protectedRanges: XlsxProtectedRange[];
+  protection?: XlsxWorksheetProtection;
   rows: XlsxRow[];
   sheetFormat?: XlsxWorksheetFormat;
   tabColor?: XlsxColor;
@@ -438,6 +446,11 @@ class WorksheetSink implements XlsxXmlEventSink {
   private readonly views: XlsxWorksheetView[] = [];
   private outline: XlsxWorksheetOutline | undefined;
   private outlineSeen = false;
+  private readonly protectedRanges: XlsxProtectedRange[] = [];
+  private protectedRangesCapture: XlsxProtectedRangesCapture | undefined;
+  private protectedRangesSeen = false;
+  private protection: XlsxWorksheetProtection | undefined;
+  private protectionSeen = false;
   private tabColor: XlsxColor | undefined;
   private tabColorSeen = false;
   private tablePartsExpected: number | undefined;
@@ -518,6 +531,11 @@ class WorksheetSink implements XlsxXmlEventSink {
       this.stack.push(element);
       return;
     }
+    if (this.protectedRangesCapture) {
+      this.protectedRangesCapture.openElement(element);
+      this.stack.push(element);
+      return;
+    }
     const parent = this.stack.at(-1);
     if (!parent) {
       if (element.localName !== 'worksheet') {
@@ -567,6 +585,15 @@ class WorksheetSink implements XlsxXmlEventSink {
       this.stack.pop();
       return;
     }
+    if (this.protectedRangesCapture) {
+      this.protectedRangesCapture.closeElement(element);
+      if (element.localName === 'protectedRanges') {
+        this.protectedRanges.push(...this.protectedRangesCapture.result());
+        this.protectedRangesCapture = undefined;
+      }
+      this.stack.pop();
+      return;
+    }
     this.capture = null;
     if (element.localName === 'r') this.closeInlineRun();
     if (element.localName === 'c') this.closeCell();
@@ -587,6 +614,10 @@ class WorksheetSink implements XlsxXmlEventSink {
     }
     if (this.conditionalFormattingCapture) {
       this.conditionalFormattingCapture.text(value);
+      return;
+    }
+    if (this.protectedRangesCapture) {
+      this.protectedRangesCapture.text(value);
       return;
     }
     if (this.capture === 'value') {
@@ -682,6 +713,8 @@ class WorksheetSink implements XlsxXmlEventSink {
         this.mergedRangeSelected(range),
       ),
       ...(this.outline === undefined ? {} : { outline: this.outline }),
+      protectedRanges: this.protectedRanges,
+      ...(this.protection === undefined ? {} : { protection: this.protection }),
       rows: this.rows,
       ...(this.sheetFormat === undefined
         ? {}
@@ -757,6 +790,41 @@ class WorksheetSink implements XlsxXmlEventSink {
           this.limits,
           this.part,
         );
+        return;
+      }
+      if (element.localName === 'sheetProtection') {
+        if (this.protectionSeen) {
+          structureFailure(
+            this.part,
+            undefined,
+            'Worksheet contains duplicate sheetProtection elements',
+          );
+        }
+        this.protectionSeen = true;
+        this.protection = parseXlsxWorksheetProtection(
+          element,
+          this.budget,
+          this.limits,
+          this.part,
+        );
+        return;
+      }
+      if (element.localName === 'protectedRanges') {
+        if (this.protectedRangesSeen) {
+          structureFailure(
+            this.part,
+            undefined,
+            'Worksheet contains duplicate protectedRanges elements',
+          );
+        }
+        this.protectedRangesSeen = true;
+        this.protectedRangesCapture = new XlsxProtectedRangesCapture(
+          this.selection,
+          this.budget,
+          this.limits,
+          this.part,
+        );
+        this.protectedRangesCapture.openElement(element);
         return;
       }
       if (element.localName === 'sheetPr') {

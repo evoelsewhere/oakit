@@ -72,6 +72,7 @@ describe('public XLSX parser', () => {
             columns: [],
             conditionalFormattings: [],
             dataValidations: [],
+            protectedRanges: [],
             declaredDimension: {
               end: { column: 3, row: 3 },
               reference: 'A1:C3',
@@ -827,6 +828,7 @@ describe('public XLSX parser', () => {
         columns: [],
         conditionalFormattings: [],
         dataValidations: [],
+        protectedRanges: [],
         declaredDimension: {
           end: { column: 3, row: 3 },
           reference: 'A1:C3',

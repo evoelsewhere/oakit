@@ -376,6 +376,26 @@ export interface XlsxDefinedName {
   xlm?: boolean;
 }
 
+export interface XlsxStrongProtectionHash {
+  algorithmName: string;
+  hashValue: string;
+  saltValue: string;
+  spinCount: number;
+}
+
+export interface XlsxProtectionCredential {
+  legacyHash?: string;
+  strongHash?: XlsxStrongProtectionHash;
+}
+
+export interface XlsxWorkbookProtection {
+  lockRevisions: boolean;
+  lockStructure: boolean;
+  lockWindows: boolean;
+  revisionsCredential?: XlsxProtectionCredential;
+  workbookCredential?: XlsxProtectionCredential;
+}
+
 export interface XlsxWorkbookProperties {
   calculation: {
     forceFullCalculation: boolean;
@@ -384,6 +404,7 @@ export interface XlsxWorkbookProperties {
   };
   dateSystem: '1900' | '1904';
   definedNames: XlsxDefinedName[];
+  protection?: XlsxWorkbookProtection;
   views: XlsxWorkbookView[];
 }
 
@@ -767,6 +788,34 @@ export interface XlsxConditionalFormatting {
   selectionRelation: 'full-sheet' | 'intersects-selection';
 }
 
+export interface XlsxProtectedRange {
+  credential?: XlsxProtectionCredential;
+  name: string;
+  ranges: XlsxRange[];
+  securityDescriptor?: string;
+  selectionRelation: 'full-sheet' | 'intersects-selection';
+}
+
+export interface XlsxWorksheetProtection {
+  credential?: XlsxProtectionCredential;
+  protectAutoFilter: boolean;
+  protectDeleteColumns: boolean;
+  protectDeleteRows: boolean;
+  protectFormatCells: boolean;
+  protectFormatColumns: boolean;
+  protectFormatRows: boolean;
+  protectInsertColumns: boolean;
+  protectInsertHyperlinks: boolean;
+  protectInsertRows: boolean;
+  protectObjects: boolean;
+  protectPivotTables: boolean;
+  protectScenarios: boolean;
+  protectSelectLockedCells: boolean;
+  protectSelectUnlockedCells: boolean;
+  protectSheet: boolean;
+  protectSort: boolean;
+}
+
 export interface XlsxTable {
   autoFilter?: XlsxAutoFilter;
   columns: XlsxTableColumn[];
@@ -831,6 +880,8 @@ export interface XlsxWorksheet extends XlsxSheetBase {
   kind: 'worksheet';
   mergedRanges: XlsxRange[];
   outline?: XlsxWorksheetOutline;
+  protectedRanges: XlsxProtectedRange[];
+  protection?: XlsxWorksheetProtection;
   rows: XlsxRow[];
   sheetFormat?: XlsxWorksheetFormat;
   tabColor?: XlsxColor;

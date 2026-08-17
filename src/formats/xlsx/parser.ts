@@ -151,9 +151,9 @@ export async function parseXlsxWithDiagnostics(
     formulaCharacters: xlsxDefinedNameFormulaCharacters(
       manifest.properties.definedNames,
     ),
-    textCharacters: xlsxDefinedNameTextCharacters(
-      manifest.properties.definedNames,
-    ),
+    textCharacters:
+      xlsxDefinedNameTextCharacters(manifest.properties.definedNames) +
+      manifest.protectionTextCharacters,
   });
   if (
     !Number.isSafeInteger(budget.textCharacters) ||

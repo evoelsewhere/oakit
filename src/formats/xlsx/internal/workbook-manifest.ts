@@ -16,6 +16,7 @@ import {
 import type { XlsxWorkbookDiscovery } from './workbook-discovery';
 import { parseXlsxDefinedNames } from './workbook-defined-names';
 import { parseXlsxWorkbookViews } from './workbook-views';
+import { parseXlsxWorkbookProtection } from './workbook-protection';
 
 const RELATIONSHIP_BASE = {
   strict: 'http://purl.oclc.org/ooxml/officeDocument/relationships',
@@ -33,6 +34,7 @@ function expectedSheetContentType(kind: XlsxSheet['kind']): string {
 
 export interface XlsxWorkbookManifest {
   properties: XlsxWorkbookProperties;
+  protectionTextCharacters: number;
   sheetParts: string[];
   sheets: XlsxSheet[];
 }
@@ -97,6 +99,7 @@ function parseProperties(
   part: string,
   definedNames: XlsxWorkbookProperties['definedNames'],
   views: XlsxWorkbookProperties['views'],
+  protection: XlsxWorkbookProperties['protection'],
 ): XlsxWorkbookProperties {
   const workbookPr = record(child(root, prefix, 'workbookPr'));
   const workbookAttrs = workbookPr ? attributes(workbookPr) : {};
@@ -134,6 +137,7 @@ function parseProperties(
     },
     dateSystem: date1904 ? '1904' : '1900',
     definedNames,
+    ...(protection === undefined ? {} : { protection }),
     views,
   };
 }
@@ -289,6 +293,7 @@ export async function parseXlsxWorkbookManifest(
         hyperlinks: [],
         kind,
         mergedRanges: [],
+        protectedRanges: [],
         rows: [],
         tables: [],
         views: [],
@@ -314,6 +319,10 @@ export async function parseXlsxWorkbookManifest(
     discovery.part,
     sheets,
   );
+  const protection = parseXlsxWorkbookProtection(
+    child(root, prefix, 'workbookProtection'),
+    discovery.part,
+  );
   return {
     properties: parseProperties(
       root,
@@ -321,7 +330,9 @@ export async function parseXlsxWorkbookManifest(
       discovery.part,
       definedNames.definedNames,
       views,
+      protection.protection,
     ),
+    protectionTextCharacters: protection.textCharacters,
     sheetParts,
     sheets,
   };
