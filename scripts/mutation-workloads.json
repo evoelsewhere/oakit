@@ -366,6 +366,30 @@
       "testsCompleted": 1334,
       "estimatedMilliseconds": 58608
     },
+    "src/formats/pptx/render-svg-table-border.ts": {
+      "mutants": 57,
+      "staticMutants": 0,
+      "testsCompleted": 75,
+      "estimatedMilliseconds": 225000
+    },
+    "src/formats/pptx/render-svg-table-layout.ts": {
+      "mutants": 44,
+      "staticMutants": 0,
+      "testsCompleted": 86,
+      "estimatedMilliseconds": 206000
+    },
+    "src/formats/pptx/render-svg-table-text.ts": {
+      "mutants": 42,
+      "staticMutants": 0,
+      "testsCompleted": 78,
+      "estimatedMilliseconds": 201000
+    },
+    "src/formats/pptx/render-svg-table.ts": {
+      "mutants": 41,
+      "staticMutants": 0,
+      "testsCompleted": 159,
+      "estimatedMilliseconds": 91000
+    },
     "src/formats/pptx/render-svg-values.ts": {
       "mutants": 124,
       "staticMutants": 5,

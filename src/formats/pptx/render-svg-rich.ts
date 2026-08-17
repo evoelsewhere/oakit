@@ -1,5 +1,6 @@
 import { escapeSvgText, plainTextFromPowerPointHtml } from './render-text';
 import type { PptxRenderWarningCode } from './render-types';
+import { renderPptxSvgTable } from './render-svg-table';
 import {
   embeddedRasterDataUri,
   svgBox,
@@ -7,13 +8,7 @@ import {
   svgNumber,
   type PptxSvgBox,
 } from './render-svg-values';
-import type {
-  Chart,
-  Diagram,
-  Element,
-  Math as MathElement,
-  Table,
-} from './types';
+import type { Chart, Diagram, Element, Math as MathElement } from './types';
 
 export interface PptxSvgRichElement {
   body: string;
@@ -37,37 +32,6 @@ function label(text: unknown, fallback: string): string {
 
 function placeholder(box: PptxSvgBox, text: string): string {
   return `<rect x="0" y="0" width="${svgNumber(box.width)}" height="${svgNumber(box.height)}" fill="#f3f4f6" stroke="#9ca3af" stroke-dasharray="4 3"/><text x="4" y="16" font-family="sans-serif" font-size="12" fill="#374151">${escapeSvgText(text)}</text>`;
-}
-
-function tableBody(table: Table, box: PptxSvgBox): string {
-  if (!Array.isArray(table.data)) {
-    return placeholder(box, 'Empty table');
-  }
-  const rows = table.data;
-  const columns = rows.reduce(
-    (maximum, row) => Math.max(maximum, Array.isArray(row) ? row.length : 0),
-    0,
-  );
-  if (columns === 0) return placeholder(box, 'Empty table');
-  const cellWidth = box.width / columns;
-  const cellHeight = box.height / rows.length;
-  return rows
-    .map((row, rowIndex) => {
-      if (!Array.isArray(row)) return '';
-      return row
-        .map((cell, columnIndex) => {
-          const record: Record<string, unknown> = isRecord(cell) ? cell : {};
-          const x = svgNumber(columnIndex * cellWidth);
-          const y = svgNumber(rowIndex * cellHeight);
-          const fill = svgColor(record.fillColor) ?? '#ffffff';
-          const color = svgColor(record.fontColor) ?? '#111827';
-          const weight = record.fontBold === true ? ' font-weight="700"' : '';
-          const text = escapeSvgText(label(record.text, ''));
-          return `<rect x="${x}" y="${y}" width="${svgNumber(cellWidth)}" height="${svgNumber(cellHeight)}" fill="${fill}" stroke="#9ca3af"/><text x="${svgNumber(columnIndex * cellWidth + 4)}" y="${svgNumber(rowIndex * cellHeight + 14)}" font-family="sans-serif" font-size="11" fill="${color}"${weight}>${text}</text>`;
-        })
-        .join('');
-    })
-    .join('');
 }
 
 function chartValues(chart: Chart): number[] {
@@ -149,7 +113,7 @@ export function renderPptxSvgRichElement(
   switch (element.type) {
     case 'table':
       return {
-        body: tableBody(element, box),
+        body: renderPptxSvgTable(element, box),
         warningCode: 'approximate-table',
         warningMessage:
           'The preview preserves table text and cells with simplified sizing and styling.',
