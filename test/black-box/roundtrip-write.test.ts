@@ -7,6 +7,7 @@ import {
   createPptx,
   parsePptx,
   readPptxRoundTrip,
+  replacePptxRoundTripText,
   writePptxRoundTrip,
   type PptxRoundTripSnapshot,
   type PptxSceneDocument,
@@ -154,18 +155,47 @@ describe('PowerPoint exact round-trip writing through the public API', () => {
     expect(third.data).toEqual(bytes);
   });
 
-  it('rejects edit operations before reading source bytes', async () => {
+  it('writes a verified text edit through the public API', async () => {
     const { snapshot } = await sourceSnapshot();
     const element = snapshot.document.slides[0]?.elements[0];
     if (element?.type !== 'text') throw new Error('Expected editable text');
     const run = element.text.paragraphs[0]?.children[0];
     if (run?.type !== 'run') throw new Error('Expected editable text run');
+    const edited = await replacePptxRoundTripText(snapshot, {
+      targetKey: run.key,
+      value: 'After',
+    });
+    const result = await writePptxRoundTrip(edited);
+
+    expect(result.data).not.toEqual(snapshot.source.data);
+    expect(result.report).toMatchObject({
+      level: 'R2',
+      operations: [
+        { id: 'replace-text-1', kind: 'replace-text', status: 'verified' },
+      ],
+      patchedPartCount: 1,
+      supportProfile: {
+        effectiveLevel: 'R2',
+        id: 'pptx-roundtrip-text-v1',
+      },
+    });
+    const outputSnapshot = await readPptxRoundTrip(result.data);
+    expect(outputSnapshot.document.slides[0]?.elements[0]).toMatchObject({
+      type: 'text',
+      text: {
+        paragraphs: [{ children: [{ text: 'After', type: 'run' }] }],
+      },
+    });
+  });
+
+  it('rejects a manually injected edit with stale consistency', async () => {
+    const { snapshot } = await sourceSnapshot();
     snapshot.operations = [
       {
-        expectedText: run.text,
+        expectedText: 'Exact source',
         id: 'replace-text-1',
         kind: 'replace-text',
-        targetKey: run.key,
+        targetKey: 'slide-1-element-1-run-1',
         value: 'After',
       },
     ];
@@ -177,8 +207,9 @@ describe('PowerPoint exact round-trip writing through the public API', () => {
     };
 
     await expect(writePptxRoundTrip(snapshot)).rejects.toMatchObject({
-      code: 'unsupported-edit-operation',
-      message: 'PowerPoint text edit writing is not enabled',
+      code: 'snapshot-consistency-failed',
+      message:
+        'PowerPoint round-trip snapshot consistency does not match its bound state',
     });
   });
 

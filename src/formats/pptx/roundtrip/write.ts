@@ -9,6 +9,9 @@ import {
   createPptxRoundTripSupportProfile,
   createPptxSnapshotConsistency,
 } from './consistency';
+import { canonicalJson } from './canonical-json';
+import { applyPptxRoundTripOperationsToPreview } from './edit';
+import { patchPptxTextOperations } from './patch-text';
 import { createPowerPointRoundTripPreview } from './preview';
 import {
   inspectPptxRoundTripPackage,
@@ -51,17 +54,34 @@ function r0Report(copiedPartCount: number): PptxWriteReport {
   };
 }
 
+function r2Report(
+  snapshot: PptxRoundTripSnapshot,
+  copiedPartCount: number,
+  patchedPartCount: number,
+): PptxWriteReport {
+  return {
+    addedPartCount: 0,
+    copiedPartCount,
+    diagnostics: [],
+    level: 'R2',
+    operations: snapshot.operations.map((operation) => ({
+      id: operation.id,
+      kind: operation.kind,
+      status: 'verified',
+    })),
+    patchedPartCount,
+    producerEvidence: [],
+    rebuiltPartCount: 0,
+    removedPartCount: 0,
+    supportProfile: snapshot.supportProfile,
+  };
+}
+
 export async function writePptxRoundTripWithLimits(
   value: PptxRoundTripSnapshot,
   limits: ResolvedPptxResourceLimits,
 ): Promise<PptxWriteResult> {
   const validated = validatePptxRoundTripSnapshot(value, limits);
-  if (validated.operations.length !== 0) {
-    throw new PptxWriteError(
-      'unsupported-edit-operation',
-      'PowerPoint text edit writing is not enabled',
-    );
-  }
   const snapshot = structuredClone(validated);
   const normalized = await normalizePptxRoundTripInput(
     snapshot.source.data,
@@ -113,12 +133,53 @@ export async function writePptxRoundTripWithLimits(
       conformance: inspection.conformance,
       sha256: normalized.sha256,
     },
-    supportProfile: createPptxRoundTripSupportProfile(),
+    supportProfile: snapshot.supportProfile,
   });
   if (!consistencyMatches(snapshot.consistency, sourceConsistency)) {
     consistencyFailure(
       'PowerPoint round-trip source does not match the snapshot',
     );
+  }
+
+  if (snapshot.operations.length !== 0) {
+    const patched = await patchPptxTextOperations(
+      normalized.bytes,
+      parsed,
+      snapshot.operations,
+      limits,
+    );
+    let outputDocument: Awaited<ReturnType<typeof parse>>;
+    try {
+      outputDocument = await parse(patched.data, {
+        audioMode: 'none',
+        errorMode: 'strict',
+        imageMode: 'none',
+        limits,
+        videoMode: 'none',
+      });
+    } catch (cause) {
+      throw new PptxWriteError(
+        'verification-failed',
+        'PowerPoint text edit output failed strict verification',
+        { cause },
+      );
+    }
+    const expectedDocument = applyPptxRoundTripOperationsToPreview(snapshot);
+    const outputPreview = createPowerPointRoundTripPreview(outputDocument);
+    if (canonicalJson(outputPreview) !== canonicalJson(expectedDocument)) {
+      throw new PptxWriteError(
+        'verification-failed',
+        'PowerPoint text edit output does not match the requested semantics',
+      );
+    }
+    return {
+      data: patched.data,
+      report: r2Report(
+        snapshot,
+        patched.copiedPartCount,
+        patched.patchedPartCount,
+      ),
+    };
   }
 
   return {

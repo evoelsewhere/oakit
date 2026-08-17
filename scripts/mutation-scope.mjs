@@ -46,6 +46,7 @@ export const mutatedFiles = [
   'src/formats/pptx/roundtrip/data-tree.ts',
   'src/formats/pptx/roundtrip/digest.ts',
   'src/formats/pptx/roundtrip/edit.ts',
+  'src/formats/pptx/roundtrip/patch-text.ts',
   'src/formats/pptx/roundtrip/portable.ts',
   'src/formats/pptx/roundtrip/preview.ts',
   'src/formats/pptx/roundtrip/read.ts',

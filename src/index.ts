@@ -9,6 +9,7 @@ export {
   PptxRoundTripPortableLimitError,
   PptxWriteError,
   readPptxRoundTrip,
+  replacePptxRoundTripText,
   renderPptxDocumentToSvg,
   renderPptxToSvg,
   serializePptxRoundTripJson,

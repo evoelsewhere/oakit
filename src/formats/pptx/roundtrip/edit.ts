@@ -16,6 +16,35 @@ export interface PptxRoundTripReplaceTextRequest {
   value: string;
 }
 
+export function applyPptxRoundTripOperationsToPreview(
+  snapshot: PptxRoundTripSnapshot,
+): PptxRoundTripSnapshot['document'] {
+  const document = structuredClone(snapshot.document);
+  for (const operation of snapshot.operations) {
+    let applied = false;
+    for (const slide of document.slides) {
+      for (const element of slide.elements) {
+        if (element.type !== 'text') continue;
+        for (const paragraph of element.text.paragraphs) {
+          for (const child of paragraph.children) {
+            if (child.type === 'run' && child.key === operation.targetKey) {
+              child.text = operation.value;
+              applied = true;
+            }
+          }
+        }
+      }
+    }
+    if (!applied) {
+      throw new PptxWriteError(
+        'verification-failed',
+        `PowerPoint text edit verification target disappeared: ${operation.targetKey}`,
+      );
+    }
+  }
+  return document;
+}
+
 function invalidEdit(message: string): never {
   throw new PptxWriteError('invalid-edit-operation', message);
 }
