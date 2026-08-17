@@ -64,6 +64,7 @@ export const mutatedFiles = [
   'src/formats/pptx/render-limits.ts',
   'src/formats/pptx/render-request.ts',
   'src/formats/pptx/render-svg-gradient.ts',
+  'src/formats/pptx/render-svg-image.ts',
   'src/formats/pptx/render-svg-rich.ts',
   'src/formats/pptx/render-svg.ts',
   'src/formats/pptx/render-svg-slide.ts',

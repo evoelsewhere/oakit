@@ -351,14 +351,14 @@ describe('PowerPoint SVG slide source', () => {
         code: 'approximate-media',
         elementId: 'image-1',
         message:
-          'The preview preserves image bytes but may approximate crop or filter effects.',
+          'The preview omitted an unsafe image crop or unsupported filter effect.',
         slideNumber: 2,
       },
     ]);
   });
 
   it.each([
-    [{ rect: { l: 5 } }, ['approximate-media']],
+    [{ rect: { l: 5 } }, []],
     [{ filters: { brightness: 10 } }, ['approximate-media']],
     [{}, []],
   ])('reports image effects independently for %#', (effects, warningCodes) => {
@@ -389,6 +389,100 @@ describe('PowerPoint SVG slide source', () => {
     );
 
     expect(result.warnings.map(({ code }) => code)).toEqual(warningCodes);
+  });
+
+  it('renders a safe image crop inside a clipped SVG viewport', () => {
+    const result = render(
+      slide([
+        {
+          base64: 'data:image/png;base64,AA==',
+          blob: '',
+          borderColor: '',
+          borderStrokeDasharray: '',
+          borderType: 'solid',
+          borderWidth: 0,
+          geom: 'rect',
+          height: 80,
+          id: 'cropped-image',
+          isFlipH: false,
+          isFlipV: false,
+          left: 0,
+          order: 0,
+          rect: { b: 0, l: 10, r: 20, t: 25 },
+          ref: '',
+          rotate: 0,
+          top: 0,
+          type: 'image',
+          width: 100,
+        },
+      ]),
+    );
+
+    expect(result.source).toContain(
+      '<svg x="0" y="0" width="100" height="80" overflow="hidden"><image x="-14.2857" y="-26.6667" width="142.8571" height="106.6667" preserveAspectRatio="none" href="data:image/png;base64,AA=="/></svg>',
+    );
+    expect(result.warnings).toEqual([]);
+  });
+
+  it('falls back visibly and warns for an unsafe image crop', () => {
+    const image = {
+      base64: 'data:image/png;base64,AA==',
+      blob: '',
+      borderColor: '',
+      borderStrokeDasharray: '',
+      borderType: 'solid' as const,
+      borderWidth: 0,
+      geom: 'rect',
+      height: 30,
+      id: 'unsafe-crop',
+      isFlipH: false,
+      isFlipV: false,
+      left: 0,
+      order: 0,
+      rect: { l: 101, r: -2 },
+      ref: '',
+      rotate: 0,
+      top: 0,
+      type: 'image' as const,
+      width: 40,
+    };
+
+    const result = render(slide([image]));
+
+    expect(result.source).toContain('preserveAspectRatio="xMidYMid meet"');
+    expect(result.warnings.map(({ code }) => code)).toEqual([
+      'approximate-media',
+    ]);
+  });
+
+  it('renders an uncropped image with portable meet semantics', () => {
+    const image = {
+      base64: 'data:image/png;base64,AA==',
+      blob: '',
+      borderColor: '',
+      borderStrokeDasharray: '',
+      borderType: 'solid' as const,
+      borderWidth: 0,
+      geom: 'rect',
+      height: 30,
+      id: 'uncropped-image',
+      isFlipH: false,
+      isFlipV: false,
+      left: 0,
+      order: 0,
+      ref: '',
+      rotate: 0,
+      top: 0,
+      type: 'image' as const,
+      width: 40,
+    };
+
+    const result = render(slide([image]));
+
+    expect(result.source).toContain(
+      '<image x="0" y="0" width="40" height="30" preserveAspectRatio="xMidYMid meet" href="data:image/png;base64,AA=="/>',
+    );
+    expect(result.warnings).toEqual([]);
   });
 
   it('uses a visible placeholder instead of an external or missing image', () => {

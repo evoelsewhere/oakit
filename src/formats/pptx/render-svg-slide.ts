@@ -2,6 +2,7 @@ import type { Element, Fill, Image, PptxSlide, Shape, Text } from './types';
 import { escapeSvgText, renderedTextFromPowerPointHtml } from './render-text';
 import type { PptxRenderWarning } from './render-types';
 import { svgGradientPaint } from './render-svg-gradient';
+import { svgImageCrop } from './render-svg-image';
 import { renderPptxSvgRichElement } from './render-svg-rich';
 import {
   embeddedRasterDataUri,
@@ -280,15 +281,21 @@ function renderImage(
     );
     return `<g transform="${transform}">${boxPlaceholder(box, 'Image unavailable')}</g>`;
   }
-  if (element.rect !== undefined || element.filters !== undefined) {
+  const hasCrop = element.rect !== undefined;
+  const crop = hasCrop ? svgImageCrop(element.rect, box) : null;
+  if ((hasCrop && crop === null) || element.filters !== undefined) {
     warning(
       context,
       'approximate-media',
-      'The preview preserves image bytes but may approximate crop or filter effects.',
+      'The preview omitted an unsafe image crop or unsupported filter effect.',
       element,
     );
   }
-  return `<g transform="${transform}"><image x="0" y="0" width="${width}" height="${height}" preserveAspectRatio="xMidYMid meet" href="${source}"/><rect x="0" y="0" width="${width}" height="${height}" fill="none" ${strokeAttributes(element)}/></g>`;
+  const image =
+    crop === null
+      ? `<image x="0" y="0" width="${width}" height="${height}" preserveAspectRatio="xMidYMid meet" href="${source}"/>`
+      : `<svg x="0" y="0" width="${width}" height="${height}" overflow="hidden"><image x="${svgNumber(crop.x)}" y="${svgNumber(crop.y)}" width="${svgNumber(crop.width)}" height="${svgNumber(crop.height)}" preserveAspectRatio="none" href="${source}"/></svg>`;
+  return `<g transform="${transform}">${image}<rect x="0" y="0" width="${width}" height="${height}" fill="none" ${strokeAttributes(element)}/></g>`;
 }
 
 function renderElement(element: Element, context: RenderContext): string {

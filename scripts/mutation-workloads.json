@@ -342,6 +342,12 @@
       "testsCompleted": 192,
       "estimatedMilliseconds": 193000
     },
+    "src/formats/pptx/render-svg-image.ts": {
+      "mutants": 78,
+      "staticMutants": 0,
+      "testsCompleted": 81,
+      "estimatedMilliseconds": 175000
+    },
     "src/formats/pptx/render-svg-rich.ts": {
       "mutants": 180,
       "staticMutants": 0,
