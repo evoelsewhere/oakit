@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { calibrateMutationWorkloads } from '../../scripts/calibrate-mutation-workloads.mjs';
 import { collectMutationWorkloads } from '../../scripts/collect-mutation-workloads.mjs';
 import {
   mergeMutationReports,
@@ -75,9 +76,13 @@ describe('mutation report sharding', () => {
     expect(strategies.toSorted()).toEqual(mutatedFiles.toSorted());
   });
 
-  it('balances file shards using observed mutation test work', () => {
+  it('balances file shards using observed elapsed mutation time', () => {
     const history = readMutationWorkloads();
     expect(history.sourceRun).toBe(31993252037);
+    expect(history.timingCalibration).toEqual({
+      runId: 32006841878,
+      shardCount: 7,
+    });
     expect(Object.keys(history.files).toSorted()).toEqual(
       fileMutationShardFiles.toSorted(),
     );
@@ -91,7 +96,40 @@ describe('mutation report sharding', () => {
       ),
     );
 
-    expect(Math.max(...weights) - Math.min(...weights)).toBeLessThan(50);
+    expect(Math.max(...weights) / Math.min(...weights)).toBeLessThan(1.25);
+  });
+
+  it('calibrates per-file estimates from measured shard seconds', () => {
+    const history = {
+      files: {
+        'a.ts': { mutants: 1, staticMutants: 0, testsCompleted: 0 },
+        'b.ts': { mutants: 1, staticMutants: 0, testsCompleted: 0 },
+      },
+      schemaVersion: 1,
+      sourceRun: 7,
+    };
+
+    expect(
+      calibrateMutationWorkloads(history, ['a.ts', 'b.ts'], {
+        runId: 9,
+        schemaVersion: 1,
+        shardSeconds: [10, 20],
+        workloadSourceRun: 7,
+      }),
+    ).toEqual({
+      ...history,
+      files: {
+        'a.ts': {
+          ...history.files['a.ts'],
+          estimatedMilliseconds: 10_000,
+        },
+        'b.ts': {
+          ...history.files['b.ts'],
+          estimatedMilliseconds: 20_000,
+        },
+      },
+      timingCalibration: { runId: 9, shardCount: 2 },
+    });
   });
 
   it('collects non-negative workload evidence for every expected file', () => {

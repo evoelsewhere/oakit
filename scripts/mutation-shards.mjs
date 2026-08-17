@@ -73,7 +73,7 @@ export function readMutationWorkloads(
   return value;
 }
 
-export function mutationWorkWeight(file, history) {
+function mutationWorkload(file, history) {
   const workload = history.files[file];
   if (
     workload === null ||
@@ -93,7 +93,26 @@ export function mutationWorkWeight(file, history) {
   ) {
     throw new RangeError(`Mutation workload history for ${file} is invalid`);
   }
+  return workload;
+}
+
+export function mutationTestWorkWeight(file, history) {
+  const workload = mutationWorkload(file, history);
   return workload.mutants + workload.testsCompleted;
+}
+
+export function mutationWorkWeight(file, history) {
+  const workload = mutationWorkload(file, history);
+  if (workload.estimatedMilliseconds === undefined) {
+    return mutationTestWorkWeight(file, history);
+  }
+  if (
+    !Number.isSafeInteger(workload.estimatedMilliseconds) ||
+    workload.estimatedMilliseconds <= 0
+  ) {
+    throw new RangeError(`Mutation timing history for ${file} is invalid`);
+  }
+  return workload.estimatedMilliseconds;
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
