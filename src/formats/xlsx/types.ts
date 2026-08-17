@@ -365,6 +365,23 @@ export interface XlsxWorkbookProperties {
   };
   dateSystem: '1900' | '1904';
   definedNames: XlsxDefinedName[];
+  views: XlsxWorkbookView[];
+}
+
+export interface XlsxWorkbookView {
+  activeSheetIndex: number;
+  autoFilterDateGrouping: boolean;
+  firstVisibleSheetIndex: number;
+  minimized: boolean;
+  showHorizontalScroll: boolean;
+  showSheetTabs: boolean;
+  showVerticalScroll: boolean;
+  tabRatio: number;
+  visibility: 'hidden' | 'very-hidden' | 'visible';
+  windowHeight?: number;
+  windowWidth?: number;
+  xWindow?: number;
+  yWindow?: number;
 }
 
 export interface XlsxTable {

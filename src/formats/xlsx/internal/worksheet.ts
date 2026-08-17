@@ -112,11 +112,13 @@ export interface XlsxWorksheetPayload {
 export interface XlsxWorksheetSemantics {
   dateSystem: '1900' | '1904';
   styles: XlsxStyleTable;
+  workbookViewCount: number;
 }
 
 const DEFAULT_WORKSHEET_SEMANTICS: XlsxWorksheetSemantics = Object.freeze({
   dateSystem: '1900',
   styles: EMPTY_XLSX_STYLE_TABLE,
+  workbookViewCount: 1,
 });
 
 function structureFailure(
@@ -789,6 +791,13 @@ class WorksheetSink implements XlsxXmlEventSink {
 
   private openView(element: XlsxXmlElement): void {
     const view = parseXlsxWorksheetView(element, this.part);
+    if (view.workbookViewId >= this.semantics.workbookViewCount) {
+      valueFailure(
+        this.part,
+        undefined,
+        'Worksheet workbook view reference is out of range',
+      );
+    }
     if (this.viewIds.has(view.workbookViewId)) {
       valueFailure(
         this.part,

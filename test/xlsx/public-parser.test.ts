@@ -131,6 +131,19 @@ describe('public XLSX parser', () => {
           },
           dateSystem: '1900',
           definedNames: [],
+          views: [
+            {
+              activeSheetIndex: 0,
+              autoFilterDateGrouping: true,
+              firstVisibleSheetIndex: 0,
+              minimized: false,
+              showHorizontalScroll: true,
+              showSheetTabs: true,
+              showVerticalScroll: true,
+              tabRatio: 600,
+              visibility: 'visible',
+            },
+          ],
         },
       },
     });
@@ -302,6 +315,23 @@ describe('public XLSX parser', () => {
         limit: 1,
         limitName: 'maxStyles',
         severity: 'error',
+      },
+      name: 'XlsxParseError',
+    });
+  });
+
+  it('validates worksheet view references against workbook windows', async () => {
+    const bytes = await createIndependentXlsx({
+      'xl/worksheets/sheet1.xml': `<worksheet xmlns="${XLSX_SPREADSHEET_NS}">
+        <sheetViews><sheetView workbookViewId="1"/></sheetViews><sheetData/>
+      </worksheet>`,
+    });
+
+    await expect(parseXlsx(bytes)).rejects.toMatchObject({
+      diagnostic: {
+        code: 'invalid-document-value',
+        message: 'Worksheet workbook view reference is out of range',
+        part: 'xl/worksheets/sheet1.xml',
       },
       name: 'XlsxParseError',
     });

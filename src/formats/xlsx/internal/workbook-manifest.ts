@@ -15,6 +15,7 @@ import {
 } from './resource-limits';
 import type { XlsxWorkbookDiscovery } from './workbook-discovery';
 import { parseXlsxDefinedNames } from './workbook-defined-names';
+import { parseXlsxWorkbookViews } from './workbook-views';
 
 const RELATIONSHIP_BASE = {
   strict: 'http://purl.oclc.org/ooxml/officeDocument/relationships',
@@ -95,6 +96,7 @@ function parseProperties(
   prefix: string,
   part: string,
   definedNames: XlsxWorkbookProperties['definedNames'],
+  views: XlsxWorkbookProperties['views'],
 ): XlsxWorkbookProperties {
   const workbookPr = record(child(root, prefix, 'workbookPr'));
   const workbookAttrs = workbookPr ? attributes(workbookPr) : {};
@@ -132,6 +134,7 @@ function parseProperties(
     },
     dateSystem: date1904 ? '1904' : '1900',
     definedNames,
+    views,
   };
 }
 
@@ -302,12 +305,19 @@ export async function parseXlsxWorkbookManifest(
     sheets.length,
     limits,
   );
+  const views = parseXlsxWorkbookViews(
+    child(root, prefix, 'bookViews'),
+    prefix,
+    discovery.part,
+    sheets,
+  );
   return {
     properties: parseProperties(
       root,
       prefix,
       discovery.part,
       definedNames.definedNames,
+      views,
     ),
     sheetParts,
     sheets,

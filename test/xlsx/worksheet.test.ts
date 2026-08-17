@@ -73,6 +73,7 @@ async function parse(
     selection?: XlsxResolvedSheetSelection;
     strings?: XlsxSharedStringTable;
     styles?: XlsxStyleTable;
+    workbookViewCount?: number;
   } = {},
 ) {
   const part = options.part ?? PART;
@@ -92,6 +93,7 @@ async function parse(
     {
       dateSystem: options.dateSystem ?? '1900',
       styles: options.styles ?? TEST_STYLES,
+      workbookViewCount: options.workbookViewCount ?? 1,
     },
   );
 }
@@ -373,7 +375,7 @@ describe('XLSX worksheet streaming', () => {
           <sheetView workbookViewId="2" zoomScale="80"/>
         </sheetViews>
         <sheetData/>`),
-      { budget },
+      { budget, workbookViewCount: 3 },
     );
 
     expect(result.views).toEqual([
@@ -494,6 +496,10 @@ describe('XLSX worksheet streaming', () => {
   );
 
   it.each([
+    [
+      '<sheetViews><sheetView workbookViewId="1"/></sheetViews><sheetData/>',
+      'Worksheet workbook view reference is out of range',
+    ],
     [
       '<sheetViews><sheetView workbookViewId="0"/><sheetView workbookViewId="0"/></sheetViews><sheetData/>',
       'Worksheet contains duplicate workbook view references',

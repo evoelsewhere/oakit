@@ -198,7 +198,11 @@ export async function parseXlsxWithDiagnostics(
         sharedStrings,
         budget,
         selection,
-        { dateSystem: manifest.properties.dateSystem, styles },
+        {
+          dateSystem: manifest.properties.dateSystem,
+          styles,
+          workbookViewCount: manifest.properties.views.length,
+        },
       );
       sheets.push({
         ...sheet,

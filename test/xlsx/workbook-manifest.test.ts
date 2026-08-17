@@ -28,6 +28,19 @@ const WORKSHEET_CONTENT_TYPE =
   'application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml';
 const CHART_SHEET_CONTENT_TYPE =
   'application/vnd.openxmlformats-officedocument.spreadsheetml.chartsheet+xml';
+const DEFAULT_WORKBOOK_VIEWS = [
+  {
+    activeSheetIndex: 0,
+    autoFilterDateGrouping: true,
+    firstVisibleSheetIndex: 0,
+    minimized: false,
+    showHorizontalScroll: true,
+    showSheetTabs: true,
+    showVerticalScroll: true,
+    tabRatio: 600,
+    visibility: 'visible',
+  },
+] as const;
 
 function workbookRelationships(entries: string): string {
   return `<Relationships xmlns="${XLSX_PACKAGE_REL_NS}">${entries}</Relationships>`;
@@ -95,6 +108,7 @@ describe('XLSX workbook manifest', () => {
         },
         dateSystem: '1900',
         definedNames: [],
+        views: DEFAULT_WORKBOOK_VIEWS,
       },
       sheetParts: ['xl/worksheets/sheet1.xml'],
       sheets: [
@@ -130,6 +144,7 @@ describe('XLSX workbook manifest', () => {
       },
       dateSystem: '1900',
       definedNames: [],
+      views: DEFAULT_WORKBOOK_VIEWS,
     });
   });
 
@@ -172,6 +187,12 @@ describe('XLSX workbook manifest', () => {
     const workbook = `
       <workbook xmlns="${XLSX_SPREADSHEET_NS}" xmlns:r="${XLSX_OFFICE_REL_NS}">
         <workbookPr date1904="true"/>
+        <bookViews><workbookView activeTab="0" firstSheet="0"
+          autoFilterDateGrouping="0" minimized="1"
+          showHorizontalScroll="0" showSheetTabs="false"
+          showVerticalScroll="true" tabRatio="750" visibility="hidden"
+          windowHeight="800" windowWidth="1200" xWindow="-20" yWindow="30"/>
+        </bookViews>
         <sheets>
           <sheet name="Visible" sheetId="7" r:id="rId1"/>
           <sheet name="Chart" sheetId="9" state="hidden" r:id="rId2"/>
@@ -204,6 +225,23 @@ describe('XLSX workbook manifest', () => {
       },
       dateSystem: '1904',
       definedNames: [],
+      views: [
+        {
+          activeSheetIndex: 0,
+          autoFilterDateGrouping: false,
+          firstVisibleSheetIndex: 0,
+          minimized: true,
+          showHorizontalScroll: false,
+          showSheetTabs: false,
+          showVerticalScroll: true,
+          tabRatio: 750,
+          visibility: 'hidden',
+          windowHeight: 800,
+          windowWidth: 1_200,
+          xWindow: -20,
+          yWindow: 30,
+        },
+      ],
     });
     expect(
       result.sheets.map(({ index, kind, name, state }) => ({
@@ -228,6 +266,7 @@ describe('XLSX workbook manifest', () => {
     const strictRelBase = `${STRICT_OFFICE_REL_NS}/`;
     const strictWorkbook = `<s:workbook xmlns:s="${STRICT_SPREADSHEET_NS}" xmlns:q="${STRICT_OFFICE_REL_NS}">
       <s:workbookPr date1904="false"/>
+      <s:bookViews><s:workbookView activeTab="0" firstSheet="0" minimized="true"/></s:bookViews>
       <s:sheets>
         <s:sheet name="Strict data" sheetId="1" q:id="sheet"/>
         <s:sheet name="Strict chart" sheetId="2" q:id="chart"/>
@@ -264,6 +303,9 @@ describe('XLSX workbook manifest', () => {
         hidden: false,
         name: 'StrictName',
       },
+    ]);
+    expect(result.properties.views).toMatchObject([
+      { activeSheetIndex: 0, firstVisibleSheetIndex: 0, minimized: true },
     ]);
     expect(result.sheets.map((sheet) => sheet.kind)).toEqual([
       'worksheet',
