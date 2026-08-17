@@ -402,6 +402,7 @@ export interface XlsxWorkbookProperties {
     fullCalculationOnLoad: boolean;
     mode: 'automatic' | 'automatic-except-tables' | 'manual';
   };
+  commentPersons?: XlsxCommentPerson[];
   dateSystem: '1900' | '1904';
   definedNames: XlsxDefinedName[];
   protection?: XlsxWorkbookProtection;
@@ -940,6 +941,35 @@ export interface XlsxHyperlink {
   tooltip?: string;
 }
 
+export interface XlsxCommentPerson {
+  displayName: string;
+  id: string;
+  providerId?: string;
+  userId?: string;
+}
+
+interface XlsxCommentBase {
+  reference: string;
+  selectionRelation: 'full-sheet' | 'intersects-selection';
+  text: string;
+}
+
+export interface XlsxLegacyComment extends XlsxCommentBase {
+  author: string;
+  kind: 'note';
+  visible: boolean;
+}
+
+export interface XlsxThreadedComment extends XlsxCommentBase {
+  id: string;
+  kind: 'threaded';
+  parentId?: string;
+  personId: string;
+  timestamp: string;
+}
+
+export type XlsxComment = XlsxLegacyComment | XlsxThreadedComment;
+
 export interface XlsxSheetBase {
   index: number;
   name: string;
@@ -950,6 +980,7 @@ export interface XlsxSheetBase {
 export interface XlsxWorksheet extends XlsxSheetBase {
   autoFilter?: XlsxAutoFilter;
   columns: XlsxColumnRange[];
+  comments: XlsxComment[];
   conditionalFormattings: XlsxConditionalFormatting[];
   declaredDimension?: XlsxRange;
   dataValidationSettings?: XlsxDataValidationSettings;

@@ -7,6 +7,12 @@ import {
   copyXlsxInputBytes,
 } from './internal/archive';
 import { validateXlsxChartSheetPart } from './internal/chart-sheet';
+import {
+  type XlsxCommentBudget,
+  type XlsxCommentPersonTable,
+  loadXlsxCommentPersons,
+  loadXlsxWorksheetComments,
+} from './internal/comments';
 import { XlsxPartReader } from './internal/part-reader';
 import {
   resolveXlsxResourceLimits,
@@ -29,6 +35,7 @@ import {
   parseXlsxWorksheetPart,
 } from './internal/worksheet';
 import type {
+  XlsxComment,
   XlsxDiagnostic,
   XlsxDocument,
   XlsxInput,
@@ -43,6 +50,27 @@ function failResource(
   const diagnostic = resourceLimitDiagnostic(error);
   diagnostics.push(diagnostic);
   throw new XlsxParseError(diagnostic, { cause: error });
+}
+
+function recoverOptionalFeature(
+  error: unknown,
+  options: XlsxParseOptions,
+  diagnostics: XlsxDiagnostic[],
+): boolean {
+  if (!(error instanceof XlsxParseError) || options.errorMode === 'strict') {
+    return false;
+  }
+  const warning: XlsxDiagnostic = {
+    ...error.diagnostic,
+    severity: 'warning',
+  };
+  const last = diagnostics.at(-1);
+  if (last === error.diagnostic) {
+    diagnostics[diagnostics.length - 1] = warning;
+  } else {
+    diagnostics.push(warning);
+  }
+  return true;
 }
 
 function assertOptions(options: XlsxParseOptions): void {
@@ -169,8 +197,18 @@ export async function parseXlsxWithDiagnostics(
       diagnostics,
     );
   }
+  let persons: XlsxCommentPersonTable = { byId: new Map(), values: [] };
+  try {
+    persons = await loadXlsxCommentPersons(discovery, reader, limits, budget);
+  } catch (error) {
+    if (error instanceof XlsxResourceLimitError) {
+      failResource(error, diagnostics);
+    }
+    if (!recoverOptionalFeature(error, options, diagnostics)) throw error;
+  }
   const sheets: XlsxDocument['sheets'] = [];
   const tableRegistry = createXlsxTableRegistry();
+  const commentBudget: XlsxCommentBudget = { comments: 0 };
   try {
     for (const [index, sheet] of manifest.sheets.entries()) {
       const selection = selections[index]!;
@@ -198,6 +236,7 @@ export async function parseXlsxWithDiagnostics(
         reader,
         limits,
       );
+      const legacyDrawingRelationshipIds: string[] = [];
       const tableRelationshipIds: string[] = [];
       const payload = await parseXlsxWorksheetPart(
         manifest.sheetParts[index]!,
@@ -210,12 +249,30 @@ export async function parseXlsxWithDiagnostics(
         {
           dateSystem: manifest.properties.dateSystem,
           dialect: discovery.dialect,
+          legacyDrawingRelationshipIds,
           relationships: worksheetRelationships,
           styles,
           tableRelationshipIds,
           workbookViewCount: manifest.properties.views.length,
         },
       );
+      let comments: XlsxComment[] = [];
+      try {
+        comments = await loadXlsxWorksheetComments(
+          manifest.sheetParts[index]!,
+          legacyDrawingRelationshipIds,
+          worksheetRelationships,
+          discovery,
+          reader,
+          limits,
+          commentBudget,
+          budget,
+          selection,
+          persons,
+        );
+      } catch (error) {
+        if (!recoverOptionalFeature(error, options, diagnostics)) throw error;
+      }
       const tables = await loadXlsxTables(
         tableRelationshipIds,
         worksheetRelationships,
@@ -231,6 +288,7 @@ export async function parseXlsxWithDiagnostics(
       sheets.push({
         ...sheet,
         ...payload,
+        comments,
         payload:
           selection.kind === 'full-sheet' ? 'full-sheet' : 'selected-ranges',
         tables,
@@ -247,7 +305,12 @@ export async function parseXlsxWithDiagnostics(
     namedStyles: [...styles.namedStyles],
     sheets,
     styles: [...styles.styles],
-    workbook: manifest.properties,
+    workbook: {
+      ...manifest.properties,
+      ...(persons.values.length === 0
+        ? {}
+        : { commentPersons: persons.values }),
+    },
   };
   return { diagnostics, document };
 }

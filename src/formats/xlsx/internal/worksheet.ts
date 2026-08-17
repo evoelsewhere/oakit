@@ -172,6 +172,7 @@ export interface XlsxWorksheetSemantics {
   dateSystem: '1900' | '1904';
   dialect: 'strict' | 'transitional';
   relationships: ReadonlyMap<string, XlsxRelationship>;
+  legacyDrawingRelationshipIds?: string[];
   styles: XlsxStyleTable;
   tableRelationshipIds?: string[];
   workbookViewCount: number;
@@ -447,6 +448,7 @@ class WorksheetSink implements XlsxXmlEventSink {
   private hyperlinksSeen = false;
   private lastCellColumn = 0;
   private lastRow = 0;
+  private legacyDrawingSeen = false;
   private mergeCellsExpected: number | undefined;
   private mergeCellsSeen = false;
   private readonly mergedRanges: XlsxRange[] = [];
@@ -898,6 +900,28 @@ class WorksheetSink implements XlsxXmlEventSink {
           this.limits,
           this.part,
         );
+        return;
+      }
+      if (element.localName === 'legacyDrawing') {
+        if (this.legacyDrawingSeen) {
+          structureFailure(
+            this.part,
+            undefined,
+            'Worksheet contains duplicate legacyDrawing elements',
+          );
+        }
+        this.legacyDrawingSeen = true;
+        const relationshipId = element.attributes.get(
+          `{${TABLE_RELATIONSHIP_NAMESPACE[this.semantics.dialect]}}id`,
+        );
+        if (relationshipId === undefined || relationshipId.length === 0) {
+          valueFailure(
+            this.part,
+            undefined,
+            'Worksheet legacy drawing relationship reference is invalid',
+          );
+        }
+        this.semantics.legacyDrawingRelationshipIds?.push(relationshipId);
         return;
       }
       if (element.localName === 'sheetProtection') {

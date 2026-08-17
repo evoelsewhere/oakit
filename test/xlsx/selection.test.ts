@@ -18,6 +18,7 @@ import {
 const SHEETS: XlsxSheet[] = [
   {
     columns: [],
+    comments: [],
     conditionalFormattings: [],
     dataValidations: [],
     drawings: [],
@@ -42,6 +43,7 @@ const SHEETS: XlsxSheet[] = [
   },
   {
     columns: [],
+    comments: [],
     conditionalFormattings: [],
     dataValidations: [],
     drawings: [],

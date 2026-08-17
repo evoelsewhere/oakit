@@ -12,6 +12,7 @@ function worksheet(
 ): XlsxWorksheet {
   return {
     columns: [],
+    comments: [],
     conditionalFormattings: [],
     dataValidations: [],
     drawings: [],
