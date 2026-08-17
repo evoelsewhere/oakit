@@ -12,6 +12,7 @@ function worksheet(
 ): XlsxWorksheet {
   return {
     columns: [],
+    dataValidations: [],
     drawings: [],
     hyperlinks: [],
     index,

@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   parseXlsx,
   readXlsxRoundTrip,
+  validateXlsxRoundTripJson,
   writeXlsxRoundTrip,
   XlsxParseError,
 } from '../../src/formats/xlsx';
@@ -299,7 +300,9 @@ describe('XLSX tables', () => {
     );
     const bytes = await createTableWorkbook({ [TABLE_PART]: xml });
     const snapshot = await readXlsxRoundTrip(bytes);
-    const portable = JSON.parse(JSON.stringify(snapshot));
+    const portable = await validateXlsxRoundTripJson(
+      JSON.parse(JSON.stringify(snapshot)) as unknown,
+    );
     const result = await writeXlsxRoundTrip(portable);
     expect(result.data).toEqual(bytes);
     expect(result.report.level).toBe('R0');

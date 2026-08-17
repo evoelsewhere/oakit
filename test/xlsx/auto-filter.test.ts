@@ -19,6 +19,7 @@ const FULL: XlsxResolvedSheetSelection = { kind: 'full-sheet' };
 
 function budget(): XlsxWorksheetBudget {
   return {
+    conditionalFormattingRules: 0,
     formulaCharacters: 0,
     formulaGroups: 0,
     rangeAreas: 0,
@@ -26,6 +27,7 @@ function budget(): XlsxWorksheetBudget {
     richTextRuns: 0,
     scannedCells: 0,
     textCharacters: 0,
+    validationRules: 0,
   };
 }
 

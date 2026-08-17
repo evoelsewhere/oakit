@@ -153,6 +153,7 @@ describe('XLSX worksheet streaming', () => {
 
     await expect(parse(xml, { strings: SHARED_STRINGS })).resolves.toEqual({
       columns: [],
+      dataValidations: [],
       declaredDimension: {
         end: { column: 16_384, row: 1_048_576 },
         reference: 'A1:XFD1048576',
@@ -317,6 +318,7 @@ describe('XLSX worksheet streaming', () => {
 
     await expect(parse(xml, { dialect: 'strict' })).resolves.toEqual({
       columns: [{ end: 2, hidden: true, start: 1, width: 12 }],
+      dataValidations: [],
       hyperlinks: [],
       mergedRanges: [
         {
@@ -362,6 +364,7 @@ describe('XLSX worksheet streaming', () => {
       parse(worksheet('\n<sheetData> \n </sheetData>\n')),
     ).resolves.toEqual({
       columns: [],
+      dataValidations: [],
       hyperlinks: [],
       mergedRanges: [],
       rows: [],
@@ -985,6 +988,7 @@ describe('XLSX worksheet streaming', () => {
         { collapsed: true, end: 5, outlineLevel: 3, start: 4 },
         { end: 6, hidden: true, start: 6, style: 0, width: 10 },
       ],
+      dataValidations: [],
       hyperlinks: [],
       mergedRanges: [
         {
@@ -1084,6 +1088,7 @@ describe('XLSX worksheet streaming', () => {
 
     expect(result).toEqual({
       columns: [],
+      dataValidations: [],
       hyperlinks: [],
       mergedRanges: [],
       rows: [],
@@ -1372,6 +1377,7 @@ describe('XLSX worksheet streaming', () => {
     );
     expect(result).toEqual({
       columns: [],
+      dataValidations: [],
       hyperlinks: [],
       mergedRanges: [],
       rows: [
@@ -1401,6 +1407,7 @@ describe('XLSX worksheet streaming', () => {
     };
 
     expect(createXlsxWorksheetBudget(table)).toEqual({
+      conditionalFormattingRules: 0,
       formulaCharacters: 0,
       formulaGroups: 0,
       rangeAreas: 0,
@@ -1408,6 +1415,7 @@ describe('XLSX worksheet streaming', () => {
       richTextRuns: 4,
       scannedCells: 0,
       textCharacters: 9,
+      validationRules: 0,
     });
   });
 
@@ -1418,6 +1426,7 @@ describe('XLSX worksheet streaming', () => {
         { formulaCharacters: 5, textCharacters: 7 },
       ),
     ).toEqual({
+      conditionalFormattingRules: 0,
       formulaCharacters: 5,
       formulaGroups: 0,
       rangeAreas: 0,
@@ -1425,6 +1434,7 @@ describe('XLSX worksheet streaming', () => {
       richTextRuns: 0,
       scannedCells: 0,
       textCharacters: 10,
+      validationRules: 0,
     });
   });
 
@@ -1462,6 +1472,7 @@ describe('XLSX worksheet streaming', () => {
     });
 
     expect(budget).toEqual({
+      conditionalFormattingRules: 0,
       formulaCharacters: 0,
       formulaGroups: 0,
       rangeAreas: 0,
@@ -1469,6 +1480,7 @@ describe('XLSX worksheet streaming', () => {
       richTextRuns: 0,
       scannedCells: 2,
       textCharacters: 3,
+      validationRules: 0,
     });
   });
 
@@ -1498,6 +1510,7 @@ describe('XLSX worksheet streaming', () => {
 
     expect(result).toEqual({
       columns: [],
+      dataValidations: [],
       hyperlinks: [],
       mergedRanges: [],
       rows: [
@@ -1520,6 +1533,7 @@ describe('XLSX worksheet streaming', () => {
       views: [],
     });
     expect(budget).toEqual({
+      conditionalFormattingRules: 0,
       formulaCharacters: 0,
       formulaGroups: 0,
       rangeAreas: 0,
@@ -1527,6 +1541,7 @@ describe('XLSX worksheet streaming', () => {
       richTextRuns: 0,
       scannedCells: 3,
       textCharacters: 6,
+      validationRules: 0,
     });
   });
 
@@ -1617,6 +1632,7 @@ describe('XLSX worksheet streaming', () => {
       }),
     ).resolves.toEqual({
       columns: [],
+      dataValidations: [],
       hyperlinks: [],
       mergedRanges: [],
       rows: [
@@ -1658,6 +1674,7 @@ describe('XLSX worksheet streaming', () => {
       }),
     ).resolves.toEqual({
       columns: [],
+      dataValidations: [],
       hyperlinks: [],
       mergedRanges: [],
       rows: [
@@ -1897,6 +1914,7 @@ describe('XLSX worksheet streaming', () => {
       ),
     ).resolves.toEqual({
       columns: [],
+      dataValidations: [],
       hyperlinks: [],
       mergedRanges: [],
       rows: [
@@ -1998,6 +2016,7 @@ describe('XLSX worksheet streaming', () => {
 
     expect(result).toEqual({
       columns: [],
+      dataValidations: [],
       hyperlinks: [],
       mergedRanges: [],
       rows: [

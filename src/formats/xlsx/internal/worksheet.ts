@@ -4,6 +4,8 @@ import type {
   XlsxCellValue,
   XlsxAutoFilter,
   XlsxColumnRange,
+  XlsxDataValidation,
+  XlsxDataValidationSettings,
   XlsxFormula,
   XlsxHyperlink,
   XlsxRange,
@@ -25,6 +27,7 @@ import {
   type XlsxScalarCellType,
 } from './cell-value';
 import { normalizeXlsxSerialDate } from './date-system';
+import { XlsxDataValidationsCapture } from './data-validation';
 import { translateXlsxSharedFormula } from './formula';
 import { parseXlsxHyperlink, type ParsedXlsxHyperlink } from './hyperlink';
 import { xlsxNumberFormatDatePrecision } from './number-format';
@@ -105,6 +108,7 @@ interface PendingInlineRun {
 }
 
 export interface XlsxWorksheetBudget {
+  conditionalFormattingRules: number;
   formulaCharacters: number;
   formulaGroups: number;
   rangeAreas: number;
@@ -112,6 +116,7 @@ export interface XlsxWorksheetBudget {
   richTextRuns: number;
   scannedCells: number;
   textCharacters: number;
+  validationRules: number;
 }
 
 interface SharedFormulaMaster {
@@ -125,6 +130,8 @@ export interface XlsxWorksheetPayload {
   autoFilter?: XlsxAutoFilter;
   columns: XlsxColumnRange[];
   declaredDimension?: XlsxRange;
+  dataValidationSettings?: XlsxDataValidationSettings;
+  dataValidations: XlsxDataValidation[];
   hyperlinks: XlsxHyperlink[];
   mergedRanges: XlsxRange[];
   outline?: XlsxWorksheetOutline;
@@ -305,12 +312,14 @@ export function consumeXlsxWorksheetBudget(
   key: keyof XlsxWorksheetBudget,
   amount: number,
   limitName:
+    | 'maxConditionalFormattingRules'
     | 'maxFormulaGroups'
     | 'maxRangeAreas'
     | 'maxReturnedCells'
     | 'maxRichTextRuns'
     | 'maxScannedCells'
-    | 'maxTextCharacters',
+    | 'maxTextCharacters'
+    | 'maxValidationRules',
   limits: ResolvedXlsxResourceLimits,
   part: string,
 ): void {
@@ -343,6 +352,7 @@ export function createXlsxWorksheetBudget(
     }
   }
   return {
+    conditionalFormattingRules: 0,
     formulaCharacters: initial.formulaCharacters ?? 0,
     formulaGroups: 0,
     rangeAreas: 0,
@@ -350,6 +360,7 @@ export function createXlsxWorksheetBudget(
     richTextRuns,
     scannedCells: 0,
     textCharacters: textCharacters + (initial.textCharacters ?? 0),
+    validationRules: 0,
   };
 }
 
@@ -389,6 +400,10 @@ class WorksheetSink implements XlsxXmlEventSink {
   private readonly authoredColumns: XlsxAuthoredColumnRange[] = [];
   private capture: TextCapture = null;
   private columnsSeen = false;
+  private dataValidationSettings: XlsxDataValidationSettings | undefined;
+  private dataValidations: XlsxDataValidation[] = [];
+  private dataValidationsCapture: XlsxDataValidationsCapture | undefined;
+  private dataValidationsSeen = false;
   private currentCell: PendingCell | undefined;
   private currentInlineRun: PendingInlineRun | undefined;
   private currentRow: XlsxRow | undefined;
@@ -486,6 +501,11 @@ class WorksheetSink implements XlsxXmlEventSink {
       this.stack.push(element);
       return;
     }
+    if (this.dataValidationsCapture) {
+      this.dataValidationsCapture.openElement(element);
+      this.stack.push(element);
+      return;
+    }
     const parent = this.stack.at(-1);
     if (!parent) {
       if (element.localName !== 'worksheet') {
@@ -514,6 +534,17 @@ class WorksheetSink implements XlsxXmlEventSink {
       this.stack.pop();
       return;
     }
+    if (this.dataValidationsCapture) {
+      this.dataValidationsCapture.closeElement(element);
+      if (element.localName === 'dataValidations') {
+        const result = this.dataValidationsCapture.result();
+        this.dataValidations = result.rules;
+        this.dataValidationSettings = result.settings;
+        this.dataValidationsCapture = undefined;
+      }
+      this.stack.pop();
+      return;
+    }
     this.capture = null;
     if (element.localName === 'r') this.closeInlineRun();
     if (element.localName === 'c') this.closeCell();
@@ -526,6 +557,10 @@ class WorksheetSink implements XlsxXmlEventSink {
     if (this.ignoredDepth > 0) return;
     if (this.autoFilterCapture) {
       this.autoFilterCapture.text(value);
+      return;
+    }
+    if (this.dataValidationsCapture) {
+      this.dataValidationsCapture.text(value);
       return;
     }
     if (this.capture === 'value') {
@@ -592,6 +627,10 @@ class WorksheetSink implements XlsxXmlEventSink {
       ...(this.declaredDimension === undefined
         ? {}
         : { declaredDimension: this.declaredDimension }),
+      ...(this.dataValidationSettings === undefined
+        ? {}
+        : { dataValidationSettings: this.dataValidationSettings }),
+      dataValidations: this.dataValidations,
       hyperlinks: this.hyperlinks.flatMap((hyperlink) => {
         const selectionRelation = this.featureSelectionRelation(
           hyperlink.range,
@@ -805,6 +844,24 @@ class WorksheetSink implements XlsxXmlEventSink {
           this.part,
         );
         this.autoFilterCapture.openElement(element);
+        return;
+      }
+      if (element.localName === 'dataValidations') {
+        if (this.dataValidationsSeen) {
+          structureFailure(
+            this.part,
+            undefined,
+            'Worksheet contains duplicate dataValidations elements',
+          );
+        }
+        this.dataValidationsSeen = true;
+        this.dataValidationsCapture = new XlsxDataValidationsCapture(
+          this.selection,
+          this.budget,
+          this.limits,
+          this.part,
+        );
+        this.dataValidationsCapture.openElement(element);
         return;
       }
       if (element.localName === 'tableParts') {

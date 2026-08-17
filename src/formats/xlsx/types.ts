@@ -606,6 +606,64 @@ export interface XlsxAutoFilter {
   sort?: XlsxSortState;
 }
 
+export type XlsxDataValidationType =
+  | 'custom'
+  | 'date'
+  | 'decimal'
+  | 'list'
+  | 'none'
+  | 'text-length'
+  | 'time'
+  | 'whole';
+
+export type XlsxDataValidationOperator =
+  | 'between'
+  | 'equal'
+  | 'greater-than'
+  | 'greater-than-or-equal'
+  | 'less-than'
+  | 'less-than-or-equal'
+  | 'not-between'
+  | 'not-equal';
+
+export type XlsxDataValidationImeMode =
+  | 'disabled'
+  | 'full-alpha'
+  | 'full-hangul'
+  | 'full-katakana'
+  | 'half-alpha'
+  | 'half-hangul'
+  | 'half-katakana'
+  | 'hiragana'
+  | 'no-control'
+  | 'off'
+  | 'on';
+
+export interface XlsxDataValidation {
+  allowBlank: boolean;
+  error?: string;
+  errorStyle: 'information' | 'stop' | 'warning';
+  errorTitle?: string;
+  formula1?: string;
+  formula2?: string;
+  imeMode: XlsxDataValidationImeMode;
+  operator: XlsxDataValidationOperator;
+  prompt?: string;
+  promptTitle?: string;
+  ranges: XlsxRange[];
+  selectionRelation: 'full-sheet' | 'intersects-selection';
+  showDropDown: boolean;
+  showErrorMessage: boolean;
+  showInputMessage: boolean;
+  type: XlsxDataValidationType;
+}
+
+export interface XlsxDataValidationSettings {
+  disablePrompts: boolean;
+  xWindow?: number;
+  yWindow?: number;
+}
+
 export interface XlsxTable {
   autoFilter?: XlsxAutoFilter;
   columns: XlsxTableColumn[];
@@ -662,6 +720,8 @@ export interface XlsxWorksheet extends XlsxSheetBase {
   autoFilter?: XlsxAutoFilter;
   columns: XlsxColumnRange[];
   declaredDimension?: XlsxRange;
+  dataValidationSettings?: XlsxDataValidationSettings;
+  dataValidations: XlsxDataValidation[];
   drawings: XlsxDrawing[];
   hyperlinks: XlsxHyperlink[];
   kind: 'worksheet';
