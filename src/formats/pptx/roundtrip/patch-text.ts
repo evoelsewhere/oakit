@@ -14,7 +14,12 @@ import {
 import type { PptxDocument } from '../types';
 import { PptxWriteError } from '../write-error';
 import { escapeXmlText } from '../writer/xml';
-import type { PptxRoundTripReplaceTextOperation } from './types';
+import { degreesToAngle, pointsToEmu } from '../writer/units';
+import type {
+  PptxRoundTripOperation,
+  PptxRoundTripReplaceTextOperation,
+  PptxRoundTripSetTransformOperation,
+} from './types';
 import JSZip from 'jszip';
 
 const PRESENTATION_PART = 'ppt/presentation.xml';
@@ -30,6 +35,7 @@ const DRAWING_NAMESPACES = new Set([
 const MARKUP_COMPATIBILITY_NAMESPACE =
   'http://schemas.openxmlformats.org/markup-compatibility/2006';
 const TARGET_KEY_PATTERN = /^slide-([1-9]\d*)-element-([1-9]\d*)-run-1$/;
+const TRANSFORM_TARGET_KEY_PATTERN = /^slide-([1-9]\d*)-element-([1-9]\d*)$/;
 const OFFICE_ESCAPE_PATTERN = /_x[0-9a-f]{4}_/i;
 const XML_TAG_PATTERN =
   /<(\/?)(([A-Za-z_][\w.-]*):)?([A-Za-z_][\w.-]*)((?:\s+[A-Za-z_][\w.:-]*(?:\s*=\s*(?:"[^"]*"|'[^']*'))?)*\s*)(\/?)>/g;
@@ -195,6 +201,33 @@ function textTarget(
   if (element?.type !== 'text' || typeof element.id !== 'string') {
     unsupportedEdit(
       'PowerPoint text edit target is not a slide-owned text element',
+    );
+  }
+  return { elementIndex, shapeId: element.id, slideIndex };
+}
+
+function transformTarget(
+  operation: PptxRoundTripSetTransformOperation,
+  document: PptxDocument,
+): TextTarget {
+  const match = TRANSFORM_TARGET_KEY_PATTERN.exec(operation.targetKey);
+  if (match === null) {
+    unsupportedEdit(
+      'PowerPoint transform target is not a supported slide text element key',
+    );
+  }
+  const slideIndex = Number(match[1]) - 1;
+  const elementIndex = Number(match[2]) - 1;
+  if (
+    !Number.isSafeInteger(slideIndex) ||
+    !Number.isSafeInteger(elementIndex)
+  ) {
+    unsupportedEdit('PowerPoint transform target index is unsafe');
+  }
+  const element = document.slides[slideIndex]?.elements[elementIndex];
+  if (element?.type !== 'text' || typeof element.id !== 'string') {
+    unsupportedEdit(
+      'PowerPoint transform target is not a slide-owned text element',
     );
   }
   return { elementIndex, shapeId: element.id, slideIndex };
@@ -381,6 +414,129 @@ function patchShapeText(
   return `${xml.slice(0, matchStart)}${replacement}${xml.slice(matchEnd)}`;
 }
 
+function integerAttribute(attributesText: string, name: string): number {
+  const value = attributeValue(attributesText, name);
+  if (value === null || !/^-?\d+$/.test(value)) {
+    unsupportedEdit(`PowerPoint transform ${name} attribute is invalid`);
+  }
+  const result = Number(value);
+  if (!Number.isSafeInteger(result)) {
+    unsupportedEdit(`PowerPoint transform ${name} attribute is unsafe`);
+  }
+  return result;
+}
+
+function optionalIntegerAttribute(
+  attributesText: string,
+  name: string,
+): number {
+  return attributeValue(attributesText, name) === null
+    ? 0
+    : integerAttribute(attributesText, name);
+}
+
+function booleanAttribute(attributesText: string, name: string): boolean {
+  const value = attributeValue(attributesText, name);
+  if (value === null || value === '0' || value === 'false') return false;
+  if (value === '1' || value === 'true') return true;
+  unsupportedEdit(`PowerPoint transform ${name} attribute is invalid`);
+}
+
+function patchShapeTransform(
+  xml: string,
+  shapeId: string,
+  operation: PptxRoundTripSetTransformOperation,
+): string {
+  const prefixes = namespacePrefixes(xml);
+  const presentationPrefix = requiredNamespacePrefix(
+    prefixes,
+    PRESENTATION_NAMESPACES,
+    'PresentationML',
+  );
+  const drawingPrefix = requiredNamespacePrefix(
+    prefixes,
+    DRAWING_NAMESPACES,
+    'DrawingML',
+  );
+  const range = shapeRange(xml, presentationPrefix, shapeId);
+  const shape = xml.slice(range.start, range.end);
+  const markupPrefix = prefixes.get(MARKUP_COMPATIBILITY_NAMESPACE);
+  if (
+    (markupPrefix !== undefined &&
+      hasElement(shape, qualifiedName(markupPrefix, 'AlternateContent'))) ||
+    hasElement(shape, qualifiedName(presentationPrefix, 'extLst')) ||
+    hasElement(shape, qualifiedName(drawingPrefix, 'extLst'))
+  ) {
+    unsupportedEdit(
+      'PowerPoint transform target contains unsupported compatibility markup',
+    );
+  }
+
+  const transformName = qualifiedName(drawingPrefix, 'xfrm');
+  const offsetName = qualifiedName(drawingPrefix, 'off');
+  const extentName = qualifiedName(drawingPrefix, 'ext');
+  const attributePattern =
+    '((?:\\s+[A-Za-z_][\\w.:-]*\\s*=\\s*(?:"[^"]*"|\'[^\']*\'))*)';
+  const transformPattern = new RegExp(
+    `<${escapedPattern(transformName)}${attributePattern}\\s*>\\s*` +
+      `<${escapedPattern(offsetName)}${attributePattern}\\s*\\/>\\s*` +
+      `<${escapedPattern(extentName)}${attributePattern}\\s*\\/>\\s*` +
+      `<\\/${escapedPattern(transformName)}\\s*>`,
+    'g',
+  );
+  const matches = [...shape.matchAll(transformPattern)];
+  if (matches.length !== 1) {
+    unsupportedEdit(
+      'PowerPoint transform target must contain one simple shape transform',
+    );
+  }
+  const match = matches[0];
+  if (match === undefined) {
+    unsupportedEdit('PowerPoint shape transform disappeared');
+  }
+  const transformAttributes = match[1] ?? '';
+  const offsetAttributes = match[2] ?? '';
+  const extentAttributes = match[3] ?? '';
+  const source = {
+    flipHorizontal: booleanAttribute(transformAttributes, 'flipH'),
+    flipVertical: booleanAttribute(transformAttributes, 'flipV'),
+    height: integerAttribute(extentAttributes, 'cy'),
+    rotation: optionalIntegerAttribute(transformAttributes, 'rot'),
+    width: integerAttribute(extentAttributes, 'cx'),
+    x: integerAttribute(offsetAttributes, 'x'),
+    y: integerAttribute(offsetAttributes, 'y'),
+  };
+  const expected = {
+    flipHorizontal: operation.expectedTransform.flipHorizontal ?? false,
+    flipVertical: operation.expectedTransform.flipVertical ?? false,
+    height: pointsToEmu(operation.expectedTransform.height),
+    rotation: degreesToAngle(operation.expectedTransform.rotation ?? 0),
+    width: pointsToEmu(operation.expectedTransform.width),
+    x: pointsToEmu(operation.expectedTransform.x),
+    y: pointsToEmu(operation.expectedTransform.y),
+  };
+  if (JSON.stringify(source) !== JSON.stringify(expected)) {
+    unsupportedEdit(
+      'PowerPoint transform source XML does not match its preview precondition',
+    );
+  }
+  const replacementAttributes = [
+    operation.value.rotation === 0
+      ? ''
+      : ` rot="${degreesToAngle(operation.value.rotation ?? 0)}"`,
+    operation.value.flipHorizontal ? ' flipH="1"' : '',
+    operation.value.flipVertical ? ' flipV="1"' : '',
+  ].join('');
+  const replacement =
+    `<${transformName}${replacementAttributes}>` +
+    `<${offsetName} x="${pointsToEmu(operation.value.x)}" y="${pointsToEmu(operation.value.y)}"/>` +
+    `<${extentName} cx="${pointsToEmu(operation.value.width)}" cy="${pointsToEmu(operation.value.height)}"/>` +
+    `</${transformName}>`;
+  const matchStart = range.start + (match.index ?? 0);
+  const matchEnd = matchStart + match[0].length;
+  return `${xml.slice(0, matchStart)}${replacement}${xml.slice(matchEnd)}`;
+}
+
 function byteEqual(left: Uint8Array, right: Uint8Array): boolean {
   if (left.byteLength !== right.byteLength) return false;
   return left.every((value, index) => value === right[index]);
@@ -434,10 +590,10 @@ function decodeEditableXml(
   return xml;
 }
 
-export async function patchPptxTextOperations(
+export async function patchPptxOperations(
   bytes: Uint8Array,
   document: PptxDocument,
-  operations: readonly PptxRoundTripReplaceTextOperation[],
+  operations: readonly PptxRoundTripOperation[],
   limits: ResolvedPptxResourceLimits,
 ): Promise<PptxPatchedPackage> {
   const archive = await JSZip.loadAsync(bytes);
@@ -456,7 +612,10 @@ export async function patchPptxTextOperations(
   const patchedParts = new Set<string>();
   const editedXml = new Map<string, string>();
   for (const operation of operations) {
-    const target = textTarget(operation, document);
+    const target =
+      operation.kind === 'replace-text'
+        ? textTarget(operation, document)
+        : transformTarget(operation, document);
     const slidePart = slides[target.slideIndex];
     if (slidePart === undefined) {
       unsupportedEdit('PowerPoint text edit slide target does not exist');
@@ -467,7 +626,10 @@ export async function patchPptxTextOperations(
     }
     const current =
       editedXml.get(slidePart) ?? decodeEditableXml(sourceBytes, limits);
-    const patched = patchShapeText(current, target.shapeId, operation);
+    const patched =
+      operation.kind === 'replace-text'
+        ? patchShapeText(current, target.shapeId, operation)
+        : patchShapeTransform(current, target.shapeId, operation);
     editedXml.set(slidePart, patched);
     patchedParts.add(slidePart);
   }

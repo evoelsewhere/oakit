@@ -50,6 +50,10 @@ function rootRecord(value: PptxRoundTripSnapshot): Record<string, unknown> {
   return value as unknown as Record<string, unknown>;
 }
 
+function unknownRecord(value: unknown): Record<string, unknown> {
+  return value as Record<string, unknown>;
+}
+
 function nestedRecord(
   value: PptxRoundTripSnapshot,
   key: 'consistency' | 'source' | 'supportProfile',
@@ -151,7 +155,7 @@ describe('PowerPoint round-trip snapshot contract validation', () => {
         return value;
       },
       'invalid-snapshot',
-      'PowerPoint round-trip operation 1 has an invalid shape',
+      'PowerPoint round-trip operation 1 kind is unsupported',
     ],
   ])('rejects %s', (_name, create, code, message) => {
     expectInvalid(create(), code, message);
@@ -200,6 +204,135 @@ describe('PowerPoint round-trip snapshot contract validation', () => {
     expect(
       validatePptxRoundTripSnapshot(value, resolvePptxResourceLimits()),
     ).toBe(value);
+  });
+
+  function transformSnapshot(): PptxRoundTripSnapshot {
+    const value = snapshot();
+    value.document.slides = [
+      {
+        elements: [
+          {
+            authored: {},
+            key: 'text-1',
+            resolved: {
+              hidden: false,
+              transform: {
+                flipHorizontal: false,
+                flipVertical: false,
+                height: 40,
+                rotation: 0,
+                width: 160,
+                x: 10,
+                y: 20,
+              },
+            },
+            text: {
+              body: {},
+              paragraphs: [
+                {
+                  children: [{ key: 'run-1', text: 'Before', type: 'run' }],
+                  key: 'paragraph-1',
+                },
+              ],
+            },
+            type: 'text',
+          },
+        ],
+        key: 'slide-1',
+      },
+    ];
+    value.operations = [
+      {
+        expectedTransform: {
+          flipHorizontal: false,
+          flipVertical: false,
+          height: 40,
+          rotation: 0,
+          width: 160,
+          x: 10,
+          y: 20,
+        },
+        id: 'set-transform-1',
+        kind: 'set-transform',
+        targetKey: 'text-1',
+        value: {
+          flipHorizontal: true,
+          flipVertical: false,
+          height: 50,
+          rotation: 15,
+          width: 170,
+          x: 30,
+          y: 40,
+        },
+      },
+    ];
+    value.supportProfile = {
+      effectiveLevel: 'R2',
+      id: 'pptx-roundtrip-text-v1',
+      producerMatrix: [],
+      version: '1',
+    };
+    return value;
+  }
+
+  it('accepts a transform edit with an exact preview precondition', () => {
+    const value = transformSnapshot();
+
+    expect(
+      validatePptxRoundTripSnapshot(value, resolvePptxResourceLimits()),
+    ).toBe(value);
+  });
+
+  it.each([
+    [
+      'missing target',
+      (value: PptxRoundTripSnapshot) => {
+        const operation = value.operations[0];
+        if (operation !== undefined) operation.targetKey = 'missing';
+      },
+      'PowerPoint round-trip transform target does not exist',
+    ],
+    [
+      'stale precondition',
+      (value: PptxRoundTripSnapshot) => {
+        const operation = value.operations[0];
+        if (operation?.kind === 'set-transform')
+          operation.expectedTransform.x = 11;
+      },
+      'PowerPoint round-trip transform precondition does not match the preview',
+    ],
+    [
+      'no-op',
+      (value: PptxRoundTripSnapshot) => {
+        const operation = value.operations[0];
+        if (operation?.kind === 'set-transform') {
+          operation.value = structuredClone(operation.expectedTransform);
+        }
+      },
+      'PowerPoint round-trip transform must change the value',
+    ],
+    [
+      'missing expected field',
+      (value: PptxRoundTripSnapshot) => {
+        const operation = value.operations[0];
+        if (operation?.kind === 'set-transform') {
+          delete unknownRecord(operation.expectedTransform).x;
+        }
+      },
+      'PowerPoint round-trip operation 1 expectedTransform is invalid',
+    ],
+    [
+      'zero width',
+      (value: PptxRoundTripSnapshot) => {
+        const operation = value.operations[0];
+        if (operation?.kind === 'set-transform') operation.value.width = 0;
+      },
+      'PowerPoint round-trip operation 1 value is not a valid transform',
+    ],
+  ])('rejects transform operation with %s', (_name, mutate, message) => {
+    const value = transformSnapshot();
+    mutate(value);
+    expectInvalid(value, 'invalid-snapshot', message);
   });
 
   it.each([

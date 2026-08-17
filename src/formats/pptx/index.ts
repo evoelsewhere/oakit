@@ -16,7 +16,10 @@ export {
   serializePptxRoundTripJson,
 } from './roundtrip/portable';
 export { readPptxRoundTrip } from './roundtrip/read';
-export { replacePptxRoundTripText } from './roundtrip/edit';
+export {
+  replacePptxRoundTripText,
+  setPptxRoundTripTextTransform,
+} from './roundtrip/edit';
 export { writePptxRoundTrip } from './roundtrip/write';
 
 export { PptxParseError } from './errors';

@@ -1,12 +1,16 @@
 import { resolvePptxResourceLimits } from '../internal/resource-limits';
 import { isValidXmlText } from '../scene-validation';
+import { validatePptxScene } from '../scene-validation';
 import { PptxWriteError } from '../write-error';
+import type { PptxSceneTextElement, PptxSceneTransform } from '../scene-types';
+import { canonicalJson } from './canonical-json';
 import {
   createPptxRoundTripTextEditSupportProfile,
   createPptxSnapshotConsistency,
 } from './consistency';
 import type {
   PptxRoundTripReplaceTextOperation,
+  PptxRoundTripSetTransformOperation,
   PptxRoundTripSnapshot,
 } from './types';
 import { validatePptxRoundTripSnapshot } from './validate';
@@ -16,11 +20,34 @@ export interface PptxRoundTripReplaceTextRequest {
   value: string;
 }
 
+export interface PptxRoundTripSetTransformRequest {
+  targetKey: string;
+  value: PptxSceneTransform;
+}
+
 export function applyPptxRoundTripOperationsToPreview(
   snapshot: PptxRoundTripSnapshot,
 ): PptxRoundTripSnapshot['document'] {
   const document = structuredClone(snapshot.document);
   for (const operation of snapshot.operations) {
+    if (operation.kind === 'set-transform') {
+      let applied = false;
+      for (const slide of document.slides) {
+        for (const element of slide.elements) {
+          if (element.type === 'text' && element.key === operation.targetKey) {
+            element.resolved.transform = structuredClone(operation.value);
+            applied = true;
+          }
+        }
+      }
+      if (!applied) {
+        throw new PptxWriteError(
+          'verification-failed',
+          `PowerPoint transform verification target disappeared: ${operation.targetKey}`,
+        );
+      }
+      continue;
+    }
     let applied = false;
     for (const slide of document.slides) {
       for (const element of slide.elements) {
@@ -43,6 +70,68 @@ export function applyPptxRoundTripOperationsToPreview(
     }
   }
   return document;
+}
+
+function findTextElement(
+  snapshot: PptxRoundTripSnapshot,
+  targetKey: string,
+): PptxSceneTextElement {
+  let matched: PptxSceneTextElement | undefined;
+  for (const slide of snapshot.document.slides) {
+    for (const element of slide.elements) {
+      if (element.type !== 'text' || element.key !== targetKey) continue;
+      if (matched !== undefined) {
+        invalidEdit('PowerPoint transform target key is ambiguous');
+      }
+      matched = element;
+    }
+  }
+  if (matched === undefined) {
+    invalidEdit('PowerPoint transform target key does not exist');
+  }
+  return matched;
+}
+
+function normalizedTransform(value: PptxSceneTransform): PptxSceneTransform {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    invalidEdit('PowerPoint transform value must be an object');
+  }
+  return {
+    flipHorizontal: value.flipHorizontal ?? false,
+    flipVertical: value.flipVertical ?? false,
+    height: value.height,
+    rotation: value.rotation ?? 0,
+    width: value.width,
+    x: value.x,
+    y: value.y,
+  };
+}
+
+function validateTransformRequest(
+  snapshot: PptxRoundTripSnapshot,
+  targetKey: string,
+  value: PptxSceneTransform,
+): PptxSceneTransform {
+  if (typeof targetKey !== 'string' || targetKey.length === 0) {
+    invalidEdit('PowerPoint transform target key must be a non-empty string');
+  }
+  const normalized = normalizedTransform(value);
+  const candidate = structuredClone(snapshot.document);
+  let updated = false;
+  for (const slide of candidate.slides) {
+    for (const element of slide.elements) {
+      if (element.type === 'text' && element.key === targetKey) {
+        element.resolved.transform = normalized;
+        updated = true;
+      }
+    }
+  }
+  if (!updated) invalidEdit('PowerPoint transform target key does not exist');
+  const validation = validatePptxScene(candidate);
+  if (!validation.valid) {
+    invalidEdit('PowerPoint transform value is not a valid scene transform');
+  }
+  return normalized;
 }
 
 function invalidEdit(message: string): never {
@@ -121,6 +210,51 @@ export async function replacePptxRoundTripText(
     kind: 'replace-text',
     targetKey: request.targetKey,
     value: request.value,
+  };
+  snapshot.operations.push(operation);
+  snapshot.supportProfile = createPptxRoundTripTextEditSupportProfile();
+  snapshot.consistency = await createPptxSnapshotConsistency({
+    document: snapshot.document,
+    operations: snapshot.operations,
+    source: snapshot.source,
+    supportProfile: snapshot.supportProfile,
+  });
+  return validatePptxRoundTripSnapshot(snapshot, limits);
+}
+
+export async function setPptxRoundTripTextTransform(
+  value: PptxRoundTripSnapshot,
+  request: PptxRoundTripSetTransformRequest,
+): Promise<PptxRoundTripSnapshot> {
+  const limits = resolvePptxResourceLimits();
+  const validated = validatePptxRoundTripSnapshot(value, limits);
+  const snapshot = structuredClone(validated);
+  const target = findTextElement(snapshot, request.targetKey);
+  const expectedTransform = target.resolved.transform;
+  if (expectedTransform === undefined) {
+    invalidEdit('PowerPoint transform target has no resolved transform');
+  }
+  const transform = validateTransformRequest(
+    snapshot,
+    request.targetKey,
+    request.value,
+  );
+  if (canonicalJson(expectedTransform) === canonicalJson(transform)) {
+    invalidEdit('PowerPoint transform edit must change the target value');
+  }
+  if (
+    snapshot.operations.some(
+      (operation) => operation.targetKey === request.targetKey,
+    )
+  ) {
+    invalidEdit('PowerPoint transform target is already scheduled');
+  }
+  const operation: PptxRoundTripSetTransformOperation = {
+    expectedTransform: structuredClone(expectedTransform),
+    id: `set-transform-${snapshot.operations.length + 1}`,
+    kind: 'set-transform',
+    targetKey: request.targetKey,
+    value: transform,
   };
   snapshot.operations.push(operation);
   snapshot.supportProfile = createPptxRoundTripTextEditSupportProfile();

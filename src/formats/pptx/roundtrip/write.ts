@@ -11,7 +11,7 @@ import {
 } from './consistency';
 import { canonicalJson } from './canonical-json';
 import { applyPptxRoundTripOperationsToPreview } from './edit';
-import { patchPptxTextOperations } from './patch-text';
+import { patchPptxOperations } from './patch-text';
 import { createPowerPointRoundTripPreview } from './preview';
 import {
   inspectPptxRoundTripPackage,
@@ -142,7 +142,7 @@ export async function writePptxRoundTripWithLimits(
   }
 
   if (snapshot.operations.length !== 0) {
-    const patched = await patchPptxTextOperations(
+    const patched = await patchPptxOperations(
       normalized.bytes,
       parsed,
       snapshot.operations,
