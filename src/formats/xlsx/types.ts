@@ -181,6 +181,7 @@ export interface XlsxFont {
 }
 
 export interface XlsxStyle {
+  font?: XlsxFont;
   numberFormat?: string;
 }
 

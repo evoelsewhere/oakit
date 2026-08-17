@@ -113,7 +113,7 @@ describe('public XLSX parser', () => {
             tables: [],
           },
         ],
-        styles: [{}],
+        styles: [{ font: { name: 'Calibri', size: 11 } }],
         workbook: {
           calculation: {
             forceFullCalculation: false,

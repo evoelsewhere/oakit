@@ -182,6 +182,54 @@ describe('XLSX styles table', () => {
     expect(Object.isFrozen(result)).toBe(true);
   });
 
+  it('resolves font references into semantic styles and deduplicates them', async () => {
+    const result = await load({
+      'xl/styles.xml': styleSheet(`
+        <fonts count="2">
+          <font/>
+          <font><b/><name val="Aptos"/><color theme="4" tint=".25"/></font>
+        </fonts>
+        <fills count="1"><fill/></fills>
+        <borders count="1"><border/></borders>
+        <cellStyleXfs count="1"><xf/></cellStyleXfs>
+        <cellXfs count="4">
+          <xf/>
+          <xf fontId="1"/>
+          <xf fontId="1"/>
+          <xf fontId="1" numFmtId="14"/>
+        </cellXfs>`),
+    });
+
+    expect(result).toEqual({
+      cellXfs: [
+        { normalizedStyle: 0 },
+        { normalizedStyle: 1 },
+        { normalizedStyle: 1 },
+        { normalizedStyle: 2, numberFormat: 'mm-dd-yy' },
+      ],
+      part: 'xl/styles.xml',
+      styles: [
+        {},
+        {
+          font: {
+            bold: true,
+            color: { index: 4, kind: 'theme', tint: 0.25 },
+            name: 'Aptos',
+          },
+        },
+        {
+          font: {
+            bold: true,
+            color: { index: 4, kind: 'theme', tint: 0.25 },
+            name: 'Aptos',
+          },
+          numberFormat: 'mm-dd-yy',
+        },
+      ],
+    });
+    expect(Object.isFrozen(result.styles[1]?.font)).toBe(true);
+  });
+
   it('accepts maxStyles exactly and rejects one over using formats plus XFs', async () => {
     const xml = styleSheet(`${CORE}
       <numFmts count="1"><numFmt numFmtId="164" formatCode="0.000"/></numFmts>

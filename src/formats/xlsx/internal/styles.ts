@@ -9,6 +9,7 @@ import {
   type ResolvedXlsxResourceLimits,
   XlsxResourceLimitError,
 } from './resource-limits';
+import { parseXlsxStyleFont } from './style-font';
 import {
   type XlsxWorkbookDiscovery,
   XLSX_SPREADSHEET_NAMESPACES,
@@ -184,7 +185,7 @@ function customNumberFormats(
 function collectionCount(
   root: XmlRecord,
   prefix: string,
-  name: 'borders' | 'cellStyleXfs' | 'fills' | 'fonts',
+  name: 'borders' | 'cellStyleXfs' | 'fills',
   item: 'border' | 'fill' | 'font' | 'xf',
   part: string,
 ): number {
@@ -234,7 +235,9 @@ export function parseXlsxStylePart(
 ): XlsxStyleTable {
   const { node: root, prefix } = rootEntry(value, dialect, part);
   const custom = customNumberFormats(root, prefix, part);
-  const fontCount = collectionCount(root, prefix, 'fonts', 'font', part);
+  const fonts = collection(root, prefix, 'fonts', 'font', part, true).map(
+    (font) => parseXlsxStyleFont(font, prefix, part),
+  );
   const fillCount = collectionCount(root, prefix, 'fills', 'fill', part);
   const borderCount = collectionCount(root, prefix, 'borders', 'border', part);
   const baseXfCount = collectionCount(root, prefix, 'cellStyleXfs', 'xf', part);
@@ -251,7 +254,7 @@ export function parseXlsxStylePart(
 
   const styles: XlsxStyle[] = [];
   const cellXfs: XlsxCellXf[] = [];
-  const normalizedStyles = new Map<string | undefined, number>();
+  const normalizedStyles = new Map<string, number>();
   for (const xf of xfs) {
     const attrs = attributes(xf);
     const numFmtId =
@@ -262,9 +265,9 @@ export function parseXlsxStylePart(
             'Styles XF number-format ID is invalid',
             part,
           );
-    referencedIndex(
+    const fontId = referencedIndex(
       attrs.fontId,
-      fontCount,
+      fonts.length,
       'Styles XF font reference is invalid',
       part,
     );
@@ -287,13 +290,17 @@ export function parseXlsxStylePart(
       part,
     );
     const code = numberFormat(numFmtId, custom, part);
-    let normalizedStyle = normalizedStyles.get(code);
+    const font = fonts[fontId]!;
+    const style: XlsxStyle = {
+      ...(Object.keys(font).length === 0 ? {} : { font }),
+      ...(code === undefined ? {} : { numberFormat: code }),
+    };
+    const styleKey = JSON.stringify(style);
+    let normalizedStyle = normalizedStyles.get(styleKey);
     if (normalizedStyle === undefined) {
       normalizedStyle = styles.length;
-      normalizedStyles.set(code, normalizedStyle);
-      styles.push(
-        Object.freeze(code === undefined ? {} : { numberFormat: code }),
-      );
+      normalizedStyles.set(styleKey, normalizedStyle);
+      styles.push(Object.freeze(style));
     }
     cellXfs.push(
       Object.freeze({
