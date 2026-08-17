@@ -20,6 +20,32 @@ meaningful document data instead of raw XML.
 > hand-offs, verified `R2` plain-text replacement, and Office-free SVG/PNG
 > previews. Excel and Word remain product direction rather than completed APIs.
 
+## Real-world PowerPoint evidence
+
+OAKit is exercised against a transient corpus of 30 complex templates selected
+from [SlidesMania](https://slidesmania.com/). The controlled gate downloads each
+source from its SlidesMania page, strict-parses and renders every slide without
+Office, imports and exports it through Google Slides, deletes the temporary
+presentation, then repeats strict parsing and rendering on the exported PPTX.
+
+<p align="center">
+  <img src="docs/evidence/0.0.1/slidesmania/producer-audit.png" alt="Audit summary for 30 SlidesMania templates round-tripped through Google Slides" width="100%" />
+</p>
+
+Run [32036893093](https://github.com/evoelsewhere/oakit/actions/runs/32036893093)
+verified 30 decks, 733 slides, and 9,285 source elements with 100% minimum text
+and element retention. Attribution was preserved in every export and all 30
+temporary Google presentations were deleted. The tracked
+[evidence manifest](docs/evidence/0.0.1/slidesmania/evidence.json) contains only
+source-page links, hashes, and metrics—no SlidesMania templates or rendered
+reproductions, in accordance with the
+[SlidesMania template license](https://slidesmania.com/copyright-and-legal-information/#license).
+
+The warning bars are intentional: complex shapes, fills, media, tables, and
+font substitution still have approximation debt. This gate proves robust
+opening, semantic retention, producer compatibility, and Office-free rendering;
+it does not claim pixel-identical or full-fidelity rendering yet.
+
 ## Why OAKit
 
 Office files are not single documents internally. They are ZIP packages made
