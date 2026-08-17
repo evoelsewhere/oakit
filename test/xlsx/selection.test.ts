@@ -27,6 +27,7 @@ const SHEETS: XlsxSheet[] = [
     rows: [],
     state: 'visible',
     tables: [],
+    views: [],
   },
   {
     index: 1,
@@ -46,6 +47,7 @@ const SHEETS: XlsxSheet[] = [
     rows: [],
     state: 'very-hidden',
     tables: [],
+    views: [],
   },
 ];
 

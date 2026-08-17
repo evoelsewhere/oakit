@@ -283,6 +283,7 @@ export async function parseXlsxWorkbookManifest(
         mergedRanges: [],
         rows: [],
         tables: [],
+        views: [],
       };
       sheets.push(worksheet);
     } else {

@@ -7,6 +7,7 @@ import type {
   XlsxRange,
   XlsxRichTextRun,
   XlsxRow,
+  XlsxWorksheetView,
 } from '../types';
 import {
   parseXlsxCellReference,
@@ -42,6 +43,12 @@ import {
   type XlsxAuthoredColumnRange,
   xlsxMergedRangesOverlap,
 } from './worksheet-layout';
+import {
+  parseXlsxWorksheetPane,
+  parseXlsxWorksheetView,
+  parseXlsxWorksheetViewSelection,
+  validateXlsxWorksheetView,
+} from './worksheet-view';
 
 const XML_NAMESPACE = 'http://www.w3.org/XML/1998/namespace';
 const UNSIGNED_INTEGER_PATTERN = /^(?:0|[1-9]\d*)$/u;
@@ -81,6 +88,7 @@ interface PendingInlineRun {
 export interface XlsxWorksheetBudget {
   formulaCharacters: number;
   formulaGroups: number;
+  rangeAreas: number;
   returnedCells: number;
   richTextRuns: number;
   scannedCells: number;
@@ -98,6 +106,7 @@ export interface XlsxWorksheetPayload {
   columns: XlsxColumnRange[];
   mergedRanges: XlsxRange[];
   rows: XlsxRow[];
+  views: XlsxWorksheetView[];
 }
 
 export interface XlsxWorksheetSemantics {
@@ -265,6 +274,7 @@ function consume(
   amount: number,
   limitName:
     | 'maxFormulaGroups'
+    | 'maxRangeAreas'
     | 'maxReturnedCells'
     | 'maxRichTextRuns'
     | 'maxScannedCells'
@@ -300,6 +310,7 @@ export function createXlsxWorksheetBudget(
   return {
     formulaCharacters: 0,
     formulaGroups: 0,
+    rangeAreas: 0,
     returnedCells: 0,
     richTextRuns,
     scannedCells: 0,
@@ -315,6 +326,7 @@ class WorksheetSink implements XlsxXmlEventSink {
   private currentInlineRun: PendingInlineRun | undefined;
   private currentRow: XlsxRow | undefined;
   private currentRowSelected!: boolean;
+  private currentView: XlsxWorksheetView | undefined;
   private ignoredDepth = 0;
   private lastCellColumn = 0;
   private lastRow = 0;
@@ -323,8 +335,11 @@ class WorksheetSink implements XlsxXmlEventSink {
   private readonly mergedRanges: XlsxRange[] = [];
   private readonly selectedColumnPrefix: Uint32Array;
   private sheetDataSeen = false;
+  private sheetViewsSeen = false;
   private readonly stack: XlsxXmlElement[] = [];
   private readonly rows: XlsxRow[] = [];
+  private readonly viewIds = new Set<number>();
+  private readonly views: XlsxWorksheetView[] = [];
   private readonly sharedFormulaMasters = new Map<
     number,
     SharedFormulaMaster
@@ -407,6 +422,7 @@ class WorksheetSink implements XlsxXmlEventSink {
     if (element.localName === 'r') this.closeInlineRun();
     if (element.localName === 'c') this.closeCell();
     if (element.localName === 'row') this.closeRow();
+    if (element.localName === 'sheetView') this.closeView();
     this.stack.pop();
   }
 
@@ -438,6 +454,13 @@ class WorksheetSink implements XlsxXmlEventSink {
     if (!this.sheetDataSeen) {
       structureFailure(this.part, undefined, 'Worksheet sheetData is missing');
     }
+    if (this.sheetViewsSeen && this.views.length === 0) {
+      structureFailure(
+        this.part,
+        undefined,
+        'Worksheet sheetViews collection is empty',
+      );
+    }
     if (
       this.mergeCellsExpected !== undefined &&
       this.mergeCellsExpected !== this.mergedRanges.length
@@ -459,6 +482,7 @@ class WorksheetSink implements XlsxXmlEventSink {
         this.mergedRangeSelected(range),
       ),
       rows: this.rows,
+      views: this.views,
     };
   }
 
@@ -526,6 +550,17 @@ class WorksheetSink implements XlsxXmlEventSink {
         this.sheetDataSeen = true;
         return;
       }
+      if (element.localName === 'sheetViews') {
+        if (this.sheetViewsSeen) {
+          structureFailure(
+            this.part,
+            undefined,
+            'Worksheet contains duplicate sheetViews elements',
+          );
+        }
+        this.sheetViewsSeen = true;
+        return;
+      }
       if (element.localName === 'mergeCells') {
         if (this.mergeCellsSeen) {
           structureFailure(
@@ -560,6 +595,27 @@ class WorksheetSink implements XlsxXmlEventSink {
     if (parent === 'cols' && element.localName === 'col') {
       this.openColumn(element);
       return;
+    }
+    if (parent === 'sheetViews' && element.localName === 'sheetView') {
+      this.openView(element);
+      return;
+    }
+    if (parent === 'sheetView') {
+      if (element.localName === 'pane') {
+        this.openPane(element);
+        return;
+      }
+      if (element.localName === 'selection') {
+        this.openViewSelection(element);
+        return;
+      }
+      if (
+        element.localName === 'extLst' ||
+        element.localName === 'pivotSelection'
+      ) {
+        this.beginIgnore();
+        return;
+      }
     }
     if (parent === 'mergeCells' && element.localName === 'mergeCell') {
       this.openMergedRange(element);
@@ -726,6 +782,53 @@ class WorksheetSink implements XlsxXmlEventSink {
       ...(style === undefined ? {} : { style: style.normalizedStyle }),
       ...(width === undefined ? {} : { width }),
     });
+  }
+
+  private openView(element: XlsxXmlElement): void {
+    const view = parseXlsxWorksheetView(element, this.part);
+    if (this.viewIds.has(view.workbookViewId)) {
+      valueFailure(
+        this.part,
+        undefined,
+        'Worksheet contains duplicate workbook view references',
+      );
+    }
+    this.viewIds.add(view.workbookViewId);
+    this.views.push(view);
+    this.currentView = view;
+  }
+
+  private openPane(element: XlsxXmlElement): void {
+    if (this.currentView!.pane) {
+      structureFailure(
+        this.part,
+        undefined,
+        'Worksheet view contains duplicate pane elements',
+      );
+    }
+    this.currentView!.pane = parseXlsxWorksheetPane(
+      element,
+      this.part,
+      this.limits,
+    );
+  }
+
+  private openViewSelection(element: XlsxXmlElement): void {
+    const parsed = parseXlsxWorksheetViewSelection(element, this.part);
+    consume(
+      this.budget,
+      'rangeAreas',
+      parsed.rangeAreaCount,
+      'maxRangeAreas',
+      this.limits,
+      this.part,
+    );
+    this.currentView!.selections.push(parsed.selection);
+  }
+
+  private closeView(): void {
+    validateXlsxWorksheetView(this.currentView!, this.part);
+    this.currentView = undefined;
   }
 
   private openMergedRange(element: XlsxXmlElement): void {

@@ -109,6 +109,7 @@ describe('XLSX workbook manifest', () => {
           rows: [],
           state: 'visible',
           tables: [],
+          views: [],
         },
       ],
     });

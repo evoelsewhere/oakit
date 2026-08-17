@@ -182,6 +182,7 @@ export async function parseXlsxWithDiagnostics(
         payload:
           selection.kind === 'full-sheet' ? 'full-sheet' : 'selected-ranges',
         rows: payload.rows,
+        views: payload.views,
       });
     }
   } catch (error) {

@@ -159,6 +159,40 @@ export interface XlsxColumnRange {
   width?: number;
 }
 
+export type XlsxPanePosition =
+  'bottom-left' | 'bottom-right' | 'top-left' | 'top-right';
+
+export interface XlsxWorksheetPane {
+  activePane: XlsxPanePosition;
+  state: 'frozen' | 'frozen-split' | 'split';
+  topLeftCell?: string;
+  xSplit: number;
+  ySplit: number;
+}
+
+export interface XlsxWorksheetViewSelection {
+  activeCell?: string;
+  activeCellId?: number;
+  pane: XlsxPanePosition;
+  ranges: XlsxRange[];
+}
+
+export interface XlsxWorksheetView {
+  kind: 'normal' | 'page-break-preview' | 'page-layout';
+  pane?: XlsxWorksheetPane;
+  rightToLeft: boolean;
+  selections: XlsxWorksheetViewSelection[];
+  showGridLines: boolean;
+  showRowColumnHeaders: boolean;
+  tabSelected: boolean;
+  topLeftCell?: string;
+  workbookViewId: number;
+  zoomScale: number;
+  zoomScaleNormal?: number;
+  zoomScalePageLayout?: number;
+  zoomScaleSheetLayout?: number;
+}
+
 export type XlsxColor =
   | { argb: string; kind: 'rgb'; tint?: number }
   | { index: number; kind: 'theme'; tint?: number }
@@ -344,6 +378,7 @@ export interface XlsxWorksheet extends XlsxSheetBase {
   mergedRanges: XlsxRange[];
   rows: XlsxRow[];
   tables: XlsxTable[];
+  views: XlsxWorksheetView[];
 }
 
 export interface XlsxChartSheet extends XlsxSheetBase {

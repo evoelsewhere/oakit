@@ -279,12 +279,25 @@ describe('XLSX worksheet streaming', () => {
           outlineLevel: 0,
         },
       ],
+      views: [
+        {
+          kind: 'normal',
+          rightToLeft: false,
+          selections: [],
+          showGridLines: true,
+          showRowColumnHeaders: true,
+          tabSelected: false,
+          workbookViewId: 0,
+          zoomScale: 100,
+        },
+      ],
     });
   });
 
   it('parses prefixed Strict worksheet elements', async () => {
     const xml = `<s:worksheet xmlns:s="${STRICT}">
       <s:cols><s:col min="1" max="2" width="12" hidden="1"/></s:cols>
+      <s:sheetViews><s:sheetView workbookViewId="0"/></s:sheetViews>
       <s:sheetData><s:row s="1" customFormat="1" collapsed="1"><s:c t="inlineStr"><s:is><s:t>Strict</s:t></s:is></s:c></s:row></s:sheetData>
       <s:mergeCells count="1"><s:mergeCell ref="A1:B1"/></s:mergeCells>
     </s:worksheet>`;
@@ -315,6 +328,18 @@ describe('XLSX worksheet streaming', () => {
           style: 1,
         },
       ],
+      views: [
+        {
+          kind: 'normal',
+          rightToLeft: false,
+          selections: [],
+          showGridLines: true,
+          showRowColumnHeaders: true,
+          tabSelected: false,
+          workbookViewId: 0,
+          zoomScale: 100,
+        },
+      ],
     });
   });
 
@@ -325,8 +350,172 @@ describe('XLSX worksheet streaming', () => {
       columns: [],
       mergedRanges: [],
       rows: [],
+      views: [],
     });
   });
+
+  it('normalizes worksheet views, panes, and selections in authored order', async () => {
+    const budget = createXlsxWorksheetBudget(EMPTY_STRINGS);
+    const result = await parse(
+      worksheet(`
+        <sheetViews>
+          <sheetView workbookViewId="1" view="pageLayout" rightToLeft="1"
+            showGridLines="0" showRowColHeaders="false" tabSelected="true"
+            topLeftCell="C3" zoomScale="125" zoomScaleNormal="100">
+            <pane xSplit="1" ySplit="2" topLeftCell="B3"
+              activePane="bottomRight" state="frozen"/>
+            <selection pane="bottomRight" activeCell="C3" activeCellId="1"
+              sqref="B3 C3:D4"/>
+            <selection pane="topRight" activeCell="B1" sqref="B1:B2"/>
+            <pivotSelection pane="topLeft" name="PivotSelection"/>
+            <extLst><ext uri="urn:test"><x:data xmlns:x="urn:x"/></ext></extLst>
+          </sheetView>
+          <sheetView workbookViewId="2" zoomScale="80"/>
+        </sheetViews>
+        <sheetData/>`),
+      { budget },
+    );
+
+    expect(result.views).toEqual([
+      {
+        kind: 'page-layout',
+        pane: {
+          activePane: 'bottom-right',
+          state: 'frozen',
+          topLeftCell: 'B3',
+          xSplit: 1,
+          ySplit: 2,
+        },
+        rightToLeft: true,
+        selections: [
+          {
+            activeCell: 'C3',
+            activeCellId: 1,
+            pane: 'bottom-right',
+            ranges: [
+              {
+                end: { column: 2, row: 3 },
+                reference: 'B3',
+                start: { column: 2, row: 3 },
+              },
+              {
+                end: { column: 4, row: 4 },
+                reference: 'C3:D4',
+                start: { column: 3, row: 3 },
+              },
+            ],
+          },
+          {
+            activeCell: 'B1',
+            pane: 'top-right',
+            ranges: [
+              {
+                end: { column: 2, row: 2 },
+                reference: 'B1:B2',
+                start: { column: 2, row: 1 },
+              },
+            ],
+          },
+        ],
+        showGridLines: false,
+        showRowColumnHeaders: false,
+        tabSelected: true,
+        topLeftCell: 'C3',
+        workbookViewId: 1,
+        zoomScale: 125,
+        zoomScaleNormal: 100,
+      },
+      {
+        kind: 'normal',
+        rightToLeft: false,
+        selections: [],
+        showGridLines: true,
+        showRowColumnHeaders: true,
+        tabSelected: false,
+        workbookViewId: 2,
+        zoomScale: 80,
+      },
+    ]);
+    expect(budget.rangeAreas).toBe(3);
+    expect(JSON.parse(JSON.stringify(result.views))).toEqual(result.views);
+  });
+
+  it('enforces worksheet view range-area boundaries exactly', async () => {
+    const xml = worksheet(`<sheetViews><sheetView workbookViewId="0">
+      <selection sqref="A1 B2"/>
+    </sheetView></sheetViews><sheetData/>`);
+
+    await expect(
+      parse(xml, { limits: { maxRangeAreas: 2 } }),
+    ).resolves.toMatchObject({
+      views: [{ selections: [{ ranges: [{}, {}] }] }],
+    });
+    await expect(
+      parse(xml, { limits: { maxRangeAreas: 1 } }),
+    ).rejects.toMatchObject({
+      actual: 2,
+      limit: 1,
+      limitName: 'maxRangeAreas',
+      name: 'XlsxResourceLimitError',
+    });
+  });
+
+  it.each([
+    ['<sheetViews/><sheetData/>', 'Worksheet sheetViews collection is empty'],
+    [
+      '<sheetViews><sheetView workbookViewId="0"/></sheetViews><sheetViews><sheetView workbookViewId="1"/></sheetViews><sheetData/>',
+      'Worksheet contains duplicate sheetViews elements',
+    ],
+    [
+      '<sheetViews><selection sqref="A1"/></sheetViews><sheetData/>',
+      'Worksheet element nesting is invalid',
+    ],
+    [
+      '<sheetViews/><sheetData><sheetView workbookViewId="0"/></sheetData>',
+      'Worksheet element nesting is invalid',
+    ],
+    [
+      '<sheetViews><sheetView workbookViewId="0"><unknown/></sheetView></sheetViews><sheetData/>',
+      'Worksheet element nesting is invalid',
+    ],
+    [
+      '<sheetViews><sheetView workbookViewId="0"><pane xSplit="1"/><pane ySplit="1"/></sheetView></sheetViews><sheetData/>',
+      'Worksheet view contains duplicate pane elements',
+    ],
+  ] as const)(
+    'rejects invalid worksheet view structure %#',
+    async (body, message) => {
+      const error = await captureParseError(worksheet(body));
+      expect(error.diagnostic).toMatchObject({
+        code: 'invalid-document-structure',
+        message,
+      });
+    },
+  );
+
+  it.each([
+    [
+      '<sheetViews><sheetView workbookViewId="0"/><sheetView workbookViewId="0"/></sheetViews><sheetData/>',
+      'Worksheet contains duplicate workbook view references',
+    ],
+    [
+      '<sheetViews><sheetView workbookViewId="0"><selection sqref="A1"/><selection sqref="B2"/></sheetView></sheetViews><sheetData/>',
+      'Worksheet view contains duplicate pane selections',
+    ],
+    [
+      '<sheetViews><sheetView workbookViewId="0"><selection pane="bottomLeft" sqref="A1"/></sheetView></sheetViews><sheetData/>',
+      'Worksheet view selection references a missing pane',
+    ],
+  ] as const)(
+    'rejects inconsistent worksheet view %#',
+    async (body, message) => {
+      const error = await captureParseError(worksheet(body));
+      expect(error.diagnostic).toMatchObject({
+        code: 'invalid-document-value',
+        message,
+      });
+    },
+  );
 
   it.each([
     ['0', false],
@@ -577,6 +766,7 @@ describe('XLSX worksheet streaming', () => {
           style: 1,
         },
       ],
+      views: [],
     });
   });
 
@@ -646,7 +836,12 @@ describe('XLSX worksheet streaming', () => {
       { selection: { kind: 'not-selected' } },
     );
 
-    expect(result).toEqual({ columns: [], mergedRanges: [], rows: [] });
+    expect(result).toEqual({
+      columns: [],
+      mergedRanges: [],
+      rows: [],
+      views: [],
+    });
   });
 
   it('charges merged-range selection checks to the scanned-work budget', async () => {
@@ -937,6 +1132,7 @@ describe('XLSX worksheet streaming', () => {
           index: 1,
         },
       ],
+      views: [],
     });
   });
 
@@ -959,6 +1155,7 @@ describe('XLSX worksheet streaming', () => {
     expect(createXlsxWorksheetBudget(table)).toEqual({
       formulaCharacters: 0,
       formulaGroups: 0,
+      rangeAreas: 0,
       returnedCells: 0,
       richTextRuns: 4,
       scannedCells: 0,
@@ -1002,6 +1199,7 @@ describe('XLSX worksheet streaming', () => {
     expect(budget).toEqual({
       formulaCharacters: 0,
       formulaGroups: 0,
+      rangeAreas: 0,
       returnedCells: 2,
       richTextRuns: 0,
       scannedCells: 2,
@@ -1053,10 +1251,12 @@ describe('XLSX worksheet streaming', () => {
         },
         { cells: [], height: 12, index: 2 },
       ],
+      views: [],
     });
     expect(budget).toEqual({
       formulaCharacters: 0,
       formulaGroups: 0,
+      rangeAreas: 0,
       returnedCells: 1,
       richTextRuns: 0,
       scannedCells: 3,
@@ -1158,6 +1358,7 @@ describe('XLSX worksheet streaming', () => {
           index: 1,
         },
       ],
+      views: [],
     });
     await expect(
       parse(cells, {
@@ -1197,6 +1398,7 @@ describe('XLSX worksheet streaming', () => {
           index: 1,
         },
       ],
+      views: [],
     });
   });
 
@@ -1494,6 +1696,7 @@ describe('XLSX worksheet streaming', () => {
           index: 1,
         },
       ],
+      views: [],
     });
   });
 
@@ -1546,6 +1749,7 @@ describe('XLSX worksheet streaming', () => {
           index: 2,
         },
       ],
+      views: [],
     });
     expect(budget.formulaGroups).toBe(1);
     expect(budget.formulaCharacters).toBe(48);

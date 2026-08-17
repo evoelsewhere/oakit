@@ -119,6 +119,7 @@ describe('public XLSX parser', () => {
             ],
             state: 'visible',
             tables: [],
+            views: [],
           },
         ],
         styles: [{ font: { name: 'Calibri', size: 11 } }],
@@ -156,6 +157,10 @@ describe('public XLSX parser', () => {
       'xl/workbook.xml': workbook,
       'xl/worksheets/sheet1.xml': `<worksheet xmlns="${XLSX_SPREADSHEET_NS}">
         <cols><col min="1" max="2" width="14" hidden="1" style="1"/></cols>
+        <sheetViews><sheetView workbookViewId="0" rightToLeft="1" zoomScale="125">
+          <pane xSplit="1" state="frozen" topLeftCell="B1"/>
+          <selection pane="topRight" activeCell="B1" sqref="B1:B2"/>
+        </sheetView></sheetViews>
         <sheetData><row s="1" customFormat="1" collapsed="1">
           <c r="A1" s="1"><v>0</v></c>
           <c r="B1" s="2"><f>A1+1</f><v>1</v></c>
@@ -233,6 +238,37 @@ describe('public XLSX parser', () => {
           ],
           collapsed: true,
           style: 1,
+        },
+      ],
+      views: [
+        {
+          kind: 'normal',
+          pane: {
+            activePane: 'top-right',
+            state: 'frozen',
+            topLeftCell: 'B1',
+            xSplit: 1,
+            ySplit: 0,
+          },
+          rightToLeft: true,
+          selections: [
+            {
+              activeCell: 'B1',
+              pane: 'top-right',
+              ranges: [
+                {
+                  end: { column: 2, row: 2 },
+                  reference: 'B1:B2',
+                  start: { column: 2, row: 1 },
+                },
+              ],
+            },
+          ],
+          showGridLines: true,
+          showRowColumnHeaders: true,
+          tabSelected: false,
+          workbookViewId: 0,
+          zoomScale: 125,
         },
       ],
     });
@@ -622,6 +658,7 @@ describe('public XLSX parser', () => {
         ],
         state: 'visible',
         tables: [],
+        views: [],
       },
     ]);
   });
