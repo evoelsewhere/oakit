@@ -10,6 +10,7 @@ import {
   XlsxResourceLimitError,
 } from './resource-limits';
 import { parseXlsxStyleFont } from './style-font';
+import { parseXlsxStyleFill } from './style-fill';
 import {
   type XlsxWorkbookDiscovery,
   XLSX_SPREADSHEET_NAMESPACES,
@@ -185,7 +186,7 @@ function customNumberFormats(
 function collectionCount(
   root: XmlRecord,
   prefix: string,
-  name: 'borders' | 'cellStyleXfs' | 'fills',
+  name: 'borders' | 'cellStyleXfs',
   item: 'border' | 'fill' | 'font' | 'xf',
   part: string,
 ): number {
@@ -238,7 +239,9 @@ export function parseXlsxStylePart(
   const fonts = collection(root, prefix, 'fonts', 'font', part, true).map(
     (font) => parseXlsxStyleFont(font, prefix, part),
   );
-  const fillCount = collectionCount(root, prefix, 'fills', 'fill', part);
+  const fills = collection(root, prefix, 'fills', 'fill', part, true).map(
+    (fill) => parseXlsxStyleFill(fill, prefix, part),
+  );
   const borderCount = collectionCount(root, prefix, 'borders', 'border', part);
   const baseXfCount = collectionCount(root, prefix, 'cellStyleXfs', 'xf', part);
   const xfs = collection(root, prefix, 'cellXfs', 'xf', part, true);
@@ -271,9 +274,9 @@ export function parseXlsxStylePart(
       'Styles XF font reference is invalid',
       part,
     );
-    referencedIndex(
+    const fillId = referencedIndex(
       attrs.fillId,
-      fillCount,
+      fills.length,
       'Styles XF fill reference is invalid',
       part,
     );
@@ -291,7 +294,14 @@ export function parseXlsxStylePart(
     );
     const code = numberFormat(numFmtId, custom, part);
     const font = fonts[fontId]!;
+    const fill = fills[fillId]!;
+    const defaultFill =
+      fill.kind === 'pattern' &&
+      fill.pattern === 'none' &&
+      fill.foregroundColor === undefined &&
+      fill.backgroundColor === undefined;
     const style: XlsxStyle = {
+      ...(defaultFill ? {} : { fill }),
       ...(Object.keys(font).length === 0 ? {} : { font }),
       ...(code === undefined ? {} : { numberFormat: code }),
     };

@@ -225,6 +225,7 @@ export type XlsxFill =
     };
 
 export interface XlsxStyle {
+  fill?: XlsxFill;
   font?: XlsxFont;
   numberFormat?: string;
 }

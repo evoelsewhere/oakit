@@ -230,6 +230,82 @@ describe('XLSX styles table', () => {
     expect(Object.isFrozen(result.styles[1]?.font)).toBe(true);
   });
 
+  it('resolves pattern and gradient fill references while omitting only the semantic default', async () => {
+    const result = await load({
+      'xl/styles.xml': styleSheet(`
+        <fonts count="1"><font/></fonts>
+        <fills count="6">
+          <fill><patternFill patternType="none"/></fill>
+          <fill><patternFill patternType="gray125"/></fill>
+          <fill><patternFill patternType="solid"><fgColor rgb="FFFF0000"/></patternFill></fill>
+          <fill><gradientFill degree="45">
+            <stop position="0"><color rgb="FF000000"/></stop>
+            <stop position="1"><color rgb="FFFFFFFF"/></stop>
+          </gradientFill></fill>
+          <fill><patternFill patternType="none"><fgColor rgb="FF00FF00"/></patternFill></fill>
+          <fill><patternFill patternType="none"><bgColor indexed="2"/></patternFill></fill>
+        </fills>
+        <borders count="1"><border/></borders>
+        <cellStyleXfs count="1"><xf/></cellStyleXfs>
+        <cellXfs count="7">
+          <xf/>
+          <xf fillId="1"/>
+          <xf fillId="2"/>
+          <xf fillId="3"/>
+          <xf fillId="4"/>
+          <xf fillId="5"/>
+          <xf fillId="2"/>
+        </cellXfs>`),
+    });
+
+    expect(result.cellXfs).toEqual([
+      { normalizedStyle: 0 },
+      { normalizedStyle: 1 },
+      { normalizedStyle: 2 },
+      { normalizedStyle: 3 },
+      { normalizedStyle: 4 },
+      { normalizedStyle: 5 },
+      { normalizedStyle: 2 },
+    ]);
+    expect(result.styles).toEqual([
+      {},
+      { fill: { kind: 'pattern', pattern: 'gray125' } },
+      {
+        fill: {
+          foregroundColor: { argb: 'FFFF0000', kind: 'rgb' },
+          kind: 'pattern',
+          pattern: 'solid',
+        },
+      },
+      {
+        fill: {
+          angle: 45,
+          kind: 'gradient',
+          stops: [
+            { color: { argb: 'FF000000', kind: 'rgb' }, position: 0 },
+            { color: { argb: 'FFFFFFFF', kind: 'rgb' }, position: 1 },
+          ],
+          type: 'linear',
+        },
+      },
+      {
+        fill: {
+          foregroundColor: { argb: 'FF00FF00', kind: 'rgb' },
+          kind: 'pattern',
+          pattern: 'none',
+        },
+      },
+      {
+        fill: {
+          backgroundColor: { index: 2, kind: 'indexed' },
+          kind: 'pattern',
+          pattern: 'none',
+        },
+      },
+    ]);
+    expect(Object.isFrozen(result.styles[3]?.fill)).toBe(true);
+  });
+
   it('accepts maxStyles exactly and rejects one over using formats plus XFs', async () => {
     const xml = styleSheet(`${CORE}
       <numFmts count="1"><numFmt numFmtId="164" formatCode="0.000"/></numFmts>
