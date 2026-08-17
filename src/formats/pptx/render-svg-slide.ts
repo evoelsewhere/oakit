@@ -104,20 +104,33 @@ function localTransform(
   return transforms.join(' ');
 }
 
-function textBody(content: unknown, box: PptxSvgBox): string {
+function textBody(
+  content: unknown,
+  box: PptxSvgBox,
+  verticalAlignment: unknown,
+): string {
   if (typeof content !== 'string') return '';
   const paragraphs = renderedTextFromPowerPointHtml(content);
   if (paragraphs.length === 0) return '';
   const width = svgNumber(box.width);
   const height = svgNumber(box.height);
-  let baseline = 0;
-  const lines = paragraphs
-    .map((paragraph) => {
-      const fontSize = paragraph.runs.reduce(
+  const lineHeights = paragraphs.map(
+    (paragraph) =>
+      paragraph.runs.reduce(
         (maximum, run) => Math.max(maximum, run.fontSize ?? 12),
         12,
-      );
-      baseline += fontSize + 4;
+      ) + 4,
+  );
+  const contentHeight = lineHeights.reduce((total, value) => total + value, 0);
+  let baseline =
+    verticalAlignment === 'mid'
+      ? Math.max(0, (box.height - contentHeight) / 2)
+      : verticalAlignment === 'down'
+        ? Math.max(0, box.height - contentHeight - 4)
+        : 0;
+  const lines = paragraphs
+    .map((paragraph, index) => {
+      baseline += lineHeights[index] as number;
       const x =
         paragraph.alignment === 'center'
           ? box.width / 2
@@ -164,7 +177,7 @@ function renderText(
   const width = svgNumber(box.width);
   const height = svgNumber(box.height);
   const fill = paint(element.fill, 'none', context, element);
-  return `<g transform="${localTransform(box, element.rotate, element.isFlipH, element.isFlipV)}"><rect x="0" y="0" width="${width}" height="${height}" fill="${fill}" ${strokeAttributes(element)}/>${textBody(element.content, box)}</g>`;
+  return `<g transform="${localTransform(box, element.rotate, element.isFlipH, element.isFlipV)}"><rect x="0" y="0" width="${width}" height="${height}" fill="${fill}" ${strokeAttributes(element)}/>${textBody(element.content, box, element.vAlign)}</g>`;
 }
 
 function shapeGeometry(
@@ -218,7 +231,7 @@ function renderShape(
   box: PptxSvgBox,
   context: RenderContext,
 ): string {
-  const body = textBody(element.content, box);
+  const body = textBody(element.content, box, element.vAlign);
   if (body !== '') {
     warning(
       context,

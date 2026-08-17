@@ -130,6 +130,49 @@ describe('PowerPoint document SVG rendering', () => {
     );
   });
 
+  it.each([
+    ['mid', [46, 62, 78]],
+    ['down', [64, 80, 96]],
+    ['up', [24, 40, 56]],
+  ])(
+    'positions multiline text at vertical alignment %s',
+    (vAlign, baselines) => {
+      const element = text(
+        '<p><span style="font-size: 20pt">First</span></p><p>Second</p><p>Third</p>',
+      );
+      element.width = 200;
+      element.height = 100;
+      element.vAlign = vAlign;
+      const input = document();
+      input.slides = [{ ...slide(''), elements: [element] }];
+
+      const source = UTF8_DECODER.decode(
+        renderPptxDocumentToSvg(input).slides[0]?.data,
+      );
+
+      expect(
+        [...source.matchAll(/<text x="4" y="([\d.]+)"/g)].map((match) =>
+          Number(match[1]),
+        ),
+      ).toEqual(baselines);
+    },
+  );
+
+  it('clamps centered content to the top when it is taller than its box', () => {
+    const element = text('<p>First</p><p>Second</p>');
+    element.height = 20;
+    element.vAlign = 'mid';
+    const input = document();
+    input.slides = [{ ...slide(''), elements: [element] }];
+
+    const source = UTF8_DECODER.decode(
+      renderPptxDocumentToSvg(input).slides[0]?.data,
+    );
+
+    expect(source).toContain('<text x="4" y="16"');
+    expect(source).toContain('<text x="4" y="32"');
+  });
+
   it('omits a text body for non-string or empty content', () => {
     const invalid = text('');
     invalid.content = undefined as never;
