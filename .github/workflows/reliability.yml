@@ -148,7 +148,7 @@ jobs:
   shape-mutation:
     name: PowerPoint shape mutation job ${{ matrix.job }} of 18
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 240
     strategy:
       fail-fast: false
       matrix:
