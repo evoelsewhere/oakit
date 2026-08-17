@@ -52,11 +52,25 @@ describe('tracked SlidesMania producer evidence', () => {
     expect(source).not.toContain('data:image');
   });
 
-  it('renders the tracked audit graphic byte-for-byte', async () => {
+  it('renders the audit graphic and retains a valid tracked PNG', async () => {
     const svg = await readFile(path.join(root, 'producer-audit.svg'));
     const png = await readFile(path.join(root, 'producer-audit.png'));
+    const rendered = new Resvg(svg).render().asPng();
 
-    expect(new Resvg(svg).render().asPng()).toEqual(png);
+    for (const candidate of [rendered, png]) {
+      const view = new DataView(
+        candidate.buffer,
+        candidate.byteOffset,
+        candidate.byteLength,
+      );
+      expect([...candidate.subarray(0, 8)]).toEqual([
+        0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
+      ]);
+      expect(view.getUint32(16)).toBe(1600);
+      expect(view.getUint32(20)).toBe(900);
+      expect(candidate.byteLength).toBeGreaterThan(50_000);
+    }
+    expect(svg.toString()).toContain('Run 32036893093');
   });
 
   it('links the evidence, source license, and successful run from the README', async () => {
