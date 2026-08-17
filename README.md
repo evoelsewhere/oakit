@@ -42,19 +42,20 @@ agent runtime, tool-calling protocol, or vector database.
 
 ## Format support
 
-| Format               | Read | Create          | Edit                       | Preserve      | Preview |
-| -------------------- | ---- | --------------- | -------------------------- | ------------- | ------- |
-| PowerPoint (`.pptx`) | Yes  | Text-focused C2 | Plain single-run text (R2) | Byte-exact R0 | SVG/PNG |
-| Excel (`.xlsx`)      | No   | No              | No                         | No            | No      |
-| Word (`.docx`)       | No   | No              | No                         | No            | No      |
+| Format               | Read | Create          | Edit                             | Preserve      | Preview |
+| -------------------- | ---- | --------------- | -------------------------------- | ------------- | ------- |
+| PowerPoint (`.pptx`) | Yes  | Text-focused C2 | Plain text + text transform (R2) | Byte-exact R0 | SVG/PNG |
+| Excel (`.xlsx`)      | No   | No              | No                               | No            | No      |
+| Word (`.docx`)       | No   | No              | No                               | No            | No      |
 
 `C2` means a new package is valid, reparses to the supported source-free
 semantics, and passes Office-free SVG visual verification for every slide. `R0`
 means an unchanged source package is restored byte for byte through runtime or
 portable JSON. `R2` text replacement preserves every untouched part payload,
-reparses the edited package strictly, and verifies the complete semantic
-preview. These levels do not claim arbitrary PPTX editing, full reconstruction
-from normalized JSON, or pixel-identical PowerPoint rendering.
+as do move/resize/rotate/flip operations on the same supported text elements.
+Every result reparses strictly and verifies the complete semantic preview.
+These levels do not claim arbitrary PPTX editing, full reconstruction from
+normalized JSON, or pixel-identical PowerPoint rendering.
 
 The PowerPoint reader currently handles:
 
@@ -201,6 +202,25 @@ deliberately narrow: one plain DrawingML text node in a slide-owned text shape.
 Fields, line breaks, multiple runs, compatibility extensions, signed packages,
 and macro-enabled packages fail closed with a typed error.
 
+Move, resize, rotate, or flip that text element with a partial transform. Fields
+not provided are copied from the bound preview:
+
+```bash
+oakit transform-text edited.oakit.json \
+  --target slide-1-element-1 \
+  --x=-10 \
+  --width 500 \
+  --rotation 15 \
+  --flip-horizontal true \
+  --output transformed.oakit.json
+```
+
+Transform editing requires one simple DrawingML `a:xfrm` owned by the target
+text shape. Group coordinate children and compatibility extensions fail closed.
+PowerPoint preserves the declared values exactly in the native producer gate;
+LibreOffice's controlled save/reopen gate allows at most 0.2 point of geometry
+quantization while requiring rotation and flip state to remain exact.
+
 All three commands run in-process without Office software or a conversion
 service. `snapshot` and `edit-text` can write JSON to stdout. `restore` requires
 an output file so binary data is never mixed with terminal text.
@@ -226,6 +246,7 @@ Usage: oakit [convert] <input.pptx|-> [options]
        oakit render <input.pptx|-> --output <directory> [options]
        oakit snapshot <input.pptx|-> [--output <file>]
        oakit edit-text <input.json|-> --target <run-key> --value <text> [options]
+       oakit transform-text <input.json|-> --target <element-key> [options]
        oakit restore <input.json|-> --output <file.pptx>
 
 Convert options:
@@ -249,6 +270,18 @@ Edit text options:
   -o, --output <file>          Write edited portable JSON instead of stdout
       --target <run-key>       Stable text run key from the portable document
       --value <text>           Replacement text; use --value=-5 for leading -
+      --pretty                 Format portable JSON with two-space indentation
+
+Transform text options:
+  -o, --output <file>          Write edited portable JSON instead of stdout
+      --target <element-key>   Stable text element key from the portable document
+      --x <number>             Set horizontal position; use --x=-10 when negative
+      --y <number>             Set vertical position; use --y=-10 when negative
+      --width <number>         Set positive width
+      --height <number>        Set positive height
+      --rotation <number>      Set rotation in degrees
+      --flip-horizontal <bool> Set horizontal flip: true or false
+      --flip-vertical <bool>   Set vertical flip: true or false
       --pretty                 Format portable JSON with two-space indentation
 
 Restore options:
@@ -557,14 +590,27 @@ import {
   parsePptxRoundTripJson,
   readPptxRoundTrip,
   replacePptxRoundTripText,
+  setPptxRoundTripTextTransform,
   serializePptxRoundTripJson,
   writePptxRoundTrip,
 } from '@evoelsewhere/oakit';
 
 const runtime = await readPptxRoundTrip(input);
-const edited = await replacePptxRoundTripText(runtime, {
+const textEdited = await replacePptxRoundTripText(runtime, {
   targetKey: 'slide-1-element-1-run-1',
   value: 'Updated by an agent',
+});
+const edited = await setPptxRoundTripTextTransform(textEdited, {
+  targetKey: 'slide-1-element-1',
+  value: {
+    flipHorizontal: false,
+    flipVertical: false,
+    height: 80,
+    rotation: 15,
+    width: 500,
+    x: 40,
+    y: 40,
+  },
 });
 const portable = await serializePptxRoundTripJson(edited);
 const wireValue: unknown = JSON.parse(JSON.stringify(portable));

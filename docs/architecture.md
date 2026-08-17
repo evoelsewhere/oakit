@@ -10,7 +10,7 @@ The implemented PowerPoint production paths are:
 .pptx package ──parse──────────> normalized typed JSON + diagnostics
 .pptx package ──snapshot───────> portable integrity-bound JSON ──restore──> R0 .pptx
                                        │
-                                       └──replace-text operation──────────> part-preserved R2 .pptx
+                                       └──bound text operations──────────> part-preserved R2 .pptx
 scene JSON──── ──create─────────> bounded, semantic/render-verified C2 .pptx
 .pptx/model─── ──render─────────> self-contained SVG or Node-only PNG + warnings
 ```
@@ -42,9 +42,9 @@ The architecture optimizes for the following goals:
 The normalized parser does not attempt byte-for-byte preservation. Exact `R0`
 preservation is implemented by a separate round-trip snapshot that owns the
 source package and hashes its bound semantic preview, operation log, and source
-manifest. The same snapshot accepts a narrow `R2` single-run text operation
-with exact preconditions, part-preserving patching, strict output reparse, and
-semantic verification. Source-free creation currently accepts a bounded text
+manifest. The same snapshot accepts narrow `R2` single-run replacement and
+text-element transform operations with exact preconditions, part-preserving
+patching, strict output reparse, and semantic verification. Source-free creation currently accepts a bounded text
 profile and reports `C2`; arbitrary semantic editing, streaming ZIP processing,
 full XSD validation, macro execution, and package repair are not implemented.
 
@@ -59,7 +59,7 @@ flowchart LR
     XML["OOXML parts and relationships"]
     Model["Typed PptxDocument"]
     Snapshot["Portable R0/R2 snapshot"]
-    Operation["Bound text operation"]
+    Operation["Bound text or transform operation"]
     Scene["Validated scene JSON"]
     Writer["R0 restore, R2 patch, or C2 creator"]
     PackageOutput["Verified PPTX bytes"]
@@ -678,18 +678,19 @@ round-trip runtime snapshot into ordinary JSON. The portable envelope contains
 canonical Base64 source bytes plus the source hash, package conformance,
 semantic preview, operation log, support profile, and consistency hashes.
 
-`oakit edit-text <input.json|->` parses and verifies that envelope, binds an
-exact source-text precondition to a stable run key, and serializes the original
-source plus the new operation. It never treats direct preview mutation as an
-authorized edit and never replaces the original source bytes with an already
-edited package.
+`oakit edit-text <input.json|->` and `oakit transform-text <input.json|->` parse
+and verify that envelope, bind exact source preconditions to stable run or
+element keys, and serialize the original source plus the new operation. They
+never treat direct preview mutation as an authorized edit and never replace the
+original source bytes with an already edited package.
 
 `oakit restore <input.json|->` requires an explicit PowerPoint output path. It
 applies fatal UTF-8 decoding, strict JSON/envelope validation, bounded Base64
 decoding, source/hash verification, and consistency verification. With no
 operations it writes byte-identical `R0` data. For the supported `R2` text
-profile it patches one owning slide part, verifies every untouched part payload,
-strict-parses the output, and compares the complete semantic preview.
+profile it patches text and/or one simple shape transform in the owning slide
+part, verifies every untouched part payload, strict-parses the output, and
+compares the complete semantic preview.
 
 Command parsing, conversion, hand-off, edit, and render orchestration live in
 `cli/run.ts` behind the injected `OakitCliIo` contract. The contract separates
@@ -837,7 +838,7 @@ PowerPoint public API
 ├── normalized reader -> PptxDocument + optional diagnostics
 ├── round-trip reader -> source-bound R0 runtime snapshot
 ├── portable codec -> bounded JSON transport with canonical Base64
-├── text operation -> stable target plus exact source precondition
+├── text operations -> stable run/element targets plus exact preconditions
 ├── round-trip writer -> verified R0 copy or part-preserving R2 package
 ├── creation writer -> deterministic C2 text-profile package
 ├── preview renderer -> approximate SVG/PNG with warnings
@@ -850,8 +851,9 @@ escaping, archive generation, limits, and strict reparse verification. For an
 returns an owned copy of the original package; this is how unknown parts remain
 exact without leaking raw OOXML into the normalized model. For the declared
 `R2` text profile, it resolves slide ownership through relationships, rejects
-ambiguous or extension-bearing targets, patches one DrawingML text node, proves
-every untouched payload remains exact, and verifies the full output preview.
+ambiguous or extension-bearing targets, patches one DrawingML text node and/or
+one simple shape transform, proves every untouched payload remains exact, and
+verifies the full output preview.
 Broader edit and creation profiles remain future work rather than implied
 capabilities.
 
