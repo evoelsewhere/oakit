@@ -284,10 +284,12 @@ export interface XlsxProtection {
 }
 
 export interface XlsxStyle {
+  alignment?: XlsxAlignment;
   border?: XlsxBorder;
   fill?: XlsxFill;
   font?: XlsxFont;
   numberFormat?: string;
+  protection?: XlsxProtection;
 }
 
 export interface XlsxDefinedName {

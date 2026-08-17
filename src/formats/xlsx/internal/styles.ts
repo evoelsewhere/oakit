@@ -12,12 +12,25 @@ import {
 import { parseXlsxStyleBorder } from './style-border';
 import { parseXlsxStyleFont } from './style-font';
 import { parseXlsxStyleFill } from './style-fill';
+import { parseXlsxXfFormatting } from './style-formatting';
 import {
   type XlsxWorkbookDiscovery,
   XLSX_SPREADSHEET_NAMESPACES,
 } from './workbook-discovery';
 
 type XmlRecord = Record<string, unknown>;
+
+type StyleCategory = keyof Pick<
+  XlsxStyle,
+  'alignment' | 'border' | 'fill' | 'font' | 'numberFormat' | 'protection'
+>;
+
+interface XlsxDirectXfStyle {
+  present: Readonly<Record<StyleCategory, boolean>>;
+  style: XlsxStyle;
+}
+
+type XlsxApplyFlags = Readonly<Record<StyleCategory, boolean | undefined>>;
 
 export interface XlsxCellXf {
   normalizedStyle: number;
@@ -119,6 +132,17 @@ function unsignedInteger(
   return parsed;
 }
 
+function optionalBoolean(
+  value: unknown,
+  message: string,
+  part: string,
+): boolean | undefined {
+  if (value === undefined) return undefined;
+  if (value === '0' || value === 'false') return false;
+  if (value === '1' || value === 'true') return true;
+  valueFailure(message, part);
+}
+
 function collection(
   root: XmlRecord,
   prefix: string,
@@ -184,16 +208,6 @@ function customNumberFormats(
   return values;
 }
 
-function collectionCount(
-  root: XmlRecord,
-  prefix: string,
-  name: 'cellStyleXfs',
-  item: 'border' | 'fill' | 'font' | 'xf',
-  part: string,
-): number {
-  return collection(root, prefix, name, item, part, true).length;
-}
-
 function referencedIndex(
   value: unknown,
   count: number,
@@ -229,6 +243,149 @@ function numberFormat(
   return code === 'General' ? undefined : code;
 }
 
+function semanticFill(fill: XlsxStyle['fill']): XlsxStyle['fill'] {
+  if (
+    fill?.kind === 'pattern' &&
+    fill.pattern === 'none' &&
+    fill.foregroundColor === undefined &&
+    fill.backgroundColor === undefined
+  ) {
+    return undefined;
+  }
+  return fill;
+}
+
+function directXfStyle(
+  xf: XmlRecord,
+  prefix: string,
+  part: string,
+  custom: ReadonlyMap<number, string>,
+  fonts: readonly NonNullable<XlsxStyle['font']>[],
+  fills: readonly NonNullable<XlsxStyle['fill']>[],
+  borders: readonly NonNullable<XlsxStyle['border']>[],
+): XlsxDirectXfStyle {
+  const attrs = attributes(xf);
+  const numFmtId =
+    attrs.numFmtId === undefined
+      ? 0
+      : unsignedInteger(
+          attrs.numFmtId,
+          'Styles XF number-format ID is invalid',
+          part,
+        );
+  const fontId = referencedIndex(
+    attrs.fontId,
+    fonts.length,
+    'Styles XF font reference is invalid',
+    part,
+  );
+  const fillId = referencedIndex(
+    attrs.fillId,
+    fills.length,
+    'Styles XF fill reference is invalid',
+    part,
+  );
+  const borderId = referencedIndex(
+    attrs.borderId,
+    borders.length,
+    'Styles XF border reference is invalid',
+    part,
+  );
+  const formatting = parseXlsxXfFormatting(xf, prefix, part);
+  const border = borders[borderId]!;
+  const fill = semanticFill(fills[fillId]);
+  const font = fonts[fontId]!;
+  const formatCode = numberFormat(numFmtId, custom, part);
+  return {
+    present: {
+      alignment: child(xf, prefix, 'alignment') !== undefined,
+      border: attrs.borderId !== undefined,
+      fill: attrs.fillId !== undefined,
+      font: attrs.fontId !== undefined,
+      numberFormat: attrs.numFmtId !== undefined,
+      protection: child(xf, prefix, 'protection') !== undefined,
+    },
+    style: {
+      ...formatting,
+      ...(Object.keys(border).length === 0 ? {} : { border }),
+      ...(fill === undefined ? {} : { fill }),
+      ...(Object.keys(font).length === 0 ? {} : { font }),
+      ...(formatCode === undefined ? {} : { numberFormat: formatCode }),
+    },
+  };
+}
+
+function applyFlags(attrs: XmlRecord, part: string): XlsxApplyFlags {
+  return {
+    alignment: optionalBoolean(
+      attrs.applyAlignment,
+      'Styles XF applyAlignment flag is invalid',
+      part,
+    ),
+    border: optionalBoolean(
+      attrs.applyBorder,
+      'Styles XF applyBorder flag is invalid',
+      part,
+    ),
+    fill: optionalBoolean(
+      attrs.applyFill,
+      'Styles XF applyFill flag is invalid',
+      part,
+    ),
+    font: optionalBoolean(
+      attrs.applyFont,
+      'Styles XF applyFont flag is invalid',
+      part,
+    ),
+    numberFormat: optionalBoolean(
+      attrs.applyNumberFormat,
+      'Styles XF applyNumberFormat flag is invalid',
+      part,
+    ),
+    protection: optionalBoolean(
+      attrs.applyProtection,
+      'Styles XF applyProtection flag is invalid',
+      part,
+    ),
+  };
+}
+
+function appliedValue<T>(
+  base: T | undefined,
+  direct: T | undefined,
+  apply: boolean | undefined,
+  present: boolean,
+): T | undefined {
+  if (apply === false) return base;
+  if (apply === true || present) return direct;
+  return base;
+}
+
+function resolvedCellStyle(
+  base: XlsxStyle,
+  direct: XlsxDirectXfStyle,
+  flags: XlsxApplyFlags,
+): XlsxStyle {
+  const style: XlsxStyle = {};
+  for (const category of [
+    'alignment',
+    'border',
+    'fill',
+    'font',
+    'numberFormat',
+    'protection',
+  ] as const) {
+    const value = appliedValue(
+      base[category],
+      direct.style[category],
+      flags[category],
+      direct.present[category],
+    );
+    if (value !== undefined) Object.assign(style, { [category]: value });
+  }
+  return style;
+}
+
 export function parseXlsxStylePart(
   value: XmlLookupValue,
   dialect: XlsxWorkbookDiscovery['dialect'],
@@ -246,9 +403,15 @@ export function parseXlsxStylePart(
   const borders = collection(root, prefix, 'borders', 'border', part, true).map(
     (border) => parseXlsxStyleBorder(border, prefix, part),
   );
-  const baseXfCount = collectionCount(root, prefix, 'cellStyleXfs', 'xf', part);
+  const baseXfs = collection(root, prefix, 'cellStyleXfs', 'xf', part, true);
   const xfs = collection(root, prefix, 'cellXfs', 'xf', part, true);
-  const totalStyles = custom.size + xfs.length;
+  const totalStyles =
+    custom.size +
+    fonts.length +
+    fills.length +
+    borders.length +
+    baseXfs.length +
+    xfs.length;
   if (totalStyles > limits.maxStyles) {
     throw new XlsxResourceLimitError(
       'maxStyles',
@@ -261,55 +424,34 @@ export function parseXlsxStylePart(
   const styles: XlsxStyle[] = [];
   const cellXfs: XlsxCellXf[] = [];
   const normalizedStyles = new Map<string, number>();
+  const baseStyles = baseXfs.map((xf) => {
+    applyFlags(attributes(xf), part);
+    return Object.freeze(
+      directXfStyle(xf, prefix, part, custom, fonts, fills, borders).style,
+    );
+  });
   for (const xf of xfs) {
     const attrs = attributes(xf);
-    const numFmtId =
-      attrs.numFmtId === undefined
-        ? 0
-        : unsignedInteger(
-            attrs.numFmtId,
-            'Styles XF number-format ID is invalid',
-            part,
-          );
-    const fontId = referencedIndex(
-      attrs.fontId,
-      fonts.length,
-      'Styles XF font reference is invalid',
-      part,
-    );
-    const fillId = referencedIndex(
-      attrs.fillId,
-      fills.length,
-      'Styles XF fill reference is invalid',
-      part,
-    );
-    const borderId = referencedIndex(
-      attrs.borderId,
-      borders.length,
-      'Styles XF border reference is invalid',
-      part,
-    );
-    referencedIndex(
+    const baseIndex = referencedIndex(
       attrs.xfId,
-      baseXfCount,
+      baseStyles.length,
       'Styles XF base-style reference is invalid',
       part,
     );
-    const code = numberFormat(numFmtId, custom, part);
-    const border = borders[borderId]!;
-    const font = fonts[fontId]!;
-    const fill = fills[fillId]!;
-    const defaultFill =
-      fill.kind === 'pattern' &&
-      fill.pattern === 'none' &&
-      fill.foregroundColor === undefined &&
-      fill.backgroundColor === undefined;
-    const style: XlsxStyle = {
-      ...(Object.keys(border).length === 0 ? {} : { border }),
-      ...(defaultFill ? {} : { fill }),
-      ...(Object.keys(font).length === 0 ? {} : { font }),
-      ...(code === undefined ? {} : { numberFormat: code }),
-    };
+    const direct = directXfStyle(
+      xf,
+      prefix,
+      part,
+      custom,
+      fonts,
+      fills,
+      borders,
+    );
+    const style = resolvedCellStyle(
+      baseStyles[baseIndex]!,
+      direct,
+      applyFlags(attrs, part),
+    );
     const styleKey = JSON.stringify(style);
     let normalizedStyle = normalizedStyles.get(styleKey);
     if (normalizedStyle === undefined) {
@@ -320,7 +462,9 @@ export function parseXlsxStylePart(
     cellXfs.push(
       Object.freeze({
         normalizedStyle,
-        ...(code === undefined ? {} : { numberFormat: code }),
+        ...(style.numberFormat === undefined
+          ? {}
+          : { numberFormat: style.numberFormat }),
       }),
     );
   }

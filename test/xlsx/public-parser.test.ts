@@ -225,14 +225,14 @@ describe('public XLSX parser', () => {
       parseXlsx(bytes, { limits: { maxStyles: 1 } }),
     ).rejects.toMatchObject({
       cause: {
-        actual: 2,
+        actual: 6,
         limit: 1,
         limitName: 'maxStyles',
         name: 'XlsxResourceLimitError',
         part: 'xl/styles.xml',
       },
       diagnostic: {
-        actual: 2,
+        actual: 6,
         code: 'resource-limit-exceeded',
         limit: 1,
         limitName: 'maxStyles',

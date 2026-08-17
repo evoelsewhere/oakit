@@ -357,20 +357,117 @@ describe('XLSX styles table', () => {
     expect(Object.isFrozen(result.styles[2]?.border)).toBe(true);
   });
 
+  it('resolves base XF precedence and apply flags for every style category', async () => {
+    const result = await load({
+      'xl/styles.xml': styleSheet(`
+        <numFmts count="1"><numFmt numFmtId="164" formatCode="yyyy-mm-dd"/></numFmts>
+        <fonts count="2"><font/><font><b/><name val="Base"/></font></fonts>
+        <fills count="2">
+          <fill/>
+          <fill><patternFill patternType="solid"><fgColor rgb="FF00FF00"/></patternFill></fill>
+        </fills>
+        <borders count="2"><border/><border><left style="thin"/></border></borders>
+        <cellStyleXfs count="2">
+          <xf/>
+          <xf numFmtId="164" fontId="1" fillId="1" borderId="1">
+            <alignment horizontal="left" wrapText="1"/>
+            <protection hidden="1"/>
+          </xf>
+        </cellStyleXfs>
+        <cellXfs count="4">
+          <xf xfId="1"/>
+          <xf xfId="1" numFmtId="0" fontId="0" fillId="0" borderId="0">
+            <alignment horizontal="right"/>
+            <protection locked="0"/>
+          </xf>
+          <xf xfId="1" numFmtId="0" fontId="0" fillId="0" borderId="0"
+            applyAlignment="0" applyBorder="false" applyFill="0"
+            applyFont="false" applyNumberFormat="0" applyProtection="false">
+            <alignment horizontal="right"/>
+            <protection locked="0"/>
+          </xf>
+          <xf xfId="1" applyAlignment="1" applyBorder="true" applyFill="1"
+            applyFont="true" applyNumberFormat="1" applyProtection="true"/>
+        </cellXfs>`),
+    });
+
+    expect(result.cellXfs).toEqual([
+      { normalizedStyle: 0, numberFormat: 'yyyy-mm-dd' },
+      { normalizedStyle: 1 },
+      { normalizedStyle: 0, numberFormat: 'yyyy-mm-dd' },
+      { normalizedStyle: 2 },
+    ]);
+    expect(result.styles).toEqual([
+      {
+        alignment: { horizontal: 'left', wrapText: true },
+        border: { left: { style: 'thin' } },
+        fill: {
+          foregroundColor: { argb: 'FF00FF00', kind: 'rgb' },
+          kind: 'pattern',
+          pattern: 'solid',
+        },
+        font: { bold: true, name: 'Base' },
+        numberFormat: 'yyyy-mm-dd',
+        protection: { hidden: true },
+      },
+      {
+        alignment: { horizontal: 'right' },
+        protection: { locked: false },
+      },
+      {},
+    ]);
+    expect(Object.keys(result.styles[2]!)).toEqual([]);
+    expect('numberFormat' in result.cellXfs[1]!).toBe(false);
+    expect('numberFormat' in result.cellXfs[3]!).toBe(false);
+  });
+
+  it.each([
+    'applyAlignment',
+    'applyBorder',
+    'applyFill',
+    'applyFont',
+    'applyNumberFormat',
+    'applyProtection',
+  ] as const)('rejects invalid XF %s flag', async (attribute) => {
+    const error = await capture({
+      'xl/styles.xml': styleSheet(
+        `${CORE}<cellXfs count="1"><xf ${attribute}="yes"/></cellXfs>`,
+      ),
+    });
+    expect(error.diagnostic).toMatchObject({
+      code: 'invalid-document-value',
+      message: `Styles XF ${attribute} flag is invalid`,
+    });
+  });
+
+  it('validates formatting and apply flags in an unused base XF', async () => {
+    const error = await capture({
+      'xl/styles.xml': styleSheet(`
+        <fonts count="1"><font/></fonts>
+        <fills count="1"><fill/></fills>
+        <borders count="1"><border/></borders>
+        <cellStyleXfs count="1"><xf applyFont="yes"/></cellStyleXfs>
+        <cellXfs count="1"><xf/></cellXfs>`),
+    });
+    expect(error.diagnostic.message).toBe(
+      'Styles XF applyFont flag is invalid',
+    );
+  });
+
   it('accepts maxStyles exactly and rejects one over using formats plus XFs', async () => {
     const xml = styleSheet(`${CORE}
       <numFmts count="1"><numFmt numFmtId="164" formatCode="0.000"/></numFmts>
       <cellXfs count="2"><xf/><xf numFmtId="164"/></cellXfs>`);
     await expect(
-      load({ 'xl/styles.xml': xml }, { maxStyles: 3 }),
+      load({ 'xl/styles.xml': xml }, { maxStyles: 7 }),
     ).resolves.toMatchObject({
       styles: [{}, { numberFormat: '0.000' }],
     });
     await expect(
-      load({ 'xl/styles.xml': xml }, { maxStyles: 2 }),
+      load({ 'xl/styles.xml': xml }, { maxStyles: 6 }),
     ).rejects.toMatchObject({
-      actual: 3,
-      limit: 2,
+      actual: 7,
+      limit: 6,
       limitName: 'maxStyles',
       name: 'XlsxResourceLimitError',
       part: 'xl/styles.xml',
