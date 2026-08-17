@@ -1,0 +1,56 @@
+name: Mutation Artifact Audit
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_run_id:
+        description: Reliability run containing complete forced mutation artifacts
+        required: true
+        type: string
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  audit:
+    name: Merge and audit forced mutation artifacts
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Verify mutation source compatibility
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_RUN_ID: ${{ inputs.source_run_id }}
+        run: |
+          if [[ ! "$SOURCE_RUN_ID" =~ ^[1-9][0-9]*$ ]]; then
+            echo "source_run_id must be a positive integer" >&2
+            exit 1
+          fi
+          source_sha="$(gh api "repos/${{ github.repository }}/actions/runs/$SOURCE_RUN_ID" --jq '.head_sha')"
+          git diff --exit-code "$source_sha" HEAD -- src stryker.config.mjs scripts/mutation-scope.mjs
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: mutation-*
+          path: reports/mutation/shards
+          run-id: ${{ inputs.source_run_id }}
+          github-token: ${{ github.token }}
+      - run: node scripts/merge-mutation-reports.mjs
+      - run: pnpm test:mutation:audit
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mutation-report-${{ inputs.source_run_id }}
+          path: reports/mutation/mutation.json
+          if-no-files-found: error
