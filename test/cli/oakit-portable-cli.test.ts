@@ -264,6 +264,91 @@ describe('oakit portable PowerPoint CLI contract', () => {
     expect(io.stderr).toBe('');
   });
 
+  it('partially transforms text through portable JSON and restores the geometry', async () => {
+    const io = new PortableCliIo();
+    io.files.set('source.pptx', await createEditablePptx());
+    await runOakitCli(
+      ['snapshot', 'source.pptx', '--output', 'handoff.json'],
+      io,
+      '1.2.3',
+    );
+
+    await expect(
+      runOakitCli(
+        [
+          'transform-text',
+          'handoff.json',
+          '--target',
+          'slide-1-element-1',
+          '--x=-10',
+          '--width',
+          '400',
+          '--rotation',
+          '45',
+          '--flip-horizontal',
+          'true',
+          '--output',
+          'transformed.json',
+          '--pretty',
+        ],
+        io,
+        '1.2.3',
+      ),
+    ).resolves.toBe(0);
+    const portable = json(String(io.files.get('transformed.json')));
+    expect(portable.operations).toEqual([
+      {
+        expectedTransform: {
+          flipHorizontal: false,
+          flipVertical: false,
+          height: 80,
+          rotation: 0,
+          width: 300,
+          x: 20,
+          y: 30,
+        },
+        id: 'set-transform-1',
+        kind: 'set-transform',
+        targetKey: 'slide-1-element-1',
+        value: {
+          flipHorizontal: true,
+          flipVertical: false,
+          height: 80,
+          rotation: 45,
+          width: 400,
+          x: -10,
+          y: 30,
+        },
+      },
+    ]);
+
+    await expect(
+      runOakitCli(
+        ['restore', 'transformed.json', '--output', 'transformed.pptx'],
+        io,
+        '1.2.3',
+      ),
+    ).resolves.toBe(0);
+    const output = io.files.get('transformed.pptx');
+    if (!(output instanceof Uint8Array))
+      throw new Error('Expected PPTX output');
+    const verified = await readPptxRoundTrip(output);
+    expect(verified.document.slides[0]?.elements[0]).toMatchObject({
+      resolved: {
+        transform: {
+          flipHorizontal: true,
+          flipVertical: false,
+          height: 80,
+          rotation: 45,
+          width: 400,
+          x: -10,
+          y: 30,
+        },
+      },
+    });
+    expect(io.stderr).toBe('');
+  });
+
   it('writes pretty portable JSON to stdout from explicit-format stdin', async () => {
     const io = new PortableCliIo();
     io.stdin = await createMinimalPptx();
@@ -324,6 +409,11 @@ describe('oakit portable PowerPoint CLI contract', () => {
       message: 'A portable JSON input path is required',
     },
     {
+      args: ['transform-text'],
+      code: 'input-required',
+      message: 'A portable JSON input path is required',
+    },
+    {
       args: ['snapshot', '-'],
       code: 'format-required',
       message: 'Reading stdin requires --format pptx',
@@ -352,6 +442,39 @@ describe('oakit portable PowerPoint CLI contract', () => {
       ],
       code: 'edit-value-required',
       message: 'Editing text requires --value',
+    },
+    {
+      args: ['transform-text', 'handoff.json', '--x', '10'],
+      code: 'transform-target-required',
+      message: 'Transforming text requires a non-empty --target element key',
+    },
+    {
+      args: ['transform-text', 'handoff.json', '--target', 'slide-1-element-1'],
+      code: 'transform-value-required',
+      message: 'Transforming text requires at least one transform option',
+    },
+    {
+      args: [
+        'transform-text',
+        'handoff.json',
+        '--target',
+        'slide-1-element-1',
+        '--x=NaN',
+      ],
+      code: 'invalid-transform-number',
+      message: 'Option --x requires a finite number',
+    },
+    {
+      args: [
+        'transform-text',
+        'handoff.json',
+        '--target',
+        'slide-1-element-1',
+        '--flip-horizontal',
+        'yes',
+      ],
+      code: 'invalid-transform-boolean',
+      message: 'Option --flip-horizontal requires true or false',
     },
     {
       args: ['restore', 'handoff.json'],
@@ -399,6 +522,21 @@ describe('oakit portable PowerPoint CLI contract', () => {
         'slide-1-element-1-run-1',
         '--value',
         'After',
+        '--output',
+        'handoff.json',
+      ],
+      code: 'output-overwrites-input',
+      message:
+        'The JSON output path must not overwrite the portable JSON input',
+    },
+    {
+      args: [
+        'transform-text',
+        'handoff.json',
+        '--target',
+        'slide-1-element-1',
+        '--x',
+        '10',
         '--output',
         'handoff.json',
       ],

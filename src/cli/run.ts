@@ -9,6 +9,7 @@ import {
   PptxWriteError,
   readPptxRoundTrip,
   replacePptxRoundTripText,
+  setPptxRoundTripTextTransform,
   renderPptxToSvg,
   serializePptxRoundTripJson,
   type PptxDiagnostic,
@@ -73,12 +74,28 @@ interface EditTextCommand {
   value: string;
 }
 
+interface TransformTextCommand {
+  action: 'transform-text';
+  flipHorizontal?: boolean;
+  flipVertical?: boolean;
+  height?: number;
+  input: string;
+  output?: string;
+  pretty: boolean;
+  rotation?: number;
+  targetKey: string;
+  width?: number;
+  x?: number;
+  y?: number;
+}
+
 type CliCommand =
   | ConvertCommand
   | EditTextCommand
   | RenderCommand
   | RestoreCommand
   | SnapshotCommand
+  | TransformTextCommand
   | { action: 'help' }
   | { action: 'version' };
 
@@ -87,6 +104,7 @@ export interface OakitCliOperations {
   parsePptx: typeof parsePptxWithDiagnostics;
   readRoundTrip: typeof readPptxRoundTrip;
   replaceRoundTripText: typeof replacePptxRoundTripText;
+  setRoundTripTextTransform: typeof setPptxRoundTripTextTransform;
   renderPng: typeof renderPptxToPng;
   renderSvg: typeof renderPptxToSvg;
   serializeRoundTripJson: typeof serializePptxRoundTripJson;
@@ -98,6 +116,7 @@ const DEFAULT_OPERATIONS: OakitCliOperations = {
   parsePptx: parsePptxWithDiagnostics,
   readRoundTrip: readPptxRoundTrip,
   replaceRoundTripText: replacePptxRoundTripText,
+  setRoundTripTextTransform: setPptxRoundTripTextTransform,
   renderPng: renderPptxToPng,
   renderSvg: renderPptxToSvg,
   serializeRoundTripJson: serializePptxRoundTripJson,
@@ -117,6 +136,7 @@ const HELP = `Usage: oakit [convert] <input.pptx|-> [options]
        oakit render <input.pptx|-> --output <directory> [options]
        oakit snapshot <input.pptx|-> [--output <file>]
        oakit edit-text <input.json|-> --target <run-key> --value <text> [options]
+       oakit transform-text <input.json|-> --target <element-key> [options]
        oakit restore <input.json|-> --output <file.pptx>
 
 Convert a PowerPoint Open XML presentation into deterministic JSON.
@@ -144,6 +164,18 @@ Edit text options:
   -o, --output <file>          Write edited portable JSON instead of stdout
       --target <run-key>       Stable text run key from the portable document
       --value <text>           Replacement text; use --value=-5 for leading -
+      --pretty                 Format portable JSON with two-space indentation
+
+Transform text options:
+  -o, --output <file>          Write edited portable JSON instead of stdout
+      --target <element-key>   Stable text element key from the portable document
+      --x <number>             Set horizontal position; use --x=-10 when negative
+      --y <number>             Set vertical position; use --y=-10 when negative
+      --width <number>         Set positive width
+      --height <number>        Set positive height
+      --rotation <number>      Set rotation in degrees
+      --flip-horizontal <bool> Set horizontal flip: true or false
+      --flip-vertical <bool>   Set vertical flip: true or false
       --pretty                 Format portable JSON with two-space indentation
 
 Restore options:
@@ -242,6 +274,37 @@ function renderScale(value: string): number {
   return scale;
 }
 
+function finiteOption(value: string, option: string): number {
+  if (value.trim() === '') {
+    throw new CliUsageError(
+      'invalid-transform-number',
+      `Option ${option} requires a finite number`,
+    );
+  }
+  const number = Number(value);
+  if (!Number.isFinite(number)) {
+    throw new CliUsageError(
+      'invalid-transform-number',
+      `Option ${option} requires a finite number`,
+    );
+  }
+  return number;
+}
+
+function booleanOption(value: string, option: string): boolean {
+  if (value === 'true') return true;
+  if (value === 'false') return false;
+  throw new CliUsageError(
+    'invalid-transform-boolean',
+    `Option ${option} requires true or false`,
+  );
+}
+
+function inlineValue(value: string, option: string): string | undefined {
+  const prefix = `${option}=`;
+  return value.startsWith(prefix) ? value.slice(prefix.length) : undefined;
+}
+
 function parseCommand(args: readonly string[]): CliCommand {
   if (args.includes('--help') || args.includes('-h')) return { action: 'help' };
   if (args.includes('--version') || args.includes('-v')) {
@@ -252,7 +315,8 @@ function parseCommand(args: readonly string[]): CliCommand {
     args[0] === 'edit-text' ||
     args[0] === 'render' ||
     args[0] === 'restore' ||
-    args[0] === 'snapshot'
+    args[0] === 'snapshot' ||
+    args[0] === 'transform-text'
       ? args[0]
       : 'convert';
   const values =
@@ -260,7 +324,8 @@ function parseCommand(args: readonly string[]): CliCommand {
     args[0] === 'edit-text' ||
     args[0] === 'render' ||
     args[0] === 'restore' ||
-    args[0] === 'snapshot'
+    args[0] === 'snapshot' ||
+    args[0] === 'transform-text'
       ? args.slice(1)
       : [...args];
   const inputs: string[] = [];
@@ -275,6 +340,13 @@ function parseCommand(args: readonly string[]): CliCommand {
   let strict = false;
   let targetKey: string | undefined;
   let textValue: string | undefined;
+  let transformFlipHorizontal: boolean | undefined;
+  let transformFlipVertical: boolean | undefined;
+  let transformHeight: number | undefined;
+  let transformRotation: number | undefined;
+  let transformWidth: number | undefined;
+  let transformX: number | undefined;
+  let transformY: number | undefined;
 
   const iterator = values.values();
   for (const value of iterator) {
@@ -284,7 +356,10 @@ function parseCommand(args: readonly string[]): CliCommand {
       strict = true;
     } else if (
       value === '--pretty' &&
-      (action === 'convert' || action === 'edit-text' || action === 'snapshot')
+      (action === 'convert' ||
+        action === 'edit-text' ||
+        action === 'snapshot' ||
+        action === 'transform-text')
     ) {
       pretty = true;
     } else if (value === '--output' || value === '-o') {
@@ -292,7 +367,8 @@ function parseCommand(args: readonly string[]): CliCommand {
     } else if (
       value === '--format' &&
       action !== 'edit-text' &&
-      action !== 'restore'
+      action !== 'restore' &&
+      action !== 'transform-text'
     ) {
       explicitFormat = optionValue(iterator, value);
     } else if (value === '--target' && action === 'edit-text') {
@@ -303,6 +379,44 @@ function parseCommand(args: readonly string[]): CliCommand {
       textValue = optionValue(iterator, value);
     } else if (value.startsWith('--value=') && action === 'edit-text') {
       textValue = value.slice('--value='.length);
+    } else if (value === '--target' && action === 'transform-text') {
+      targetKey = optionValue(iterator, value);
+    } else if (value.startsWith('--target=') && action === 'transform-text') {
+      targetKey = value.slice('--target='.length);
+    } else if (action === 'transform-text') {
+      const transformOptions = [
+        '--x',
+        '--y',
+        '--width',
+        '--height',
+        '--rotation',
+        '--flip-horizontal',
+        '--flip-vertical',
+      ];
+      const option = transformOptions.find(
+        (candidate) => value === candidate || value.startsWith(`${candidate}=`),
+      );
+      if (option === undefined) {
+        if (value === '-' || !value.startsWith('-')) {
+          inputs.push(value);
+          continue;
+        }
+        throw new CliUsageError('unknown-option', `Unknown option: ${value}`);
+      }
+      const selected =
+        inlineValue(value, option) ?? optionValue(iterator, option);
+      if (option === '--flip-horizontal') {
+        transformFlipHorizontal = booleanOption(selected, option);
+      } else if (option === '--flip-vertical') {
+        transformFlipVertical = booleanOption(selected, option);
+      } else {
+        const number = finiteOption(selected, option);
+        if (option === '--x') transformX = number;
+        else if (option === '--y') transformY = number;
+        else if (option === '--width') transformWidth = number;
+        else if (option === '--height') transformHeight = number;
+        else transformRotation = number;
+      }
     } else if (value === '--image-mode' && action === 'convert') {
       const selectedMode = optionValue(iterator, value);
       if (selectedMode !== 'none' && selectedMode !== 'base64') {
@@ -333,7 +447,9 @@ function parseCommand(args: readonly string[]): CliCommand {
         ? 'A portable JSON input path is required'
         : action === 'edit-text'
           ? 'A portable JSON input path is required'
-          : 'A PPTX input path is required',
+          : action === 'transform-text'
+            ? 'A portable JSON input path is required'
+            : 'A PPTX input path is required',
     );
   }
   if (additionalInputs.length > 0) {
@@ -357,7 +473,9 @@ function parseCommand(args: readonly string[]): CliCommand {
           ? 'The PowerPoint output path must not overwrite the portable JSON input'
           : action === 'edit-text'
             ? 'The JSON output path must not overwrite the portable JSON input'
-            : 'The JSON output path must not overwrite the input document',
+            : action === 'transform-text'
+              ? 'The JSON output path must not overwrite the portable JSON input'
+              : 'The JSON output path must not overwrite the input document',
     );
   }
 
@@ -391,6 +509,49 @@ function parseCommand(args: readonly string[]): CliCommand {
       pretty,
       targetKey,
       value: textValue,
+    };
+  }
+
+  if (action === 'transform-text') {
+    if (targetKey === undefined || targetKey.length === 0) {
+      throw new CliUsageError(
+        'transform-target-required',
+        'Transforming text requires a non-empty --target element key',
+      );
+    }
+    if (
+      transformX === undefined &&
+      transformY === undefined &&
+      transformWidth === undefined &&
+      transformHeight === undefined &&
+      transformRotation === undefined &&
+      transformFlipHorizontal === undefined &&
+      transformFlipVertical === undefined
+    ) {
+      throw new CliUsageError(
+        'transform-value-required',
+        'Transforming text requires at least one transform option',
+      );
+    }
+    return {
+      action,
+      ...(transformFlipHorizontal === undefined
+        ? {}
+        : { flipHorizontal: transformFlipHorizontal }),
+      ...(transformFlipVertical === undefined
+        ? {}
+        : { flipVertical: transformFlipVertical }),
+      ...(transformHeight === undefined ? {} : { height: transformHeight }),
+      input,
+      ...(output === undefined ? {} : { output }),
+      pretty,
+      ...(transformRotation === undefined
+        ? {}
+        : { rotation: transformRotation }),
+      targetKey,
+      ...(transformWidth === undefined ? {} : { width: transformWidth }),
+      ...(transformX === undefined ? {} : { x: transformX }),
+      ...(transformY === undefined ? {} : { y: transformY }),
     };
   }
 
@@ -744,6 +905,83 @@ async function editPortableText(
   }
 }
 
+async function transformPortableText(
+  command: TransformTextCommand,
+  io: OakitCliIo,
+  operations: OakitCliOperations,
+): Promise<number> {
+  const input = await readPortableJsonInput(command.input, io);
+  if (!input.ok) return 1;
+
+  let json: string;
+  try {
+    const runtime = await operations.parseRoundTripJson(input.value);
+    let matchedTransform:
+      | NonNullable<
+          (typeof runtime.document.slides)[number]['elements'][number]['resolved']['transform']
+        >
+      | undefined;
+    for (const slide of runtime.document.slides) {
+      for (const element of slide.elements) {
+        if (element.type !== 'text' || element.key !== command.targetKey)
+          continue;
+        if (matchedTransform !== undefined) {
+          throw new PptxWriteError(
+            'invalid-edit-operation',
+            'PowerPoint transform target key is ambiguous',
+          );
+        }
+        matchedTransform = element.resolved.transform;
+      }
+    }
+    if (matchedTransform === undefined) {
+      throw new PptxWriteError(
+        'invalid-edit-operation',
+        'PowerPoint transform target has no resolved transform',
+      );
+    }
+    const edited = await operations.setRoundTripTextTransform(runtime, {
+      targetKey: command.targetKey,
+      value: {
+        flipHorizontal:
+          command.flipHorizontal ?? matchedTransform.flipHorizontal ?? false,
+        flipVertical:
+          command.flipVertical ?? matchedTransform.flipVertical ?? false,
+        height: command.height ?? matchedTransform.height,
+        rotation: command.rotation ?? matchedTransform.rotation ?? 0,
+        width: command.width ?? matchedTransform.width,
+        x: command.x ?? matchedTransform.x,
+        y: command.y ?? matchedTransform.y,
+      },
+    });
+    const portable = await operations.serializeRoundTripJson(edited);
+    json = `${JSON.stringify(portable, null, command.pretty ? 2 : undefined)}\n`;
+  } catch (error) {
+    if (error instanceof PptxRoundTripPortableLimitError) {
+      io.writeStderr(portableLimitJson(error));
+    } else if (error instanceof PptxWriteError) {
+      io.writeStderr(errorJson(error.code, error.message));
+    } else {
+      const message = error instanceof Error ? error.message : String(error);
+      io.writeStderr(errorJson('transform-text-failed', message));
+    }
+    return 1;
+  }
+
+  try {
+    if (command.output === undefined || command.output === '-') {
+      io.writeStdout(json);
+    } else {
+      await io.writeFile(command.output, json);
+    }
+    return 0;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    io.writeStderr(errorJson('output-write-failed', message));
+    return 1;
+  }
+}
+
 async function restorePortableJson(
   command: RestoreCommand,
   io: OakitCliIo,
@@ -808,6 +1046,9 @@ export async function runOakitCli(
   }
   if (command.action === 'edit-text') {
     return editPortableText(command, io, operations);
+  }
+  if (command.action === 'transform-text') {
+    return transformPortableText(command, io, operations);
   }
   if (command.action === 'restore') {
     return restorePortableJson(command, io, operations);

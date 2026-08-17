@@ -7,6 +7,7 @@ const EXPECTED_HELP = `Usage: oakit [convert] <input.pptx|-> [options]
        oakit render <input.pptx|-> --output <directory> [options]
        oakit snapshot <input.pptx|-> [--output <file>]
        oakit edit-text <input.json|-> --target <run-key> --value <text> [options]
+       oakit transform-text <input.json|-> --target <element-key> [options]
        oakit restore <input.json|-> --output <file.pptx>
 
 Convert a PowerPoint Open XML presentation into deterministic JSON.
@@ -34,6 +35,18 @@ Edit text options:
   -o, --output <file>          Write edited portable JSON instead of stdout
       --target <run-key>       Stable text run key from the portable document
       --value <text>           Replacement text; use --value=-5 for leading -
+      --pretty                 Format portable JSON with two-space indentation
+
+Transform text options:
+  -o, --output <file>          Write edited portable JSON instead of stdout
+      --target <element-key>   Stable text element key from the portable document
+      --x <number>             Set horizontal position; use --x=-10 when negative
+      --y <number>             Set vertical position; use --y=-10 when negative
+      --width <number>         Set positive width
+      --height <number>        Set positive height
+      --rotation <number>      Set rotation in degrees
+      --flip-horizontal <bool> Set horizontal flip: true or false
+      --flip-vertical <bool>   Set vertical flip: true or false
       --pretty                 Format portable JSON with two-space indentation
 
 Restore options:
