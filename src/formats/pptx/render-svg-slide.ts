@@ -299,13 +299,13 @@ function renderImage(
 }
 
 function renderElement(element: Element, context: RenderContext): string {
-  const box =
-    element.type === 'shape' &&
-    (element.shapType === 'line' ||
-      element.shapType === 'lineInv' ||
-      element.shapType === 'straightConnector1')
-      ? svgLineBox(element)
-      : svgBox(element);
+  const allowsZeroDimension =
+    (element.type === 'shape' &&
+      (element.shapType === 'line' ||
+        element.shapType === 'lineInv' ||
+        element.shapType === 'straightConnector1')) ||
+    (element.type === 'group' && element.elements.length > 0);
+  const box = allowsZeroDimension ? svgLineBox(element) : svgBox(element);
   if (box === null) {
     warning(
       context,

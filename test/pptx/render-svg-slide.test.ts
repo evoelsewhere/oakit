@@ -552,6 +552,55 @@ describe('PowerPoint SVG slide source', () => {
     expect(result.source).toContain('</g><g transform="translate(5 6)"><rect');
   });
 
+  it('renders children of a non-empty zero-height group', () => {
+    const result = render(
+      slide([
+        {
+          elements: [shape({ height: 0, shapType: 'straightConnector1' })],
+          height: 0,
+          id: 'line-group',
+          isFlipH: false,
+          isFlipV: false,
+          left: 20,
+          order: 0,
+          rotate: 0,
+          top: 10,
+          type: 'group',
+          width: 80,
+        },
+      ]),
+    );
+
+    expect(result.source).toContain(
+      '<g transform="translate(20 10)"><g transform="translate(1 2)"><line',
+    );
+    expect(result.warnings).toEqual([]);
+  });
+
+  it('rejects an empty zero-height group', () => {
+    const result = render(
+      slide([
+        {
+          elements: [],
+          height: 0,
+          id: 'empty-group',
+          isFlipH: false,
+          isFlipV: false,
+          left: 20,
+          order: 0,
+          rotate: 0,
+          top: 10,
+          type: 'group',
+          width: 80,
+        },
+      ]),
+    );
+
+    expect(result.warnings.map(({ code }) => code)).toEqual([
+      'approximate-shape',
+    ]);
+  });
+
   it('skips invalid geometry and omits an empty element id', () => {
     const result = render(slide([text({ height: 0, id: '' })]));
 
