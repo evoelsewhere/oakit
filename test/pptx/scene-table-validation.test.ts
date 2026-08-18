@@ -281,12 +281,20 @@ describe('native PowerPoint table scene validation', () => {
   ])('rejects invalid %s value %j', (key, replacement) => {
     const value = table();
     firstCell(value)[key] = replacement;
+    const issues = validate(value).issues;
 
-    expect(validate(value).issues).toContainEqual({
+    expect(issues).toContainEqual({
       code: 'invalid-numeric-value',
       message: 'Table span must be an integer greater than one',
       path: `${ELEMENT_PATH}.rows[0].cells[0].${key}`,
     });
+    expect(issues.map(({ message }) => message)).not.toEqual(
+      expect.arrayContaining([
+        'Table span exceeds the grid bounds',
+        'Table spans must not overlap',
+        'Table merge continuation flags do not match its spans',
+      ]),
+    );
   });
 
   it('validates border containers, directions, fields, and every style', () => {

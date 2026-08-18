@@ -1,6 +1,10 @@
 import type { PptxSceneValidationIssue } from './scene-types';
 import type { PptxTableValidationDependencies } from './scene-table-validation';
 
+function normalizedSpan(value: unknown): number {
+  return Math.max(1, Number.isSafeInteger(value) ? Number(value) : 1);
+}
+
 export function validatePptxSceneTableMerges(
   rows: unknown[],
   columns: unknown[],
@@ -17,14 +21,8 @@ export function validatePptxSceneTableMerges(
     }
     rowValue.cells.forEach((cellValue, columnIndex) => {
       if (!dependencies.isObject(cellValue)) return;
-      const rowSpan =
-        Number.isSafeInteger(cellValue.rowSpan) && Number(cellValue.rowSpan) > 1
-          ? Number(cellValue.rowSpan)
-          : 1;
-      const colSpan =
-        Number.isSafeInteger(cellValue.colSpan) && Number(cellValue.colSpan) > 1
-          ? Number(cellValue.colSpan)
-          : 1;
+      const rowSpan = normalizedSpan(cellValue.rowSpan);
+      const colSpan = normalizedSpan(cellValue.colSpan);
       if (rowSpan === 1 && colSpan === 1) return;
       if (
         rowIndex + rowSpan > rows.length ||
@@ -57,10 +55,8 @@ export function validatePptxSceneTableMerges(
             continue;
           }
           occupied[targetRow]![targetColumn] = true;
-          if (rowOffset !== 0 || columnOffset !== 0) {
-            expectedHorizontal[targetRow]![targetColumn] = columnOffset > 0;
-            expectedVertical[targetRow]![targetColumn] = rowOffset > 0;
-          }
+          expectedHorizontal[targetRow]![targetColumn] = columnOffset > 0;
+          expectedVertical[targetRow]![targetColumn] = rowOffset > 0;
         }
       }
     });
