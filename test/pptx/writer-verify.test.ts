@@ -5,6 +5,7 @@ import type {
   PptxDocument,
   PptxParseOptions,
   Shape,
+  Table,
   Text,
 } from '../../src/formats/pptx/types';
 import type { PptxSvgRenderResult } from '../../src/formats/pptx/render-types';
@@ -81,6 +82,43 @@ function imageSlide(key: string): PptxSceneSlide {
         mediaKey: 'media-1',
         resolved: { hidden: false },
         type: 'image',
+      },
+    ],
+    key,
+  };
+}
+
+function tableSlide(key: string): PptxSceneSlide {
+  return {
+    elements: [
+      {
+        authored: {
+          transform: { height: 40, width: 160, x: 10, y: 20 },
+        },
+        columns: [160],
+        key: `${key}-table`,
+        resolved: { hidden: false },
+        rows: [
+          {
+            cells: [
+              {
+                text: {
+                  body: {},
+                  paragraphs: [
+                    {
+                      children: [
+                        { key: `${key}-run`, text: 'Expected', type: 'run' },
+                      ],
+                      key: `${key}-paragraph`,
+                    },
+                  ],
+                },
+              },
+            ],
+            height: 40,
+          },
+        ],
+        type: 'table',
       },
     ],
     key,
@@ -178,6 +216,26 @@ function generatedImage(): Image {
     rotate: 0,
     top: 20,
     type: 'image',
+    width: 160,
+  };
+}
+
+function generatedTable(text = 'Expected'): Table {
+  return {
+    borders: {},
+    colWidths: [160],
+    data: [[{ borders: {}, text, vAlign: 'up' }]],
+    height: 40,
+    id: '2',
+    isFlipH: false,
+    isFlipV: false,
+    left: 10,
+    name: 'Table 2',
+    order: 0,
+    rotate: 0,
+    rowHeights: [40],
+    top: 20,
+    type: 'table',
     width: 160,
   };
 }
@@ -384,6 +442,22 @@ describe('PowerPoint creation verification', () => {
         rendered,
       ),
     ).resolves.toBeUndefined();
+  });
+
+  it('dispatches native table verification through the creation boundary', async () => {
+    const output = document(1);
+    output.slides[0]?.elements.push(generatedTable('Wrong'));
+
+    await expect(
+      verifyPowerPointCreationWithParser(
+        new Uint8Array(),
+        scene([tableSlide('slide-1')]),
+        () => Promise.resolve(output),
+        rendered,
+      ),
+    ).rejects.toThrow(
+      'Generated PowerPoint table text mismatch at slide 1, element 1, row 1, cell 1',
+    );
   });
 
   it('resolves image verification media by key instead of array position', async () => {

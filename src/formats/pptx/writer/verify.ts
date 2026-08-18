@@ -93,10 +93,10 @@ function verifyElementTransform(
     );
   }
   const generatedTransform = {
-    flipHorizontal: generated.isFlipH ?? false,
-    flipVertical: generated.isFlipV ?? false,
+    flipHorizontal: generated.isFlipH,
+    flipVertical: generated.isFlipV,
     height: generated.height,
-    rotation: generated.rotate ?? 0,
+    rotation: generated.rotate,
     width: generated.width,
     x: generated.left,
     y: generated.top,
