@@ -13,10 +13,19 @@ function tableFrame(
   id: number,
   columns: readonly string[],
   rows: readonly string[],
+  options: { name?: string; transformAttributes?: string } = {
+    name: `Table ${id}`,
+  },
 ): string {
+  const nameAttribute =
+    options.name === undefined ? '' : ` name="${options.name}"`;
+  const transformAttributes =
+    options.transformAttributes === undefined
+      ? ''
+      : ` ${options.transformAttributes}`;
   return `<p:graphicFrame>
-    <p:nvGraphicFramePr><p:cNvPr id="${id}" name="Table ${id}"/><p:cNvGraphicFramePr/><p:nvPr/></p:nvGraphicFramePr>
-    <p:xfrm><a:off x="914400" y="457200"/><a:ext cx="1828800" cy="914400"/></p:xfrm>
+    <p:nvGraphicFramePr><p:cNvPr id="${id}"${nameAttribute}/><p:cNvGraphicFramePr/><p:nvPr/></p:nvGraphicFramePr>
+    <p:xfrm${transformAttributes}><a:off x="914400" y="457200"/><a:ext cx="1828800" cy="914400"/></p:xfrm>
     <a:graphic><a:graphicData uri="${TABLE_URI}">
       <a:tbl>
         <a:tblPr/>
@@ -77,4 +86,34 @@ describe('PowerPoint table dimensions through the public API', () => {
     });
     expect(result).not.toHaveProperty('diagnostics');
   });
+
+  it('parses vertical flips and uses an empty fallback for an absent name', async () => {
+    const input = await createIndependentPptx({
+      'ppt/slides/slide1.xml': `
+        <p:sld xmlns:p="${PRESENTATION_NS}" xmlns:a="${DRAWING_NS}">
+          <p:cSld><p:spTree>
+            <p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr>
+            <p:grpSpPr/>
+            ${tableFrame(822, ['1828800'], ['914400'], {
+              transformAttributes: 'flipH="0" flipV="1" rot="60000"',
+            })}
+          </p:spTree></p:cSld>
+        </p:sld>`,
+    });
+
+    const table = resultTable(await parsePptx(input, { errorMode: 'strict' }));
+    expect(table).toMatchObject({
+      isFlipH: false,
+      isFlipV: true,
+      name: '',
+      rotate: 1,
+      type: 'table',
+    });
+  });
 });
+
+function resultTable(result: Awaited<ReturnType<typeof parsePptx>>) {
+  const value = result.slides[0]?.elements[0];
+  if (value?.type !== 'table') throw new Error('Expected table');
+  return value;
+}
