@@ -157,15 +157,7 @@ export function normalizePptxRoundTripTransform(
   if (Object.keys(value).some((key) => !allowedKeys.has(key))) {
     invalidEdit('PowerPoint transform value is not a valid scene transform');
   }
-  for (const key of ['x', 'y', 'width', 'height'] as const) {
-    if (!Number.isFinite(value[key])) {
-      invalidEdit('PowerPoint transform value is not a valid scene transform');
-    }
-  }
   if (value.width <= 0 || value.height <= 0) {
-    invalidEdit('PowerPoint transform value is not a valid scene transform');
-  }
-  if (value.rotation !== undefined && !Number.isFinite(value.rotation)) {
     invalidEdit('PowerPoint transform value is not a valid scene transform');
   }
   for (const key of ['flipHorizontal', 'flipVertical'] as const) {
