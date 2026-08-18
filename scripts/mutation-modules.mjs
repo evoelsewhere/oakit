@@ -86,6 +86,7 @@ export const mutationModules = [
       'test/pptx/roundtrip-validation.test.ts',
       'test/black-box/roundtrip-shape-transform.test.ts',
       'test/black-box/roundtrip-image-transform.test.ts',
+      'test/black-box/roundtrip-table-transform.test.ts',
     ],
   },
   {
