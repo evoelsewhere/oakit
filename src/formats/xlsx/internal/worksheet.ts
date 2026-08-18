@@ -19,6 +19,7 @@ import type {
   XlsxRange,
   XlsxRichTextRun,
   XlsxRow,
+  XlsxSparklineGroup,
   XlsxWorksheetView,
   XlsxWorksheetFormat,
   XlsxWorksheetOutline,
@@ -65,6 +66,7 @@ import {
   xlsxSelectionIncludesRow,
 } from './selection';
 import type { XlsxSharedStringTable } from './shared-strings';
+import { XlsxWorksheetExtensionsCapture } from './sparkline';
 import type { XlsxRelationship } from './relationships';
 import { EMPTY_XLSX_STYLE_TABLE, type XlsxStyleTable } from './styles';
 import type { XlsxXmlElement, XlsxXmlEventSink } from './streaming-xml';
@@ -164,6 +166,7 @@ export interface XlsxWorksheetPayload {
   protection?: XlsxWorksheetProtection;
   rows: XlsxRow[];
   sheetFormat?: XlsxWorksheetFormat;
+  sparklineGroups?: XlsxSparklineGroup[];
   tabColor?: XlsxColor;
   views: XlsxWorksheetView[];
 }
@@ -460,6 +463,9 @@ class WorksheetSink implements XlsxXmlEventSink {
   private sheetFormatSeen = false;
   private sheetPropertiesSeen = false;
   private sheetViewsSeen = false;
+  private sparklineGroups: XlsxSparklineGroup[] = [];
+  private extensionsCapture: XlsxWorksheetExtensionsCapture | undefined;
+  private extensionsSeen = false;
   private readonly stack: XlsxXmlElement[] = [];
   private readonly rows: XlsxRow[] = [];
   private readonly viewIds = new Set<number>();
@@ -546,6 +552,11 @@ class WorksheetSink implements XlsxXmlEventSink {
       this.stack.push(element);
       return;
     }
+    if (this.extensionsCapture) {
+      this.extensionsCapture.openElement(element);
+      this.stack.push(element);
+      return;
+    }
     if (element.namespace !== this.namespace) {
       structureFailure(
         this.part,
@@ -599,6 +610,15 @@ class WorksheetSink implements XlsxXmlEventSink {
   closeElement(element: XlsxXmlElement): void {
     if (this.ignoredDepth > 0) {
       this.ignoredDepth -= 1;
+      this.stack.pop();
+      return;
+    }
+    if (this.extensionsCapture) {
+      this.extensionsCapture.closeElement(element);
+      if (element.localName === 'extLst') {
+        this.sparklineGroups = this.extensionsCapture.result();
+        this.extensionsCapture = undefined;
+      }
       this.stack.pop();
       return;
     }
@@ -675,6 +695,10 @@ class WorksheetSink implements XlsxXmlEventSink {
 
   text(value: string): void {
     if (this.ignoredDepth > 0) return;
+    if (this.extensionsCapture) {
+      this.extensionsCapture.text(value);
+      return;
+    }
     if (this.autoFilterCapture) {
       this.autoFilterCapture.text(value);
       return;
@@ -800,6 +824,9 @@ class WorksheetSink implements XlsxXmlEventSink {
       ...(this.sheetFormat === undefined
         ? {}
         : { sheetFormat: this.sheetFormat }),
+      ...(this.sparklineGroups.length === 0
+        ? {}
+        : { sparklineGroups: this.sparklineGroups }),
       ...(this.tabColor === undefined ? {} : { tabColor: this.tabColor }),
       views: this.views,
     };
@@ -884,6 +911,25 @@ class WorksheetSink implements XlsxXmlEventSink {
 
   private openChild(parent: string, element: XlsxXmlElement): void {
     if (parent === 'worksheet') {
+      if (element.localName === 'extLst') {
+        if (this.extensionsSeen) {
+          structureFailure(
+            this.part,
+            undefined,
+            'Worksheet contains duplicate extension lists',
+          );
+        }
+        this.extensionsSeen = true;
+        this.extensionsCapture = new XlsxWorksheetExtensionsCapture(
+          this.namespace,
+          this.selection,
+          this.budget,
+          this.limits,
+          this.part,
+        );
+        this.extensionsCapture.openElement(element);
+        return;
+      }
       if (element.localName === 'dimension') {
         if (this.dimensionSeen) {
           structureFailure(

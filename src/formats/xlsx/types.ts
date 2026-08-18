@@ -1239,6 +1239,45 @@ export interface XlsxThreadedComment extends XlsxCommentBase {
 
 export type XlsxComment = XlsxLegacyComment | XlsxThreadedComment;
 
+export interface XlsxSparkline {
+  dataFormula: string;
+  location: string;
+  selectionRelation: 'full-sheet' | 'intersects-selection';
+}
+
+export interface XlsxSparklineColors {
+  axis?: XlsxColor;
+  first?: XlsxColor;
+  high?: XlsxColor;
+  last?: XlsxColor;
+  low?: XlsxColor;
+  markers?: XlsxColor;
+  negative?: XlsxColor;
+  series?: XlsxColor;
+}
+
+export interface XlsxSparklineGroup {
+  colors: XlsxSparklineColors;
+  dateAxis: boolean;
+  displayEmptyCellsAs: 'gap' | 'span' | 'zero';
+  displayHidden: boolean;
+  displayXAxis: boolean;
+  first: boolean;
+  high: boolean;
+  last: boolean;
+  lineWeight?: number;
+  low: boolean;
+  manualMaximum?: number;
+  manualMinimum?: number;
+  markers: boolean;
+  maximumAxisType: 'custom' | 'group' | 'individual';
+  minimumAxisType: 'custom' | 'group' | 'individual';
+  negative: boolean;
+  rightToLeft: boolean;
+  sparklines: XlsxSparkline[];
+  type: 'column' | 'line' | 'stacked';
+}
+
 export interface XlsxSheetBase {
   index: number;
   name: string;
@@ -1264,6 +1303,7 @@ export interface XlsxWorksheet extends XlsxSheetBase {
   protection?: XlsxWorksheetProtection;
   rows: XlsxRow[];
   sheetFormat?: XlsxWorksheetFormat;
+  sparklineGroups?: XlsxSparklineGroup[];
   tabColor?: XlsxColor;
   tables: XlsxTable[];
   views: XlsxWorksheetView[];
