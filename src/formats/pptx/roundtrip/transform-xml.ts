@@ -149,6 +149,31 @@ function replaceIntegerAttribute(
   return tag.replace(pattern, `$1"${value}"`);
 }
 
+export function scalePptxTableIntegerSizes(
+  source: readonly number[],
+  replacementTotal: number,
+): number[] {
+  const sourceTotal = source.reduce((total, value) => total + value, 0);
+  const replacements: number[] = [];
+  let allocated = 0;
+  source.forEach((sourceValue, index) => {
+    const remaining = source.length - index - 1;
+    const value =
+      index === source.length - 1
+        ? replacementTotal - allocated
+        : Math.max(
+            1,
+            Math.min(
+              Math.round((sourceValue * replacementTotal) / sourceTotal),
+              replacementTotal - allocated - remaining,
+            ),
+          );
+    replacements.push(value);
+    allocated += value;
+  });
+  return replacements;
+}
+
 function scaleTableAttributeTags(
   shape: string,
   tagName: string,
@@ -183,23 +208,7 @@ function scaleTableAttributeTags(
       `PowerPoint table ${description} cannot fit the requested transform`,
     );
   }
-  const replacements: number[] = [];
-  let allocated = 0;
-  source.forEach((sourceValue, index) => {
-    const remaining = source.length - index - 1;
-    const value =
-      index === source.length - 1
-        ? replacementTotal - allocated
-        : Math.max(
-            1,
-            Math.min(
-              Math.round((sourceValue * replacementTotal) / expectedTotal),
-              replacementTotal - allocated - remaining,
-            ),
-          );
-    replacements.push(value);
-    allocated += value;
-  });
+  const replacements = scalePptxTableIntegerSizes(source, replacementTotal);
 
   let result = shape;
   for (let index = matches.length - 1; index >= 0; index -= 1) {

@@ -175,12 +175,34 @@ describe('native PowerPoint table transform editing', () => {
     await expect(
       setPptxRoundTripTableTransform(snapshot, {
         targetKey: 'slide-1-element-1',
-        value: { ...CHANGED_TRANSFORM, height: 0.0001, width: 0.0001 },
+        value: { ...CHANGED_TRANSFORM, width: 0.0001 },
       }),
     ).rejects.toMatchObject({
       code: 'invalid-edit-operation',
       message:
         'PowerPoint table transform is too small for its column and row grid',
+    });
+    await expect(
+      setPptxRoundTripTableTransform(snapshot, {
+        targetKey: 'slide-1-element-1',
+        value: { ...CHANGED_TRANSFORM, height: 0.0001 },
+      }),
+    ).rejects.toMatchObject({
+      code: 'invalid-edit-operation',
+      message:
+        'PowerPoint table transform is too small for its column and row grid',
+    });
+    await expect(
+      setPptxRoundTripTableTransform(snapshot, {
+        targetKey: 'slide-1-element-1',
+        value: {
+          ...CHANGED_TRANSFORM,
+          height: 2 / 12_700,
+          width: 2 / 12_700,
+        },
+      }),
+    ).resolves.toMatchObject({
+      operations: [{ kind: 'set-transform' }],
     });
   });
 });

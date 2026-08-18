@@ -22,6 +22,7 @@ import type {
   PptxRoundTripSnapshot,
 } from './types';
 import { validatePptxRoundTripSnapshot } from './validate';
+import { scalePptxTableIntegerSizes } from './transform-xml';
 
 export interface PptxRoundTripReplaceTextRequest {
   targetKey: string;
@@ -35,30 +36,13 @@ export interface PptxRoundTripSetTransformRequest {
 
 function scaledTableSizes(
   values: readonly number[],
-  expectedTotal: number,
   replacementTotal: number,
 ): number[] {
   const source = values.map(pointsToEmu);
-  const expected = pointsToEmu(expectedTotal);
   const replacement = pointsToEmu(replacementTotal);
-  const result: number[] = [];
-  let allocated = 0;
-  for (let index = 0; index < source.length; index += 1) {
-    const remaining = source.length - index - 1;
-    const value =
-      index === source.length - 1
-        ? replacement - allocated
-        : Math.max(
-            1,
-            Math.min(
-              Math.round(((source[index] as number) * replacement) / expected),
-              replacement - allocated - remaining,
-            ),
-          );
-    result.push(value * RATIO_EMUs_Points);
-    allocated += value;
-  }
-  return result;
+  return scalePptxTableIntegerSizes(source, replacement).map(
+    (value) => value * RATIO_EMUs_Points,
+  );
 }
 
 export function applyPptxRoundTripOperationsToPreview(
@@ -80,12 +64,10 @@ export function applyPptxRoundTripOperationsToPreview(
             if (element.type === 'table') {
               element.columns = scaledTableSizes(
                 element.columns,
-                operation.expectedTransform.width,
                 operation.value.width,
               );
               const rowHeights = scaledTableSizes(
                 element.rows.map((row) => row.height),
-                operation.expectedTransform.height,
                 operation.value.height,
               );
               element.rows.forEach((row, index) => {
