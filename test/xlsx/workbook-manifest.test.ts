@@ -100,6 +100,7 @@ async function captureManifestError(
 describe('XLSX workbook manifest', () => {
   it('returns the conventional worksheet and default workbook properties', async () => {
     await expect(manifest()).resolves.toEqual({
+      pivotCaches: [],
       properties: {
         calculation: {
           forceFullCalculation: false,

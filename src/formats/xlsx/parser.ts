@@ -20,6 +20,12 @@ import {
 } from './internal/drawing';
 import { XlsxPartReader } from './internal/part-reader';
 import {
+  loadXlsxPivotCaches,
+  loadXlsxPivotTables,
+  type XlsxPivotBudget,
+  type XlsxPivotCacheLoadResult,
+} from './internal/pivot';
+import {
   resolveXlsxResourceLimits,
   resourceLimitDiagnostic,
   XlsxResourceLimitError,
@@ -204,6 +210,27 @@ export async function parseXlsxWithDiagnostics(
     );
   }
   let persons: XlsxCommentPersonTable = { byId: new Map(), values: [] };
+  const pivotBudget: XlsxPivotBudget = { records: 0 };
+  let pivotCacheResult: XlsxPivotCacheLoadResult = {
+    caches: [],
+    registry: new Map(),
+  };
+  try {
+    pivotCacheResult = await loadXlsxPivotCaches(
+      manifest.pivotCaches,
+      options.pivotCacheMode ?? 'metadata',
+      discovery,
+      reader,
+      limits,
+      pivotBudget,
+      budget,
+    );
+  } catch (error) {
+    if (error instanceof XlsxResourceLimitError) {
+      failResource(error, diagnostics);
+    }
+    if (!recoverOptionalFeature(error, options, diagnostics)) throw error;
+  }
   try {
     persons = await loadXlsxCommentPersons(discovery, reader, limits, budget);
   } catch (error) {
@@ -247,6 +274,7 @@ export async function parseXlsxWithDiagnostics(
       const legacyDrawingRelationshipIds: string[] = [];
       const drawingRelationshipIds: string[] = [];
       const tableRelationshipIds: string[] = [];
+      const pivotTableRelationshipIds: string[] = [];
       const payload = await parseXlsxWorksheetPart(
         manifest.sheetParts[index]!,
         discovery.dialect,
@@ -260,6 +288,7 @@ export async function parseXlsxWithDiagnostics(
           dialect: discovery.dialect,
           drawingRelationshipIds,
           legacyDrawingRelationshipIds,
+          pivotTableRelationshipIds,
           relationships: worksheetRelationships,
           styles,
           tableRelationshipIds,
@@ -314,6 +343,22 @@ export async function parseXlsxWithDiagnostics(
         selection,
         manifest.sheetParts[index]!,
       );
+      let pivotTables: Awaited<ReturnType<typeof loadXlsxPivotTables>> = [];
+      try {
+        pivotTables = await loadXlsxPivotTables(
+          pivotTableRelationshipIds,
+          worksheetRelationships,
+          pivotCacheResult.registry,
+          discovery,
+          reader,
+          limits,
+          budget,
+          selection,
+          manifest.sheetParts[index]!,
+        );
+      } catch (error) {
+        if (!recoverOptionalFeature(error, options, diagnostics)) throw error;
+      }
       sheets.push({
         ...sheet,
         ...payload,
@@ -321,6 +366,7 @@ export async function parseXlsxWithDiagnostics(
         drawings,
         payload:
           selection.kind === 'full-sheet' ? 'full-sheet' : 'selected-ranges',
+        ...(pivotTables.length === 0 ? {} : { pivotTables }),
         tables,
       });
     }
@@ -334,6 +380,9 @@ export async function parseXlsxWithDiagnostics(
   const document: XlsxDocument = {
     differentialStyles: [...styles.differentialStyles],
     namedStyles: [...styles.namedStyles],
+    ...(pivotCacheResult.caches.length === 0
+      ? {}
+      : { pivotCaches: pivotCacheResult.caches }),
     sheets,
     styles: [...styles.styles],
     workbook: {

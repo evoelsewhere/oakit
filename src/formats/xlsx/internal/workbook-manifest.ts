@@ -33,10 +33,16 @@ function expectedSheetContentType(kind: XlsxSheet['kind']): string {
 }
 
 export interface XlsxWorkbookManifest {
+  pivotCaches: XlsxPivotCacheDeclaration[];
   properties: XlsxWorkbookProperties;
   protectionTextCharacters: number;
   sheetParts: string[];
   sheets: XlsxSheet[];
+}
+
+export interface XlsxPivotCacheDeclaration {
+  cacheId: number;
+  target: string;
 }
 
 function fail(message: string, part: string): never {
@@ -182,6 +188,14 @@ function positiveSheetId(value: unknown): number | undefined {
     : undefined;
 }
 
+function unsignedInteger(value: unknown): number | undefined {
+  if (typeof value !== 'string' || !/^(?:0|[1-9]\d*)$/u.test(value)) {
+    return undefined;
+  }
+  const parsed = Number(value);
+  return Number.isSafeInteger(parsed) ? parsed : undefined;
+}
+
 export async function parseXlsxWorkbookManifest(
   discovery: XlsxWorkbookDiscovery,
   reader: XlsxPartReader,
@@ -324,7 +338,60 @@ export async function parseXlsxWorkbookManifest(
     child(root, prefix, 'workbookProtection'),
     discovery.part,
   );
+  const pivotCacheValue = child(root, prefix, 'pivotCaches');
+  let pivotCacheNodes: XmlRecord[];
+  if (pivotCacheValue === undefined) {
+    pivotCacheNodes = [];
+  } else {
+    const pivotCacheContainer = record(pivotCacheValue);
+    const nodes = pivotCacheContainer
+      ? records(child(pivotCacheContainer, prefix, 'pivotCache'))
+      : undefined;
+    if (!pivotCacheContainer || !nodes) {
+      fail('Workbook pivot-cache declarations are invalid', discovery.part);
+    }
+    pivotCacheNodes = nodes;
+  }
+  const pivotCacheIds = new Set<number>();
+  const pivotCaches: XlsxPivotCacheDeclaration[] = [];
+  for (const pivotCacheNode of pivotCacheNodes) {
+    const attrs = attributes(pivotCacheNode);
+    const cacheId = unsignedInteger(attrs.cacheId);
+    if (cacheId === undefined) {
+      fail('Workbook pivot cache ID is invalid', discovery.part);
+    }
+    if (pivotCacheIds.has(cacheId)) {
+      fail('Workbook contains duplicate pivot cache IDs', discovery.part);
+    }
+    pivotCacheIds.add(cacheId);
+    const relationshipId = attrs['r:id'];
+    if (typeof relationshipId !== 'string' || relationshipId.length === 0) {
+      fail(
+        'Workbook pivot cache relationship reference is invalid',
+        discovery.part,
+      );
+    }
+    const relationship = relationships.get(relationshipId);
+    if (
+      !relationship ||
+      relationship.mode !== 'internal' ||
+      relationship.type !== `${relationshipBase}/pivotCacheDefinition`
+    ) {
+      fail('Workbook pivot cache relationship is invalid', discovery.part);
+    }
+    if (
+      discovery.contentTypes.contentTypeFor(relationship.target) !==
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.pivotCacheDefinition+xml'
+    ) {
+      fail(
+        'Workbook pivot cache target has the wrong content type',
+        relationship.target,
+      );
+    }
+    pivotCaches.push({ cacheId, target: relationship.target });
+  }
   return {
+    pivotCaches,
     properties: parseProperties(
       root,
       prefix,

@@ -177,6 +177,7 @@ export interface XlsxWorksheetSemantics {
   drawingRelationshipIds?: string[];
   relationships: ReadonlyMap<string, XlsxRelationship>;
   legacyDrawingRelationshipIds?: string[];
+  pivotTableRelationshipIds?: string[];
   styles: XlsxStyleTable;
   tableRelationshipIds?: string[];
   workbookViewCount: number;
@@ -485,6 +486,10 @@ class WorksheetSink implements XlsxXmlEventSink {
   private pageSetupProperties: XlsxPageSetupProperties | undefined;
   private pageSetupPropertiesSeen = false;
   private pageSetupSeen = false;
+  private pivotTablePartsExpected: number | undefined;
+  private pivotTablePartsSeen = false;
+  private readonly pivotTableRelationshipIds: string[] = [];
+  private readonly pivotTableRelationshipIdSet = new Set<string>();
   private printOptions: XlsxPrintOptions | undefined;
   private printOptionsSeen = false;
   private rowBreaks: XlsxPageBreak[] | undefined;
@@ -777,6 +782,16 @@ class WorksheetSink implements XlsxXmlEventSink {
         this.part,
         undefined,
         'Worksheet table-part count does not match',
+      );
+    }
+    if (
+      this.pivotTablePartsExpected !== undefined &&
+      this.pivotTablePartsExpected !== this.pivotTableRelationshipIds.length
+    ) {
+      structureFailure(
+        this.part,
+        undefined,
+        'Worksheet pivot-table-part count does not match',
       );
     }
     const print = this.printSettings();
@@ -1288,6 +1303,33 @@ class WorksheetSink implements XlsxXmlEventSink {
         }
         return;
       }
+      if (element.localName === 'pivotTableParts') {
+        if (this.pivotTablePartsSeen) {
+          structureFailure(
+            this.part,
+            undefined,
+            'Worksheet contains duplicate pivotTableParts elements',
+          );
+        }
+        this.pivotTablePartsSeen = true;
+        this.pivotTablePartsExpected = unsignedInteger(
+          attribute(element, 'count'),
+          this.part,
+          undefined,
+          'Worksheet pivot-table-part count is invalid',
+        );
+        if (
+          this.pivotTablePartsExpected === undefined ||
+          this.pivotTablePartsExpected === 0
+        ) {
+          valueFailure(
+            this.part,
+            undefined,
+            'Worksheet pivot-table parts must not be empty',
+          );
+        }
+        return;
+      }
       this.beginIgnore();
       return;
     }
@@ -1346,6 +1388,32 @@ class WorksheetSink implements XlsxXmlEventSink {
     }
     if (parent === 'tableParts' && element.localName === 'tablePart') {
       this.openTablePart(element);
+      return;
+    }
+    if (
+      parent === 'pivotTableParts' &&
+      element.localName === 'pivotTablePart'
+    ) {
+      const relationshipId = element.attributes.get(
+        `{${TABLE_RELATIONSHIP_NAMESPACE[this.semantics.dialect]}}id`,
+      );
+      if (relationshipId === undefined || relationshipId.length === 0) {
+        valueFailure(
+          this.part,
+          undefined,
+          'Worksheet pivot-table relationship reference is invalid',
+        );
+      }
+      if (this.pivotTableRelationshipIdSet.has(relationshipId)) {
+        valueFailure(
+          this.part,
+          undefined,
+          'Worksheet contains duplicate pivot-table relationships',
+        );
+      }
+      this.pivotTableRelationshipIdSet.add(relationshipId);
+      this.pivotTableRelationshipIds.push(relationshipId);
+      this.semantics.pivotTableRelationshipIds?.push(relationshipId);
       return;
     }
     if (parent === 'sheetView') {

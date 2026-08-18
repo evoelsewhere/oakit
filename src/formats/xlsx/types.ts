@@ -1278,6 +1278,248 @@ export interface XlsxSparklineGroup {
   type: 'column' | 'line' | 'stacked';
 }
 
+export type XlsxPivotCacheItem =
+  | { kind: 'blank' }
+  | { kind: 'boolean'; value: boolean }
+  | { kind: 'date'; value: string }
+  | { kind: 'error'; value: string }
+  | { kind: 'number'; value: number }
+  | { kind: 'text'; value: string };
+
+export interface XlsxPivotCacheField {
+  databaseField: boolean;
+  items?: XlsxPivotCacheItem[];
+  name: string;
+  serverField: boolean;
+  sharedItems?: {
+    containsBlank: boolean;
+    containsDate: boolean;
+    containsInteger: boolean;
+    containsMixedTypes: boolean;
+    containsNonDate: boolean;
+    containsNumber: boolean;
+    containsSemiMixedTypes: boolean;
+    containsString: boolean;
+    longText: boolean;
+    maximumDate?: string;
+    maximumNumber?: number;
+    minimumDate?: string;
+    minimumNumber?: number;
+  };
+  uniqueList: boolean;
+}
+
+export type XlsxPivotCacheSource =
+  | {
+      connectionId?: number;
+      kind: 'external';
+    }
+  | { kind: 'consolidation' }
+  | { kind: 'scenario' }
+  | {
+      kind: 'worksheet';
+      name?: string;
+      range?: XlsxRange;
+      sheet?: string;
+    };
+
+export type XlsxPivotCacheRecordValue =
+  XlsxPivotCacheItem | { index: number; kind: 'shared-item' };
+
+export interface XlsxPivotCache {
+  backgroundQuery: boolean;
+  enableRefresh: boolean;
+  fields: XlsxPivotCacheField[];
+  index: number;
+  missingItemsLimit?: number;
+  recordCount?: number;
+  records?: XlsxPivotCacheRecordValue[][];
+  refreshedBy?: string;
+  refreshedDate?: number;
+  refreshOnLoad: boolean;
+  saveData: boolean;
+  source: XlsxPivotCacheSource;
+  supportAdvancedDrill: boolean;
+  tupleCache: boolean;
+  upgradeOnRefresh: boolean;
+}
+
+export interface XlsxPivotFieldItem {
+  sharedItemIndex?: number;
+  type:
+    | 'average'
+    | 'blank'
+    | 'count'
+    | 'data'
+    | 'default'
+    | 'grand-total'
+    | 'maximum'
+    | 'minimum'
+    | 'product'
+    | 'standard-deviation'
+    | 'standard-deviation-population'
+    | 'sum'
+    | 'variance'
+    | 'variance-population';
+}
+
+export interface XlsxPivotField {
+  axis?: 'column' | 'page' | 'row' | 'values';
+  compact: boolean;
+  dataField: boolean;
+  items: XlsxPivotFieldItem[];
+  name?: string;
+  outline: boolean;
+  showAll: boolean;
+  sortType: 'ascending' | 'descending' | 'manual';
+  subtotalTop: boolean;
+}
+
+export interface XlsxPivotDataField {
+  baseField?: number;
+  baseItem?: number;
+  field: number;
+  name?: string;
+  showDataAs:
+    | 'difference'
+    | 'index'
+    | 'normal'
+    | 'percent'
+    | 'percentDifference'
+    | 'percentOfColumn'
+    | 'percentOfRow'
+    | 'percentOfTotal'
+    | 'runningTotal';
+  subtotal:
+    | 'average'
+    | 'count'
+    | 'countNumbers'
+    | 'maximum'
+    | 'minimum'
+    | 'product'
+    | 'standardDeviation'
+    | 'standardDeviationPopulation'
+    | 'sum'
+    | 'variance'
+    | 'variancePopulation';
+}
+
+export interface XlsxPivotPageField {
+  field: number;
+  hierarchy?: number;
+  item?: number;
+  name?: string;
+}
+
+export interface XlsxPivotFilter {
+  description?: string;
+  evaluationOrder: number;
+  field: number;
+  id: number;
+  measureField?: number;
+  measureHierarchy?: number;
+  name?: string;
+  stringValue1?: string;
+  stringValue2?: string;
+  type:
+    | 'captionBeginsWith'
+    | 'captionBetween'
+    | 'captionContains'
+    | 'captionEndsWith'
+    | 'captionEqual'
+    | 'captionGreaterThan'
+    | 'captionGreaterThanOrEqual'
+    | 'captionLessThan'
+    | 'captionLessThanOrEqual'
+    | 'captionNotBeginsWith'
+    | 'captionNotBetween'
+    | 'captionNotContains'
+    | 'captionNotEndsWith'
+    | 'captionNotEqual'
+    | 'count'
+    | 'dateBetween'
+    | 'dateEqual'
+    | 'dateNewerThan'
+    | 'dateNewerThanOrEqual'
+    | 'dateNotBetween'
+    | 'dateNotEqual'
+    | 'dateOlderThan'
+    | 'dateOlderThanOrEqual'
+    | 'lastMonth'
+    | 'lastQuarter'
+    | 'lastWeek'
+    | 'lastYear'
+    | 'month1'
+    | 'month10'
+    | 'month11'
+    | 'month12'
+    | 'month2'
+    | 'month3'
+    | 'month4'
+    | 'month5'
+    | 'month6'
+    | 'month7'
+    | 'month8'
+    | 'month9'
+    | 'nextMonth'
+    | 'nextQuarter'
+    | 'nextWeek'
+    | 'nextYear'
+    | 'percent'
+    | 'quarter1'
+    | 'quarter2'
+    | 'quarter3'
+    | 'quarter4'
+    | 'sum'
+    | 'thisMonth'
+    | 'thisQuarter'
+    | 'thisWeek'
+    | 'thisYear'
+    | 'today'
+    | 'tomorrow'
+    | 'unknown'
+    | 'valueBetween'
+    | 'valueEqual'
+    | 'valueGreaterThan'
+    | 'valueGreaterThanOrEqual'
+    | 'valueLessThan'
+    | 'valueLessThanOrEqual'
+    | 'valueNotBetween'
+    | 'valueNotEqual'
+    | 'yearToDate'
+    | 'yesterday';
+}
+
+export interface XlsxPivotTableStyle {
+  name?: string;
+  showColumnHeaders: boolean;
+  showColumnStripes: boolean;
+  showLastColumn: boolean;
+  showRowHeaders: boolean;
+  showRowStripes: boolean;
+}
+
+export interface XlsxPivotTable {
+  cacheIndex: number;
+  columnFields: number[];
+  compact: boolean;
+  dataCaption: string;
+  dataFields: XlsxPivotDataField[];
+  fields: XlsxPivotField[];
+  filters: XlsxPivotFilter[];
+  grandTotalCaption?: string;
+  location: XlsxRange;
+  name: string;
+  outline: boolean;
+  pageFields: XlsxPivotPageField[];
+  rowFields: number[];
+  selectionRelation: 'full-sheet' | 'intersects-selection';
+  showColumnGrandTotals: boolean;
+  showHeaders: boolean;
+  showRowGrandTotals: boolean;
+  style: XlsxPivotTableStyle;
+}
+
 export interface XlsxSheetBase {
   index: number;
   name: string;
@@ -1301,6 +1543,7 @@ export interface XlsxWorksheet extends XlsxSheetBase {
   print?: XlsxWorksheetPrintSettings;
   protectedRanges: XlsxProtectedRange[];
   protection?: XlsxWorksheetProtection;
+  pivotTables?: XlsxPivotTable[];
   rows: XlsxRow[];
   sheetFormat?: XlsxWorksheetFormat;
   sparklineGroups?: XlsxSparklineGroup[];
@@ -1318,6 +1561,7 @@ export type XlsxSheet = XlsxChartSheet | XlsxWorksheet;
 export interface XlsxDocument {
   differentialStyles: XlsxStyle[];
   namedStyles: XlsxNamedStyle[];
+  pivotCaches?: XlsxPivotCache[];
   sheets: XlsxSheet[];
   styles: XlsxStyle[];
   workbook: XlsxWorkbookProperties;
