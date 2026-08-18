@@ -18,6 +18,11 @@ import {
   XlsxMediaSession,
   loadXlsxDrawings,
 } from './internal/drawing';
+import {
+  loadXlsxExternalMetadata,
+  loadXlsxQueryTables,
+  type XlsxExternalMetadataLoadResult,
+} from './internal/external-metadata';
 import { XlsxPartReader } from './internal/part-reader';
 import {
   loadXlsxPivotCaches,
@@ -227,6 +232,10 @@ export async function parseXlsxWithDiagnostics(
     slicerCaches: [],
     timelineCaches: [],
   };
+  let externalMetadataResult: XlsxExternalMetadataLoadResult = {
+    connections: [],
+    externalLinks: [],
+  };
   try {
     pivotCacheResult = await loadXlsxPivotCaches(
       manifest.pivotCaches,
@@ -235,6 +244,20 @@ export async function parseXlsxWithDiagnostics(
       reader,
       limits,
       pivotBudget,
+      budget,
+    );
+  } catch (error) {
+    if (error instanceof XlsxResourceLimitError) {
+      failResource(error, diagnostics);
+    }
+    if (!recoverOptionalFeature(error, options, diagnostics)) throw error;
+  }
+  try {
+    externalMetadataResult = await loadXlsxExternalMetadata(
+      manifest.workbookRelationships,
+      discovery,
+      reader,
+      limits,
       budget,
     );
   } catch (error) {
@@ -403,6 +426,24 @@ export async function parseXlsxWithDiagnostics(
       } catch (error) {
         if (!recoverOptionalFeature(error, options, diagnostics)) throw error;
       }
+      let queryTables: Awaited<ReturnType<typeof loadXlsxQueryTables>> = [];
+      try {
+        queryTables = await loadXlsxQueryTables(
+          worksheetRelationships,
+          new Set(
+            externalMetadataResult.connections.map(
+              (connection) => connection.id,
+            ),
+          ),
+          discovery,
+          reader,
+          limits,
+          budget,
+          manifest.sheetParts[index]!,
+        );
+      } catch (error) {
+        if (!recoverOptionalFeature(error, options, diagnostics)) throw error;
+      }
       sheets.push({
         ...sheet,
         ...payload,
@@ -411,6 +452,7 @@ export async function parseXlsxWithDiagnostics(
         payload:
           selection.kind === 'full-sheet' ? 'full-sheet' : 'selected-ranges',
         ...(pivotTables.length === 0 ? {} : { pivotTables }),
+        ...(queryTables.length === 0 ? {} : { queryTables }),
         ...(analyticDisplays.slicers.length === 0
           ? {}
           : { slicers: analyticDisplays.slicers }),
@@ -428,7 +470,13 @@ export async function parseXlsxWithDiagnostics(
     throw error;
   }
   const document: XlsxDocument = {
+    ...(externalMetadataResult.connections.length === 0
+      ? {}
+      : { connections: externalMetadataResult.connections }),
     differentialStyles: [...styles.differentialStyles],
+    ...(externalMetadataResult.externalLinks.length === 0
+      ? {}
+      : { externalLinks: externalMetadataResult.externalLinks }),
     namedStyles: [...styles.namedStyles],
     ...(pivotCacheResult.caches.length === 0
       ? {}

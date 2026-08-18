@@ -1576,6 +1576,57 @@ export interface XlsxTimeline {
   style?: string;
 }
 
+export interface XlsxExternalLinkTarget {
+  host?: string;
+  kind: 'file' | 'http' | 'https' | 'relative';
+  redacted: true;
+}
+
+export interface XlsxExternalDefinedName {
+  formula: string;
+  name: string;
+  sheetId?: number;
+}
+
+export interface XlsxExternalLink {
+  definedNames: XlsxExternalDefinedName[];
+  index: number;
+  sheetNames: string[];
+  target?: XlsxExternalLinkTarget;
+}
+
+export interface XlsxConnection {
+  background: boolean;
+  credentialsOmitted: boolean;
+  deleted: boolean;
+  description?: string;
+  id: number;
+  keepAlive: boolean;
+  name?: string;
+  refreshedVersion?: number;
+  refreshInterval?: number;
+  refreshOnLoad: boolean;
+  saveData: boolean;
+  sourceDataOmitted: boolean;
+  type?: number;
+}
+
+export interface XlsxQueryTable {
+  adjustColumnWidth: boolean;
+  applyAlignmentFormats: boolean;
+  applyBorderFormats: boolean;
+  applyFontFormats: boolean;
+  applyNumberFormats: boolean;
+  applyPatternFormats: boolean;
+  applyWidthHeightFormats: boolean;
+  backgroundRefresh: boolean;
+  connectionId: number;
+  disableEdit: boolean;
+  name: string;
+  preserveFormatting: boolean;
+  refreshOnLoad: boolean;
+}
+
 export interface XlsxSheetBase {
   index: number;
   name: string;
@@ -1600,6 +1651,7 @@ export interface XlsxWorksheet extends XlsxSheetBase {
   protectedRanges: XlsxProtectedRange[];
   protection?: XlsxWorksheetProtection;
   pivotTables?: XlsxPivotTable[];
+  queryTables?: XlsxQueryTable[];
   rows: XlsxRow[];
   sheetFormat?: XlsxWorksheetFormat;
   slicers?: XlsxSlicer[];
@@ -1617,7 +1669,9 @@ export interface XlsxChartSheet extends XlsxSheetBase {
 export type XlsxSheet = XlsxChartSheet | XlsxWorksheet;
 
 export interface XlsxDocument {
+  connections?: XlsxConnection[];
   differentialStyles: XlsxStyle[];
+  externalLinks?: XlsxExternalLink[];
   namedStyles: XlsxNamedStyle[];
   pivotCaches?: XlsxPivotCache[];
   sheets: XlsxSheet[];
