@@ -118,6 +118,10 @@ export class XlsxPartReader {
     private readonly limits: ResolvedXlsxResourceLimits = defaultXlsxResourceLimits(),
   ) {}
 
+  hasPart(part: string): boolean {
+    return this.zip.file(part) !== null;
+  }
+
   async readXml(
     part: string,
     options: { required: true },

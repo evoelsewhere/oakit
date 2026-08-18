@@ -925,8 +925,55 @@ export interface XlsxTable {
   totalsRowShown: boolean;
 }
 
+export interface XlsxDrawingMarker {
+  column: number;
+  columnOffset: number;
+  row: number;
+  rowOffset: number;
+}
+
+export interface XlsxDrawingExtent {
+  height: number;
+  width: number;
+}
+
+export interface XlsxDrawingTransform {
+  flipHorizontal: boolean;
+  flipVertical: boolean;
+  rotation: number;
+}
+
+export interface XlsxImageCrop {
+  bottom: number;
+  left: number;
+  right: number;
+  top: number;
+}
+
+export interface XlsxEmbeddedImage {
+  base64?: string;
+  blobUrl?: string;
+  byteLength?: number;
+  contentType: string;
+  crop: XlsxImageCrop;
+  description?: string;
+  hidden: boolean;
+  id: number;
+  kind: 'image';
+  name: string;
+  part: string;
+  transform: XlsxDrawingTransform;
+}
+
 export interface XlsxDrawing {
+  editAs?: 'absolute' | 'one-cell' | 'two-cell';
+  extent: XlsxDrawingExtent;
+  from?: XlsxDrawingMarker;
   kind: 'absolute' | 'one-cell' | 'two-cell';
+  object: XlsxEmbeddedImage;
+  position?: { x: number; y: number };
+  selectionRelation: 'full-sheet' | 'intersects-selection' | 'worksheet-global';
+  to?: XlsxDrawingMarker;
 }
 
 export type XlsxHyperlinkTarget =

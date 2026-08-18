@@ -13,6 +13,11 @@ import {
   loadXlsxCommentPersons,
   loadXlsxWorksheetComments,
 } from './internal/comments';
+import {
+  type XlsxDrawingBudget,
+  XlsxMediaSession,
+  loadXlsxDrawings,
+} from './internal/drawing';
 import { XlsxPartReader } from './internal/part-reader';
 import {
   resolveXlsxResourceLimits,
@@ -38,6 +43,7 @@ import type {
   XlsxComment,
   XlsxDiagnostic,
   XlsxDocument,
+  XlsxDrawing,
   XlsxInput,
   XlsxParseOptions,
   XlsxParseResult,
@@ -209,6 +215,8 @@ export async function parseXlsxWithDiagnostics(
   const sheets: XlsxDocument['sheets'] = [];
   const tableRegistry = createXlsxTableRegistry();
   const commentBudget: XlsxCommentBudget = { comments: 0 };
+  const drawingBudget: XlsxDrawingBudget = { drawings: 0 };
+  const media = new XlsxMediaSession(options.imageMode ?? 'none', limits);
   try {
     for (const [index, sheet] of manifest.sheets.entries()) {
       const selection = selections[index]!;
@@ -237,6 +245,7 @@ export async function parseXlsxWithDiagnostics(
         limits,
       );
       const legacyDrawingRelationshipIds: string[] = [];
+      const drawingRelationshipIds: string[] = [];
       const tableRelationshipIds: string[] = [];
       const payload = await parseXlsxWorksheetPart(
         manifest.sheetParts[index]!,
@@ -249,6 +258,7 @@ export async function parseXlsxWithDiagnostics(
         {
           dateSystem: manifest.properties.dateSystem,
           dialect: discovery.dialect,
+          drawingRelationshipIds,
           legacyDrawingRelationshipIds,
           relationships: worksheetRelationships,
           styles,
@@ -256,6 +266,25 @@ export async function parseXlsxWithDiagnostics(
           workbookViewCount: manifest.properties.views.length,
         },
       );
+      let drawings: XlsxDrawing[] = [];
+      const mediaCheckpoint = media.checkpoint();
+      try {
+        drawings = await loadXlsxDrawings(
+          drawingRelationshipIds,
+          worksheetRelationships,
+          discovery,
+          reader,
+          limits,
+          drawingBudget,
+          budget,
+          selection,
+          media,
+          manifest.sheetParts[index]!,
+        );
+      } catch (error) {
+        media.rollback(mediaCheckpoint);
+        if (!recoverOptionalFeature(error, options, diagnostics)) throw error;
+      }
       let comments: XlsxComment[] = [];
       try {
         comments = await loadXlsxWorksheetComments(
@@ -289,12 +318,14 @@ export async function parseXlsxWithDiagnostics(
         ...sheet,
         ...payload,
         comments,
+        drawings,
         payload:
           selection.kind === 'full-sheet' ? 'full-sheet' : 'selected-ranges',
         tables,
       });
     }
   } catch (error) {
+    media.revokeAll();
     if (error instanceof XlsxResourceLimitError) {
       failResource(error, diagnostics);
     }

@@ -171,6 +171,7 @@ export interface XlsxWorksheetPayload {
 export interface XlsxWorksheetSemantics {
   dateSystem: '1900' | '1904';
   dialect: 'strict' | 'transitional';
+  drawingRelationshipIds?: string[];
   relationships: ReadonlyMap<string, XlsxRelationship>;
   legacyDrawingRelationshipIds?: string[];
   styles: XlsxStyleTable;
@@ -443,6 +444,7 @@ class WorksheetSink implements XlsxXmlEventSink {
   private currentView: XlsxWorksheetView | undefined;
   private declaredDimension: XlsxRange | undefined;
   private dimensionSeen = false;
+  private drawingSeen = false;
   private ignoredDepth = 0;
   private readonly hyperlinks: ParsedXlsxHyperlink[] = [];
   private hyperlinksSeen = false;
@@ -922,6 +924,28 @@ class WorksheetSink implements XlsxXmlEventSink {
           );
         }
         this.semantics.legacyDrawingRelationshipIds?.push(relationshipId);
+        return;
+      }
+      if (element.localName === 'drawing') {
+        if (this.drawingSeen) {
+          structureFailure(
+            this.part,
+            undefined,
+            'Worksheet contains duplicate drawing elements',
+          );
+        }
+        this.drawingSeen = true;
+        const relationshipId = element.attributes.get(
+          `{${TABLE_RELATIONSHIP_NAMESPACE[this.semantics.dialect]}}id`,
+        );
+        if (relationshipId === undefined || relationshipId.length === 0) {
+          valueFailure(
+            this.part,
+            undefined,
+            'Worksheet drawing relationship reference is invalid',
+          );
+        }
+        this.semantics.drawingRelationshipIds?.push(relationshipId);
         return;
       }
       if (element.localName === 'sheetProtection') {
