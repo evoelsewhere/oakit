@@ -90,6 +90,55 @@ function hierarchyScene(): PptxSceneDocument {
   };
 }
 
+function tableScene(): PptxSceneDocument {
+  return {
+    layouts: [],
+    masters: [],
+    media: [],
+    schemaVersion: 2,
+    size: { height: 540, width: 960 },
+    slides: [
+      {
+        elements: [
+          {
+            authored: {},
+            columns: [100],
+            key: 'table-1',
+            resolved: { hidden: false },
+            rows: [
+              {
+                cells: [
+                  {
+                    text: {
+                      body: {},
+                      paragraphs: [
+                        {
+                          children: [
+                            {
+                              key: 'table-run',
+                              text: 'value',
+                              type: 'run',
+                            },
+                          ],
+                          key: 'table-paragraph',
+                        },
+                      ],
+                    },
+                  },
+                ],
+                height: 40,
+              },
+            ],
+            type: 'table',
+          },
+        ],
+        key: 'table-slide',
+      },
+    ],
+    themes: [],
+  };
+}
+
 describe('PowerPoint round-trip snapshot consistency', () => {
   it('locks the R0 support and version identifiers', () => {
     expect(createPptxRoundTripSupportProfile()).toEqual({
@@ -279,6 +328,20 @@ describe('PowerPoint round-trip snapshot consistency', () => {
         baseline.sourceManifestSha256,
       );
     }
+  });
+
+  it('binds every native table cell text key into the source manifest', async () => {
+    const supportProfile = createPptxRoundTripSupportProfile();
+    const consistency = await createPptxSnapshotConsistency({
+      document: tableScene(),
+      operations: [],
+      source: { byteLength: 3, conformance: 'strict', sha256: 'abc' },
+      supportProfile,
+    });
+    const expectedManifest =
+      '{"format":"pptx","keyManifest":{"layouts":[],"masters":[],"slides":[{"elements":[{"key":"table-1","rows":[[[{"children":["table-run"],"key":"table-paragraph"}]]]}],"key":"table-slide"}],"themes":[]},"schemaVersion":1,"source":{"byteLength":3,"conformance":"strict","sha256":"abc"},"supportProfile":{"effectiveLevel":"R0","id":"pptx-roundtrip-r0","producerMatrix":[],"version":"1"}}';
+
+    expect(consistency.sourceManifestSha256).toBe(sha256(expectedManifest));
   });
 
   it('returns independent mutable support profile values', () => {
