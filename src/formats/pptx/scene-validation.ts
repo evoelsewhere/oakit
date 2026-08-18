@@ -9,6 +9,11 @@ import {
   MAX_POWERPOINT_CREATION_SLIDES,
 } from './creation-limits';
 import { validatePowerPointCreationResources } from './creation-resource-validation';
+import {
+  validatePptxSceneTable,
+  validatePptxSceneTableDimensions,
+  type PptxTableValidationDependencies,
+} from './scene-table-validation';
 
 type JsonObject = Record<string, unknown>;
 
@@ -566,249 +571,19 @@ function validateTextBody(
   );
 }
 
-function validateTableBorder(
-  value: unknown,
-  path: string,
-  profile: ValidationProfile,
-  issues: PptxSceneValidationIssue[],
-): void {
-  const border = requireObject(value, path, issues);
-  if (!border) return;
-  rejectUnknownKeys(border, ['color', 'style', 'width'], path, issues);
-  optionalColor(border, 'color', path, issues);
-  if (border.color === undefined) {
-    addIssue(
-      issues,
-      'invalid-scene-document',
-      `${path}.color`,
-      'Expected a #RRGGBB color',
-    );
-  }
-  if (
-    border.style !== undefined &&
-    !isOneOf(border.style, ['dashed', 'dotted', 'solid'])
-  ) {
-    addIssue(
-      issues,
-      'invalid-scene-document',
-      `${path}.style`,
-      'Unknown table border style',
-    );
-  }
-  requireFiniteNumber(border.width, `${path}.width`, issues, true);
-  if (isCreationProfile(profile)) {
-    requireSerializableInteger(
-      border.width,
-      EMUS_PER_POINT,
-      `${path}.width`,
-      issues,
-      true,
-    );
-  }
-}
-
-function validateTableCell(
-  value: unknown,
-  path: string,
-  profile: ValidationProfile,
-  keys: Set<string>,
-  issues: PptxSceneValidationIssue[],
-): void {
-  const cell = requireObject(value, path, issues);
-  if (!cell) return;
-  rejectUnknownKeys(
-    cell,
-    ['borders', 'colSpan', 'fillColor', 'hMerge', 'rowSpan', 'text', 'vMerge'],
-    path,
-    issues,
-  );
-  optionalColor(cell, 'fillColor', path, issues);
-  optionalBoolean(cell, 'hMerge', path, issues);
-  optionalBoolean(cell, 'vMerge', path, issues);
-  for (const key of ['colSpan', 'rowSpan'] as const) {
-    if (
-      cell[key] !== undefined &&
-      (!Number.isSafeInteger(cell[key]) || Number(cell[key]) <= 1)
-    ) {
-      addIssue(
-        issues,
-        'invalid-numeric-value',
-        `${path}.${key}`,
-        'Table span must be an integer greater than one',
-      );
-    }
-  }
-  if (cell.borders !== undefined) {
-    const borders = requireObject(cell.borders, `${path}.borders`, issues);
-    if (borders) {
-      rejectUnknownKeys(
-        borders,
-        ['bottom', 'left', 'right', 'top'],
-        `${path}.borders`,
-        issues,
-      );
-      for (const key of ['bottom', 'left', 'right', 'top'] as const) {
-        if (borders[key] !== undefined) {
-          validateTableBorder(
-            borders[key],
-            `${path}.borders.${key}`,
-            profile,
-            issues,
-          );
-        }
-      }
-    }
-  }
-  validateTextBody(cell.text, `${path}.text`, profile, keys, issues);
-}
-
-function validateTable(
-  value: JsonObject,
-  path: string,
-  profile: ValidationProfile,
-  keys: Set<string>,
-  issues: PptxSceneValidationIssue[],
-): void {
-  const columns = requireArray(value.columns, `${path}.columns`, issues);
-  if (columns?.length === 0) {
-    addIssue(
-      issues,
-      'invalid-scene-document',
-      `${path}.columns`,
-      'A table needs at least one column',
-    );
-  }
-  columns?.forEach((width, index) => {
-    const widthPath = `${path}.columns[${index}]`;
-    requireFiniteNumber(width, widthPath, issues, true);
-    if (isCreationProfile(profile)) {
-      requireSerializableInteger(
-        width,
-        EMUS_PER_POINT,
-        widthPath,
-        issues,
-        true,
-      );
-    }
-  });
-  const rows = requireArray(value.rows, `${path}.rows`, issues);
-  if (rows?.length === 0) {
-    addIssue(
-      issues,
-      'invalid-scene-document',
-      `${path}.rows`,
-      'A table needs at least one row',
-    );
-  }
-  rows?.forEach((rowValue, rowIndex) => {
-    const rowPath = `${path}.rows[${rowIndex}]`;
-    const row = requireObject(rowValue, rowPath, issues);
-    if (!row) return;
-    rejectUnknownKeys(row, ['cells', 'height'], rowPath, issues);
-    requireFiniteNumber(row.height, `${rowPath}.height`, issues, true);
-    if (isCreationProfile(profile)) {
-      requireSerializableInteger(
-        row.height,
-        EMUS_PER_POINT,
-        `${rowPath}.height`,
-        issues,
-        true,
-      );
-    }
-    const cells = requireArray(row.cells, `${rowPath}.cells`, issues);
-    if (cells && columns && cells.length !== columns.length) {
-      addIssue(
-        issues,
-        'invalid-scene-document',
-        `${rowPath}.cells`,
-        `Table row must contain exactly ${columns.length} grid cells`,
-      );
-    }
-    cells?.forEach((cell, cellIndex) =>
-      validateTableCell(
-        cell,
-        `${rowPath}.cells[${cellIndex}]`,
-        profile,
-        keys,
-        issues,
-      ),
-    );
-  });
-
-  if (rows && columns && rows.length > 0 && columns.length > 0) {
-    const expectedHorizontal = rows.map(() => columns.map(() => false));
-    const expectedVertical = rows.map(() => columns.map(() => false));
-    const occupied = rows.map(() => columns.map(() => false));
-    rows.forEach((rowValue, rowIndex) => {
-      if (!isObject(rowValue) || !Array.isArray(rowValue.cells)) return;
-      rowValue.cells.forEach((cellValue, columnIndex) => {
-        if (!isObject(cellValue)) return;
-        const rowSpan = Number.isSafeInteger(cellValue.rowSpan)
-          ? Number(cellValue.rowSpan)
-          : 1;
-        const colSpan = Number.isSafeInteger(cellValue.colSpan)
-          ? Number(cellValue.colSpan)
-          : 1;
-        if (rowSpan < 1 || colSpan < 1) return;
-        if (
-          rowIndex + rowSpan > rows.length ||
-          columnIndex + colSpan > columns.length
-        ) {
-          addIssue(
-            issues,
-            'invalid-scene-document',
-            `${path}.rows[${rowIndex}].cells[${columnIndex}]`,
-            'Table span exceeds the grid bounds',
-          );
-          return;
-        }
-        if (occupied[rowIndex]?.[columnIndex]) return;
-        for (let rowOffset = 0; rowOffset < rowSpan; rowOffset += 1) {
-          for (
-            let columnOffset = 0;
-            columnOffset < colSpan;
-            columnOffset += 1
-          ) {
-            if (rowOffset === 0 && columnOffset === 0) continue;
-            const targetRow = rowIndex + rowOffset;
-            const targetColumn = columnIndex + columnOffset;
-            if (occupied[targetRow]?.[targetColumn]) {
-              addIssue(
-                issues,
-                'invalid-scene-document',
-                `${path}.rows[${rowIndex}].cells[${columnIndex}]`,
-                'Table spans must not overlap',
-              );
-              continue;
-            }
-            occupied[targetRow]![targetColumn] = true;
-            expectedHorizontal[targetRow]![targetColumn] = columnOffset > 0;
-            expectedVertical[targetRow]![targetColumn] = rowOffset > 0;
-          }
-        }
-      });
-    });
-    rows.forEach((rowValue, rowIndex) => {
-      if (!isObject(rowValue) || !Array.isArray(rowValue.cells)) return;
-      rowValue.cells.forEach((cellValue, columnIndex) => {
-        if (!isObject(cellValue)) return;
-        if (
-          (cellValue.hMerge === true) !==
-            expectedHorizontal[rowIndex]?.[columnIndex] ||
-          (cellValue.vMerge === true) !==
-            expectedVertical[rowIndex]?.[columnIndex]
-        ) {
-          addIssue(
-            issues,
-            'invalid-scene-document',
-            `${path}.rows[${rowIndex}].cells[${columnIndex}]`,
-            'Table merge continuation flags do not match its spans',
-          );
-        }
-      });
-    });
-  }
-}
+const TABLE_VALIDATION_DEPENDENCIES: PptxTableValidationDependencies = {
+  addIssue,
+  isCreationProfile,
+  isObject,
+  optionalBoolean,
+  optionalColor,
+  rejectUnknownKeys,
+  requireArray,
+  requireFiniteNumber,
+  requireObject,
+  requireSerializableInteger,
+  validateTextBody,
+};
 
 function validatePlaceholder(
   value: unknown,
@@ -959,7 +734,15 @@ function validateElement(
     }
   } else if (element.type === 'table') {
     rejectUnknownKeys(element, [...baseKeys, 'columns', 'rows'], path, issues);
-    validateTable(element, path, profile, keys, issues);
+    validatePptxSceneTable(
+      element,
+      path,
+      profile,
+      keys,
+      issues,
+      EMUS_PER_POINT,
+      TABLE_VALIDATION_DEPENDENCIES,
+    );
     if (profile === 'create-text-v1') {
       addIssue(
         issues,
@@ -1077,50 +860,16 @@ function validateElement(
       if (
         isCreationProfile(profile) &&
         element.type === 'table' &&
-        isObject(authored.transform) &&
-        Array.isArray(element.columns) &&
-        Array.isArray(element.rows)
+        isObject(authored.transform)
       ) {
-        const columnWidth = element.columns.reduce<number>(
-          (total, value) =>
-            typeof value === 'number' && Number.isFinite(value)
-              ? total + value
-              : total,
-          0,
+        validatePptxSceneTableDimensions(
+          element,
+          authored.transform,
+          path,
+          issues,
+          EMUS_PER_POINT,
+          TABLE_VALIDATION_DEPENDENCIES,
         );
-        const rowHeight = element.rows.reduce<number>(
-          (total, value) =>
-            isObject(value) &&
-            typeof value.height === 'number' &&
-            Number.isFinite(value.height)
-              ? total + value.height
-              : total,
-          0,
-        );
-        if (
-          typeof authored.transform.width === 'number' &&
-          Math.round(columnWidth * EMUS_PER_POINT) !==
-            Math.round(authored.transform.width * EMUS_PER_POINT)
-        ) {
-          addIssue(
-            issues,
-            'invalid-scene-document',
-            `${path}.authored.transform.width`,
-            'Table transform width must equal the sum of its column widths',
-          );
-        }
-        if (
-          typeof authored.transform.height === 'number' &&
-          Math.round(rowHeight * EMUS_PER_POINT) !==
-            Math.round(authored.transform.height * EMUS_PER_POINT)
-        ) {
-          addIssue(
-            issues,
-            'invalid-scene-document',
-            `${path}.authored.transform.height`,
-            'Table transform height must equal the sum of its row heights',
-          );
-        }
       }
     } else if (
       isCreationProfile(profile) &&
