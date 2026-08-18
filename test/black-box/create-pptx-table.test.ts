@@ -153,4 +153,40 @@ describe('native PowerPoint table creation', () => {
     expect(second.data).toEqual(first.data);
     expect(second.report).toEqual(first.report);
   });
+
+  it('writes and renders a rectangular merged-cell region exactly once', async () => {
+    const input = scene();
+    const table = input.slides[0]?.elements[0];
+    if (table?.type !== 'table') throw new Error('Expected table');
+    const origin = cell('merged-origin', 'Merged region', '#DBEAFE');
+    origin.colSpan = 2;
+    origin.rowSpan = 2;
+    const topRight = cell('merged-top-right', '', '#DBEAFE');
+    topRight.hMerge = true;
+    const bottomLeft = cell('merged-bottom-left', '', '#DBEAFE');
+    bottomLeft.vMerge = true;
+    const bottomRight = cell('merged-bottom-right', '', '#DBEAFE');
+    bottomRight.hMerge = true;
+    bottomRight.vMerge = true;
+    table.rows = [
+      { cells: [origin, topRight], height: 40 },
+      { cells: [bottomLeft, bottomRight], height: 60 },
+    ];
+
+    const created = await createPptx(input);
+    const [parsed, rendered] = await Promise.all([
+      parsePptx(created.data, { errorMode: 'strict', imageMode: 'none' }),
+      renderPptxToSvg(created.data, { slideNumbers: [1] }),
+    ]);
+    const generated = parsed.slides[0]?.elements[0];
+    if (generated?.type !== 'table') throw new Error('Expected table');
+
+    expect(generated.data[0]?.[0]).toMatchObject({ colSpan: 2, rowSpan: 2 });
+    expect(generated.data[0]?.[1]).toMatchObject({ hMerge: 1 });
+    expect(generated.data[1]?.[0]).toMatchObject({ vMerge: 1 });
+    expect(generated.data[1]?.[1]).toMatchObject({ hMerge: 1, vMerge: 1 });
+    const svg = new TextDecoder().decode(rendered.slides[0]?.data);
+    expect(svg.match(/Merged\u00a0region/g)).toHaveLength(1);
+    expect(svg).toContain('width="300" height="100"');
+  });
 });

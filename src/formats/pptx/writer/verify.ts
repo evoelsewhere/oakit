@@ -150,12 +150,6 @@ function verifyTableCell(
   if (generated === undefined) {
     throw new Error(`Generated PowerPoint table cell missing at ${location}`);
   }
-  const expectedText = expected.text.paragraphs
-    .map((paragraph) => paragraph.children.map(textNodeValue).join(''))
-    .join('\n');
-  if (plainTextFromPowerPointHtml(generated.text) !== expectedText) {
-    throw new Error(`Generated PowerPoint table text mismatch at ${location}`);
-  }
   if (
     generated.fillColor !== expected.fillColor ||
     generated.colSpan !== expected.colSpan ||
@@ -164,6 +158,16 @@ function verifyTableCell(
     generated.vMerge !== (expected.vMerge ? 1 : undefined)
   ) {
     throw new Error(`Generated PowerPoint table cell mismatch at ${location}`);
+  }
+  if (!expected.hMerge && !expected.vMerge) {
+    const expectedText = expected.text.paragraphs
+      .map((paragraph) => paragraph.children.map(textNodeValue).join(''))
+      .join('\n');
+    if (plainTextFromPowerPointHtml(generated.text) !== expectedText) {
+      throw new Error(
+        `Generated PowerPoint table text mismatch at ${location}`,
+      );
+    }
   }
   for (const key of ['bottom', 'left', 'right', 'top'] as const) {
     verifyTableBorder(
