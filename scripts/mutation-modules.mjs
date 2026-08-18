@@ -91,6 +91,24 @@ export const mutationModules = [
     tests: ['test/pptx/roundtrip-table-preview.test.ts'],
   },
   {
+    estimatedSeconds: 300,
+    name: 'scene-table-validation',
+    source: 'src/formats/pptx/scene-table-validation.ts',
+    tests: ['test/pptx/scene-table-validation.test.ts'],
+  },
+  {
+    estimatedSeconds: 300,
+    name: 'scene-table-cell-validation',
+    source: 'src/formats/pptx/scene-table-cell-validation.ts',
+    tests: ['test/pptx/scene-table-validation.test.ts'],
+  },
+  {
+    estimatedSeconds: 300,
+    name: 'scene-table-merge-validation',
+    source: 'src/formats/pptx/scene-table-merge-validation.ts',
+    tests: ['test/pptx/scene-table-validation.test.ts'],
+  },
+  {
     estimatedSeconds: 559,
     name: 'roundtrip-validation',
     source: 'src/formats/pptx/roundtrip/validate.ts',

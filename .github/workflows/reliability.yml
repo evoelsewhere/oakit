@@ -197,6 +197,9 @@ jobs:
           - roundtrip-preview
           - table-preview
           - table-preview-cell
+          - scene-table-validation
+          - scene-table-cell-validation
+          - scene-table-merge-validation
           - roundtrip-validation
           - writer-shape
           - writer-image
