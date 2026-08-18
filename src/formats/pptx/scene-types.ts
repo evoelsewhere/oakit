@@ -122,6 +122,40 @@ export interface PptxSceneImageElement extends PptxSceneElementBase {
   type: 'image';
 }
 
+export interface PptxSceneTableBorder {
+  color: string;
+  style?: 'dashed' | 'dotted' | 'solid';
+  width: number;
+}
+
+export interface PptxSceneTableBorders {
+  bottom?: PptxSceneTableBorder;
+  left?: PptxSceneTableBorder;
+  right?: PptxSceneTableBorder;
+  top?: PptxSceneTableBorder;
+}
+
+export interface PptxSceneTableCell {
+  borders?: PptxSceneTableBorders;
+  colSpan?: number;
+  fillColor?: string;
+  hMerge?: boolean;
+  rowSpan?: number;
+  text: PptxSceneTextBody;
+  vMerge?: boolean;
+}
+
+export interface PptxSceneTableRow {
+  cells: PptxSceneTableCell[];
+  height: number;
+}
+
+export interface PptxSceneTableElement extends PptxSceneElementBase {
+  columns: number[];
+  rows: PptxSceneTableRow[];
+  type: 'table';
+}
+
 export interface PptxSceneUnsupportedElement extends PptxSceneElementBase {
   feature: string;
   previewText?: string;
@@ -131,6 +165,7 @@ export interface PptxSceneUnsupportedElement extends PptxSceneElementBase {
 export type PptxSceneElement =
   | PptxSceneImageElement
   | PptxSceneShapeElement
+  | PptxSceneTableElement
   | PptxSceneTextElement
   | PptxSceneUnsupportedElement;
 

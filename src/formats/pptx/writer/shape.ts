@@ -11,7 +11,10 @@ function booleanAttribute(value: boolean): string {
   return value ? '1' : '0';
 }
 
-export function serializeShapeTransform(transform: PptxSceneTransform): string {
+function serializeTransform(
+  transform: PptxSceneTransform,
+  tagName: 'a:xfrm' | 'p:xfrm',
+): string {
   const attributes: string[] = [];
   if (transform.rotation !== undefined) {
     attributes.push(`rot="${degreesToAngle(transform.rotation)}"`);
@@ -23,7 +26,17 @@ export function serializeShapeTransform(transform: PptxSceneTransform): string {
     attributes.push(`flipV="${booleanAttribute(transform.flipVertical)}"`);
   }
   const attributeText = attributes.length > 0 ? ` ${attributes.join(' ')}` : '';
-  return `<a:xfrm${attributeText}><a:off x="${pointsToEmu(transform.x)}" y="${pointsToEmu(transform.y)}"/><a:ext cx="${pointsToEmu(transform.width)}" cy="${pointsToEmu(transform.height)}"/></a:xfrm>`;
+  return `<${tagName}${attributeText}><a:off x="${pointsToEmu(transform.x)}" y="${pointsToEmu(transform.y)}"/><a:ext cx="${pointsToEmu(transform.width)}" cy="${pointsToEmu(transform.height)}"/></${tagName}>`;
+}
+
+export function serializeShapeTransform(transform: PptxSceneTransform): string {
+  return serializeTransform(transform, 'a:xfrm');
+}
+
+export function serializeGraphicFrameTransform(
+  transform: PptxSceneTransform,
+): string {
+  return serializeTransform(transform, 'p:xfrm');
 }
 
 export function serializeShapeNonVisualProperties(

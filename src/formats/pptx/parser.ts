@@ -1652,6 +1652,11 @@ function genTable(
   const xfrmNode = nodeAt(node, ['p:xfrm']);
   const { top, left } = getPosition(xfrmNode, undefined, undefined);
   const { width, height } = getSize(xfrmNode, undefined, undefined);
+  const isFlipV = textAt(xfrmNode, ['attrs', 'flipV']) === '1';
+  const isFlipH = textAt(xfrmNode, ['attrs', 'flipH']) === '1';
+  const rotate = angleToDegrees(textAt(xfrmNode, ['attrs', 'rot']));
+  const name =
+    textAt(node, ['p:nvGraphicFramePr', 'p:cNvPr', 'attrs', 'name']) ?? '';
 
   const tableProperties = nodeAt(node, [
     'a:graphic',
@@ -1801,6 +1806,10 @@ function genTable(
     borders,
     rowHeights,
     colWidths,
+    isFlipH,
+    isFlipV,
+    name,
+    rotate,
   };
 }
 

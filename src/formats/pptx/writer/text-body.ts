@@ -49,9 +49,17 @@ export function serializeTextBody(
   text: PptxSceneTextBody,
   context: PptxTextSerializationContext,
 ): string {
+  return serializeDrawingTextBody(text, context, 'p:txBody');
+}
+
+export function serializeDrawingTextBody(
+  text: PptxSceneTextBody,
+  context: PptxTextSerializationContext,
+  tagName: 'a:txBody' | 'p:txBody' = 'a:txBody',
+): string {
   const bodyProperties = serializeTextBodyProperties(text.body);
   const paragraphs = text.paragraphs
     .map((paragraph) => serializeParagraph(paragraph, context))
     .join('');
-  return `<p:txBody>${bodyProperties}<a:lstStyle/>${paragraphs}</p:txBody>`;
+  return `<${tagName}>${bodyProperties}<a:lstStyle/>${paragraphs}</${tagName}>`;
 }

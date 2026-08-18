@@ -203,6 +203,10 @@ export interface Table {
   order: number;
   rowHeights: number[];
   colWidths: number[];
+  isFlipH?: boolean;
+  isFlipV?: boolean;
+  name?: string;
+  rotate?: number;
 }
 
 export type ChartType =

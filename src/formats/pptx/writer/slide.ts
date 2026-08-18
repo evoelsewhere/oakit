@@ -5,6 +5,7 @@ import { serializeShape } from './shape';
 import { serializeTextShape } from './text-shape';
 import { escapeXmlAttribute } from './xml';
 import { serializePicture } from './image';
+import { serializeTable } from './table';
 
 const DRAWING_NAMESPACE =
   'http://schemas.openxmlformats.org/drawingml/2006/main';
@@ -45,6 +46,8 @@ function serializeElement(
       }
       return serializePicture(element, transform, shapeId, relationshipId);
     }
+    case 'table':
+      return serializeTable(element, transform, shapeId, context);
   }
 }
 
