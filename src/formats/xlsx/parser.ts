@@ -37,6 +37,10 @@ import {
 } from './internal/resource-limits';
 import { resolveXlsxSelection } from './internal/selection';
 import {
+  activeXlsxContentDiagnostic,
+  scanXlsxActiveContent,
+} from './internal/security';
+import {
   loadXlsxAnalyticCaches,
   loadXlsxAnalyticDisplays,
   type XlsxAnalyticCacheLoadResult,
@@ -168,9 +172,10 @@ async function openXlsxPackage(
   return zip;
 }
 
-export async function parseXlsxWithDiagnostics(
+async function parseXlsxCore(
   input: XlsxInput,
-  options: XlsxParseOptions = {},
+  options: XlsxParseOptions,
+  activeContentMode: 'diagnose' | 'reject',
 ): Promise<XlsxParseResult> {
   assertOptions(options);
   const diagnostics: XlsxDiagnostic[] = [];
@@ -184,6 +189,24 @@ export async function parseXlsxWithDiagnostics(
   let selections: ReturnType<typeof resolveXlsxSelection>;
   try {
     discovery = await discoverXlsxWorkbook(reader, limits);
+    const activeContent = scanXlsxActiveContent(zip, discovery);
+    if (
+      activeContent.length > 0 &&
+      options.errorMode === 'strict' &&
+      activeContentMode === 'reject'
+    ) {
+      const diagnostic = activeXlsxContentDiagnostic(
+        activeContent[0]!,
+        'error',
+      );
+      diagnostics.push(diagnostic);
+      throw new XlsxParseError(diagnostic);
+    }
+    diagnostics.push(
+      ...activeContent.map((finding) =>
+        activeXlsxContentDiagnostic(finding, 'warning'),
+      ),
+    );
     manifest = await parseXlsxWorkbookManifest(discovery, reader, limits);
     selections = resolveXlsxSelection(
       options.selection,
@@ -497,6 +520,20 @@ export async function parseXlsxWithDiagnostics(
     },
   };
   return { diagnostics, document };
+}
+
+export async function parseXlsxWithDiagnostics(
+  input: XlsxInput,
+  options: XlsxParseOptions = {},
+): Promise<XlsxParseResult> {
+  return parseXlsxCore(input, options, 'reject');
+}
+
+export async function parseXlsxPreservingActiveContent(
+  input: XlsxInput,
+  options: XlsxParseOptions,
+): Promise<XlsxDocument> {
+  return (await parseXlsxCore(input, options, 'diagnose')).document;
 }
 
 export async function parseXlsx(

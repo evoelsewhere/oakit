@@ -1,6 +1,6 @@
 import { decodeBase64 } from '../../../common/binary/base64';
 
-import { parseXlsx } from '../parser';
+import { parseXlsxPreservingActiveContent } from '../parser';
 import { resolveXlsxResourceLimits } from '../internal/resource-limits';
 import { canonicalXlsxJson } from './canonical-json';
 import { createXlsxCapabilityManifest } from './capability';
@@ -57,10 +57,10 @@ export async function verifyXlsxRoundTripSnapshot(
   }
 
   let graph: XlsxPackageGraph;
-  let parsed: Awaited<ReturnType<typeof parseXlsx>>;
+  let parsed: Awaited<ReturnType<typeof parseXlsxPreservingActiveContent>>;
   try {
     graph = await inspectXlsxPackageGraph(normalized.bytes, readerLimits);
-    parsed = await parseXlsx(normalized.bytes, {
+    parsed = await parseXlsxPreservingActiveContent(normalized.bytes, {
       errorMode: 'strict',
       imageMode: 'none',
       limits: options.readerLimits ?? {},

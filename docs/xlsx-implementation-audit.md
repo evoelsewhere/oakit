@@ -59,6 +59,26 @@ Shared dependency status at this milestone: XLSX reuses `jszip`, `saxes`,
 contract or PPTX runtime behavior has been changed, and no new runtime
 dependency has been added.
 
+### Active-content security milestone
+
+Complete reader evidence now exists in `internal/security.ts` and
+`test/xlsx/security-metadata.test.ts`. A deterministic metadata-only scan
+recognizes VBA/macro formats, ActiveX, OLE objects, embedded packages,
+executable/script suffixes, custom UI, web extensions, and task panes from
+independent canonical part-name and content-type signals. Tolerant reads omit
+payloads and emit sorted bounded `security-rejected-content` warnings without
+opening active bytes; strict reads reject the first canonical finding.
+Relationship metadata and signature payloads are excluded from active-content
+classification.
+
+Round-trip `reject-active` remains fail-closed. Acknowledged
+`preserve-opaque` uses the canonical package-graph policy and an internal
+diagnostic parse so accepted opaque bytes retain exact R0. The full security
+module and changed parser/read/verify ranges have 100% mutation evidence with
+zero survivor, no-coverage, or timeout. Known/unknown extension inventory,
+producer corpus, and edited-output active/signature policy remain separate
+release slices.
+
 ## Reader contract audit
 
 ### Public boundary and core behavior
@@ -93,45 +113,45 @@ dependency has been added.
 
 Every row below retains the class assigned by the reader plan.
 
-| Area                         | Class      | Required completion evidence                                                                    | Status  |
-| ---------------------------- | ---------- | ----------------------------------------------------------------------------------------------- | ------- |
-| OPC package                  | Required   | Canonical discovery, ownership, relocated roots, malformed and adversarial packages             | Missing |
-| Namespaces and compatibility | Required   | Strict/Transitional aliases and complete Markup Compatibility behavior                          | Missing |
-| Workbook                     | Required   | Ordered sheets, properties, active sheet, visibility, date system, calculation state            | Missing |
-| Calculation metadata         | Metadata   | Modes, versions, iteration/full-calc flags, chain metadata without execution                    | Missing |
-| Sheet kinds                  | Required   | Worksheet/chart-sheet public union and fixtures                                                 | Missing |
-| Sheet metadata               | Required   | Colors, dimensions, defaults, views, scenarios, selected/active state                           | Missing |
-| Cells                        | Required   | Sparse authored cells, inferred refs, all value kinds, duplicates/order/bounds                  | Missing |
-| Shared strings               | Required   | Plain/rich/phonetic text, whitespace, index and output-accounting boundaries                    | Missing |
-| Formulas                     | Required   | Normal/shared/array/data-table/dynamic-array, caches, token-aware translation, no execution     | Missing |
-| Modern cell metadata         | Required   | Rich values, cell images, checkboxes, spill and linked-data metadata under versioned namespaces | Missing |
-| References                   | Required   | A1, quoted sheets, 3D, external, and structured references with seeded properties               | Missing |
-| Defined names                | Required   | Workbook/sheet scopes, collisions, print areas/titles, hidden names                             | Missing |
-| Styles                       | Required   | Fonts, fills, borders, alignment, formats, protection, named and differential styles            | Missing |
-| Dates and times              | Required   | 1900/1904, serial 0/59/60/61, ISO dates, time, duration, date-time, locale/TZ independence      | Missing |
-| Rows and columns             | Required   | Size, hidden, outline/collapse, defaults, overlapping column precedence                         | Missing |
-| Views                        | Required   | Panes, selections, zoom, RTL, gridline/header state                                             | Missing |
-| Merges                       | Required   | Ordered validated non-overlapping in-grid ranges and exact limits                               | Missing |
-| Hyperlinks                   | Required   | Internal locations, allowlisted external protocols, no navigation/fetch                         | Missing |
-| Notes and comments           | Required   | Legacy/threaded comments, authors/persons, visibility, missing relationships                    | Missing |
-| Tables                       | Required   | Names, ranges, columns, headers/totals/formulas/styles, cardinality and ownership               | Missing |
-| Filters and sorts            | Required   | Auto/custom/dynamic/top/color/icon filters and authored sort conditions                         | Missing |
-| Data validation              | Required   | Types, operators, formulas, prompts/errors, multi-ranges and invalid sources                    | Missing |
-| Conditional formatting       | Required   | All declared rule families, differential styles, priority/order/stop, extensions                | Missing |
-| Drawings and images          | Required   | All anchors, geometry/crop/transform, relationship ownership, bounded media and URL lifecycle   | Missing |
-| Charts                       | Required   | Common families, series formulas/caches, axes, titles, legends, colors/styles                   | Missing |
-| Sparklines                   | Required   | Groups, data/location ranges, axes/colors, x14 namespaces                                       | Missing |
-| Pivot tables                 | Required   | Definitions, fields, axes, filters, styles, bounded normalized model                            | Missing |
-| Pivot caches                 | Metadata   | Definition always; records only by explicit mode with record/text limits                        | Missing |
-| Slicers and timelines        | Metadata   | Cache links, ownership, and safe display metadata                                               | Missing |
-| Print and layout             | Required   | Margins, orientation/paper/scale, repeating titles, breaks, headers/footers                     | Missing |
-| Protection                   | Metadata   | Protected state and algorithm metadata without password/decryption claims                       | Missing |
-| External links               | Metadata   | Safe redacted targets/formulas; no linked workbook access                                       | Missing |
-| Connections/query tables     | Metadata   | Redacted safe metadata; no refresh, credentials, or connection strings                          | Missing |
-| Active/embedded content      | Diagnostic | Recognize and omit/reject OLE, ActiveX, scripts, and executables by mode                        | Missing |
-| Known extensions             | Required   | Namespace-specific normalized contracts and producer fixtures                                   | Missing |
-| Unknown extensions           | Diagnostic | Stable safe omission or strict rejection without raw XML                                        | Missing |
-| Document properties          | Required   | Core/app/custom typed values, malformed types, untrusted text                                   | Missing |
+| Area                         | Class      | Required completion evidence                                                                    | Status   |
+| ---------------------------- | ---------- | ----------------------------------------------------------------------------------------------- | -------- |
+| OPC package                  | Required   | Canonical discovery, ownership, relocated roots, malformed and adversarial packages             | Missing  |
+| Namespaces and compatibility | Required   | Strict/Transitional aliases and complete Markup Compatibility behavior                          | Missing  |
+| Workbook                     | Required   | Ordered sheets, properties, active sheet, visibility, date system, calculation state            | Missing  |
+| Calculation metadata         | Metadata   | Modes, versions, iteration/full-calc flags, chain metadata without execution                    | Missing  |
+| Sheet kinds                  | Required   | Worksheet/chart-sheet public union and fixtures                                                 | Missing  |
+| Sheet metadata               | Required   | Colors, dimensions, defaults, views, scenarios, selected/active state                           | Missing  |
+| Cells                        | Required   | Sparse authored cells, inferred refs, all value kinds, duplicates/order/bounds                  | Missing  |
+| Shared strings               | Required   | Plain/rich/phonetic text, whitespace, index and output-accounting boundaries                    | Missing  |
+| Formulas                     | Required   | Normal/shared/array/data-table/dynamic-array, caches, token-aware translation, no execution     | Missing  |
+| Modern cell metadata         | Required   | Rich values, cell images, checkboxes, spill and linked-data metadata under versioned namespaces | Missing  |
+| References                   | Required   | A1, quoted sheets, 3D, external, and structured references with seeded properties               | Missing  |
+| Defined names                | Required   | Workbook/sheet scopes, collisions, print areas/titles, hidden names                             | Missing  |
+| Styles                       | Required   | Fonts, fills, borders, alignment, formats, protection, named and differential styles            | Missing  |
+| Dates and times              | Required   | 1900/1904, serial 0/59/60/61, ISO dates, time, duration, date-time, locale/TZ independence      | Missing  |
+| Rows and columns             | Required   | Size, hidden, outline/collapse, defaults, overlapping column precedence                         | Missing  |
+| Views                        | Required   | Panes, selections, zoom, RTL, gridline/header state                                             | Missing  |
+| Merges                       | Required   | Ordered validated non-overlapping in-grid ranges and exact limits                               | Missing  |
+| Hyperlinks                   | Required   | Internal locations, allowlisted external protocols, no navigation/fetch                         | Missing  |
+| Notes and comments           | Required   | Legacy/threaded comments, authors/persons, visibility, missing relationships                    | Missing  |
+| Tables                       | Required   | Names, ranges, columns, headers/totals/formulas/styles, cardinality and ownership               | Missing  |
+| Filters and sorts            | Required   | Auto/custom/dynamic/top/color/icon filters and authored sort conditions                         | Missing  |
+| Data validation              | Required   | Types, operators, formulas, prompts/errors, multi-ranges and invalid sources                    | Missing  |
+| Conditional formatting       | Required   | All declared rule families, differential styles, priority/order/stop, extensions                | Missing  |
+| Drawings and images          | Required   | All anchors, geometry/crop/transform, relationship ownership, bounded media and URL lifecycle   | Missing  |
+| Charts                       | Required   | Common families, series formulas/caches, axes, titles, legends, colors/styles                   | Missing  |
+| Sparklines                   | Required   | Groups, data/location ranges, axes/colors, x14 namespaces                                       | Missing  |
+| Pivot tables                 | Required   | Definitions, fields, axes, filters, styles, bounded normalized model                            | Missing  |
+| Pivot caches                 | Metadata   | Definition always; records only by explicit mode with record/text limits                        | Missing  |
+| Slicers and timelines        | Metadata   | Cache links, ownership, and safe display metadata                                               | Missing  |
+| Print and layout             | Required   | Margins, orientation/paper/scale, repeating titles, breaks, headers/footers                     | Missing  |
+| Protection                   | Metadata   | Protected state and algorithm metadata without password/decryption claims                       | Missing  |
+| External links               | Metadata   | Safe redacted targets/formulas; no linked workbook access                                       | Missing  |
+| Connections/query tables     | Metadata   | Redacted safe metadata; no refresh, credentials, or connection strings                          | Missing  |
+| Active/embedded content      | Diagnostic | Recognize and omit/reject OLE, ActiveX, scripts, and executables by mode                        | Complete |
+| Known extensions             | Required   | Namespace-specific normalized contracts and producer fixtures                                   | Missing  |
+| Unknown extensions           | Diagnostic | Stable safe omission or strict rejection without raw XML                                        | Missing  |
+| Document properties          | Required   | Core/app/custom typed values, malformed types, untrusted text                                   | Missing  |
 
 ### Reader limits and failure contracts
 

@@ -1,6 +1,6 @@
 import { encodeBase64 } from '../../../common/binary/base64';
 
-import { parseXlsx } from '../parser';
+import { parseXlsxPreservingActiveContent } from '../parser';
 import { resolveXlsxResourceLimits } from '../internal/resource-limits';
 import { canonicalXlsxSha256 } from './digest';
 import { createXlsxCapabilityManifest } from './capability';
@@ -70,7 +70,7 @@ export async function readXlsxRoundTrip(
   const graph = await inspectXlsxPackageGraph(source.bytes, readerLimits);
   const securityMode = options.securityMode ?? 'reject-active';
   assertSecurity(graph, securityMode);
-  const parsed = await parseXlsx(source.bytes, {
+  const parsed = await parseXlsxPreservingActiveContent(source.bytes, {
     errorMode: 'strict',
     imageMode: 'none',
     limits: options.limits ?? {},

@@ -91,6 +91,7 @@ export const mutatedFiles = [
   'src/formats/xlsx/internal/protection-hash.ts',
   'src/formats/xlsx/internal/relationships.ts',
   'src/formats/xlsx/internal/resource-limits.ts',
+  'src/formats/xlsx/internal/security.ts',
   'src/formats/xlsx/internal/selection.ts',
   'src/formats/xlsx/internal/shared-strings.ts',
   'src/formats/xlsx/internal/slicer.ts',
