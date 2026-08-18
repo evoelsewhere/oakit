@@ -101,6 +101,12 @@ export const mutationModules = [
     source: 'src/formats/pptx/writer/image.ts',
     tests: ['test/pptx/writer-image.test.ts'],
   },
+  {
+    estimatedSeconds: 690,
+    name: 'font-style',
+    source: 'src/formats/pptx/internal/font-style.ts',
+    tests: ['test/pptx/font-style.test.ts'],
+  },
 ];
 
 export function resolveMutationModule(name) {

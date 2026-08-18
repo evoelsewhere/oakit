@@ -671,6 +671,79 @@ describe('PowerPoint font style resolution', () => {
     ).toBe('custom');
   });
 
+  it.each([
+    ['+mj-lt', 'Major Latin'],
+    ['+mj-ea', 'Major East Asian'],
+    ['+mj-cs', 'Major Complex'],
+    ['+mn-lt', 'Minor Latin'],
+    ['+mn-ea', 'Minor East Asian'],
+    ['+mn-cs', 'Minor Complex'],
+  ])('resolves exact theme marker %s', (marker, expected) => {
+    const fixture = {
+      node: xml({ 'a:rPr': { 'a:latin': { attrs: { typeface: marker } } } }),
+    };
+    const theme = context(
+      themeFontScheme(
+        {
+          'a:cs': { attrs: { typeface: 'Major Complex' } },
+          'a:ea': { attrs: { typeface: 'Major East Asian' } },
+          'a:latin': { attrs: { typeface: 'Major Latin' } },
+        },
+        {
+          'a:cs': { attrs: { typeface: 'Minor Complex' } },
+          'a:ea': { attrs: { typeface: 'Minor East Asian' } },
+          'a:latin': { attrs: { typeface: 'Minor Latin' } },
+        },
+      ),
+    );
+
+    expect(getFontType(...styleArgs(fixture), theme)).toBe(expected);
+  });
+
+  it.each([
+    ['a:ea', 'Direct East Asian'],
+    ['a:cs', 'Direct Complex'],
+  ])(
+    'uses direct %s typefaces after an absent latin face',
+    (kind, expected) => {
+      const fixture = {
+        node: xml({
+          'a:rPr': { [kind]: { attrs: { typeface: expected } } },
+        }),
+      };
+
+      expect(getFontType(...styleArgs(fixture), context())).toBe(expected);
+    },
+  );
+
+  it.each([
+    ['title', 'Major'],
+    ['subTitle', 'Major'],
+    ['ctrTitle', 'Major'],
+    ['body', 'Minor'],
+  ])('selects the correct latin theme family for %s', (type, expected) => {
+    expect(
+      getFontType(...styleArgs({ type }), context(themeFontScheme())),
+    ).toBe(expected);
+  });
+
+  it('skips a missing direct shadow before an inherited shadow', () => {
+    const fixture: FontFixture = {
+      node: xml({ 'a:rPr': {} }),
+      paragraph: xml({
+        'a:pPr': {
+          'a:defRPr': {
+            'a:effectLst': {
+              'a:outerShdw': { attrs: { dir: '0', dist: '12700' } },
+            },
+          },
+        },
+      }),
+    };
+
+    expect(getFontShadow(...styleArgs(fixture), context())).toBe('1pt 0pt');
+  });
+
   it('uses stable fallbacks when a theme or requested theme face is missing', () => {
     const themedRun = {
       node: xml({

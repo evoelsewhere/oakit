@@ -168,12 +168,6 @@
       "testsCompleted": 2258,
       "estimatedMilliseconds": 457879
     },
-    "src/formats/pptx/internal/font-style.ts": {
-      "mutants": 398,
-      "staticMutants": 263,
-      "testsCompleted": 8021,
-      "estimatedMilliseconds": 354597
-    },
     "src/formats/pptx/internal/math.ts": {
       "mutants": 227,
       "staticMutants": 0,
