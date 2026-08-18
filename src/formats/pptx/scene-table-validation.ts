@@ -170,7 +170,13 @@ export function validatePptxSceneTableDimensions(
   emusPerPoint: number,
   dependencies: PptxTableValidationDependencies,
 ): void {
-  if (!Array.isArray(element.columns) || !Array.isArray(element.rows)) return;
+  if (
+    element.type !== 'table' ||
+    !Array.isArray(element.columns) ||
+    !Array.isArray(element.rows)
+  ) {
+    return;
+  }
   if (
     !element.columns.every((value): value is number =>
       Number.isFinite(value as number),

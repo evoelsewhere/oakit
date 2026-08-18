@@ -857,11 +857,7 @@ function validateElement(
         issues,
         profile,
       );
-      if (
-        isCreationProfile(profile) &&
-        element.type === 'table' &&
-        isObject(authored.transform)
-      ) {
+      if (isObject(authored.transform)) {
         validatePptxSceneTableDimensions(
           element,
           authored.transform,

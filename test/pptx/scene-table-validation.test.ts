@@ -519,6 +519,33 @@ describe('native PowerPoint table scene validation', () => {
     });
   });
 
+  it('binds exact table dimensions in the preservation scene profile', () => {
+    const value = table();
+    const authored = value.authored as Mutable;
+    (authored.transform as Mutable).width = 301;
+
+    expect(validate(value, 'scene').issues).toContainEqual({
+      code: 'invalid-scene-document',
+      message: 'Table transform width must equal the sum of its column widths',
+      path: `${ELEMENT_PATH}.authored.transform.width`,
+    });
+  });
+
+  it('never applies table dimension diagnostics to a non-table element', () => {
+    const value = table();
+    value.type = 'shape';
+    value.columns = [100];
+    value.rows = [{ cells: [], height: 40 }];
+    const messages = validate(value).issues.map(({ message }) => message);
+
+    expect(messages).not.toContain(
+      'Table transform width must equal the sum of its column widths',
+    );
+    expect(messages).not.toContain(
+      'Table transform height must equal the sum of its row heights',
+    );
+  });
+
   it.each([
     ['column', 'Table transform width must equal the sum of its column widths'],
     ['row', 'Table transform height must equal the sum of its row heights'],
