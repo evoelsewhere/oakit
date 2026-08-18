@@ -172,15 +172,12 @@ export function validatePptxSceneTableDimensions(
 ): void {
   if (!Array.isArray(element.columns) || !Array.isArray(element.rows)) return;
   if (
-    !element.columns.every(
-      (value): value is number =>
-        typeof value === 'number' && Number.isFinite(value),
+    !element.columns.every((value): value is number =>
+      Number.isFinite(value as number),
     ) ||
     !element.rows.every(
       (value): value is PptxTableValidationObject =>
-        dependencies.isObject(value) &&
-        typeof value.height === 'number' &&
-        Number.isFinite(value.height),
+        dependencies.isObject(value) && Number.isFinite(value.height as number),
     )
   ) {
     return;

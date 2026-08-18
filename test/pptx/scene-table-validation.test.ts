@@ -519,19 +519,21 @@ describe('native PowerPoint table scene validation', () => {
     });
   });
 
-  it('does not cascade grid-total diagnostics from malformed dimensions', () => {
-    const value = table();
-    value.columns = ['bad', 200];
-    firstRow(value).height = 'bad';
-    const messages = validate(value).issues.map(({ message }) => message);
+  it.each([
+    ['column', 'Table transform width must equal the sum of its column widths'],
+    ['row', 'Table transform height must equal the sum of its row heights'],
+  ])(
+    'does not cascade grid-total diagnostics from a malformed %s',
+    (kind, message) => {
+      const value = table();
+      if (kind === 'column') value.columns = ['bad', 200];
+      else firstRow(value).height = 'bad';
 
-    expect(messages).not.toContain(
-      'Table transform width must equal the sum of its column widths',
-    );
-    expect(messages).not.toContain(
-      'Table transform height must equal the sum of its row heights',
-    );
-  });
+      expect(
+        validate(value).issues.map((issue) => issue.message),
+      ).not.toContain(message);
+    },
+  );
 
   it('requires an authored table transform and rejects shape styling', () => {
     const missing = table();
