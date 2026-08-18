@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { createPptx } from '../../src/formats/pptx/creator';
 import { parse } from '../../src/formats/pptx/parser';
-import type { PptxDocument } from '../../src/formats/pptx/types';
+import type { PptxDocument, Table } from '../../src/formats/pptx/types';
 import type { PptxSceneDocument } from '../../src/formats/pptx/scene-types';
 import { validatePptxScene } from '../../src/formats/pptx/scene-validation';
 import {
@@ -278,29 +278,68 @@ describe('PowerPoint round-trip semantic preview', () => {
   });
 
   it('maps safe native tables and preserves unsafe grids as opaque', () => {
-    const nativeTable = {
+    const nativeTable: Table = {
       borders: {},
       colWidths: [100, 200],
       data: [
         [
           {
             borders: {
+              bottom: {
+                borderColor: '#0F172A',
+                borderType: 'solid',
+                borderWidth: 2,
+              },
+              left: {
+                borderColor: '#F97316',
+                borderType: 'dotted',
+                borderWidth: 3,
+              },
+              right: {
+                borderColor: '#22C55E',
+                borderType: 'solid',
+                borderWidth: 4,
+              },
               top: {
                 borderColor: '#334155',
                 borderType: 'dashed',
                 borderWidth: 1,
               },
             },
+            colSpan: 2,
             fillColor: '#E0F2FE',
             fontBold: true,
             fontColor: '#0F172A',
+            rowSpan: 2,
             text: '<b>Alpha &amp; Beta</b>',
             vAlign: 'mid',
           },
-          { borders: {}, text: 'Value', vAlign: 'down' },
+          { borders: {}, hMerge: 1, text: 'Value', vAlign: 'down' },
+        ],
+        [
+          {
+            borders: {
+              top: {
+                borderColor: '#000000',
+                borderType: 'solid',
+                borderWidth: 0,
+              },
+            },
+            text: 'Third',
+            vAlign: 'up',
+            vMerge: 1,
+          },
+          {
+            borders: {},
+            fontBold: false,
+            hMerge: 1,
+            text: 'Fourth',
+            vAlign: 'mid',
+            vMerge: 1,
+          },
         ],
       ],
-      height: 40,
+      height: 100,
       id: '2',
       isFlipH: false,
       isFlipV: false,
@@ -308,21 +347,54 @@ describe('PowerPoint round-trip semantic preview', () => {
       name: 'Native table',
       order: 0,
       rotate: 0,
-      rowHeights: [40],
+      rowHeights: [40, 60],
       top: 20,
       type: 'table',
       width: 300,
     };
-    const unsafeTable = {
-      ...structuredClone(nativeTable),
-      colWidths: [100, 199],
-      id: '3',
-    };
+    const noNameTable = structuredClone(nativeTable);
+    noNameTable.id = '3';
+    delete noNameTable.name;
+    const invalidTables = [
+      (() => {
+        const value = structuredClone(nativeTable);
+        value.colWidths = [];
+        return value;
+      })(),
+      (() => {
+        const value = structuredClone(nativeTable);
+        value.data = [];
+        return value;
+      })(),
+      (() => {
+        const value = structuredClone(nativeTable);
+        value.colWidths = [0, 300];
+        return value;
+      })(),
+      (() => {
+        const value = structuredClone(nativeTable);
+        value.rowHeights = [0, 100];
+        return value;
+      })(),
+      (() => {
+        const value = structuredClone(nativeTable);
+        value.rowHeights = [100];
+        return value;
+      })(),
+      (() => {
+        const value = structuredClone(nativeTable);
+        value.data[1] = [value.data[1]?.[0] as Table['data'][number][number]];
+        return value;
+      })(),
+      { ...structuredClone(nativeTable), width: 301 },
+      { ...structuredClone(nativeTable), height: 101 },
+      { ...structuredClone(nativeTable), left: Number.NaN },
+    ];
     const document = {
       size: { height: 540, width: 960 },
       slides: [
         {
-          elements: [nativeTable, unsafeTable],
+          elements: [nativeTable, noNameTable, ...invalidTables],
           fill: { type: 'color', value: '#ffffff' },
           layoutElements: [],
           note: '',
@@ -334,44 +406,130 @@ describe('PowerPoint round-trip semantic preview', () => {
 
     const preview = createPowerPointRoundTripPreview(document);
 
-    expect(preview.slides[0]?.elements[0]).toMatchObject({
+    expect(preview.slides[0]?.elements[0]).toEqual({
+      authored: {},
       columns: [100, 200],
       key: 'slide-1-element-1',
       name: 'Native table',
+      resolved: {
+        hidden: false,
+        transform: {
+          flipHorizontal: false,
+          flipVertical: false,
+          height: 100,
+          rotation: 0,
+          width: 300,
+          x: 10,
+          y: 20,
+        },
+      },
       rows: [
         {
           cells: [
             {
               borders: {
+                bottom: { color: '#0F172A', style: 'solid', width: 2 },
+                left: { color: '#F97316', style: 'dotted', width: 3 },
+                right: { color: '#22C55E', style: 'solid', width: 4 },
                 top: { color: '#334155', style: 'dashed', width: 1 },
               },
+              colSpan: 2,
               fillColor: '#E0F2FE',
+              rowSpan: 2,
               text: {
                 body: { anchor: 'center' },
                 paragraphs: [
                   {
                     children: [
                       {
+                        key: 'slide-1-element-1-row-1-cell-1-run-1',
                         properties: { bold: true, color: '#0F172A' },
                         text: 'Alpha & Beta',
+                        type: 'run',
                       },
                     ],
+                    key: 'slide-1-element-1-row-1-cell-1-paragraph-1',
                   },
                 ],
               },
             },
-            { text: { body: { anchor: 'bottom' } } },
+            {
+              borders: {},
+              hMerge: true,
+              text: {
+                body: { anchor: 'bottom' },
+                paragraphs: [
+                  {
+                    children: [
+                      {
+                        key: 'slide-1-element-1-row-1-cell-2-run-1',
+                        text: 'Value',
+                        type: 'run',
+                      },
+                    ],
+                    key: 'slide-1-element-1-row-1-cell-2-paragraph-1',
+                  },
+                ],
+              },
+            },
           ],
           height: 40,
+        },
+        {
+          cells: [
+            {
+              borders: {},
+              text: {
+                body: { anchor: 'top' },
+                paragraphs: [
+                  {
+                    children: [
+                      {
+                        key: 'slide-1-element-1-row-2-cell-1-run-1',
+                        text: 'Third',
+                        type: 'run',
+                      },
+                    ],
+                    key: 'slide-1-element-1-row-2-cell-1-paragraph-1',
+                  },
+                ],
+              },
+              vMerge: true,
+            },
+            {
+              borders: {},
+              hMerge: true,
+              text: {
+                body: { anchor: 'center' },
+                paragraphs: [
+                  {
+                    children: [
+                      {
+                        key: 'slide-1-element-1-row-2-cell-2-run-1',
+                        properties: { bold: false },
+                        text: 'Fourth',
+                        type: 'run',
+                      },
+                    ],
+                    key: 'slide-1-element-1-row-2-cell-2-paragraph-1',
+                  },
+                ],
+              },
+              vMerge: true,
+            },
+          ],
+          height: 60,
         },
       ],
       type: 'table',
     });
-    expect(preview.slides[0]?.elements[1]).toMatchObject({
-      feature: 'table',
-      key: 'slide-1-element-2',
-      type: 'unsupported',
-    });
+    expect(preview.slides[0]?.elements[1]).not.toHaveProperty('name');
+    expect(preview.slides[0]?.elements.slice(2)).toHaveLength(
+      invalidTables.length,
+    );
+    expect(
+      preview.slides[0]?.elements.slice(2).map((element) => element.type),
+    ).toEqual(invalidTables.map(() => 'unsupported'));
     expect(validatePptxScene(preview)).toEqual({ issues: [], valid: true });
   });
 
