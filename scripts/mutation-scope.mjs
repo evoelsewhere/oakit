@@ -52,6 +52,8 @@ export const mutatedFiles = [
   'src/formats/pptx/roundtrip/patch-error.ts',
   'src/formats/pptx/roundtrip/relationships.ts',
   'src/formats/pptx/roundtrip/shape-range.ts',
+  'src/formats/pptx/roundtrip/table-preview.ts',
+  'src/formats/pptx/roundtrip/table-preview-cell.ts',
   'src/formats/pptx/roundtrip/text-xml.ts',
   'src/formats/pptx/roundtrip/transform-xml.ts',
   'src/formats/pptx/roundtrip/portable.ts',

@@ -43,7 +43,7 @@ export const mutationModules = [
     tests: ['test/pptx/roundtrip-text-xml.test.ts'],
   },
   {
-    estimatedSeconds: 210,
+    estimatedSeconds: 636,
     name: 'transform-xml',
     source: 'src/formats/pptx/roundtrip/transform-xml.ts',
     tests: ['test/pptx/roundtrip-transform-xml.test.ts'],
@@ -77,6 +77,18 @@ export const mutationModules = [
       'test/pptx/roundtrip-preview.test.ts',
       'test/black-box/roundtrip-shape-transform.test.ts',
     ],
+  },
+  {
+    estimatedSeconds: 420,
+    name: 'table-preview',
+    source: 'src/formats/pptx/roundtrip/table-preview.ts',
+    tests: ['test/pptx/roundtrip-table-preview.test.ts'],
+  },
+  {
+    estimatedSeconds: 420,
+    name: 'table-preview-cell',
+    source: 'src/formats/pptx/roundtrip/table-preview-cell.ts',
+    tests: ['test/pptx/roundtrip-table-preview.test.ts'],
   },
   {
     estimatedSeconds: 559,

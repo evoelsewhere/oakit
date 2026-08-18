@@ -28,6 +28,8 @@ describe('focused mutation modules', () => {
       'roundtrip-consistency',
       'roundtrip-edit',
       'roundtrip-preview',
+      'table-preview',
+      'table-preview-cell',
       'roundtrip-validation',
       'writer-shape',
       'writer-image',
