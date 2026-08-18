@@ -161,4 +161,27 @@ describe('PowerPoint slide serialization', () => {
       ),
     );
   });
+
+  it('serializes image elements only with an explicit media relationship', () => {
+    const image: PptxSceneElement = {
+      authored: {
+        transform: { height: 40, width: 50, x: 10, y: 20 },
+      },
+      key: 'picture',
+      mediaKey: 'media',
+      resolved: { hidden: false },
+      type: 'image',
+    };
+
+    expect(
+      serializeSlide(
+        slide([image]),
+        createFieldIdAllocator(),
+        new Map([['picture', 'rId2']]),
+      ),
+    ).toContain('<p:pic><p:nvPicPr><p:cNvPr id="2" name="Picture 2"/>');
+    expect(() =>
+      serializeSlide(slide([image]), createFieldIdAllocator()),
+    ).toThrow('PowerPoint image element picture has no media relationship');
+  });
 });

@@ -31,22 +31,21 @@ function serializeElement(
       `PowerPoint slide writer requires an authored ${element.type} transform`,
     );
   }
-  if (element.type === 'text') {
-    return serializeTextShape(element, transform, shapeId, context);
-  }
-  if (element.type === 'shape') {
-    return serializeShape(element, transform, shapeId);
-  }
-  if (element.type === 'image') {
-    const relationshipId = imageRelationships.get(element.key);
-    if (relationshipId === undefined) {
-      throw new TypeError(
-        `PowerPoint image element ${element.key} has no media relationship`,
-      );
+  switch (element.type) {
+    case 'text':
+      return serializeTextShape(element, transform, shapeId, context);
+    case 'shape':
+      return serializeShape(element, transform, shapeId);
+    case 'image': {
+      const relationshipId = imageRelationships.get(element.key);
+      if (relationshipId === undefined) {
+        throw new TypeError(
+          `PowerPoint image element ${element.key} has no media relationship`,
+        );
+      }
+      return serializePicture(element, transform, shapeId, relationshipId);
     }
-    return serializePicture(element, transform, shapeId, relationshipId);
   }
-  throw new TypeError('PowerPoint slide writer rejects unknown elements');
 }
 
 export function serializeSlide(

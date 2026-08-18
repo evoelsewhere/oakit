@@ -254,6 +254,41 @@ describe('PowerPoint package part serialization', () => {
     );
   });
 
+  it('allocates JPEG extensions and rejects an absent image media key', () => {
+    const jpeg = scene(
+      [],
+      [
+        {
+          data: new Uint8Array([0xff, 0xd8, 0xff, 0xd9]),
+          key: 'jpeg',
+          mimeType: 'image/jpeg',
+        },
+      ],
+    );
+    expect(serializePowerPointParts(jpeg).map(({ path }) => path)).toContain(
+      'ppt/media/image1.jpeg',
+    );
+
+    const missingKey = scene([
+      {
+        elements: [
+          {
+            authored: {
+              transform: { height: 40, width: 50, x: 10, y: 20 },
+            },
+            key: 'picture',
+            resolved: { hidden: false },
+            type: 'image',
+          },
+        ],
+        key: 'slide',
+      },
+    ]);
+    expect(() => serializePowerPointParts(missingKey)).toThrow(
+      'PowerPoint image element picture has no media key',
+    );
+  });
+
   it('rejects an oversized internal scene before allocating package parts', () => {
     const input = scene();
     input.slides = new Array<PptxSceneSlide>(10_001);
