@@ -86,6 +86,7 @@ export const mutatedFiles = [
   'src/formats/pptx/writer/parts.ts',
   'src/formats/pptx/writer/presentation.ts',
   'src/formats/pptx/writer/relationships.ts',
+  'src/formats/pptx/writer/shape.ts',
   'src/formats/pptx/writer/slide.ts',
   'src/formats/pptx/writer/text-body.ts',
   'src/formats/pptx/writer/text-node.ts',

@@ -61,6 +61,10 @@ function validateCreation(value: unknown) {
   return validatePptxScene(value, { profile: 'create-text-v1' });
 }
 
+function validateNativeCreation(value: unknown) {
+  return validatePptxScene(value, { profile: 'create-native-v1' });
+}
+
 function firstRun(scene: Record<string, unknown>): Record<string, unknown> {
   const text = element(scene).text as Record<string, unknown>;
   const paragraphs = text.paragraphs as Record<string, unknown>[];
@@ -94,6 +98,54 @@ describe('PowerPoint creation scene validation', () => {
     };
 
     expect(validateCreation(scene)).toEqual({ issues: [], valid: true });
+  });
+
+  it('accepts native shapes with bounded geometry and styling', () => {
+    const scene = creationScene();
+    const slide = (scene.slides as Record<string, unknown>[])[0];
+    if (slide === undefined) throw new Error('Expected slide');
+    slide.elements = [
+      {
+        authored: {
+          fillColor: '#1E293B',
+          geometry: 'roundRect',
+          lineColor: '#38BDF8',
+          lineWidth: 1.5,
+          transform: { height: 120, width: 240, x: 40, y: 50 },
+        },
+        key: 'shape-1',
+        resolved: { hidden: false },
+        type: 'shape',
+      },
+    ];
+
+    expect(validateNativeCreation(scene)).toEqual({ issues: [], valid: true });
+    expect(validateCreation(scene).issues).toContainEqual({
+      code: 'unsupported-feature',
+      message: 'Creation profile create-text-v1 supports text elements only',
+      path: '$.slides[0].elements[0]',
+    });
+  });
+
+  it('requires a serializable authored transform for native shapes', () => {
+    const scene = creationScene();
+    const slide = (scene.slides as Record<string, unknown>[])[0];
+    if (slide === undefined) throw new Error('Expected slide');
+    slide.elements = [
+      {
+        authored: { geometry: 'ellipse' },
+        key: 'shape-1',
+        resolved: { hidden: false },
+        type: 'shape',
+      },
+    ];
+
+    expect(validateNativeCreation(scene).issues).toContainEqual({
+      code: 'unsupported-feature',
+      message:
+        'Creation profile create-native-v1 requires an authored shape transform',
+      path: '$.slides[0].elements[0].authored.transform',
+    });
   });
 
   it.each(['ellipse', 'rect', 'roundRect'])(

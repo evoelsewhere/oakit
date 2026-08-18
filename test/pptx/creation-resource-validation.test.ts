@@ -37,6 +37,7 @@ describe('PowerPoint creation resource validation', () => {
       {
         elements: [
           {
+            type: 'text',
             text: {
               paragraphs: new Array(MAX_POWERPOINT_CREATION_PARAGRAPHS),
             },
@@ -48,6 +49,7 @@ describe('PowerPoint creation resource validation', () => {
       {
         elements: [
           {
+            type: 'text',
             text: {
               paragraphs: [
                 {
@@ -91,6 +93,7 @@ describe('PowerPoint creation resource validation', () => {
       {
         elements: [
           {
+            type: 'text',
             text: {
               paragraphs: new Array(MAX_POWERPOINT_CREATION_PARAGRAPHS + 1),
             },
@@ -113,6 +116,7 @@ describe('PowerPoint creation resource validation', () => {
       {
         elements: [
           {
+            type: 'text',
             text: {
               paragraphs: [
                 {
@@ -155,5 +159,25 @@ describe('PowerPoint creation resource validation', () => {
     input.values = [null, undefined, false, true, 0, 1];
 
     expect(validatePowerPointCreationResources(input)).toEqual([]);
+  });
+
+  it('counts native shapes without traversing nonexistent text', () => {
+    const input = document([
+      {
+        elements: [
+          { key: 'shape-1', type: 'shape' },
+          {
+            key: 'text-1',
+            type: 'text',
+            text: { paragraphs: [{ children: [{ text: 'value' }] }] },
+          },
+        ],
+        key: 'slide-1',
+      },
+    ]);
+
+    expect(
+      validatePowerPointCreationResources(input, 'create-native-v1'),
+    ).toEqual([]);
   });
 });

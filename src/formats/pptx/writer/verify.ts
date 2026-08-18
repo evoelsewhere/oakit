@@ -3,6 +3,7 @@ import { renderPptxDocumentToSvg } from '../render-svg';
 import type { PptxSvgRenderResult } from '../render-types';
 import type {
   PptxSceneDocument,
+  PptxSceneShapeElement,
   PptxSceneTextElement,
   PptxSceneTextNode,
 } from '../scene-types';
@@ -57,6 +58,18 @@ function verifyTextElement(
   const location = `slide ${slideIndex + 1}, element ${elementIndex + 1}`;
   const geometry = expected.authored.geometry ?? 'rect';
   const textElement = generatedTextElement(generated, geometry, location);
+  verifyElementTransform(textElement, expected, location);
+  const actualText = plainTextFromPowerPointHtml(textElement.content);
+  if (actualText !== expectedPlainText(expected)) {
+    throw new Error(`Generated PowerPoint text mismatch at ${location}`);
+  }
+}
+
+function verifyElementTransform(
+  generated: Shape | Text,
+  expected: PptxSceneShapeElement | PptxSceneTextElement,
+  location: string,
+): void {
   const transform = expected.authored.transform;
   if (transform === undefined) {
     throw new Error(
@@ -64,13 +77,13 @@ function verifyTextElement(
     );
   }
   const generatedTransform = {
-    flipHorizontal: textElement.isFlipH,
-    flipVertical: textElement.isFlipV,
-    height: textElement.height,
-    rotation: textElement.rotate,
-    width: textElement.width,
-    x: textElement.left,
-    y: textElement.top,
+    flipHorizontal: generated.isFlipH,
+    flipVertical: generated.isFlipV,
+    height: generated.height,
+    rotation: generated.rotate,
+    width: generated.width,
+    x: generated.left,
+    y: generated.top,
   };
   const expectedTransform = {
     flipHorizontal: transform.flipHorizontal ?? false,
@@ -86,9 +99,40 @@ function verifyTextElement(
   ) {
     throw new Error(`Generated PowerPoint transform mismatch at ${location}`);
   }
-  const actualText = plainTextFromPowerPointHtml(textElement.content);
-  if (actualText !== expectedPlainText(expected)) {
-    throw new Error(`Generated PowerPoint text mismatch at ${location}`);
+}
+
+function verifyShapeElement(
+  generated: PptxDocument['slides'][number]['elements'][number] | undefined,
+  expected: PptxSceneShapeElement,
+  slideIndex: number,
+  elementIndex: number,
+): void {
+  const location = `slide ${slideIndex + 1}, element ${elementIndex + 1}`;
+  const geometry = expected.authored.geometry ?? 'rect';
+  if (generated?.type !== 'shape' || generated.shapType !== geometry) {
+    throw new Error(`Generated PowerPoint shape missing at ${location}`);
+  }
+  verifyElementTransform(generated, expected, location);
+  if (
+    expected.authored.fillColor !== undefined &&
+    (generated.fill?.type !== 'color' ||
+      generated.fill.value !== expected.authored.fillColor)
+  ) {
+    throw new Error(`Generated PowerPoint shape fill mismatch at ${location}`);
+  }
+  if (
+    expected.authored.lineColor !== undefined &&
+    generated.borderColor !== expected.authored.lineColor
+  ) {
+    throw new Error(`Generated PowerPoint shape line mismatch at ${location}`);
+  }
+  if (
+    expected.authored.lineWidth !== undefined &&
+    generated.borderWidth !== expected.authored.lineWidth
+  ) {
+    throw new Error(
+      `Generated PowerPoint shape line width mismatch at ${location}`,
+    );
   }
 }
 
@@ -166,17 +210,25 @@ export async function verifyPowerPointCreationWithParser(
       );
     }
     slide.elements.forEach((element, elementIndex) => {
-      if (element.type !== 'text') {
+      if (element.type === 'text') {
+        verifyTextElement(
+          generated.elements[elementIndex],
+          element,
+          index,
+          elementIndex,
+        );
+      } else if (element.type === 'shape') {
+        verifyShapeElement(
+          generated.elements[elementIndex],
+          element,
+          index,
+          elementIndex,
+        );
+      } else {
         throw new Error(
           `Expected PowerPoint text element missing at slide ${index + 1}, element ${elementIndex + 1}`,
         );
       }
-      verifyTextElement(
-        generated.elements[elementIndex],
-        element,
-        index,
-        elementIndex,
-      );
     });
   });
   verifyRenderedSlides(document, renderDocument(document));

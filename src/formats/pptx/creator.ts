@@ -19,7 +19,20 @@ const DEFAULT_DEPENDENCIES: PptxCreatorDependencies = {
   verify: verifyPowerPointCreation,
 };
 
-function creationReport(addedPartCount: number): PptxWriteReport {
+type PptxCreationProfile = 'create-native-v1' | 'create-text-v1';
+
+function creationProfile(scene: PptxSceneDocument): PptxCreationProfile {
+  return scene.slides.some((slide) =>
+    slide.elements.some((element) => element.type === 'shape'),
+  )
+    ? 'create-native-v1'
+    : 'create-text-v1';
+}
+
+function creationReport(
+  addedPartCount: number,
+  profile: PptxCreationProfile,
+): PptxWriteReport {
   return {
     addedPartCount,
     copiedPartCount: 0,
@@ -32,7 +45,10 @@ function creationReport(addedPartCount: number): PptxWriteReport {
     removedPartCount: 0,
     supportProfile: {
       effectiveLevel: 'C2',
-      id: 'pptx-create-text-v1',
+      id:
+        profile === 'create-native-v1'
+          ? 'pptx-create-native-v1'
+          : 'pptx-create-text-v1',
       producerMatrix: [],
       version: '1',
     },
@@ -43,7 +59,8 @@ export async function createPptxWithDependencies(
   scene: PptxSceneDocument,
   dependencies: PptxCreatorDependencies,
 ): Promise<PptxWriteResult> {
-  const validation = validatePptxScene(scene, { profile: 'create-text-v1' });
+  const profile = creationProfile(scene);
+  const validation = validatePptxScene(scene, { profile });
   if (!validation.valid) {
     throw new PptxWriteError(
       'invalid-scene',
@@ -75,7 +92,7 @@ export async function createPptxWithDependencies(
     );
   }
 
-  return { data, report: creationReport(parts.length) };
+  return { data, report: creationReport(parts.length, profile) };
 }
 
 export function createPptx(scene: PptxSceneDocument): Promise<PptxWriteResult> {

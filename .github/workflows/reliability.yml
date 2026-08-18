@@ -166,6 +166,7 @@ jobs:
           - shape-range
           - text-xml
           - transform-xml
+          - writer-shape
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4

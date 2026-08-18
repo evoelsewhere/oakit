@@ -171,6 +171,64 @@ describe('PowerPoint creation through the public API', () => {
     expect(svg).toContain('HELLO');
   });
 
+  it('creates a native non-text shape and reports its distinct profile', async () => {
+    const scene = creationScene();
+    const first = scene.slides[0];
+    if (first === undefined) throw new Error('Expected first slide');
+    first.elements.push({
+      authored: {
+        fillColor: '#F97316',
+        geometry: 'ellipse',
+        lineColor: '#0F172A',
+        lineWidth: 2,
+        transform: {
+          flipHorizontal: true,
+          height: 120,
+          rotation: 12,
+          width: 180,
+          x: 420,
+          y: 220,
+        },
+      },
+      description: 'Native decorative shape',
+      key: 'native-shape',
+      name: 'Native ellipse',
+      resolved: { hidden: false },
+      type: 'shape',
+    });
+
+    const created = await createPptx(scene);
+    const [parsed, rendered] = await Promise.all([
+      parsePptx(created.data, { errorMode: 'strict', imageMode: 'none' }),
+      renderPptxToSvg(created.data, { slideNumbers: [1] }),
+    ]);
+
+    expect(created.report.supportProfile).toEqual({
+      effectiveLevel: 'C2',
+      id: 'pptx-create-native-v1',
+      producerMatrix: [],
+      version: '1',
+    });
+    expect(parsed.slides[0]?.elements[1]).toMatchObject({
+      borderColor: '#0F172A',
+      borderWidth: 2,
+      fill: { type: 'color', value: '#F97316' },
+      height: 120,
+      isFlipH: true,
+      left: 420,
+      rotate: 12,
+      shapType: 'ellipse',
+      top: 220,
+      type: 'shape',
+      width: 180,
+    });
+    const svg = new TextDecoder()
+      .decode(rendered.slides[0]?.data)
+      .toUpperCase();
+    expect(svg).toContain('#F97316');
+    expect(svg).toContain('#0F172A');
+  });
+
   it('contains only the declared deterministic package inventory', async () => {
     const result = await createPptx(creationScene());
     const archive = await JSZip.loadAsync(result.data);

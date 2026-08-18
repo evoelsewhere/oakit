@@ -4,11 +4,7 @@ import {
   MAX_POWERPOINT_CREATION_STRING_CODE_UNITS,
   MAX_POWERPOINT_CREATION_TEXT_NODES,
 } from './creation-limits';
-import type {
-  PptxSceneSlide,
-  PptxSceneTextElement,
-  PptxSceneValidationIssue,
-} from './scene-types';
+import type { PptxSceneSlide, PptxSceneValidationIssue } from './scene-types';
 
 type JsonObject = Record<string, unknown>;
 
@@ -43,8 +39,8 @@ function countCreationResources(document: JsonObject): CreationResourceCounts {
     const elements = slide.elements;
     counts.elements += elements.length;
     elements.forEach((element) => {
-      const textElement = element as PptxSceneTextElement;
-      const paragraphs = textElement.text.paragraphs;
+      if (element.type !== 'text') return;
+      const paragraphs = element.text.paragraphs;
       counts.paragraphs += paragraphs.length;
       paragraphs.forEach((paragraph) => {
         counts.textNodes += paragraph.children.length;
@@ -56,27 +52,28 @@ function countCreationResources(document: JsonObject): CreationResourceCounts {
 
 export function validatePowerPointCreationResources(
   document: JsonObject,
+  profile: 'create-native-v1' | 'create-text-v1' = 'create-text-v1',
 ): PptxSceneValidationIssue[] {
   const issues: PptxSceneValidationIssue[] = [];
   const counts = countCreationResources(document);
   if (counts.elements > MAX_POWERPOINT_CREATION_ELEMENTS) {
     issues.push({
       code: 'resource-limit-exceeded',
-      message: `Creation profile create-text-v1 supports at most ${MAX_POWERPOINT_CREATION_ELEMENTS} elements`,
+      message: `Creation profile ${profile} supports at most ${MAX_POWERPOINT_CREATION_ELEMENTS} elements`,
       path: '$.slides',
     });
   }
   if (counts.paragraphs > MAX_POWERPOINT_CREATION_PARAGRAPHS) {
     issues.push({
       code: 'resource-limit-exceeded',
-      message: `Creation profile create-text-v1 supports at most ${MAX_POWERPOINT_CREATION_PARAGRAPHS} paragraphs`,
+      message: `Creation profile ${profile} supports at most ${MAX_POWERPOINT_CREATION_PARAGRAPHS} paragraphs`,
       path: '$.slides',
     });
   }
   if (counts.textNodes > MAX_POWERPOINT_CREATION_TEXT_NODES) {
     issues.push({
       code: 'resource-limit-exceeded',
-      message: `Creation profile create-text-v1 supports at most ${MAX_POWERPOINT_CREATION_TEXT_NODES} text nodes`,
+      message: `Creation profile ${profile} supports at most ${MAX_POWERPOINT_CREATION_TEXT_NODES} text nodes`,
       path: '$.slides',
     });
   }
@@ -84,7 +81,7 @@ export function validatePowerPointCreationResources(
   if (codeUnits > MAX_POWERPOINT_CREATION_STRING_CODE_UNITS) {
     issues.push({
       code: 'resource-limit-exceeded',
-      message: `Creation profile create-text-v1 supports at most ${MAX_POWERPOINT_CREATION_STRING_CODE_UNITS} string code units`,
+      message: `Creation profile ${profile} supports at most ${MAX_POWERPOINT_CREATION_STRING_CODE_UNITS} string code units`,
       path: '$',
     });
   }

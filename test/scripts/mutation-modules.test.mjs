@@ -25,6 +25,7 @@ describe('focused mutation modules', () => {
       'shape-range',
       'text-xml',
       'transform-xml',
+      'writer-shape',
     ]);
     expect(new Set(mutationModules.map(({ source }) => source)).size).toBe(
       mutationModules.length,

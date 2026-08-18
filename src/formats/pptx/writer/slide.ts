@@ -1,6 +1,7 @@
 import type { PptxSceneElement, PptxSceneSlide } from '../scene-types';
 import { serializeSolidColorFill } from './color';
 import type { PptxTextSerializationContext } from './text-node';
+import { serializeShape } from './shape';
 import { serializeTextShape } from './text-shape';
 import { escapeXmlAttribute } from './xml';
 
@@ -19,16 +20,22 @@ function serializeElement(
   shapeId: number,
   context: PptxTextSerializationContext,
 ): string {
-  if (element.type !== 'text') {
-    throw new TypeError('PowerPoint slide writer accepts text elements only');
+  if (element.type === 'unsupported') {
+    throw new TypeError('PowerPoint slide writer rejects opaque elements');
   }
   const transform = element.authored.transform;
   if (transform === undefined) {
     throw new TypeError(
-      'PowerPoint slide writer requires an authored text transform',
+      `PowerPoint slide writer requires an authored ${element.type} transform`,
     );
   }
-  return serializeTextShape(element, transform, shapeId, context);
+  if (element.type === 'text') {
+    return serializeTextShape(element, transform, shapeId, context);
+  }
+  if (element.type === 'shape') {
+    return serializeShape(element, transform, shapeId);
+  }
+  throw new TypeError('PowerPoint slide writer rejects unknown elements');
 }
 
 export function serializeSlide(

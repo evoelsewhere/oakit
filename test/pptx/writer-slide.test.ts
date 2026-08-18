@@ -146,9 +146,7 @@ describe('PowerPoint slide serialization', () => {
 
     expect(() =>
       serializeSlide(slide([unsupported]), createFieldIdAllocator()),
-    ).toThrow(
-      new TypeError('PowerPoint slide writer accepts text elements only'),
-    );
+    ).toThrow(new TypeError('PowerPoint slide writer rejects opaque elements'));
   });
 
   it('rejects a text element missing authored geometry', () => {

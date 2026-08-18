@@ -18,6 +18,15 @@ const ANGLE_UNITS_PER_DEGREE = 60_000;
 const FONT_SIZE_UNITS_PER_POINT = 100;
 const HEX_COLOR_PATTERN = /^#[0-9a-f]{6}$/i;
 
+type ValidationProfile = NonNullable<PptxSceneValidationOptions['profile']>;
+type CreationValidationProfile = Exclude<ValidationProfile, 'scene'>;
+
+function isCreationProfile(
+  profile: ValidationProfile,
+): profile is CreationValidationProfile {
+  return profile === 'create-native-v1' || profile === 'create-text-v1';
+}
+
 function isObject(value: unknown): value is JsonObject {
   if (value === null) return false;
   if (value === undefined) return false;
@@ -174,14 +183,14 @@ function validateSize(
   value: unknown,
   path: string,
   issues: PptxSceneValidationIssue[],
-  profile: 'create-text-v1' | 'scene',
+  profile: ValidationProfile,
 ): void {
   const size = requireObject(value, path, issues);
   if (!size) return;
   rejectUnknownKeys(size, ['height', 'width'], path, issues);
   requireFiniteNumber(size.width, `${path}.width`, issues, true);
   requireFiniteNumber(size.height, `${path}.height`, issues, true);
-  if (profile === 'create-text-v1') {
+  if (isCreationProfile(profile)) {
     requireSerializableInteger(
       size.width,
       EMUS_PER_POINT,
@@ -203,7 +212,7 @@ function validateTransform(
   value: unknown,
   path: string,
   issues: PptxSceneValidationIssue[],
-  profile: 'create-text-v1' | 'scene',
+  profile: ValidationProfile,
 ): void {
   const transform = requireObject(value, path, issues);
   if (!transform) return;
@@ -222,7 +231,7 @@ function validateTransform(
   }
   optionalBoolean(transform, 'flipHorizontal', path, issues);
   optionalBoolean(transform, 'flipVertical', path, issues);
-  if (profile === 'create-text-v1') {
+  if (isCreationProfile(profile)) {
     for (const key of ['x', 'y'] as const) {
       requireSerializableInteger(
         transform[key],
@@ -319,7 +328,7 @@ function validateRunProperties(
   value: unknown,
   path: string,
   issues: PptxSceneValidationIssue[],
-  profile: 'create-text-v1' | 'scene',
+  profile: ValidationProfile,
 ): void {
   const properties = requireObject(value, path, issues);
   if (!properties) return;
@@ -336,7 +345,7 @@ function validateRunProperties(
   optionalString(properties, 'language', path, issues);
   if (properties.fontSize !== undefined) {
     requireFiniteNumber(properties.fontSize, `${path}.fontSize`, issues, true);
-    if (profile === 'create-text-v1') {
+    if (isCreationProfile(profile)) {
       requireSerializableInteger(
         properties.fontSize,
         FONT_SIZE_UNITS_PER_POINT,
@@ -351,7 +360,7 @@ function validateRunProperties(
 function validateTextNode(
   value: unknown,
   path: string,
-  profile: 'create-text-v1' | 'scene',
+  profile: ValidationProfile,
   keys: Set<string>,
   issues: PptxSceneValidationIssue[],
 ): void {
@@ -406,7 +415,7 @@ function validateTextNode(
 function validateParagraph(
   value: unknown,
   path: string,
-  profile: 'create-text-v1' | 'scene',
+  profile: ValidationProfile,
   keys: Set<string>,
   issues: PptxSceneValidationIssue[],
 ): void {
@@ -487,7 +496,7 @@ function validateParagraph(
 function validateTextBody(
   value: unknown,
   path: string,
-  profile: 'create-text-v1' | 'scene',
+  profile: ValidationProfile,
   keys: Set<string>,
   issues: PptxSceneValidationIssue[],
 ): void {
@@ -650,7 +659,7 @@ function validatePlaceholder(
 function validateElement(
   value: unknown,
   path: string,
-  profile: 'create-text-v1' | 'scene',
+  profile: ValidationProfile,
   keys: Set<string>,
   referenceKeys: Array<{ path: string; value: string }>,
   issues: PptxSceneValidationIssue[],
@@ -671,6 +680,16 @@ function validateElement(
   if (element.type === 'text') {
     rejectUnknownKeys(element, [...baseKeys, 'text'], path, issues);
     validateTextBody(element.text, `${path}.text`, profile, keys, issues);
+  } else if (element.type === 'shape') {
+    rejectUnknownKeys(element, baseKeys, path, issues);
+    if (profile === 'create-text-v1') {
+      addIssue(
+        issues,
+        'unsupported-feature',
+        path,
+        'Creation profile create-text-v1 supports text elements only',
+      );
+    }
   } else if (element.type === 'unsupported') {
     rejectUnknownKeys(
       element,
@@ -687,12 +706,14 @@ function validateElement(
       );
     }
     optionalString(element, 'previewText', path, issues);
-    if (profile === 'create-text-v1') {
+    if (isCreationProfile(profile)) {
       addIssue(
         issues,
         'unsupported-feature',
         path,
-        'Creation profile create-text-v1 supports text elements only',
+        profile === 'create-text-v1'
+          ? 'Creation profile create-text-v1 supports text elements only'
+          : 'Creation profile create-native-v1 does not support opaque elements',
       );
     }
   } else {
@@ -743,7 +764,7 @@ function validateElement(
         issues,
         true,
       );
-      if (profile === 'create-text-v1') {
+      if (isCreationProfile(profile)) {
         requireSerializableInteger(
           authored.lineWidth,
           EMUS_PER_POINT,
@@ -760,12 +781,15 @@ function validateElement(
         issues,
         profile,
       );
-    } else if (profile === 'create-text-v1' && element.type === 'text') {
+    } else if (
+      isCreationProfile(profile) &&
+      (element.type === 'shape' || element.type === 'text')
+    ) {
       addIssue(
         issues,
         'unsupported-feature',
         `${path}.authored.transform`,
-        'Creation profile create-text-v1 requires an authored text transform',
+        `Creation profile ${profile} requires an authored ${element.type} transform`,
       );
     }
   }
@@ -801,12 +825,12 @@ function validateElement(
       referenceKeys,
       issues,
     );
-    if (profile === 'create-text-v1') {
+    if (isCreationProfile(profile)) {
       addIssue(
         issues,
         'unsupported-feature',
         `${path}.placeholder`,
-        'Creation profile create-text-v1 does not support placeholders yet',
+        `Creation profile ${profile} does not support placeholders yet`,
       );
     }
   }
@@ -815,7 +839,7 @@ function validateElement(
 function validateElementArray(
   value: unknown,
   path: string,
-  profile: 'create-text-v1' | 'scene',
+  profile: ValidationProfile,
   keys: Set<string>,
   referenceKeys: Array<{ path: string; value: string }>,
   issues: PptxSceneValidationIssue[],
@@ -947,7 +971,7 @@ export function validatePptxScene(
 
   const slides = requireArray(document.slides, '$.slides', issues);
   if (
-    profile === 'create-text-v1' &&
+    isCreationProfile(profile) &&
     slides &&
     !isSupportedPowerPointCreationSlideCount(slides.length)
   ) {
@@ -955,7 +979,7 @@ export function validatePptxScene(
       issues,
       'unsupported-feature',
       '$.slides',
-      `Creation profile create-text-v1 supports at most ${MAX_POWERPOINT_CREATION_SLIDES} slides`,
+      `Creation profile ${profile} supports at most ${MAX_POWERPOINT_CREATION_SLIDES} slides`,
     );
   }
   slides?.forEach((value, index) => {
@@ -1006,12 +1030,12 @@ export function validatePptxScene(
       (collection) => collection.length === 0,
     ).length;
     hierarchyEmpty = emptyHierarchyCollections === 3;
-    if (profile === 'create-text-v1' && !hierarchyEmpty) {
+    if (isCreationProfile(profile) && !hierarchyEmpty) {
       addIssue(
         issues,
         'unsupported-feature',
         '$',
-        'Creation profile create-text-v1 generates its own minimal hierarchy',
+        `Creation profile ${profile} generates its own minimal hierarchy`,
       );
     }
     if (emptyHierarchyCollections > 0 && emptyHierarchyCollections < 3) {
@@ -1084,8 +1108,8 @@ export function validatePptxScene(
       );
     }
   }
-  if (profile === 'create-text-v1' && issues.length === 0) {
-    issues.push(...validatePowerPointCreationResources(document));
+  if (isCreationProfile(profile) && issues.length === 0) {
+    issues.push(...validatePowerPointCreationResources(document, profile));
   }
 
   return { issues, valid: issues.length === 0 };

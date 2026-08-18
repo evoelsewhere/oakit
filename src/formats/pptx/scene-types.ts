@@ -113,6 +113,10 @@ export interface PptxSceneTextElement extends PptxSceneElementBase {
   type: 'text';
 }
 
+export interface PptxSceneShapeElement extends PptxSceneElementBase {
+  type: 'shape';
+}
+
 export interface PptxSceneUnsupportedElement extends PptxSceneElementBase {
   feature: string;
   previewText?: string;
@@ -120,7 +124,7 @@ export interface PptxSceneUnsupportedElement extends PptxSceneElementBase {
 }
 
 export type PptxSceneElement =
-  PptxSceneTextElement | PptxSceneUnsupportedElement;
+  PptxSceneShapeElement | PptxSceneTextElement | PptxSceneUnsupportedElement;
 
 export interface PptxSceneTheme {
   key: string;
@@ -177,7 +181,7 @@ export interface PptxSceneValidationIssue {
 }
 
 export interface PptxSceneValidationOptions {
-  profile?: 'create-text-v1' | 'scene';
+  profile?: 'create-native-v1' | 'create-text-v1' | 'scene';
 }
 
 export interface PptxSceneValidationResult {

@@ -45,6 +45,15 @@ export const mutationModules = [
     source: 'src/formats/pptx/roundtrip/transform-xml.ts',
     tests: ['test/pptx/roundtrip-transform-xml.test.ts'],
   },
+  {
+    estimatedSeconds: 105,
+    name: 'writer-shape',
+    source: 'src/formats/pptx/writer/shape.ts',
+    tests: [
+      'test/pptx/writer-shape.test.ts',
+      'test/pptx/writer-text-shape.test.ts',
+    ],
+  },
 ];
 
 export function resolveMutationModule(name) {

@@ -45,6 +45,26 @@ function textSlide(key: string): PptxSceneSlide {
   };
 }
 
+function shapeSlide(key: string): PptxSceneSlide {
+  return {
+    elements: [
+      {
+        authored: {
+          fillColor: '#F97316',
+          geometry: 'ellipse',
+          lineColor: '#0F172A',
+          lineWidth: 2,
+          transform: { height: 40, width: 160, x: 10, y: 20 },
+        },
+        key: `${key}-shape`,
+        resolved: { hidden: false },
+        type: 'shape',
+      },
+    ],
+    key,
+  };
+}
+
 function scene(slides: PptxSceneSlide[]): PptxSceneDocument {
   return {
     layouts: [],
@@ -105,6 +125,15 @@ function generatedShape(shapType: string, text = 'Text'): Shape {
     ...generatedText(text),
     shapType,
     type: 'shape',
+  };
+}
+
+function generatedNativeShape(): Shape {
+  return {
+    ...generatedShape('ellipse', ''),
+    borderColor: '#0F172A',
+    borderWidth: 2,
+    fill: { type: 'color', value: '#F97316' },
   };
 }
 
@@ -206,6 +235,60 @@ describe('PowerPoint creation verification', () => {
         'Generated PowerPoint text element missing at slide 1, element 1',
       ),
     );
+  });
+
+  it('verifies native shape transform and visual styling', async () => {
+    const output = document(1);
+    output.slides[0]?.elements.push(generatedNativeShape());
+
+    await expect(
+      verifyPowerPointCreationWithParser(
+        new Uint8Array(),
+        scene([shapeSlide('slide-1')]),
+        () => Promise.resolve(output),
+        rendered,
+      ),
+    ).resolves.toBeUndefined();
+  });
+
+  it.each([
+    ['missing shape', undefined, 'Generated PowerPoint shape missing'],
+    [
+      'geometry',
+      { shapType: 'roundRect' },
+      'Generated PowerPoint shape missing',
+    ],
+    ['fill', { fill: null }, 'Generated PowerPoint shape fill mismatch'],
+    [
+      'line',
+      { borderColor: '#FFFFFF' },
+      'Generated PowerPoint shape line mismatch',
+    ],
+    [
+      'line width',
+      { borderWidth: 3 },
+      'Generated PowerPoint shape line width mismatch',
+    ],
+    ['transform', { left: 11 }, 'Generated PowerPoint transform mismatch'],
+  ])('rejects native shape %s mismatches', async (_name, change, message) => {
+    const output = document(1);
+    if (change !== undefined) {
+      output.slides[0]?.elements.push({
+        ...generatedNativeShape(),
+        ...change,
+      });
+    } else if (output.slides[0] !== undefined) {
+      output.slides[0].elements = new Array<Shape>(1);
+    }
+
+    await expect(
+      verifyPowerPointCreationWithParser(
+        new Uint8Array(),
+        scene([shapeSlide('slide-1')]),
+        () => Promise.resolve(output),
+        rendered,
+      ),
+    ).rejects.toThrow(`${message} at slide 1, element 1`);
   });
 
   it('rejects a generated text value that differs from the source scene', async () => {
