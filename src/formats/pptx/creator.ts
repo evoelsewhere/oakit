@@ -22,12 +22,11 @@ const DEFAULT_DEPENDENCIES: PptxCreatorDependencies = {
 type PptxCreationProfile = 'create-native-v1' | 'create-text-v1';
 
 function creationProfile(scene: PptxSceneDocument): PptxCreationProfile {
-  return scene.media.length > 0 ||
-    scene.slides.some((slide) =>
-      slide.elements.some(
-        (element) => element.type === 'image' || element.type === 'shape',
-      ),
-    )
+  return scene.slides.some((slide) =>
+    slide.elements.some(
+      (element) => element.type === 'image' || element.type === 'shape',
+    ),
+  )
     ? 'create-native-v1'
     : 'create-text-v1';
 }

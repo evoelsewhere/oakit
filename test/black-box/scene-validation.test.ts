@@ -292,6 +292,32 @@ describe('PowerPoint scene validation', () => {
     ).toContainEqual(['unsupported-feature', '$.media']);
   });
 
+  it('allows preservation-only images to omit creation media ownership', () => {
+    const scene = minimalScene();
+    mutableSlide(scene).elements = [
+      {
+        authored: { fillColor: '#FFFFFF' },
+        key: 'preserved-image',
+        resolved: { hidden: false },
+        type: 'image',
+      },
+    ];
+
+    expect(validatePptxScene(scene)).toEqual({ issues: [], valid: true });
+    expect(
+      validatePptxScene(scene, { profile: 'create-native-v1' }).issues,
+    ).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          path: '$.slides[0].elements[0].mediaKey',
+        }),
+        expect.objectContaining({
+          path: '$.slides[0].elements[0].authored',
+        }),
+      ]),
+    );
+  });
+
   it('rejects unknown element fields, kinds, and malformed base state', () => {
     const scene = minimalScene();
     const element = mutableElement(scene);

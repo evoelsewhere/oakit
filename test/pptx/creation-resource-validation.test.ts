@@ -35,6 +35,25 @@ describe('PowerPoint creation resource validation', () => {
     expect(validatePowerPointCreationResources(input)).toEqual([]);
   });
 
+  it('accepts native media budgets exactly at every boundary', () => {
+    const exactCount = document([]);
+    exactCount.media = new Array(MAX_POWERPOINT_CREATION_MEDIA);
+    const exactPart = document([]);
+    exactPart.media = [
+      { data: { byteLength: MAX_POWERPOINT_CREATION_MEDIA_BYTES } },
+    ];
+    const exactTotal = document([]);
+    exactTotal.media = Array.from({ length: 4 }, () => ({
+      data: { byteLength: MAX_POWERPOINT_CREATION_TOTAL_MEDIA_BYTES / 4 },
+    }));
+
+    for (const input of [exactCount, exactPart, exactTotal]) {
+      expect(
+        validatePowerPointCreationResources(input, 'create-native-v1'),
+      ).toEqual([]);
+    }
+  });
+
   it('accepts paragraph, text-node, and string counts at their boundaries', () => {
     const paragraphInput = document([
       {
@@ -200,34 +219,38 @@ describe('PowerPoint creation resource validation', () => {
     ];
 
     expect(
-      validatePowerPointCreationResources(tooMany, 'create-native-v1').map(
-        ({ message }) => message,
-      ),
-    ).toContain(
-      `Creation profile create-native-v1 supports at most ${MAX_POWERPOINT_CREATION_MEDIA} media resources`,
-    );
+      validatePowerPointCreationResources(tooMany, 'create-native-v1'),
+    ).toContainEqual({
+      code: 'resource-limit-exceeded',
+      message: `Creation profile create-native-v1 supports at most ${MAX_POWERPOINT_CREATION_MEDIA} media resources`,
+      path: '$.media',
+    });
     expect(
-      validatePowerPointCreationResources(tooLarge, 'create-native-v1').map(
-        ({ message }) => message,
-      ),
-    ).toContain(
-      `Creation profile create-native-v1 supports at most ${MAX_POWERPOINT_CREATION_MEDIA_BYTES} bytes per media resource`,
-    );
+      validatePowerPointCreationResources(tooLarge, 'create-native-v1'),
+    ).toContainEqual({
+      code: 'resource-limit-exceeded',
+      message: `Creation profile create-native-v1 supports at most ${MAX_POWERPOINT_CREATION_MEDIA_BYTES} bytes per media resource`,
+      path: '$.media',
+    });
     expect(
-      validatePowerPointCreationResources(
-        tooLargeTogether,
-        'create-native-v1',
-      ).map(({ message }) => message),
-    ).toContain(
-      `Creation profile create-native-v1 supports at most ${MAX_POWERPOINT_CREATION_TOTAL_MEDIA_BYTES} total media bytes`,
-    );
+      validatePowerPointCreationResources(tooLargeTogether, 'create-native-v1'),
+    ).toContainEqual({
+      code: 'resource-limit-exceeded',
+      message: `Creation profile create-native-v1 supports at most ${MAX_POWERPOINT_CREATION_TOTAL_MEDIA_BYTES} total media bytes`,
+      path: '$.media',
+    });
   });
 
   it('does not traverse binary media while counting string code units', () => {
     const input = document([]);
+    const data = new Uint8Array(1024);
+    Object.defineProperty(data, 'metadata', {
+      enumerable: true,
+      value: 'x'.repeat(MAX_POWERPOINT_CREATION_STRING_CODE_UNITS + 1),
+    });
     input.media = [
       {
-        data: new Uint8Array(1024),
+        data,
         key: 'a',
         mimeType: 'image/png',
       },

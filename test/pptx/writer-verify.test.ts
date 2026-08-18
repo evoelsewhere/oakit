@@ -296,7 +296,34 @@ describe('PowerPoint creation verification', () => {
     ).resolves.toBeUndefined();
   });
 
-  it.each([
+  it('verifies an unstyled native rect without inventing optional styling', async () => {
+    const inputSlide: PptxSceneSlide = {
+      elements: [
+        {
+          authored: {
+            transform: { height: 40, width: 160, x: 10, y: 20 },
+          },
+          key: 'plain-shape',
+          resolved: { hidden: false },
+          type: 'shape',
+        },
+      ],
+      key: 'slide-1',
+    };
+    const output = document(1);
+    output.slides[0]?.elements.push(generatedShape('rect', ''));
+
+    await expect(
+      verifyPowerPointCreationWithParser(
+        new Uint8Array(),
+        scene([inputSlide]),
+        () => Promise.resolve(output),
+        rendered,
+      ),
+    ).resolves.toBeUndefined();
+  });
+
+  it.each<[string, Partial<Shape> | undefined, string]>([
     ['missing shape', undefined, 'Generated PowerPoint shape missing'],
     [
       'geometry',
@@ -304,6 +331,11 @@ describe('PowerPoint creation verification', () => {
       'Generated PowerPoint shape missing',
     ],
     ['fill', { fill: null }, 'Generated PowerPoint shape fill mismatch'],
+    [
+      'fill color',
+      { fill: { type: 'color', value: '#FFFFFF' } },
+      'Generated PowerPoint shape fill mismatch',
+    ],
     [
       'line',
       { borderColor: '#FFFFFF' },
@@ -339,6 +371,29 @@ describe('PowerPoint creation verification', () => {
   it('verifies native image transform, media data, and geometry', async () => {
     const input = scene([imageSlide('slide-1')]);
     input.media = [
+      { data: IMAGE_BYTES, key: 'media-1', mimeType: 'image/png' },
+    ];
+    const output = document(1);
+    output.slides[0]?.elements.push(generatedImage());
+
+    await expect(
+      verifyPowerPointCreationWithParser(
+        new Uint8Array(),
+        input,
+        () => Promise.resolve(output),
+        rendered,
+      ),
+    ).resolves.toBeUndefined();
+  });
+
+  it('resolves image verification media by key instead of array position', async () => {
+    const input = scene([imageSlide('slide-1')]);
+    input.media = [
+      {
+        data: new Uint8Array([0x89, 0x50, 0x4e, 0x47]),
+        key: 'decoy',
+        mimeType: 'image/png',
+      },
       { data: IMAGE_BYTES, key: 'media-1', mimeType: 'image/png' },
     ];
     const output = document(1);

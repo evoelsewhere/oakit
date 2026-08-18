@@ -65,6 +65,32 @@ function validateNativeCreation(value: unknown) {
   return validatePptxScene(value, { profile: 'create-native-v1' });
 }
 
+function addNativeImage(
+  scene: Record<string, unknown>,
+  authored: Record<string, unknown> = {
+    transform: { height: 100, width: 160, x: 40, y: 50 },
+  },
+): Record<string, unknown> {
+  scene.media = [
+    {
+      data: new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+      key: 'image-1',
+      mimeType: 'image/png',
+    },
+  ];
+  const image = {
+    authored,
+    key: 'picture-1',
+    mediaKey: 'image-1',
+    resolved: { hidden: false },
+    type: 'image',
+  };
+  const slide = (scene.slides as Record<string, unknown>[])[0];
+  if (slide === undefined) throw new Error('Expected slide');
+  slide.elements = [image];
+  return image;
+}
+
 function firstRun(scene: Record<string, unknown>): Record<string, unknown> {
   const text = element(scene).text as Record<string, unknown>;
   const paragraphs = text.paragraphs as Record<string, unknown>[];
@@ -197,6 +223,142 @@ describe('PowerPoint creation scene validation', () => {
       code: 'invalid-scene-document',
       message: `${label} media data has an invalid signature`,
       path: '$.media[0].data',
+    });
+  });
+
+  it('accepts a canonical JPEG signature', () => {
+    const scene = creationScene();
+    scene.media = [
+      {
+        data: new Uint8Array([0xff, 0xd8, 0xff, 0x00, 0xff, 0xd9]),
+        key: 'image-1',
+        mimeType: 'image/jpeg',
+      },
+    ];
+
+    expect(validateNativeCreation(scene)).toEqual({ issues: [], valid: true });
+  });
+
+  it.each([
+    ['prefix', new Uint8Array([0xfe, 0xd8, 0xff, 0x00, 0xff, 0xd9])],
+    ['third marker byte', new Uint8Array([0xff, 0xd8, 0xfe, 0x00, 0xff, 0xd9])],
+    ['penultimate byte', new Uint8Array([0xff, 0xd8, 0xff, 0x00, 0x00, 0xd9])],
+    ['final byte', new Uint8Array([0xff, 0xd8, 0xff, 0x00, 0xff, 0x00])],
+  ])('rejects a JPEG with an invalid %s', (_name, data) => {
+    const scene = creationScene();
+    scene.media = [{ data, key: 'image-1', mimeType: 'image/jpeg' }];
+
+    expect(validateNativeCreation(scene).issues).toContainEqual({
+      code: 'invalid-scene-document',
+      message: 'JPEG media data has an invalid signature',
+      path: '$.media[0].data',
+    });
+  });
+
+  it.each([
+    ['non-binary data', 'bytes'],
+    ['empty data', new Uint8Array()],
+  ])('rejects %s in native media', (_name, data) => {
+    const scene = creationScene();
+    scene.media = [{ data, key: 'image-1', mimeType: 'image/png' }];
+
+    expect(validateNativeCreation(scene).issues).toContainEqual({
+      code: 'invalid-scene-document',
+      message: 'Expected non-empty Uint8Array media data',
+      path: '$.media[0].data',
+    });
+  });
+
+  it('rejects unsupported media types with an exact diagnostic', () => {
+    const scene = creationScene();
+    scene.media = [
+      { data: new Uint8Array([1]), key: 'image-1', mimeType: 'image/gif' },
+    ];
+
+    expect(validateNativeCreation(scene).issues).toContainEqual({
+      code: 'invalid-scene-document',
+      message: 'Expected image/png or image/jpeg media type',
+      path: '$.media[0].mimeType',
+    });
+  });
+
+  it('requires native image media keys and authored transforms', () => {
+    const scene = creationScene();
+    const image = addNativeImage(scene, {});
+    delete image.mediaKey;
+
+    expect(validateNativeCreation(scene).issues).toEqual(
+      expect.arrayContaining([
+        {
+          code: 'invalid-scene-document',
+          message: 'Expected a media key',
+          path: '$.slides[0].elements[0].mediaKey',
+        },
+        {
+          code: 'unsupported-feature',
+          message:
+            'Creation profile create-native-v1 requires an authored image transform',
+          path: '$.slides[0].elements[0].authored.transform',
+        },
+      ]),
+    );
+  });
+
+  it.each(['fillColor', 'geometry', 'lineColor', 'lineWidth'])(
+    'rejects authored image shape styling property %s',
+    (property) => {
+      const scene = creationScene();
+      addNativeImage(scene, {
+        [property]: property === 'lineWidth' ? 1 : '#FFFFFF',
+        transform: { height: 100, width: 160, x: 40, y: 50 },
+      });
+
+      expect(validateNativeCreation(scene).issues).toContainEqual({
+        code: 'unsupported-feature',
+        message:
+          'Creation profile create-native-v1 does not apply shape styling to images',
+        path: '$.slides[0].elements[0].authored',
+      });
+    },
+  );
+
+  it('reports exact text-profile image and media exclusions', () => {
+    const scene = creationScene();
+    addNativeImage(scene);
+    const issues = validateCreation(scene).issues;
+
+    expect(issues).toContainEqual({
+      code: 'unsupported-feature',
+      message: 'Creation profile create-text-v1 supports text elements only',
+      path: '$.slides[0].elements[0]',
+    });
+    expect(issues).toContainEqual({
+      code: 'unsupported-feature',
+      message:
+        'Creation profile create-text-v1 does not support media resources',
+      path: '$.media',
+    });
+  });
+
+  it('rejects opaque elements from the native creation profile', () => {
+    const scene = creationScene();
+    const slide = (scene.slides as Record<string, unknown>[])[0];
+    if (slide === undefined) throw new Error('Expected slide');
+    slide.elements = [
+      {
+        authored: {},
+        feature: 'chart',
+        key: 'opaque-1',
+        resolved: { hidden: false },
+        type: 'unsupported',
+      },
+    ];
+
+    expect(validateNativeCreation(scene).issues).toContainEqual({
+      code: 'unsupported-feature',
+      message:
+        'Creation profile create-native-v1 does not support opaque elements',
+      path: '$.slides[0].elements[0]',
     });
   });
 
