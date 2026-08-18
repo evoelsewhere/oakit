@@ -113,14 +113,31 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Install LibreOffice with bounded mirror retries
         run: |
-          timeout 10m sudo apt-get \
-            -o Acquire::Retries=3 \
-            -o Acquire::http::Timeout=30 \
-            update
-          timeout 15m sudo apt-get \
-            -o Acquire::Retries=3 \
-            -o Acquire::http::Timeout=30 \
+          for sources in \
+            /etc/apt/apt-mirrors.txt \
+            /etc/apt/sources.list \
+            /etc/apt/sources.list.d/ubuntu.sources
+          do
+            if [ -f "$sources" ]; then
+              sudo sed -i \
+                's|http://azure.archive.ubuntu.com/ubuntu|https://archive.ubuntu.com/ubuntu|g' \
+                "$sources"
+            fi
+          done
+          apt_options=(
+            -o Acquire::ForceIPv4=true
+            -o Acquire::Languages=none
+            -o Acquire::Retries=3
+            -o Acquire::http::Timeout=30
+            -o Acquire::https::Timeout=30
+          )
+          if ! timeout 15m sudo apt-get "${apt_options[@]}" \
             install --yes libreoffice-impress
+          then
+            timeout 10m sudo apt-get "${apt_options[@]}" update
+            timeout 15m sudo apt-get "${apt_options[@]}" \
+              install --yes libreoffice-impress
+          fi
       - run: pnpm test:corpus:large
       - if: always()
         uses: actions/upload-artifact@v4
