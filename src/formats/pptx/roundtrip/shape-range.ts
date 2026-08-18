@@ -77,7 +77,7 @@ function requiredNamespacePrefix(
 function shapeRange(
   xml: string,
   shapeId: string,
-  localName: 'pic' | 'sp',
+  localName: 'graphicFrame' | 'pic' | 'sp',
   description: string,
 ): ShapeRange {
   const stack: ShapeFrame[] = [];
@@ -135,7 +135,7 @@ export function pptxShapeHasElement(xml: string, qualified: string): boolean {
 function resolvePptxEditableElementXml(
   xml: string,
   shapeId: string,
-  localName: 'pic' | 'sp',
+  localName: 'graphicFrame' | 'pic' | 'sp',
   description: string,
 ): PptxEditableShapeXml {
   const prefixes = namespacePrefixes(xml);
@@ -171,4 +171,16 @@ export function resolvePptxEditablePictureXml(
   shapeId: string,
 ): PptxEditableShapeXml {
   return resolvePptxEditableElementXml(xml, shapeId, 'pic', 'picture');
+}
+
+export function resolvePptxEditableGraphicFrameXml(
+  xml: string,
+  shapeId: string,
+): PptxEditableShapeXml {
+  return resolvePptxEditableElementXml(
+    xml,
+    shapeId,
+    'graphicFrame',
+    'graphic frame',
+  );
 }

@@ -350,6 +350,8 @@ describe('PowerPoint round-trip text edit binding', () => {
     { height: 10, width: 20, x: Number.NaN, y: 2 },
     { height: 10, rotation: '1', width: 20, x: 1, y: 2 },
     { height: 10, rotation: Number.NaN, width: 20, x: 1, y: 2 },
+    { height: 10, width: Number.MAX_VALUE, x: 1, y: 2 },
+    { height: 10, rotation: Number.MAX_VALUE, width: 20, x: 1, y: 2 },
   ])('rejects invalid transform directly: %j', (value) => {
     expect(() => normalizePptxRoundTripTransform(value as never)).toThrow(
       'PowerPoint transform value is not a valid scene transform',

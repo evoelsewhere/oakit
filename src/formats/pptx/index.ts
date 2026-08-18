@@ -20,6 +20,7 @@ export {
   replacePptxRoundTripText,
   setPptxRoundTripImageTransform,
   setPptxRoundTripShapeTransform,
+  setPptxRoundTripTableTransform,
   setPptxRoundTripTextTransform,
 } from './roundtrip/edit';
 export { writePptxRoundTrip } from './roundtrip/write';

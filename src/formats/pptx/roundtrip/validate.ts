@@ -232,6 +232,7 @@ function editableTransforms(
       if (
         element.type !== 'image' &&
         element.type !== 'shape' &&
+        element.type !== 'table' &&
         element.type !== 'text'
       )
         continue;
@@ -429,7 +430,11 @@ function expectedSupportProfileId(
   const nativeKeys = new Set<string>();
   for (const slide of document.slides) {
     for (const element of slide.elements) {
-      if (element.type === 'image' || element.type === 'shape') {
+      if (
+        element.type === 'image' ||
+        element.type === 'shape' ||
+        element.type === 'table'
+      ) {
         nativeKeys.add(element.key);
       }
     }

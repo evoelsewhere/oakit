@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  patchPptxGraphicFrameTransformXml,
   patchPptxPictureTransformXml,
   patchPptxShapeTransformXml,
 } from '../../src/formats/pptx/roundtrip/transform-xml';
@@ -69,6 +70,26 @@ function pictureXml(): string {
     .replace('</p:sp></p:spTree>', '</p:pic></p:spTree>');
 }
 
+function tableXml(
+  columns = ['1270000', '2540000'],
+  rows = ['381000', '635000'],
+): string {
+  return (
+    `<p:sld xmlns:p="${PRESENTATION_NAMESPACE}" xmlns:a="${DRAWING_NAMESPACE}" xmlns:mc="${MARKUP_NAMESPACE}">` +
+    '<p:cSld><p:spTree><p:graphicFrame><p:nvGraphicFramePr><p:cNvPr id="2"/></p:nvGraphicFramePr>' +
+    '<p:xfrm><a:off x="254000" y="381000"/><a:ext cx="3810000" cy="1016000"/></p:xfrm>' +
+    '<a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/table"><a:tbl><a:tblPr/>' +
+    `<a:tblGrid>${columns.map((width) => `<a:gridCol w="${width}"/>`).join('')}</a:tblGrid>` +
+    rows
+      .map(
+        (height) =>
+          `<a:tr h="${height}"><a:tc><a:txBody><a:bodyPr/><a:lstStyle/><a:p/></a:txBody><a:tcPr/></a:tc></a:tr>`,
+      )
+      .join('') +
+    '</a:tbl></a:graphicData></a:graphic></p:graphicFrame></p:spTree></p:cSld></p:sld>'
+  );
+}
+
 describe('PowerPoint literal shape transform patching', () => {
   it('serializes exact EMUs and omits false optional attributes', () => {
     const input = slideXml();
@@ -94,6 +115,80 @@ describe('PowerPoint literal shape transform patching', () => {
     );
     expect(output).toContain('<p:pic>');
     expect(output).not.toContain('<p:sp>');
+  });
+
+  it('patches a native table frame and proportionally resizes its exact grid', () => {
+    const output = patchPptxGraphicFrameTransformXml(
+      tableXml(),
+      '2',
+      operation(),
+    );
+
+    expect(output).toContain(
+      '<p:xfrm><a:off x="635000" y="762000"/><a:ext cx="5080000" cy="1270000"/></p:xfrm>',
+    );
+    expect(output).toContain(
+      '<a:gridCol w="1693333"/><a:gridCol w="3386667"/>',
+    );
+    expect(output).toContain('<a:tr h="476250">');
+    expect(output).toContain('<a:tr h="793750">');
+    expect(output).toContain('<p:graphicFrame>');
+  });
+
+  it('rejects table grids that disagree with the semantic precondition', () => {
+    expect(() =>
+      patchPptxGraphicFrameTransformXml(
+        tableXml(['1270001', '2540000']),
+        '2',
+        operation(),
+      ),
+    ).toThrow(
+      'PowerPoint table column widths do not match the preview precondition',
+    );
+    expect(() =>
+      patchPptxGraphicFrameTransformXml(
+        tableXml(undefined, ['381001', '634999']),
+        '2',
+        operation(),
+      ),
+    ).not.toThrow();
+    expect(() =>
+      patchPptxGraphicFrameTransformXml(
+        tableXml(undefined, ['381001', '635000']),
+        '2',
+        operation(),
+      ),
+    ).toThrow(
+      'PowerPoint table row heights do not match the preview precondition',
+    );
+  });
+
+  it('rejects missing, non-positive, and unrepresentable table dimensions', () => {
+    expect(() =>
+      patchPptxGraphicFrameTransformXml(
+        tableXml([], ['381000', '635000']),
+        '2',
+        operation(),
+      ),
+    ).toThrow('PowerPoint table has no column widths');
+    expect(() =>
+      patchPptxGraphicFrameTransformXml(
+        tableXml(['0', '3810000']),
+        '2',
+        operation(),
+      ),
+    ).toThrow(
+      'PowerPoint table column widths do not match the preview precondition',
+    );
+    expect(() =>
+      patchPptxGraphicFrameTransformXml(
+        tableXml(),
+        '2',
+        operation({ width: 0.0001 }),
+      ),
+    ).toThrow(
+      'PowerPoint table column widths cannot fit the requested transform',
+    );
   });
 
   it.each([

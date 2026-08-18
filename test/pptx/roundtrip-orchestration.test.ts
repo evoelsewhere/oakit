@@ -97,7 +97,7 @@ describe('PowerPoint patch orchestration', () => {
         resolvePptxResourceLimits(),
       ),
     ).rejects.toThrow(
-      'PowerPoint transform target is not a slide-owned text, shape, or image element',
+      'PowerPoint transform target is not a slide-owned text, shape, image, or table element',
     );
 
     transformOperation.targetKey = `slide-${'9'.repeat(20)}-element-1`;

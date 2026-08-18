@@ -12,6 +12,7 @@ export {
   replacePptxRoundTripText,
   setPptxRoundTripImageTransform,
   setPptxRoundTripShapeTransform,
+  setPptxRoundTripTableTransform,
   setPptxRoundTripTextTransform,
   renderPptxDocumentToSvg,
   renderPptxToSvg,

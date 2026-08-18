@@ -1,9 +1,12 @@
 import { resolvePptxResourceLimits } from '../internal/resource-limits';
+import { RATIO_EMUs_Points } from '../../../common/ooxml/units';
 import { isValidXmlText } from '../scene-validation';
 import { PptxWriteError } from '../write-error';
+import { degreesToAngle, pointsToEmu } from '../writer/units';
 import type {
   PptxSceneImageElement,
   PptxSceneShapeElement,
+  PptxSceneTableElement,
   PptxSceneTextElement,
   PptxSceneTransform,
 } from '../scene-types';
@@ -30,6 +33,34 @@ export interface PptxRoundTripSetTransformRequest {
   value: PptxSceneTransform;
 }
 
+function scaledTableSizes(
+  values: readonly number[],
+  expectedTotal: number,
+  replacementTotal: number,
+): number[] {
+  const source = values.map(pointsToEmu);
+  const expected = pointsToEmu(expectedTotal);
+  const replacement = pointsToEmu(replacementTotal);
+  const result: number[] = [];
+  let allocated = 0;
+  for (let index = 0; index < source.length; index += 1) {
+    const remaining = source.length - index - 1;
+    const value =
+      index === source.length - 1
+        ? replacement - allocated
+        : Math.max(
+            1,
+            Math.min(
+              Math.round(((source[index] as number) * replacement) / expected),
+              replacement - allocated - remaining,
+            ),
+          );
+    result.push(value * RATIO_EMUs_Points);
+    allocated += value;
+  }
+  return result;
+}
+
 export function applyPptxRoundTripOperationsToPreview(
   snapshot: PptxRoundTripSnapshot,
 ): PptxRoundTripSnapshot['document'] {
@@ -42,9 +73,25 @@ export function applyPptxRoundTripOperationsToPreview(
           if (
             (element.type === 'image' ||
               element.type === 'shape' ||
+              element.type === 'table' ||
               element.type === 'text') &&
             element.key === operation.targetKey
           ) {
+            if (element.type === 'table') {
+              element.columns = scaledTableSizes(
+                element.columns,
+                operation.expectedTransform.width,
+                operation.value.width,
+              );
+              const rowHeights = scaledTableSizes(
+                element.rows.map((row) => row.height),
+                operation.expectedTransform.height,
+                operation.value.height,
+              );
+              element.rows.forEach((row, index) => {
+                row.height = rowHeights[index] as number;
+              });
+            }
             element.resolved.transform = structuredClone(operation.value);
             applied = true;
           }
@@ -83,7 +130,10 @@ export function applyPptxRoundTripOperationsToPreview(
 }
 
 type PptxTransformElement =
-  PptxSceneImageElement | PptxSceneShapeElement | PptxSceneTextElement;
+  | PptxSceneImageElement
+  | PptxSceneShapeElement
+  | PptxSceneTableElement
+  | PptxSceneTextElement;
 
 function findTransformElement(
   snapshot: PptxRoundTripSnapshot,
@@ -141,6 +191,15 @@ export function normalizePptxRoundTripTransform(
       invalidEdit('PowerPoint transform value is not a valid scene transform');
     }
   }
+  try {
+    pointsToEmu(value.x);
+    pointsToEmu(value.y);
+    pointsToEmu(value.width);
+    pointsToEmu(value.height);
+    degreesToAngle(value.rotation ?? 0);
+  } catch {
+    invalidEdit('PowerPoint transform value is not a valid scene transform');
+  }
   return {
     flipHorizontal: value.flipHorizontal ?? false,
     flipVertical: value.flipVertical ?? false,
@@ -150,6 +209,20 @@ export function normalizePptxRoundTripTransform(
     x: value.x,
     y: value.y,
   };
+}
+
+function validateTableTransformSize(
+  target: PptxSceneTableElement,
+  value: PptxSceneTransform,
+): void {
+  if (
+    pointsToEmu(value.width) < target.columns.length ||
+    pointsToEmu(value.height) < target.rows.length
+  ) {
+    invalidEdit(
+      'PowerPoint table transform is too small for its column and row grid',
+    );
+  }
 }
 
 function invalidEdit(message: string): never {
@@ -254,6 +327,9 @@ async function setPptxRoundTripTransform(
     invalidEdit('PowerPoint transform target has no resolved transform');
   }
   const transform = normalizePptxRoundTripTransform(request.value);
+  if (target.type === 'table') {
+    validateTableTransformSize(target, transform);
+  }
   if (canonicalJson(expectedTransform) === canonicalJson(transform)) {
     invalidEdit('PowerPoint transform edit must change the target value');
   }
@@ -275,6 +351,7 @@ async function setPptxRoundTripTransform(
   snapshot.supportProfile =
     targetType === 'image' ||
     targetType === 'shape' ||
+    targetType === 'table' ||
     snapshot.supportProfile.id === 'pptx-roundtrip-native-v1'
       ? createPptxRoundTripNativeEditSupportProfile()
       : createPptxRoundTripTextEditSupportProfile();
@@ -306,4 +383,11 @@ export function setPptxRoundTripImageTransform(
   request: PptxRoundTripSetTransformRequest,
 ): Promise<PptxRoundTripSnapshot> {
   return setPptxRoundTripTransform(value, request, 'image');
+}
+
+export function setPptxRoundTripTableTransform(
+  value: PptxRoundTripSnapshot,
+  request: PptxRoundTripSetTransformRequest,
+): Promise<PptxRoundTripSnapshot> {
+  return setPptxRoundTripTransform(value, request, 'table');
 }

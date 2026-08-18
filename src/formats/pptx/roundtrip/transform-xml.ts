@@ -5,6 +5,7 @@ import {
   escapePptxXmlPattern,
   pptxShapeHasElement,
   qualifiedPptxName,
+  resolvePptxEditableGraphicFrameXml,
   resolvePptxEditablePictureXml,
   resolvePptxEditableShapeXml,
 } from './shape-range';
@@ -53,6 +54,7 @@ function patchPptxTransformXml(
   shapeId: string,
   operation: PptxRoundTripSetTransformOperation,
   resolveElement: typeof resolvePptxEditableShapeXml,
+  transformNamespace: 'drawing' | 'presentation' = 'drawing',
 ): string {
   const { drawingPrefix, markupPrefix, presentationPrefix, range, shape } =
     resolveElement(xml, shapeId);
@@ -73,7 +75,10 @@ function patchPptxTransformXml(
     );
   }
 
-  const transformName = qualifiedPptxName(drawingPrefix, 'xfrm');
+  const transformName = qualifiedPptxName(
+    transformNamespace === 'drawing' ? drawingPrefix : presentationPrefix,
+    'xfrm',
+  );
   const offsetName = qualifiedPptxName(drawingPrefix, 'off');
   const extentName = qualifiedPptxName(drawingPrefix, 'ext');
   const attributePattern =
@@ -135,6 +140,118 @@ function patchPptxTransformXml(
   return `${xml.slice(0, matchStart)}${replacement}${xml.slice(matchEnd)}`;
 }
 
+function replaceIntegerAttribute(
+  tag: string,
+  name: string,
+  value: number,
+): string {
+  const pattern = new RegExp(`(\\s${name}\\s*=\\s*)(?:"[^"]*"|'[^']*')`);
+  if (!pattern.test(tag)) {
+    unsupportedPptxEdit(`PowerPoint table ${name} attribute is missing`);
+  }
+  return tag.replace(pattern, `$1"${value}"`);
+}
+
+function scaleTableAttributeTags(
+  shape: string,
+  tagName: string,
+  attributeName: string,
+  expectedTotal: number,
+  replacementTotal: number,
+  description: string,
+): string {
+  const attributePattern =
+    '((?:\\s+[A-Za-z_][\\w.:-]*\\s*=\\s*(?:"[^"]*"|\'[^\']*\'))*)';
+  const tagPattern = new RegExp(
+    `<${escapePptxXmlPattern(tagName)}${attributePattern}\\s*\\/?>`,
+    'g',
+  );
+  const matches = [...shape.matchAll(tagPattern)];
+  if (matches.length === 0) {
+    unsupportedPptxEdit(`PowerPoint table has no ${description}`);
+  }
+  const source = matches.map((match) =>
+    integerAttribute(match[1] as string, attributeName),
+  );
+  if (
+    source.some((value) => value <= 0) ||
+    source.reduce((total, value) => total + value, 0) !== expectedTotal
+  ) {
+    unsupportedPptxEdit(
+      `PowerPoint table ${description} do not match the preview precondition`,
+    );
+  }
+  if (replacementTotal < matches.length) {
+    unsupportedPptxEdit(
+      `PowerPoint table ${description} cannot fit the requested transform`,
+    );
+  }
+  const replacements: number[] = [];
+  let allocated = 0;
+  for (let index = 0; index < source.length; index += 1) {
+    const remaining = source.length - index - 1;
+    const value =
+      index === source.length - 1
+        ? replacementTotal - allocated
+        : Math.max(
+            1,
+            Math.min(
+              Math.round(
+                ((source[index] as number) * replacementTotal) / expectedTotal,
+              ),
+              replacementTotal - allocated - remaining,
+            ),
+          );
+    replacements.push(value);
+    allocated += value;
+  }
+
+  let result = shape;
+  for (let index = matches.length - 1; index >= 0; index -= 1) {
+    const match = matches[index] as RegExpMatchArray;
+    const start = match.index as number;
+    const replacement = replaceIntegerAttribute(
+      match[0],
+      attributeName,
+      replacements[index] as number,
+    );
+    result = `${result.slice(0, start)}${replacement}${result.slice(start + match[0].length)}`;
+  }
+  return result;
+}
+
+function scalePptxTableGridXml(
+  xml: string,
+  shapeId: string,
+  operation: PptxRoundTripSetTransformOperation,
+): string {
+  const { drawingPrefix, range, shape } = resolvePptxEditableGraphicFrameXml(
+    xml,
+    shapeId,
+  );
+  const tableName = qualifiedPptxName(drawingPrefix, 'tbl');
+  if (!pptxShapeHasElement(shape, tableName)) {
+    unsupportedPptxEdit('PowerPoint graphic frame is not a native table');
+  }
+  const columns = scaleTableAttributeTags(
+    shape,
+    qualifiedPptxName(drawingPrefix, 'gridCol'),
+    'w',
+    pointsToEmu(operation.expectedTransform.width),
+    pointsToEmu(operation.value.width),
+    'column widths',
+  );
+  const rows = scaleTableAttributeTags(
+    columns,
+    qualifiedPptxName(drawingPrefix, 'tr'),
+    'h',
+    pointsToEmu(operation.expectedTransform.height),
+    pointsToEmu(operation.value.height),
+    'row heights',
+  );
+  return `${xml.slice(0, range.start)}${rows}${xml.slice(range.end)}`;
+}
+
 export function patchPptxShapeTransformXml(
   xml: string,
   shapeId: string,
@@ -159,4 +276,19 @@ export function patchPptxPictureTransformXml(
     operation,
     resolvePptxEditablePictureXml,
   );
+}
+
+export function patchPptxGraphicFrameTransformXml(
+  xml: string,
+  shapeId: string,
+  operation: PptxRoundTripSetTransformOperation,
+): string {
+  const transformed = patchPptxTransformXml(
+    xml,
+    shapeId,
+    operation,
+    resolvePptxEditableGraphicFrameXml,
+    'presentation',
+  );
+  return scalePptxTableGridXml(transformed, shapeId, operation);
 }
