@@ -91,6 +91,42 @@ function addNativeImage(
   return image;
 }
 
+function tableText(key: string): Record<string, unknown> {
+  return {
+    body: { anchor: 'center' },
+    paragraphs: [
+      {
+        children: [{ key: `${key}-run`, text: key, type: 'run' }],
+        key: `${key}-paragraph`,
+      },
+    ],
+  };
+}
+
+function addNativeTable(
+  scene: Record<string, unknown>,
+): Record<string, unknown> {
+  const table = {
+    authored: {
+      transform: { height: 80, width: 300, x: 40, y: 50 },
+    },
+    columns: [100, 200],
+    key: 'table-1',
+    resolved: { hidden: false },
+    rows: [
+      {
+        cells: [{ text: tableText('cell-1') }, { text: tableText('cell-2') }],
+        height: 80,
+      },
+    ],
+    type: 'table',
+  };
+  const slide = (scene.slides as Record<string, unknown>[])[0];
+  if (slide === undefined) throw new Error('Expected slide');
+  slide.elements = [table];
+  return table;
+}
+
 function firstRun(scene: Record<string, unknown>): Record<string, unknown> {
   const text = element(scene).text as Record<string, unknown>;
   const paragraphs = text.paragraphs as Record<string, unknown>[];
@@ -172,6 +208,118 @@ describe('PowerPoint creation scene validation', () => {
         'Creation profile create-native-v1 requires an authored shape transform',
       path: '$.slides[0].elements[0].authored.transform',
     });
+  });
+
+  it('accepts structured native tables with exact grid dimensions', () => {
+    const scene = creationScene();
+    addNativeTable(scene);
+
+    expect(validateNativeCreation(scene)).toEqual({ issues: [], valid: true });
+    expect(validateCreation(scene).issues).toContainEqual({
+      code: 'unsupported-feature',
+      message: 'Creation profile create-text-v1 supports text elements only',
+      path: '$.slides[0].elements[0]',
+    });
+  });
+
+  it.each([
+    ['width', 301, 'column widths'],
+    ['height', 81, 'row heights'],
+  ])(
+    'requires native table transform %s to match authored %s',
+    (key, value, source) => {
+      const scene = creationScene();
+      const table = addNativeTable(scene);
+      const authored = table.authored as Record<string, unknown>;
+      const transform = authored.transform as Record<string, unknown>;
+      transform[key] = value;
+
+      expect(validateNativeCreation(scene).issues).toContainEqual({
+        code: 'invalid-scene-document',
+        message: `Table transform ${key} must equal the sum of its ${source}`,
+        path: `$.slides[0].elements[0].authored.transform.${key}`,
+      });
+    },
+  );
+
+  it('requires bounded table spans and exact continuation flags', () => {
+    const scene = creationScene();
+    const table = addNativeTable(scene);
+    table.rows = [
+      {
+        cells: [
+          { colSpan: 2, rowSpan: 2, text: tableText('origin') },
+          { hMerge: true, text: tableText('top-right') },
+        ],
+        height: 40,
+      },
+      {
+        cells: [
+          { text: tableText('bottom-left'), vMerge: true },
+          {
+            hMerge: true,
+            text: tableText('bottom-right'),
+            vMerge: true,
+          },
+        ],
+        height: 40,
+      },
+    ];
+
+    expect(validateNativeCreation(scene)).toEqual({ issues: [], valid: true });
+
+    const rows = table.rows as Record<string, unknown>[];
+    const bottom = rows[1] as Record<string, unknown>;
+    const cells = bottom.cells as Record<string, unknown>[];
+    delete cells[1]?.hMerge;
+    expect(validateNativeCreation(scene).issues).toContainEqual({
+      code: 'invalid-scene-document',
+      message: 'Table merge continuation flags do not match its spans',
+      path: '$.slides[0].elements[0].rows[1].cells[1]',
+    });
+
+    const origin = (
+      (rows[0] as Record<string, unknown>).cells as Record<string, unknown>[]
+    )[0];
+    if (origin === undefined) throw new Error('Expected origin');
+    origin.colSpan = 3;
+    expect(validateNativeCreation(scene).issues).toContainEqual({
+      code: 'invalid-scene-document',
+      message: 'Table span exceeds the grid bounds',
+      path: '$.slides[0].elements[0].rows[0].cells[0]',
+    });
+  });
+
+  it('validates native table cells, borders, and exact row width', () => {
+    const scene = creationScene();
+    const table = addNativeTable(scene);
+    const rows = table.rows as Record<string, unknown>[];
+    const row = rows[0] as Record<string, unknown>;
+    const cells = row.cells as Record<string, unknown>[];
+    const first = cells[0] as Record<string, unknown>;
+    first.fillColor = 'blue';
+    first.borders = {
+      top: { color: '#334155', style: 'double', width: 0 },
+    };
+    row.cells = [first];
+
+    const issues = validateNativeCreation(scene).issues;
+    expect(issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          path: '$.slides[0].elements[0].rows[0].cells',
+        }),
+        expect.objectContaining({
+          path: '$.slides[0].elements[0].rows[0].cells[0].fillColor',
+        }),
+        expect.objectContaining({
+          path: '$.slides[0].elements[0].rows[0].cells[0].borders.top.style',
+        }),
+        expect.objectContaining({
+          path: '$.slides[0].elements[0].rows[0].cells[0].borders.top.width',
+        }),
+      ]),
+    );
   });
 
   it('accepts signature-checked native image media and references', () => {

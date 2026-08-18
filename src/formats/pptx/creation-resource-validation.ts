@@ -53,12 +53,18 @@ function countCreationResources(document: JsonObject): CreationResourceCounts {
     const elements = slide.elements;
     counts.elements += elements.length;
     elements.forEach((element) => {
-      if (element.type !== 'text') return;
-      const paragraphs = element.text.paragraphs;
-      counts.paragraphs += paragraphs.length;
-      paragraphs.forEach((paragraph) => {
-        counts.textNodes += paragraph.children.length;
-      });
+      const textBodies =
+        element.type === 'text'
+          ? [element.text]
+          : element.type === 'table'
+            ? element.rows.flatMap((row) => row.cells.map((cell) => cell.text))
+            : [];
+      for (const text of textBodies) {
+        counts.paragraphs += text.paragraphs.length;
+        text.paragraphs.forEach((paragraph) => {
+          counts.textNodes += paragraph.children.length;
+        });
+      }
     });
   });
   const media = Array.isArray(document.media)

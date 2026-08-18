@@ -203,6 +203,36 @@ describe('PowerPoint creation resource validation', () => {
     ).toEqual([]);
   });
 
+  it('counts structured text inside every native table cell', () => {
+    const input = document([
+      {
+        elements: [
+          {
+            rows: [
+              {
+                cells: Array.from(
+                  { length: MAX_POWERPOINT_CREATION_PARAGRAPHS + 1 },
+                  () => ({
+                    text: { paragraphs: [{ children: [] }] },
+                  }),
+                ),
+              },
+            ],
+            type: 'table',
+          },
+        ],
+      },
+    ]);
+
+    expect(
+      validatePowerPointCreationResources(input, 'create-native-v1'),
+    ).toContainEqual({
+      code: 'resource-limit-exceeded',
+      message: `Creation profile create-native-v1 supports at most ${MAX_POWERPOINT_CREATION_PARAGRAPHS} paragraphs`,
+      path: '$.slides',
+    });
+  });
+
   it('enforces media count, per-resource, and aggregate byte budgets', () => {
     const tooMany = document([]);
     tooMany.media = new Array(MAX_POWERPOINT_CREATION_MEDIA + 1);

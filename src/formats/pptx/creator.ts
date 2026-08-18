@@ -24,7 +24,10 @@ type PptxCreationProfile = 'create-native-v1' | 'create-text-v1';
 function creationProfile(scene: PptxSceneDocument): PptxCreationProfile {
   return scene.slides.some((slide) =>
     slide.elements.some(
-      (element) => element.type === 'image' || element.type === 'shape',
+      (element) =>
+        element.type === 'image' ||
+        element.type === 'shape' ||
+        element.type === 'table',
     ),
   )
     ? 'create-native-v1'
