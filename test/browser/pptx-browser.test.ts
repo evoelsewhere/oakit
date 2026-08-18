@@ -10,6 +10,7 @@ import {
   serializePptxRoundTripJson,
   setPptxRoundTripImageTransform,
   setPptxRoundTripShapeTransform,
+  setPptxRoundTripTableTransform,
   writePptxRoundTrip,
   type PptxSceneDocument,
 } from '../../src';
@@ -354,6 +355,90 @@ describe('PPTX public API in browsers', () => {
     expect(new TextDecoder().decode(rendered.slides[0]?.data)).toContain(
       'data:image/png;base64,',
     );
+  });
+
+  it('creates and edits a native table without an Office runtime', async () => {
+    const cell = (key: string, value: string, fillColor: string) => ({
+      fillColor,
+      text: {
+        body: { anchor: 'center' as const },
+        paragraphs: [
+          {
+            children: [
+              { key: `${key}-run`, text: value, type: 'run' as const },
+            ],
+            key: `${key}-paragraph`,
+          },
+        ],
+      },
+    });
+    const scene: PptxSceneDocument = {
+      layouts: [],
+      masters: [],
+      media: [],
+      schemaVersion: 2,
+      size: { height: 540, width: 960 },
+      slides: [
+        {
+          elements: [
+            {
+              authored: {
+                transform: { height: 100, width: 300, x: 72, y: 90 },
+              },
+              columns: [100, 200],
+              key: 'browser-table',
+              resolved: { hidden: false },
+              rows: [
+                {
+                  cells: [
+                    cell('first', 'Browser table', '#E0F2FE'),
+                    cell('second', 'Native', '#E0F2FE'),
+                  ],
+                  height: 100,
+                },
+              ],
+              type: 'table',
+            },
+          ],
+          key: 'browser-table-slide',
+        },
+      ],
+      themes: [],
+    };
+    const created = await createPptx(scene);
+    const snapshot = await readPptxRoundTrip(created.data);
+    const changed = {
+      flipHorizontal: false,
+      flipVertical: false,
+      height: 140,
+      rotation: 0,
+      width: 420,
+      x: 100,
+      y: 120,
+    };
+    const edited = await setPptxRoundTripTableTransform(snapshot, {
+      targetKey: 'slide-1-element-1',
+      value: changed,
+    });
+    const output = await writePptxRoundTrip(edited);
+    const [parsed, rendered] = await Promise.all([
+      parsePptx(output.data, { errorMode: 'strict', imageMode: 'none' }),
+      renderPptxToSvg(output.data, { slideNumbers: [1] }),
+    ]);
+
+    expect(output.report.supportProfile.id).toBe('pptx-roundtrip-native-v1');
+    expect(parsed.slides[0]?.elements[0]).toMatchObject({
+      colWidths: [140, 280],
+      height: 140,
+      left: 100,
+      rowHeights: [140],
+      top: 120,
+      type: 'table',
+      width: 420,
+    });
+    const svg = new TextDecoder().decode(rendered.slides[0]?.data);
+    expect(svg).toContain('Browser\u00a0table');
+    expect(svg).toContain('#E0F2FE');
   });
 
   it('keeps input forms and concurrent parses deterministic', async () => {
