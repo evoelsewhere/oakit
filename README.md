@@ -50,6 +50,16 @@ fills, and media. This gate proves robust opening, semantic retention, producer
 compatibility, and Office-free rendering; it does not claim pixel-identical
 rendering across machines with different installed fonts.
 
+## Documentation
+
+- [PowerPoint usage guide](docs/pptx-usage-guide.md): detailed Node.js,
+  browser, CLI, portable JSON, editing, creation, rendering, security, and agent
+  workflow examples.
+- [Architecture](docs/architecture.md): package boundaries, data flow,
+  invariants, extension points, and reliability model.
+- [PowerPoint round-trip plan](docs/pptx-roundtrip-plan.md): fidelity profiles,
+  supported edit scope, and progression toward broader native support.
+
 ## Why OAKit
 
 Office files are not single documents internally. They are ZIP packages made
