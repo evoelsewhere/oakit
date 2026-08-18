@@ -34,6 +34,10 @@ function textCell(
           ],
           key: 'paragraph',
         },
+        {
+          children: [{ key: 'second-run', text: 'Gamma', type: 'run' }],
+          key: 'second-paragraph',
+        },
       ],
     },
     ...overrides,
@@ -88,7 +92,7 @@ function generatedTable(): Table {
           colSpan: 2,
           fillColor: '#ABCDEF',
           rowSpan: 2,
-          text: 'Alpha\nBeta',
+          text: 'Alpha\nBeta\nGamma',
           vAlign: 'up',
         },
         {
@@ -137,6 +141,37 @@ describe('native PowerPoint table verification', () => {
       'slide 2, element 3',
     );
   });
+
+  it.each([
+    ['horizontal', { hMerge: true }, { hMerge: 1 }],
+    ['vertical', { vMerge: true }, { vMerge: 1 }],
+  ] as const)(
+    'ignores producer placeholder text for a %s-only continuation',
+    (_name, expectedMerge, generatedMerge) => {
+      const expected = expectedTable();
+      const expectedContinuation = expected.rows[0]?.cells[1];
+      if (expectedContinuation === undefined) throw new Error('Expected cell');
+      delete expectedContinuation.hMerge;
+      delete expectedContinuation.vMerge;
+      Object.assign(expectedContinuation, expectedMerge);
+      const generated = generatedTable();
+      const generatedContinuation = generated.data[0]?.[1];
+      if (generatedContinuation === undefined) throw new Error('Expected cell');
+      delete generatedContinuation.hMerge;
+      delete generatedContinuation.vMerge;
+      Object.assign(generatedContinuation, generatedMerge);
+
+      expect(() =>
+        verifyPowerPointTableElement(
+          generated,
+          expected,
+          0,
+          0,
+          dependencies().value,
+        ),
+      ).not.toThrow();
+    },
+  );
 
   it.each([undefined, { type: 'shape' }])(
     'rejects missing or non-table generated element %#',
@@ -279,7 +314,9 @@ describe('native PowerPoint table verification', () => {
           0,
           dependencies().value,
         ),
-      ).toThrow(`Generated PowerPoint table border mismatch`);
+      ).toThrow(
+        `Generated PowerPoint table border mismatch at slide 1, element 1, row 1, cell 1, ${direction} border`,
+      );
 
       for (const key of ['borderColor', 'borderWidth', 'borderType'] as const) {
         const mismatch = generatedTable();
