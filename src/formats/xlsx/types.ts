@@ -943,6 +943,67 @@ export interface XlsxDrawingTransform {
   rotation: number;
 }
 
+export interface XlsxDrawingObjectTransform extends XlsxDrawingTransform {
+  height: number;
+  width: number;
+  x: number;
+  y: number;
+}
+
+export type XlsxDrawingColor =
+  | { kind: 'rgb'; value: string }
+  | { kind: 'scheme'; value: string }
+  | { kind: 'system'; lastColor?: string; value: string };
+
+export type XlsxDrawingFill =
+  { kind: 'none' } | { color: XlsxDrawingColor; kind: 'solid' };
+
+export interface XlsxDrawingLine {
+  dash?: string;
+  fill?: XlsxDrawingFill;
+  width?: number;
+}
+
+export type XlsxDrawingGeometry =
+  { kind: 'custom' } | { kind: 'preset'; preset: string };
+
+interface XlsxDrawingShapeBase {
+  description?: string;
+  fill?: XlsxDrawingFill;
+  geometry: XlsxDrawingGeometry;
+  hidden: boolean;
+  id: number;
+  line?: XlsxDrawingLine;
+  name: string;
+  text?: string;
+  transform: XlsxDrawingObjectTransform;
+}
+
+export interface XlsxDrawingShape extends XlsxDrawingShapeBase {
+  kind: 'shape';
+}
+
+export interface XlsxDrawingConnector extends XlsxDrawingShapeBase {
+  endConnection?: { shapeId: number; site: number };
+  kind: 'connector';
+  startConnection?: { shapeId: number; site: number };
+}
+
+export interface XlsxDrawingGroup {
+  children: XlsxDrawingObject[];
+  description?: string;
+  hidden: boolean;
+  id: number;
+  kind: 'group';
+  name: string;
+  transform: XlsxDrawingObjectTransform & {
+    childHeight: number;
+    childWidth: number;
+    childX: number;
+    childY: number;
+  };
+}
+
 export interface XlsxImageCrop {
   bottom: number;
   left: number;
@@ -965,12 +1026,18 @@ export interface XlsxEmbeddedImage {
   transform: XlsxDrawingTransform;
 }
 
+export type XlsxDrawingObject =
+  | XlsxDrawingConnector
+  | XlsxDrawingGroup
+  | XlsxDrawingShape
+  | XlsxEmbeddedImage;
+
 export interface XlsxDrawing {
   editAs?: 'absolute' | 'one-cell' | 'two-cell';
   extent: XlsxDrawingExtent;
   from?: XlsxDrawingMarker;
   kind: 'absolute' | 'one-cell' | 'two-cell';
-  object: XlsxEmbeddedImage;
+  object: XlsxDrawingObject;
   position?: { x: number; y: number };
   selectionRelation: 'full-sheet' | 'intersects-selection' | 'worksheet-global';
   to?: XlsxDrawingMarker;

@@ -1,11 +1,20 @@
 import { encodeBase64 } from '../../../common/binary/base64';
+import { decodeXmlEntities } from '../../../common/text/html';
 import type { XmlLookupValue } from '../../../common/xml/tree';
 import { getXmlNodeOrder } from '../../../common/xml/tree';
 import { XlsxParseError } from '../errors';
 import type {
   XlsxDrawing,
+  XlsxDrawingColor,
+  XlsxDrawingConnector,
   XlsxDrawingExtent,
+  XlsxDrawingFill,
+  XlsxDrawingGroup,
+  XlsxDrawingLine,
   XlsxDrawingMarker,
+  XlsxDrawingObject,
+  XlsxDrawingObjectTransform,
+  XlsxDrawingShape,
   XlsxEmbeddedImage,
   XlsxImageCrop,
   XlsxImageMode,
@@ -215,9 +224,11 @@ function childByLocal(node: XmlRecord, name: string): unknown {
 }
 
 function scalarText(value: unknown): string | undefined {
-  if (typeof value === 'string') return value;
+  if (typeof value === 'string') return decodeXmlEntities(value);
   const node = record(value);
-  return typeof node?.value === 'string' ? node.value : undefined;
+  return typeof node?.value === 'string'
+    ? decodeXmlEntities(node.value)
+    : undefined;
 }
 
 function root(
@@ -563,6 +574,500 @@ async function picture(
   };
 }
 
+function objectProperties(
+  node: XmlRecord,
+  containerName: string,
+  part: string,
+): {
+  description?: string;
+  hidden: boolean;
+  id: number;
+  name: string;
+} {
+  const container = record(childByLocal(node, containerName));
+  const properties = container
+    ? record(childByLocal(container, 'cNvPr'))
+    : undefined;
+  if (!properties) {
+    fail(
+      'invalid-document-structure',
+      'Drawing object properties are missing',
+      part,
+    );
+  }
+  const attrs = attributes(properties);
+  const id = integer(attrs.id, false, 'Drawing object ID is invalid', part);
+  if (id === 0)
+    fail('invalid-document-value', 'Drawing object ID is invalid', part);
+  if (!attrs.name)
+    fail('invalid-document-value', 'Drawing object name is invalid', part);
+  return {
+    ...(attrs.descr === undefined ? {} : { description: attrs.descr }),
+    hidden: booleanAttribute(
+      attrs.hidden,
+      'Drawing object hidden flag is invalid',
+      part,
+    ),
+    id,
+    name: attrs.name,
+  };
+}
+
+function drawingColor(node: XmlRecord, part: string): XlsxDrawingColor {
+  const colorChildren = { ...node };
+  delete colorChildren.attrs;
+  delete colorChildren.value;
+  const entries = Object.entries(colorChildren);
+  if (entries.length !== 1) {
+    fail('invalid-document-structure', 'Drawing color is invalid', part);
+  }
+  const [name, colorValue] = entries[0]!;
+  const attrs = attributes(record(colorValue) ?? {});
+  if (
+    localName(name) === 'srgbClr' &&
+    typeof attrs.val === 'string' &&
+    /^[0-9A-Fa-f]{6}$/u.test(attrs.val)
+  ) {
+    return { kind: 'rgb', value: attrs.val.toUpperCase() };
+  }
+  if (localName(name) === 'schemeClr' && attrs.val) {
+    return { kind: 'scheme', value: attrs.val };
+  }
+  if (localName(name) === 'sysClr' && attrs.val) {
+    if (
+      attrs.lastClr !== undefined &&
+      !/^[0-9A-Fa-f]{6}$/u.test(attrs.lastClr)
+    ) {
+      fail('invalid-document-value', 'Drawing color is invalid', part);
+    }
+    return {
+      kind: 'system',
+      ...(attrs.lastClr === undefined
+        ? {}
+        : { lastColor: attrs.lastClr.toUpperCase() }),
+      value: attrs.val,
+    };
+  }
+  fail('invalid-document-value', 'Drawing color is invalid', part);
+}
+
+function drawingFill(
+  node: XmlRecord,
+  part: string,
+): XlsxDrawingFill | undefined {
+  if (childByLocal(node, 'noFill') !== undefined) return { kind: 'none' };
+  const solidValue = childByLocal(node, 'solidFill');
+  const solid = record(solidValue);
+  if (solidValue !== undefined && !solid) {
+    fail('invalid-document-structure', 'Drawing color is invalid', part);
+  }
+  return solid
+    ? { color: drawingColor(solid, part), kind: 'solid' }
+    : undefined;
+}
+
+function drawingLine(
+  node: XmlRecord,
+  part: string,
+): XlsxDrawingLine | undefined {
+  const line = record(childByLocal(node, 'ln'));
+  if (!line) return undefined;
+  const attrs = attributes(line);
+  const presetDash = record(childByLocal(line, 'prstDash'));
+  const dash = presetDash ? attributes(presetDash).val : undefined;
+  const fill = drawingFill(line, part);
+  return {
+    ...(dash === undefined ? {} : { dash }),
+    ...(fill === undefined ? {} : { fill }),
+    ...(attrs.w === undefined
+      ? {}
+      : {
+          width: emuPoints(
+            attrs.w,
+            false,
+            'Drawing line width is invalid',
+            part,
+          ),
+        }),
+  };
+}
+
+function objectTransform(
+  value: unknown,
+  part: string,
+): XlsxDrawingObjectTransform {
+  const xfrm = record(value);
+  if (!xfrm)
+    fail(
+      'invalid-document-structure',
+      'Drawing object transform is missing',
+      part,
+    );
+  const off = record(childByLocal(xfrm, 'off'));
+  const size = record(childByLocal(xfrm, 'ext'));
+  if (!off || !size) {
+    fail(
+      'invalid-document-structure',
+      'Drawing object transform is incomplete',
+      part,
+    );
+  }
+  const attrs = attributes(xfrm);
+  const offAttrs = attributes(off);
+  const extentValue = extent(size, part);
+  return {
+    flipHorizontal: booleanAttribute(
+      attrs.flipH,
+      'Drawing object horizontal-flip flag is invalid',
+      part,
+    ),
+    flipVertical: booleanAttribute(
+      attrs.flipV,
+      'Drawing object vertical-flip flag is invalid',
+      part,
+    ),
+    height: extentValue.height,
+    rotation:
+      attrs.rot === undefined
+        ? 0
+        : integer(attrs.rot, true, 'Drawing object rotation is invalid', part) /
+          60_000,
+    width: extentValue.width,
+    x: emuPoints(
+      offAttrs.x,
+      true,
+      'Drawing object X position is invalid',
+      part,
+    ),
+    y: emuPoints(
+      offAttrs.y,
+      true,
+      'Drawing object Y position is invalid',
+      part,
+    ),
+  };
+}
+
+function shapeGeometry(
+  node: XmlRecord,
+  part: string,
+): XlsxDrawingShape['geometry'] {
+  const preset = record(childByLocal(node, 'prstGeom'));
+  if (preset) {
+    const value = attributes(preset).prst;
+    if (!value)
+      fail(
+        'invalid-document-value',
+        'Drawing preset geometry is invalid',
+        part,
+      );
+    return { kind: 'preset', preset: value };
+  }
+  if (childByLocal(node, 'custGeom') !== undefined) return { kind: 'custom' };
+  fail('invalid-document-structure', 'Drawing geometry is missing', part);
+}
+
+function drawingText(
+  node: XmlRecord,
+  budget: XlsxWorksheetBudget,
+  limits: ResolvedXlsxResourceLimits,
+  part: string,
+): string | undefined {
+  const body = record(childByLocal(node, 'txBody'));
+  if (!body) return undefined;
+  const paragraphs = records(childByLocal(body, 'p'));
+  if (!paragraphs)
+    fail('invalid-document-structure', 'Drawing text is invalid', part);
+  const text = paragraphs
+    .map((paragraph) => {
+      const values: string[] = [];
+      const visit = (value: XmlRecord): void => {
+        const childrenByName = { ...value };
+        delete childrenByName.attrs;
+        delete childrenByName.value;
+        const children = Object.entries(childrenByName)
+          .flatMap(([name, childValue]) => {
+            const childValues: unknown[] = Array.isArray(childValue)
+              ? [...(childValue as unknown[])]
+              : [childValue];
+            return childValues.map((child) => ({
+              child,
+              name,
+              order: getXmlNodeOrder(child),
+            }));
+          })
+          .sort(
+            (left, right) =>
+              (left.order ?? Number.MAX_SAFE_INTEGER) -
+              (right.order ?? Number.MAX_SAFE_INTEGER),
+          );
+        for (const child of children) {
+          const name = localName(child.name);
+          if (name === 't') {
+            const scalar = scalarText(child.child);
+            if (scalar === undefined) {
+              fail(
+                'invalid-document-structure',
+                'Drawing text is invalid',
+                part,
+              );
+            }
+            values.push(scalar);
+          } else if (name === 'br') {
+            values.push('\n');
+          } else {
+            const childNode = record(child.child);
+            if (childNode) visit(childNode);
+          }
+        }
+      };
+      visit(paragraph);
+      return values.join('');
+    })
+    .join('\n');
+  consumeXlsxWorksheetBudget(
+    budget,
+    'textCharacters',
+    text.length,
+    'maxTextCharacters',
+    limits,
+    part,
+  );
+  return text;
+}
+
+function connection(
+  value: unknown,
+  part: string,
+): { shapeId: number; site: number } | undefined {
+  const node = record(value);
+  if (!node) return undefined;
+  const attrs = attributes(node);
+  return {
+    shapeId: integer(
+      attrs.id,
+      false,
+      'Drawing connector shape reference is invalid',
+      part,
+    ),
+    site: integer(attrs.idx, false, 'Drawing connector site is invalid', part),
+  };
+}
+
+function shapeObject(
+  node: XmlRecord,
+  connector: boolean,
+  budget: XlsxWorksheetBudget,
+  limits: ResolvedXlsxResourceLimits,
+  part: string,
+): XlsxDrawingShape | XlsxDrawingConnector {
+  const props = objectProperties(
+    node,
+    connector ? 'nvCxnSpPr' : 'nvSpPr',
+    part,
+  );
+  const shapeProperties = record(childByLocal(node, 'spPr'));
+  if (!shapeProperties) {
+    fail(
+      'invalid-document-structure',
+      'Drawing shape properties are missing',
+      part,
+    );
+  }
+  const fill = drawingFill(shapeProperties, part);
+  const line = drawingLine(shapeProperties, part);
+  const text = drawingText(node, budget, limits, part);
+  const base = {
+    ...props,
+    ...(fill === undefined ? {} : { fill }),
+    geometry: shapeGeometry(shapeProperties, part),
+    ...(line === undefined ? {} : { line }),
+    ...(text === undefined ? {} : { text }),
+    transform: objectTransform(childByLocal(shapeProperties, 'xfrm'), part),
+  };
+  if (!connector) return { ...base, kind: 'shape' };
+  const nonVisual = record(childByLocal(node, 'nvCxnSpPr'))!;
+  const connectionProperties = record(childByLocal(nonVisual, 'cNvCxnSpPr'));
+  const endConnection = connection(
+    childByLocal(connectionProperties ?? {}, 'endCxn'),
+    part,
+  );
+  const startConnection = connection(
+    childByLocal(connectionProperties ?? {}, 'stCxn'),
+    part,
+  );
+  return {
+    ...base,
+    ...(endConnection === undefined ? {} : { endConnection }),
+    kind: 'connector',
+    ...(startConnection === undefined ? {} : { startConnection }),
+  };
+}
+
+function registerObjectId(id: number, ids: Set<number>, part: string): void {
+  if (ids.has(id)) {
+    fail(
+      'invalid-document-value',
+      'Worksheet drawing contains duplicate object IDs',
+      part,
+    );
+  }
+  ids.add(id);
+}
+
+async function drawingObject(
+  node: XmlRecord,
+  relationships: ReadonlyMap<string, XlsxRelationship>,
+  discovery: XlsxWorkbookDiscovery,
+  reader: XlsxPartReader,
+  media: XlsxMediaSession,
+  includePayload: boolean,
+  drawingBudget: XlsxDrawingBudget,
+  worksheetBudget: XlsxWorksheetBudget,
+  limits: ResolvedXlsxResourceLimits,
+  ids: Set<number>,
+  part: string,
+): Promise<
+  { extent: XlsxDrawingExtent; object: XlsxDrawingObject } | undefined
+> {
+  const candidates = ['pic', 'sp', 'cxnSp', 'grpSp']
+    .map((name) => ({ name, node: record(childByLocal(node, name)) }))
+    .filter(
+      (candidate): candidate is { name: string; node: XmlRecord } =>
+        candidate.node !== undefined,
+    );
+  if (candidates.length === 0) return undefined;
+  if (candidates.length !== 1) {
+    fail(
+      'invalid-document-structure',
+      'Drawing anchor has multiple objects',
+      part,
+    );
+  }
+  const candidate = candidates[0]!;
+  if (candidate.name === 'pic') {
+    const parsed = await picture(
+      candidate.node,
+      relationships,
+      discovery,
+      reader,
+      media,
+      part,
+      includePayload,
+    );
+    registerObjectId(parsed.image.id, ids, part);
+    return { extent: parsed.extent, object: parsed.image };
+  }
+  if (candidate.name === 'sp' || candidate.name === 'cxnSp') {
+    const parsed = shapeObject(
+      candidate.node,
+      candidate.name === 'cxnSp',
+      worksheetBudget,
+      limits,
+      part,
+    );
+    registerObjectId(parsed.id, ids, part);
+    return {
+      extent: {
+        height: parsed.transform.height,
+        width: parsed.transform.width,
+      },
+      object: parsed,
+    };
+  }
+  const props = objectProperties(candidate.node, 'nvGrpSpPr', part);
+  registerObjectId(props.id, ids, part);
+  const groupProperties = record(childByLocal(candidate.node, 'grpSpPr'));
+  const xfrm = groupProperties
+    ? record(childByLocal(groupProperties, 'xfrm'))
+    : undefined;
+  if (!xfrm) {
+    fail(
+      'invalid-document-structure',
+      'Drawing group transform is missing',
+      part,
+    );
+  }
+  const baseTransform = objectTransform(xfrm, part);
+  const childOffset = record(childByLocal(xfrm, 'chOff'));
+  const childExtent = record(childByLocal(xfrm, 'chExt'));
+  if (!childOffset || !childExtent) {
+    fail(
+      'invalid-document-structure',
+      'Drawing group child transform is missing',
+      part,
+    );
+  }
+  const childOffsetAttrs = attributes(childOffset);
+  const childSize = extent(childExtent, part);
+  const childNodes = Object.entries(candidate.node)
+    .flatMap(([name, value]) => {
+      if (!['pic', 'sp', 'cxnSp', 'grpSp'].includes(localName(name))) return [];
+      const nodes = records(value);
+      if (!nodes) {
+        fail(
+          'invalid-document-structure',
+          'Drawing group children are invalid',
+          part,
+        );
+      }
+      return nodes.map((child) => ({
+        child,
+        name: localName(name),
+        order: getXmlNodeOrder(child),
+      }));
+    })
+    .sort(
+      (left, right) =>
+        (left.order ?? Number.MAX_SAFE_INTEGER) -
+        (right.order ?? Number.MAX_SAFE_INTEGER),
+    );
+  const children: XlsxDrawingObject[] = [];
+  for (const child of childNodes) {
+    consumeDrawing(drawingBudget, limits, part);
+    const parsed = await drawingObject(
+      { [child.name]: child.child },
+      relationships,
+      discovery,
+      reader,
+      media,
+      includePayload,
+      drawingBudget,
+      worksheetBudget,
+      limits,
+      ids,
+      part,
+    );
+    if (parsed) children.push(parsed.object);
+  }
+  const group: XlsxDrawingGroup = {
+    children,
+    ...props,
+    kind: 'group',
+    transform: {
+      ...baseTransform,
+      childHeight: childSize.height,
+      childWidth: childSize.width,
+      childX: emuPoints(
+        childOffsetAttrs.x,
+        true,
+        'Drawing group child X position is invalid',
+        part,
+      ),
+      childY: emuPoints(
+        childOffsetAttrs.y,
+        true,
+        'Drawing group child Y position is invalid',
+        part,
+      ),
+    },
+  };
+  return {
+    extent: { height: group.transform.height, width: group.transform.width },
+    object: group,
+  };
+}
+
 function anchorKind(name: string): XlsxDrawing['kind'] | undefined {
   if (name === 'absoluteAnchor') return 'absolute';
   if (name === 'oneCellAnchor') return 'one-cell';
@@ -653,11 +1158,9 @@ export async function loadXlsxDrawings(
         (getXmlNodeOrder(right.node) ?? Number.MAX_SAFE_INTEGER),
     );
   const output: XlsxDrawing[] = [];
-  const imageIds = new Set<number>();
+  const objectIds = new Set<number>();
   for (const anchor of anchors) {
     consumeDrawing(drawingBudget, limits, relation.target);
-    const pic = record(childByLocal(anchor.node, 'pic'));
-    if (!pic) continue;
     const from =
       anchor.kind === 'absolute'
         ? undefined
@@ -689,27 +1192,24 @@ export async function loadXlsxDrawings(
       limits,
       relation.target,
     );
-    const parsedPicture = await picture(
-      pic,
+    const parsedObject = await drawingObject(
+      anchor.node,
       relationships,
       discovery,
       reader,
       media,
-      relation.target,
       selected !== null,
+      drawingBudget,
+      worksheetBudget,
+      limits,
+      objectIds,
+      relation.target,
     );
-    if (imageIds.has(parsedPicture.image.id)) {
-      fail(
-        'invalid-document-value',
-        'Worksheet drawing contains duplicate image IDs',
-        relation.target,
-      );
-    }
-    imageIds.add(parsedPicture.image.id);
+    if (!parsedObject) continue;
     if (selected === null) continue;
     const outerExtent =
       anchor.kind === 'two-cell'
-        ? parsedPicture.extent
+        ? parsedObject.extent
         : extent(childByLocal(anchor.node, 'ext'), relation.target);
     const positionNode = record(childByLocal(anchor.node, 'pos'));
     if (anchor.kind === 'absolute' && !positionNode) {
@@ -741,7 +1241,7 @@ export async function loadXlsxDrawings(
       extent: outerExtent,
       ...(from === undefined ? {} : { from }),
       kind: anchor.kind,
-      object: parsedPicture.image,
+      object: parsedObject.object,
       ...(positionAttrs === undefined
         ? {}
         : {

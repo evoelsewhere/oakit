@@ -96,6 +96,33 @@ function twoCellMarkers(id: number, from: string, to: string): string {
   return `<xdr:twoCellAnchor><xdr:from>${from}</xdr:from><xdr:to>${to}</xdr:to>${picture(id)}<xdr:clientData/></xdr:twoCellAnchor>`;
 }
 
+function shape(id: number, text = 'Shape &amp; text'): string {
+  return `<xdr:sp>
+    <xdr:nvSpPr><xdr:cNvPr id="${id}" name="Shape ${id}" descr="Shape description"/><xdr:cNvSpPr/></xdr:nvSpPr>
+    <xdr:spPr><a:xfrm rot="-60000" flipH="false" flipV="true"><a:off x="12700" y="25400"/><a:ext cx="127000" cy="254000"/></a:xfrm><a:prstGeom prst="roundRect"><a:avLst/></a:prstGeom><a:solidFill><a:srgbClr val="aabbcc"/></a:solidFill><a:ln w="12700"><a:solidFill><a:schemeClr val="accent1"/></a:solidFill><a:prstDash val="dash"/></a:ln></xdr:spPr>
+    <xdr:txBody><a:bodyPr/><a:lstStyle/><a:p><a:r><a:t>${text}</a:t></a:r></a:p><a:p><a:r><a:t>Second</a:t></a:r></a:p></xdr:txBody>
+  </xdr:sp>`;
+}
+
+function connector(id: number): string {
+  return `<xdr:cxnSp>
+    <xdr:nvCxnSpPr><xdr:cNvPr id="${id}" name="Connector ${id}"/><xdr:cNvCxnSpPr><a:stCxn id="1" idx="2"/><a:endCxn id="3" idx="4"/></xdr:cNvCxnSpPr></xdr:nvCxnSpPr>
+    <xdr:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="12700" cy="12700"/></a:xfrm><a:prstGeom prst="line"><a:avLst/></a:prstGeom><a:noFill/><a:ln><a:noFill/></a:ln></xdr:spPr>
+  </xdr:cxnSp>`;
+}
+
+function group(id: number): string {
+  return `<xdr:grpSp>
+    <xdr:nvGrpSpPr><xdr:cNvPr id="${id}" name="Group ${id}"/><xdr:cNvGrpSpPr/></xdr:nvGrpSpPr>
+    <xdr:grpSpPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="254000" cy="254000"/><a:chOff x="12700" y="25400"/><a:chExt cx="127000" cy="127000"/></a:xfrm></xdr:grpSpPr>
+    ${shape(id + 1, 'Nested')}${connector(id + 2)}
+  </xdr:grpSp>`;
+}
+
+function oneCellObject(object: string): string {
+  return `<xdr:oneCellAnchor><xdr:from>${marker(0, 0)}</xdr:from><xdr:ext cx="381000" cy="508000"/>${object}<xdr:clientData/></xdr:oneCellAnchor>`;
+}
+
 function parts(overrides: XlsxBlackBoxOverrides = {}): XlsxBlackBoxOverrides {
   return {
     '[Content_Types].xml': CONTENT_TYPES,
@@ -230,7 +257,9 @@ describe('XLSX drawing anchors and images', () => {
     expect(revoke).not.toHaveBeenCalled();
     expect(
       sheet.kind === 'worksheet'
-        ? sheet.drawings.map((item) => item.object.blobUrl)
+        ? sheet.drawings.map((item) =>
+            item.object.kind === 'image' ? item.object.blobUrl : undefined,
+          )
         : [],
     ).toEqual(['blob:xlsx-image', 'blob:xlsx-image', 'blob:xlsx-image']);
 
@@ -282,7 +311,11 @@ describe('XLSX drawing anchors and images', () => {
     const sheet = document.sheets[0]!;
     expect(
       sheet.kind === 'worksheet'
-        ? sheet.drawings.map((drawing) => drawing.object.byteLength)
+        ? sheet.drawings.map((drawing) =>
+            drawing.object.kind === 'image'
+              ? drawing.object.byteLength
+              : undefined,
+          )
         : [],
     ).toEqual([8, 8]);
   });
@@ -301,6 +334,314 @@ describe('XLSX drawing anchors and images', () => {
         ? sheet.drawings.map((drawing) => drawing.object.id)
         : [],
     ).toEqual([1, 2, 3]);
+  });
+
+  it('parses shape geometry, text, paint, line, and object transform', async () => {
+    const document = await parseXlsx(
+      await bytes({
+        'xl/drawings/drawing1.xml': drawingDocument(oneCellObject(shape(10))),
+      }),
+      { errorMode: 'strict' },
+    );
+    const sheet = document.sheets[0]!;
+    expect(
+      sheet.kind === 'worksheet' ? sheet.drawings[0]?.object : undefined,
+    ).toStrictEqual({
+      description: 'Shape description',
+      fill: { color: { kind: 'rgb', value: 'AABBCC' }, kind: 'solid' },
+      geometry: { kind: 'preset', preset: 'roundRect' },
+      hidden: false,
+      id: 10,
+      kind: 'shape',
+      line: {
+        dash: 'dash',
+        fill: { color: { kind: 'scheme', value: 'accent1' }, kind: 'solid' },
+        width: 1,
+      },
+      name: 'Shape 10',
+      text: 'Shape & text\nSecond',
+      transform: {
+        flipHorizontal: false,
+        flipVertical: true,
+        height: 20,
+        rotation: -1,
+        width: 10,
+        x: 1,
+        y: 2,
+      },
+    });
+  });
+
+  it('parses connector endpoints and no-fill semantics', async () => {
+    const document = await parseXlsx(
+      await bytes({
+        'xl/drawings/drawing1.xml': drawingDocument(
+          oneCellObject(connector(20)),
+        ),
+      }),
+      { errorMode: 'strict' },
+    );
+    const sheet = document.sheets[0]!;
+    expect(
+      sheet.kind === 'worksheet' ? sheet.drawings[0]?.object : undefined,
+    ).toMatchObject({
+      endConnection: { shapeId: 3, site: 4 },
+      fill: { kind: 'none' },
+      geometry: { kind: 'preset', preset: 'line' },
+      id: 20,
+      kind: 'connector',
+      line: { fill: { kind: 'none' } },
+      startConnection: { shapeId: 1, site: 2 },
+    });
+  });
+
+  it('parses nested groups in authored child order', async () => {
+    const document = await parseXlsx(
+      await bytes({
+        'xl/drawings/drawing1.xml': drawingDocument(oneCellObject(group(30))),
+      }),
+      { errorMode: 'strict' },
+    );
+    const sheet = document.sheets[0]!;
+    const object =
+      sheet.kind === 'worksheet' ? sheet.drawings[0]?.object : undefined;
+    expect(object).toMatchObject({
+      children: [
+        { id: 31, kind: 'shape' },
+        { id: 32, kind: 'connector' },
+      ],
+      id: 30,
+      kind: 'group',
+      transform: {
+        childHeight: 10,
+        childWidth: 10,
+        childX: 1,
+        childY: 2,
+        height: 20,
+        width: 20,
+      },
+    });
+  });
+
+  it('preserves interleaved nested group order and optional descriptions', async () => {
+    const interleaved = group(170).replace(
+      `${shape(171, 'Nested')}${connector(172)}`,
+      `${shape(171, 'One')}${connector(172)}${shape(173, 'Two').replace(' descr="Shape description"', '')}`,
+    );
+    const document = await parseXlsx(
+      await bytes({
+        'xl/drawings/drawing1.xml': drawingDocument(oneCellObject(interleaved)),
+      }),
+      { errorMode: 'strict' },
+    );
+    const sheet = document.sheets[0]!;
+    const object =
+      sheet.kind === 'worksheet' ? sheet.drawings[0]?.object : undefined;
+    expect(object?.kind).toBe('group');
+    if (object?.kind !== 'group') throw new Error('Expected drawing group');
+    expect(object.children.map((child) => child.id)).toEqual([171, 172, 173]);
+    expect(object.children[2]).not.toHaveProperty('description');
+  });
+
+  it('parses nested picture and group child kinds', async () => {
+    const nested = group(180).replace(
+      `${shape(181, 'Nested')}${connector(182)}`,
+      `${picture(181)}${group(182)}`,
+    );
+    const document = await parseXlsx(
+      await bytes({
+        'xl/drawings/drawing1.xml': drawingDocument(oneCellObject(nested)),
+      }),
+      { errorMode: 'strict' },
+    );
+    const sheet = document.sheets[0]!;
+    const object =
+      sheet.kind === 'worksheet' ? sheet.drawings[0]?.object : undefined;
+    expect(object?.kind).toBe('group');
+    if (object?.kind !== 'group') throw new Error('Expected drawing group');
+    expect(object.children.map((child) => child.kind)).toEqual([
+      'image',
+      'group',
+    ]);
+  });
+
+  it('parses custom geometry and system color metadata', async () => {
+    const xml = drawingDocument(
+      oneCellObject(
+        shape(40, 'Custom')
+          .replace(
+            '<a:prstGeom prst="roundRect"><a:avLst/></a:prstGeom>',
+            '<a:custGeom><a:avLst/><a:pathLst/></a:custGeom>',
+          )
+          .replace(
+            '<a:srgbClr val="aabbcc"/>',
+            '<a:sysClr val="windowText" lastClr="112233"/>',
+          ),
+      ),
+    );
+    const document = await parseXlsx(
+      await bytes({ 'xl/drawings/drawing1.xml': xml }),
+      { errorMode: 'strict' },
+    );
+    const sheet = document.sheets[0]!;
+    expect(
+      sheet.kind === 'worksheet' ? sheet.drawings[0]?.object : undefined,
+    ).toMatchObject({
+      fill: {
+        color: {
+          kind: 'system',
+          lastColor: '112233',
+          value: 'windowText',
+        },
+      },
+      geometry: { kind: 'custom' },
+    });
+  });
+
+  it('preserves mixed-case system fallback colors and multiple runs per paragraph', async () => {
+    const xml = drawingDocument(
+      oneCellObject(
+        shape(45, 'First')
+          .replace(
+            '<a:srgbClr val="aabbcc"/>',
+            '<a:sysClr val="window" lastClr="aaBBcc"/>',
+          )
+          .replace(
+            '<a:r><a:t>First</a:t></a:r>',
+            '<a:r><a:t>First</a:t></a:r><a:r><a:t> run</a:t></a:r>',
+          ),
+      ),
+    );
+    const document = await parseXlsx(
+      await bytes({ 'xl/drawings/drawing1.xml': xml }),
+      { errorMode: 'strict' },
+    );
+    const sheet = document.sheets[0]!;
+    expect(
+      sheet.kind === 'worksheet' ? sheet.drawings[0]?.object : undefined,
+    ).toMatchObject({
+      fill: { color: { lastColor: 'AABBCC' } },
+      text: 'First run\nSecond',
+    });
+  });
+
+  it('preserves authored shape text order, fields, and line breaks', async () => {
+    const xml = drawingDocument(
+      oneCellObject(
+        shape(46, 'First').replace(
+          '<a:r><a:t>First</a:t></a:r>',
+          '<a:r><a:t>First</a:t></a:r><a:br/><a:fld id="field-1" type="text"><a:t>Field</a:t></a:fld><a:r><a:t> last</a:t></a:r>',
+        ),
+      ),
+    );
+    const document = await parseXlsx(
+      await bytes({ 'xl/drawings/drawing1.xml': xml }),
+      { errorMode: 'strict' },
+    );
+    const sheet = document.sheets[0]!;
+    expect(
+      sheet.kind === 'worksheet' ? sheet.drawings[0]?.object : undefined,
+    ).toMatchObject({ text: 'First\nField last\nSecond' });
+  });
+
+  it('distinguishes an omitted shape fill from a malformed solid fill', async () => {
+    const xml = drawingDocument(
+      oneCellObject(
+        shape(47).replace(
+          '<a:solidFill><a:srgbClr val="aabbcc"/></a:solidFill>',
+          '',
+        ),
+      ),
+    );
+    const document = await parseXlsx(
+      await bytes({ 'xl/drawings/drawing1.xml': xml }),
+      { errorMode: 'strict' },
+    );
+    const sheet = document.sheets[0]!;
+    expect(
+      sheet.kind === 'worksheet' ? sheet.drawings[0]?.object : undefined,
+    ).not.toHaveProperty('fill');
+  });
+
+  it('preserves signed shape and group child positions', async () => {
+    const xml = drawingDocument(
+      oneCellObject(
+        group(190)
+          .replace('<a:off x="0" y="0"/>', '<a:off x="-12700" y="-25400"/>')
+          .replace(
+            '<a:chOff x="12700" y="25400"/>',
+            '<a:chOff x="-12700" y="-25400"/>',
+          ),
+      ),
+    );
+    const document = await parseXlsx(
+      await bytes({ 'xl/drawings/drawing1.xml': xml }),
+      { errorMode: 'strict' },
+    );
+    const sheet = document.sheets[0]!;
+    const object =
+      sheet.kind === 'worksheet' ? sheet.drawings[0]?.object : undefined;
+    expect(object?.kind).toBe('group');
+    if (object?.kind !== 'group') throw new Error('Expected drawing group');
+    expect(object.transform).toMatchObject({
+      childX: -1,
+      childY: -2,
+      x: -1,
+      y: -2,
+    });
+  });
+
+  it('skips a chart graphic frame until the chart capability owns it', async () => {
+    const frame = `<xdr:graphicFrame><xdr:nvGraphicFramePr><xdr:cNvPr id="200" name="Chart"/><xdr:cNvGraphicFramePr/></xdr:nvGraphicFramePr><xdr:xfrm><a:off x="0" y="0"/><a:ext cx="12700" cy="12700"/></xdr:xfrm><a:graphic><a:graphicData uri="chart"/></a:graphic></xdr:graphicFrame>`;
+    const document = await parseXlsx(
+      await bytes({
+        'xl/drawings/drawing1.xml': drawingDocument(oneCellObject(frame)),
+      }),
+      { errorMode: 'strict' },
+    );
+    const sheet = document.sheets[0]!;
+    expect(sheet.kind === 'worksheet' ? sheet.drawings : []).toEqual([]);
+  });
+
+  it('enforces shape text and nested drawing counts exactly', async () => {
+    const shapeParts = {
+      'xl/drawings/drawing1.xml': drawingDocument(oneCellObject(shape(50))),
+    };
+    await expect(
+      parseXlsx(await bytes(shapeParts), {
+        errorMode: 'strict',
+        limits: { maxTextCharacters: 28 },
+      }),
+    ).resolves.toBeDefined();
+    expect(
+      (
+        await capture(shapeParts, {
+          errorMode: 'strict',
+          limits: { maxTextCharacters: 27 },
+        })
+      ).diagnostic,
+    ).toMatchObject({
+      actual: 28,
+      limit: 27,
+      limitName: 'maxTextCharacters',
+    });
+    const groupParts = {
+      'xl/drawings/drawing1.xml': drawingDocument(oneCellObject(group(60))),
+    };
+    await expect(
+      parseXlsx(await bytes(groupParts), {
+        errorMode: 'strict',
+        limits: { maxDrawings: 3 },
+      }),
+    ).resolves.toBeDefined();
+    expect(
+      (
+        await capture(groupParts, {
+          errorMode: 'strict',
+          limits: { maxDrawings: 2 },
+        })
+      ).diagnostic,
+    ).toMatchObject({ actual: 3, limit: 2, limitName: 'maxDrawings' });
   });
 
   it.each([
@@ -326,7 +667,9 @@ describe('XLSX drawing anchors and images', () => {
       );
       const sheet = document.sheets[0]!;
       expect(
-        sheet.kind === 'worksheet' ? sheet.drawings[0]?.object.contentType : '',
+        sheet.kind === 'worksheet' && sheet.drawings[0]?.object.kind === 'image'
+          ? sheet.drawings[0].object.contentType
+          : '',
       ).toBe(contentType);
     },
   );
@@ -670,7 +1013,7 @@ describe('XLSX drawing anchors and images', () => {
           'id="1" name="Image 2"',
         ),
       },
-      'Worksheet drawing contains duplicate image IDs',
+      'Worksheet drawing contains duplicate object IDs',
     ],
     [
       {
@@ -816,6 +1159,345 @@ describe('XLSX drawing anchors and images', () => {
         ),
       },
       'Image crop l is invalid',
+    ],
+    [
+      {
+        'xl/drawings/drawing1.xml': drawingDocument(
+          oneCellObject(shape(110)).replace('id="110"', 'id="-1"'),
+        ),
+      },
+      'Drawing object ID is invalid',
+    ],
+    [
+      {
+        'xl/drawings/drawing1.xml': drawingDocument(
+          oneCellObject(shape(110)).replace(
+            'descr="Shape description"',
+            'hidden="bad"',
+          ),
+        ),
+      },
+      'Drawing object hidden flag is invalid',
+    ],
+    [
+      {
+        'xl/drawings/drawing1.xml': drawingDocument(
+          oneCellObject(shape(110)).replace(
+            '<a:srgbClr val="aabbcc"/>',
+            '<a:srgbClr val="xAABBCC"/>',
+          ),
+        ),
+      },
+      'Drawing color is invalid',
+    ],
+    [
+      {
+        'xl/drawings/drawing1.xml': drawingDocument(
+          oneCellObject(shape(110)).replace(
+            '<a:srgbClr val="aabbcc"/>',
+            '<a:sysClr val="window" lastClr="xAABBCC"/>',
+          ),
+        ),
+      },
+      'Drawing color is invalid',
+    ],
+    [
+      {
+        'xl/drawings/drawing1.xml': drawingDocument(
+          oneCellObject(shape(110)).replace(
+            '<a:srgbClr val="aabbcc"/>',
+            '<a:sysClr val="window" lastClr="AABBCCx"/>',
+          ),
+        ),
+      },
+      'Drawing color is invalid',
+    ],
+    [
+      {
+        'xl/drawings/drawing1.xml': drawingDocument(
+          oneCellObject(shape(140)).replace(
+            '<a:solidFill><a:srgbClr val="aabbcc"/></a:solidFill>',
+            '<a:solidFill>bad</a:solidFill>',
+          ),
+        ),
+      },
+      'Drawing color is invalid',
+    ],
+    [
+      {
+        'xl/drawings/drawing1.xml': drawingDocument(
+          oneCellObject(shape(110)).replace(
+            '<a:srgbClr val="aabbcc"/>',
+            '<a:srgbClr val="AABBCCx"/>',
+          ),
+        ),
+      },
+      'Drawing color is invalid',
+    ],
+    [
+      {
+        'xl/drawings/drawing1.xml': drawingDocument(
+          oneCellObject(shape(110)).replace('w="12700"', 'w="-1"'),
+        ),
+      },
+      'Drawing line width is invalid',
+    ],
+    [
+      {
+        'xl/drawings/drawing1.xml': drawingDocument(
+          oneCellObject(shape(110)).replace(
+            /<a:xfrm[^>]*>[\s\S]*?<\/a:xfrm>/u,
+            '',
+          ),
+        ),
+      },
+      'Drawing object transform is missing',
+    ],
+    [
+      {
+        'xl/drawings/drawing1.xml': drawingDocument(
+          oneCellObject(shape(110)).replace('<a:off x="12700" y="25400"/>', ''),
+        ),
+      },
+      'Drawing object transform is incomplete',
+    ],
+    [
+      {
+        'xl/drawings/drawing1.xml': drawingDocument(
+          oneCellObject(shape(110)).replace('prst="roundRect"', 'prst=""'),
+        ),
+      },
+      'Drawing preset geometry is invalid',
+    ],
+    [
+      {
+        'xl/drawings/drawing1.xml': drawingDocument(
+          oneCellObject(connector(120)).replace(
+            'id="1" idx="2"',
+            'id="-1" idx="2"',
+          ),
+        ),
+      },
+      'Drawing connector shape reference is invalid',
+    ],
+    [
+      {
+        'xl/drawings/drawing1.xml': drawingDocument(
+          oneCellObject(group(130)).replace(
+            'x="12700" y="25400"',
+            'x="bad" y="25400"',
+          ),
+        ),
+      },
+      'Drawing group child X position is invalid',
+    ],
+    [
+      {
+        'xl/drawings/drawing1.xml': drawingDocument(
+          oneCellObject(group(130)).replace(
+            'x="12700" y="25400"',
+            'x="12700" y="bad"',
+          ),
+        ),
+      },
+      'Drawing group child Y position is invalid',
+    ],
+    [
+      {
+        'xl/drawings/drawing1.xml': drawingDocument(
+          oneCellObject(shape(140)).replace(
+            '<a:srgbClr val="aabbcc"/>',
+            '<a:srgbClr val="AABBCC"/><a:schemeClr val="accent1"/>',
+          ),
+        ),
+      },
+      'Drawing color is invalid',
+    ],
+    [
+      {
+        'xl/drawings/drawing1.xml': drawingDocument(
+          oneCellObject(shape(140)).replace(
+            '<a:srgbClr val="aabbcc"/>',
+            '<a:foo val="AABBCC"/>',
+          ),
+        ),
+      },
+      'Drawing color is invalid',
+    ],
+    [
+      {
+        'xl/drawings/drawing1.xml': drawingDocument(
+          oneCellObject(shape(140)).replace('flipH="false"', 'flipH="bad"'),
+        ),
+      },
+      'Drawing object horizontal-flip flag is invalid',
+    ],
+    [
+      {
+        'xl/drawings/drawing1.xml': drawingDocument(
+          oneCellObject(shape(140)).replace('flipV="true"', 'flipV="bad"'),
+        ),
+      },
+      'Drawing object vertical-flip flag is invalid',
+    ],
+    [
+      {
+        'xl/drawings/drawing1.xml': drawingDocument(
+          oneCellObject(shape(140)).replace('rot="-60000"', 'rot="bad"'),
+        ),
+      },
+      'Drawing object rotation is invalid',
+    ],
+    [
+      {
+        'xl/drawings/drawing1.xml': drawingDocument(
+          oneCellObject(shape(140)).replace('x="12700"', 'x="bad"'),
+        ),
+      },
+      'Drawing object X position is invalid',
+    ],
+    [
+      {
+        'xl/drawings/drawing1.xml': drawingDocument(
+          oneCellObject(shape(140)).replace('y="25400"', 'y="bad"'),
+        ),
+      },
+      'Drawing object Y position is invalid',
+    ],
+    [
+      {
+        'xl/drawings/drawing1.xml': drawingDocument(
+          oneCellObject(shape(140)).replace(
+            /<a:p>[\s\S]*?<\/a:p><a:p>[\s\S]*?<\/a:p>/u,
+            '',
+          ),
+        ),
+      },
+      'Drawing text is invalid',
+    ],
+    [
+      {
+        'xl/drawings/drawing1.xml': drawingDocument(
+          oneCellObject(shape(140)).replace(
+            '<a:t>Shape &amp; text</a:t>',
+            '<a:t><a:bad/></a:t>',
+          ),
+        ),
+      },
+      'Drawing text is invalid',
+    ],
+    [
+      {
+        'xl/drawings/drawing1.xml': drawingDocument(
+          oneCellObject(connector(150)).replace('idx="2"', 'idx="-1"'),
+        ),
+      },
+      'Drawing connector site is invalid',
+    ],
+    [
+      {
+        'xl/drawings/drawing1.xml': drawingDocument(
+          oneCellObject(group(160)).replace(/<a:xfrm>[\s\S]*?<\/a:xfrm>/u, ''),
+        ),
+      },
+      'Drawing group transform is missing',
+    ],
+    [
+      {
+        'xl/drawings/drawing1.xml': drawingDocument(
+          oneCellObject(
+            group(160).replace(
+              /<xdr:sp>[\s\S]*?<\/xdr:sp>/u,
+              '<xdr:sp>bad</xdr:sp>',
+            ),
+          ),
+        ),
+      },
+      'Drawing group children are invalid',
+    ],
+    [
+      {
+        'xl/drawings/drawing1.xml': drawingDocument(
+          oneCellObject(shape(70)).replace(
+            /<xdr:nvSpPr>[\s\S]*?<\/xdr:nvSpPr>/u,
+            '',
+          ),
+        ),
+      },
+      'Drawing object properties are missing',
+    ],
+    [
+      {
+        'xl/drawings/drawing1.xml': drawingDocument(
+          oneCellObject(shape(70)).replace('id="70"', 'id="0"'),
+        ),
+      },
+      'Drawing object ID is invalid',
+    ],
+    [
+      {
+        'xl/drawings/drawing1.xml': drawingDocument(
+          oneCellObject(shape(70)).replace('name="Shape 70"', 'name=""'),
+        ),
+      },
+      'Drawing object name is invalid',
+    ],
+    [
+      {
+        'xl/drawings/drawing1.xml': drawingDocument(
+          oneCellObject(shape(70)).replace(
+            /<xdr:spPr>[\s\S]*?<\/xdr:spPr>/u,
+            '',
+          ),
+        ),
+      },
+      'Drawing shape properties are missing',
+    ],
+    [
+      {
+        'xl/drawings/drawing1.xml': drawingDocument(
+          oneCellObject(shape(70)).replace(
+            '<a:prstGeom prst="roundRect"><a:avLst/></a:prstGeom>',
+            '',
+          ),
+        ),
+      },
+      'Drawing geometry is missing',
+    ],
+    [
+      {
+        'xl/drawings/drawing1.xml': drawingDocument(
+          oneCellObject(shape(70)).replace('val="aabbcc"', 'val="bad"'),
+        ),
+      },
+      'Drawing color is invalid',
+    ],
+    [
+      {
+        'xl/drawings/drawing1.xml': drawingDocument(
+          oneCellObject(connector(80)).replace('idx="2"', 'idx="bad"'),
+        ),
+      },
+      'Drawing connector site is invalid',
+    ],
+    [
+      {
+        'xl/drawings/drawing1.xml': drawingDocument(
+          oneCellObject(group(90)).replace('<a:chOff', '<a:wrong'),
+        ),
+      },
+      'Drawing group child transform is missing',
+    ],
+    [
+      {
+        'xl/drawings/drawing1.xml': drawingDocument(
+          oneCellObject(shape(100)).replace(
+            '</xdr:sp><xdr:clientData',
+            `</xdr:sp>${connector(101)}<xdr:clientData`,
+          ),
+        ),
+      },
+      'Drawing anchor has multiple objects',
     ],
     [
       {
