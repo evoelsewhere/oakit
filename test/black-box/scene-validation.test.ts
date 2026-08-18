@@ -274,13 +274,22 @@ describe('PowerPoint scene validation', () => {
     );
   });
 
-  it('rejects media until a representation contract is implemented', () => {
+  it('accepts represented media and keeps it outside the text creation profile', () => {
     const scene = minimalScene();
-    scene.media = [{ key: 'image-1' }];
-    expect(issuePairs(scene)).toContainEqual([
-      'unsupported-feature',
-      '$.media',
-    ]);
+    scene.media = [
+      {
+        data: new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+        key: 'image-1',
+        mimeType: 'image/png',
+      },
+    ];
+
+    expect(issuePairs(scene)).toEqual([]);
+    expect(
+      validatePptxScene(scene, { profile: 'create-text-v1' }).issues.map(
+        (issue) => [issue.code, issue.path],
+      ),
+    ).toContainEqual(['unsupported-feature', '$.media']);
   });
 
   it('rejects unknown element fields, kinds, and malformed base state', () => {
@@ -1107,11 +1116,12 @@ describe('PowerPoint scene validation', () => {
 
     const media = minimalScene();
     media.media = [{}];
-    expect(validatePptxScene(media).issues).toContainEqual({
-      code: 'unsupported-feature',
-      message: 'The first scene contract does not support media resources',
-      path: '$.media',
-    });
+    expect(validatePptxScene(media).issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ path: '$.media[0].data' }),
+        expect.objectContaining({ path: '$.media[0].key' }),
+      ]),
+    );
   });
 
   it.each([undefined, [], new Date(0), new Uint8Array([1])])(

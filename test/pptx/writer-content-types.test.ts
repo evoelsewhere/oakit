@@ -40,4 +40,17 @@ describe('PowerPoint content-type serialization', () => {
       ),
     );
   });
+
+  it('adds canonical image defaults once for native media', () => {
+    const value = serializeContentTypes(1, [
+      'image/jpeg',
+      'image/png',
+      'image/png',
+    ]);
+
+    expect(value.match(/Extension="png"/g)).toHaveLength(1);
+    expect(value.match(/Extension="jpeg"/g)).toHaveLength(1);
+    expect(value).toContain('ContentType="image/png"');
+    expect(value).toContain('ContentType="image/jpeg"');
+  });
 });

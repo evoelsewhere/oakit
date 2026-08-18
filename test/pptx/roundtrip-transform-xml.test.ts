@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import { patchPptxShapeTransformXml } from '../../src/formats/pptx/roundtrip/transform-xml';
+import {
+  patchPptxPictureTransformXml,
+  patchPptxShapeTransformXml,
+} from '../../src/formats/pptx/roundtrip/transform-xml';
 import type { PptxRoundTripSetTransformOperation } from '../../src/formats/pptx/roundtrip/types';
 
 const PRESENTATION_NAMESPACE =
@@ -57,6 +60,15 @@ function operation(
   };
 }
 
+function pictureXml(): string {
+  return slideXml()
+    .replace(
+      '<p:sp><p:nvSpPr><p:cNvPr id="2"/></p:nvSpPr>',
+      '<p:pic><p:nvPicPr><p:cNvPr id="2"/></p:nvPicPr>',
+    )
+    .replace('</p:sp></p:spTree>', '</p:pic></p:spTree>');
+}
+
 describe('PowerPoint literal shape transform patching', () => {
   it('serializes exact EMUs and omits false optional attributes', () => {
     const input = slideXml();
@@ -71,6 +83,17 @@ describe('PowerPoint literal shape transform patching', () => {
     expect(output).not.toContain(' rot=');
     expect(output).not.toContain(' flipH=');
     expect(output).not.toContain(' flipV=');
+  });
+
+  it('patches the same strict transform contract on native pictures', () => {
+    const input = pictureXml();
+    const output = patchPptxPictureTransformXml(input, '2', operation());
+
+    expect(output).toContain(
+      '<a:xfrm><a:off x="635000" y="762000"/><a:ext cx="5080000" cy="1270000"/></a:xfrm>',
+    );
+    expect(output).toContain('<p:pic>');
+    expect(output).not.toContain('<p:sp>');
   });
 
   it.each([

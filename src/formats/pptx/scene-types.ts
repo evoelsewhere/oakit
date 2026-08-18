@@ -117,6 +117,11 @@ export interface PptxSceneShapeElement extends PptxSceneElementBase {
   type: 'shape';
 }
 
+export interface PptxSceneImageElement extends PptxSceneElementBase {
+  mediaKey?: string;
+  type: 'image';
+}
+
 export interface PptxSceneUnsupportedElement extends PptxSceneElementBase {
   feature: string;
   previewText?: string;
@@ -124,7 +129,16 @@ export interface PptxSceneUnsupportedElement extends PptxSceneElementBase {
 }
 
 export type PptxSceneElement =
-  PptxSceneShapeElement | PptxSceneTextElement | PptxSceneUnsupportedElement;
+  | PptxSceneImageElement
+  | PptxSceneShapeElement
+  | PptxSceneTextElement
+  | PptxSceneUnsupportedElement;
+
+export interface PptxSceneMedia {
+  data: Uint8Array;
+  key: string;
+  mimeType: 'image/jpeg' | 'image/png';
+}
 
 export interface PptxSceneTheme {
   key: string;
@@ -157,7 +171,7 @@ export interface PptxSceneSlide {
 export interface PptxSceneDocument {
   layouts: PptxSceneLayout[];
   masters: PptxSceneMaster[];
-  media: [];
+  media: PptxSceneMedia[];
   schemaVersion: 2;
   size: PptxSceneSize;
   slides: PptxSceneSlide[];

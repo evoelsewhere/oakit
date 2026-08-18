@@ -148,6 +148,92 @@ describe('PowerPoint creation scene validation', () => {
     });
   });
 
+  it('accepts signature-checked native image media and references', () => {
+    const scene = creationScene();
+    scene.media = [
+      {
+        data: new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+        key: 'image-1',
+        mimeType: 'image/png',
+      },
+    ];
+    const slide = (scene.slides as Record<string, unknown>[])[0];
+    if (slide === undefined) throw new Error('Expected slide');
+    slide.elements = [
+      {
+        authored: {
+          transform: { height: 100, width: 160, x: 40, y: 50 },
+        },
+        key: 'picture-1',
+        mediaKey: 'image-1',
+        resolved: { hidden: false },
+        type: 'image',
+      },
+    ];
+
+    expect(validateNativeCreation(scene)).toEqual({ issues: [], valid: true });
+    expect(validateCreation(scene).issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: 'unsupported-feature',
+          path: '$.media',
+        }),
+        expect.objectContaining({
+          code: 'unsupported-feature',
+          path: '$.slides[0].elements[0]',
+        }),
+      ]),
+    );
+  });
+
+  it.each([
+    ['image/png', new Uint8Array([0x89, 0x50]), 'PNG'],
+    ['image/jpeg', new Uint8Array([0xff, 0xd8, 0xff, 0x00]), 'JPEG'],
+  ])('rejects invalid %s media signatures', (mimeType, data, label) => {
+    const scene = creationScene();
+    scene.media = [{ data, key: 'image-1', mimeType }];
+
+    expect(validateNativeCreation(scene).issues).toContainEqual({
+      code: 'invalid-scene-document',
+      message: `${label} media data has an invalid signature`,
+      path: '$.media[0].data',
+    });
+  });
+
+  it('rejects dangling media references and unsupported image styling', () => {
+    const scene = creationScene();
+    const slide = (scene.slides as Record<string, unknown>[])[0];
+    if (slide === undefined) throw new Error('Expected slide');
+    slide.elements = [
+      {
+        authored: {
+          fillColor: '#FFFFFF',
+          transform: { height: 100, width: 160, x: 40, y: 50 },
+        },
+        key: 'picture-1',
+        mediaKey: 'missing-image',
+        resolved: { hidden: false },
+        type: 'image',
+      },
+    ];
+
+    expect(validateNativeCreation(scene).issues).toEqual(
+      expect.arrayContaining([
+        {
+          code: 'unsupported-feature',
+          message:
+            'Creation profile create-native-v1 does not apply shape styling to images',
+          path: '$.slides[0].elements[0].authored',
+        },
+        {
+          code: 'invalid-hierarchy-reference',
+          message: 'Reference points to an unknown public key',
+          path: '$.slides[0].elements[0].mediaKey',
+        },
+      ]),
+    );
+  });
+
   it.each(['ellipse', 'rect', 'roundRect'])(
     'accepts text shape geometry %s',
     (geometry) => {

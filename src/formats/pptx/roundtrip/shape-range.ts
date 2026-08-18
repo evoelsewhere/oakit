@@ -74,7 +74,12 @@ function requiredNamespacePrefix(
   );
 }
 
-function shapeRange(xml: string, shapeId: string): ShapeRange {
+function shapeRange(
+  xml: string,
+  shapeId: string,
+  localName: 'pic' | 'sp',
+  description: string,
+): ShapeRange {
   const stack: ShapeFrame[] = [];
   const ranges: ShapeRange[] = [];
   let activePresentationShape: ShapeFrame | undefined;
@@ -82,7 +87,7 @@ function shapeRange(xml: string, shapeId: string): ShapeRange {
   parser.on('opentag', (tag) => {
     const start = parser.position;
     const presentationShape =
-      PRESENTATION_NAMESPACES.has(tag.uri) && tag.local === 'sp';
+      PRESENTATION_NAMESPACES.has(tag.uri) && tag.local === localName;
     if (PRESENTATION_NAMESPACES.has(tag.uri) && tag.local === 'cNvPr') {
       const value = (tag.attributes.id as { value?: string } | undefined)
         ?.value;
@@ -109,7 +114,7 @@ function shapeRange(xml: string, shapeId: string): ShapeRange {
   parser.write(xml).close();
   if (ranges.length !== 1) {
     unsupportedPptxEdit(
-      `PowerPoint text edit requires one unique text shape for id ${shapeId}`,
+      `PowerPoint text edit requires one unique ${description} for id ${shapeId}`,
     );
   }
   return ranges[0] as ShapeRange;
@@ -127,9 +132,11 @@ export function pptxShapeHasElement(xml: string, qualified: string): boolean {
   return new RegExp(`<${escapePptxXmlPattern(qualified)}(?:\\s|>|/)`).test(xml);
 }
 
-export function resolvePptxEditableShapeXml(
+function resolvePptxEditableElementXml(
   xml: string,
   shapeId: string,
+  localName: 'pic' | 'sp',
+  description: string,
 ): PptxEditableShapeXml {
   const prefixes = namespacePrefixes(xml);
   const presentationPrefix = requiredNamespacePrefix(
@@ -142,7 +149,7 @@ export function resolvePptxEditableShapeXml(
     DRAWING_NAMESPACES,
     'DrawingML',
   );
-  const range = shapeRange(xml, shapeId);
+  const range = shapeRange(xml, shapeId, localName, description);
   return {
     drawingPrefix,
     markupPrefix: prefixes.get(MARKUP_COMPATIBILITY_NAMESPACE),
@@ -150,4 +157,18 @@ export function resolvePptxEditableShapeXml(
     range,
     shape: xml.slice(range.start, range.end),
   };
+}
+
+export function resolvePptxEditableShapeXml(
+  xml: string,
+  shapeId: string,
+): PptxEditableShapeXml {
+  return resolvePptxEditableElementXml(xml, shapeId, 'sp', 'text shape');
+}
+
+export function resolvePptxEditablePictureXml(
+  xml: string,
+  shapeId: string,
+): PptxEditableShapeXml {
+  return resolvePptxEditableElementXml(xml, shapeId, 'pic', 'picture');
 }

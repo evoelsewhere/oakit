@@ -5,6 +5,7 @@ import {
   escapePptxXmlPattern,
   pptxShapeHasElement,
   qualifiedPptxName,
+  resolvePptxEditablePictureXml,
   resolvePptxEditableShapeXml,
 } from './shape-range';
 import type { PptxRoundTripSetTransformOperation } from './types';
@@ -47,13 +48,14 @@ function booleanAttribute(attributesText: string, name: string): boolean {
   unsupportedPptxEdit(`PowerPoint transform ${name} attribute is invalid`);
 }
 
-export function patchPptxShapeTransformXml(
+function patchPptxTransformXml(
   xml: string,
   shapeId: string,
   operation: PptxRoundTripSetTransformOperation,
+  resolveElement: typeof resolvePptxEditableShapeXml,
 ): string {
   const { drawingPrefix, markupPrefix, presentationPrefix, range, shape } =
-    resolvePptxEditableShapeXml(xml, shapeId);
+    resolveElement(xml, shapeId);
   if (
     (markupPrefix !== undefined &&
       pptxShapeHasElement(
@@ -131,4 +133,30 @@ export function patchPptxShapeTransformXml(
   const matchStart = range.start + (match.index ?? 0);
   const matchEnd = matchStart + match[0].length;
   return `${xml.slice(0, matchStart)}${replacement}${xml.slice(matchEnd)}`;
+}
+
+export function patchPptxShapeTransformXml(
+  xml: string,
+  shapeId: string,
+  operation: PptxRoundTripSetTransformOperation,
+): string {
+  return patchPptxTransformXml(
+    xml,
+    shapeId,
+    operation,
+    resolvePptxEditableShapeXml,
+  );
+}
+
+export function patchPptxPictureTransformXml(
+  xml: string,
+  shapeId: string,
+  operation: PptxRoundTripSetTransformOperation,
+): string {
+  return patchPptxTransformXml(
+    xml,
+    shapeId,
+    operation,
+    resolvePptxEditablePictureXml,
+  );
 }

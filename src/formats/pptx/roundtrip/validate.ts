@@ -229,7 +229,12 @@ function editableTransforms(
   const transforms = new Map<string, unknown>();
   for (const slide of value.slides) {
     for (const element of slide.elements) {
-      if (element.type !== 'shape' && element.type !== 'text') continue;
+      if (
+        element.type !== 'image' &&
+        element.type !== 'shape' &&
+        element.type !== 'text'
+      )
+        continue;
       transforms.set(element.key, element.resolved.transform);
     }
   }
@@ -421,13 +426,15 @@ function expectedSupportProfileId(
   document: PptxRoundTripSnapshot['document'],
 ): PptxRoundTripSupportProfileId {
   if (operations.length === 0) return 'pptx-roundtrip-r0';
-  const shapeKeys = new Set<string>();
+  const nativeKeys = new Set<string>();
   for (const slide of document.slides) {
     for (const element of slide.elements) {
-      if (element.type === 'shape') shapeKeys.add(element.key);
+      if (element.type === 'image' || element.type === 'shape') {
+        nativeKeys.add(element.key);
+      }
     }
   }
-  return operations.some((operation) => shapeKeys.has(operation.targetKey))
+  return operations.some((operation) => nativeKeys.has(operation.targetKey))
     ? 'pptx-roundtrip-native-v1'
     : 'pptx-roundtrip-text-v1';
 }

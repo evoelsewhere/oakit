@@ -56,12 +56,20 @@ export function serializeSlideLayoutRelationships(): string {
   ]);
 }
 
-export function serializeSlideRelationships(): string {
+export function serializeSlideRelationships(
+  imageTargets: readonly string[] = [],
+): string {
+  const images = imageTargets.map((target, index) => ({
+    id: `rId${index + 2}`,
+    target,
+    type: `${OFFICE_RELATIONSHIP_BASE}image`,
+  }));
   return serializeRelationships([
     {
       id: 'rId1',
       target: '../slideLayouts/slideLayout1.xml',
       type: `${OFFICE_RELATIONSHIP_BASE}slideLayout`,
     },
+    ...images,
   ]);
 }

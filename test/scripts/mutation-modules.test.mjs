@@ -30,6 +30,7 @@ describe('focused mutation modules', () => {
       'roundtrip-preview',
       'roundtrip-validation',
       'writer-shape',
+      'writer-image',
     ]);
     expect(new Set(mutationModules.map(({ source }) => source)).size).toBe(
       mutationModules.length,

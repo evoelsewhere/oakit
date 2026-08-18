@@ -18,7 +18,7 @@ meaningful document data instead of raw XML.
 > **Project status:** pre-stable (`0.0.x`). Implemented PowerPoint capabilities
 > include bounded reading, producer-verified text-profile `C3` creation,
 > byte-exact `R0` portable hand-offs, producer-verified `R3` plain-text and text
-> transform editing, runtime-verified native shape `C2` creation and `R2`
+> transform editing, runtime-verified native shape/image `C2` creation and `R2`
 > transform editing, and Office-free SVG/PNG previews. Excel and Word remain
 > product direction rather than completed APIs.
 
@@ -83,11 +83,11 @@ agent runtime, tool-calling protocol, or vector database.
 
 ## Format support
 
-| Format               | Read | Create                    | Edit                                | Preserve      | Preview |
-| -------------------- | ---- | ------------------------- | ----------------------------------- | ------------- | ------- |
-| PowerPoint (`.pptx`) | Yes  | Text C3 + native shape C2 | Text R3 + native shape transform R2 | Byte-exact R0 | SVG/PNG |
-| Excel (`.xlsx`)      | No   | No                        | No                                  | No            | No      |
-| Word (`.docx`)       | No   | No                        | No                                  | No            | No      |
+| Format               | Read | Create                          | Edit                                      | Preserve      | Preview |
+| -------------------- | ---- | ------------------------------- | ----------------------------------------- | ------------- | ------- |
+| PowerPoint (`.pptx`) | Yes  | Text C3 + native shape/image C2 | Text R3 + native shape/image transform R2 | Byte-exact R0 | SVG/PNG |
+| Excel (`.xlsx`)      | No   | No                              | No                                        | No            | No      |
+| Word (`.docx`)       | No   | No                              | No                                        | No            | No      |
 
 The runtime reports `C2` after deterministic package construction, strict
 reparse, semantic comparison, and Office-free rendering. The declared
@@ -97,8 +97,9 @@ runtime's `R2` verification is certified at effective `R3` for the
 `pptx-roundtrip-text-v1` plain-text and text-transform operations. `R0` means an
 unchanged source package is restored byte for byte through runtime or portable
 JSON. The `pptx-create-native-v1` and `pptx-roundtrip-native-v1` profiles add
-runtime-verified non-text shape creation and slide-owned shape transforms; they
-do not yet claim producer-elevated C3/R3. These profile levels do not claim arbitrary PPTX editing, full
+runtime-verified non-text shape/image creation and slide-owned shape/image
+transforms; they do not yet claim producer-elevated C3/R3. These profile levels
+do not claim arbitrary PPTX editing, full
 reconstruction from normalized JSON, or pixel-identical rendering.
 
 The PowerPoint reader currently handles:
@@ -541,13 +542,14 @@ Text is returned as an escaped HTML fragment. Applications that inject
 document HTML into a page should still apply their own sanitizer as defense in
 depth.
 
-### Create bounded text and native shape presentations
+### Create bounded text, shape, and image presentations
 
 `createPptx` accepts the versioned scene model, validates it strictly, and
 returns deterministic package bytes with a `C2` runtime fidelity report. The
-creation profiles support source-free slides containing structured text and
-native rect, roundRect, or ellipse shapes; they reject unsupported scene
-elements rather than emitting a guessed package. The release capability matrix certifies the exact
+creation profiles support source-free slides containing structured text,
+native rect/roundRect/ellipse shapes, and signature-checked PNG/JPEG images;
+they reject unsupported scene elements rather than emitting a guessed package.
+The release capability matrix certifies the exact
 `pptx-create-text-v1` profile at effective `C3`.
 
 ```ts
@@ -636,6 +638,7 @@ import {
   parsePptxRoundTripJson,
   readPptxRoundTrip,
   replacePptxRoundTripText,
+  setPptxRoundTripImageTransform,
   setPptxRoundTripShapeTransform,
   setPptxRoundTripTextTransform,
   serializePptxRoundTripJson,

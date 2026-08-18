@@ -2,9 +2,12 @@ import { describe, expect, it } from 'vitest';
 
 import {
   MAX_POWERPOINT_CREATION_ELEMENTS,
+  MAX_POWERPOINT_CREATION_MEDIA,
+  MAX_POWERPOINT_CREATION_MEDIA_BYTES,
   MAX_POWERPOINT_CREATION_PARAGRAPHS,
   MAX_POWERPOINT_CREATION_STRING_CODE_UNITS,
   MAX_POWERPOINT_CREATION_TEXT_NODES,
+  MAX_POWERPOINT_CREATION_TOTAL_MEDIA_BYTES,
 } from '../../src/formats/pptx/creation-limits';
 import { validatePowerPointCreationResources } from '../../src/formats/pptx/creation-resource-validation';
 
@@ -175,6 +178,60 @@ describe('PowerPoint creation resource validation', () => {
         key: 'slide-1',
       },
     ]);
+
+    expect(
+      validatePowerPointCreationResources(input, 'create-native-v1'),
+    ).toEqual([]);
+  });
+
+  it('enforces media count, per-resource, and aggregate byte budgets', () => {
+    const tooMany = document([]);
+    tooMany.media = new Array(MAX_POWERPOINT_CREATION_MEDIA + 1);
+    const tooLarge = document([]);
+    tooLarge.media = [
+      { data: { byteLength: MAX_POWERPOINT_CREATION_MEDIA_BYTES + 1 } },
+    ];
+    const tooLargeTogether = document([]);
+    tooLargeTogether.media = [
+      {
+        data: { byteLength: MAX_POWERPOINT_CREATION_TOTAL_MEDIA_BYTES / 2 + 1 },
+      },
+      { data: { byteLength: MAX_POWERPOINT_CREATION_TOTAL_MEDIA_BYTES / 2 } },
+    ];
+
+    expect(
+      validatePowerPointCreationResources(tooMany, 'create-native-v1').map(
+        ({ message }) => message,
+      ),
+    ).toContain(
+      `Creation profile create-native-v1 supports at most ${MAX_POWERPOINT_CREATION_MEDIA} media resources`,
+    );
+    expect(
+      validatePowerPointCreationResources(tooLarge, 'create-native-v1').map(
+        ({ message }) => message,
+      ),
+    ).toContain(
+      `Creation profile create-native-v1 supports at most ${MAX_POWERPOINT_CREATION_MEDIA_BYTES} bytes per media resource`,
+    );
+    expect(
+      validatePowerPointCreationResources(
+        tooLargeTogether,
+        'create-native-v1',
+      ).map(({ message }) => message),
+    ).toContain(
+      `Creation profile create-native-v1 supports at most ${MAX_POWERPOINT_CREATION_TOTAL_MEDIA_BYTES} total media bytes`,
+    );
+  });
+
+  it('does not traverse binary media while counting string code units', () => {
+    const input = document([]);
+    input.media = [
+      {
+        data: new Uint8Array(1024),
+        key: 'a',
+        mimeType: 'image/png',
+      },
+    ];
 
     expect(
       validatePowerPointCreationResources(input, 'create-native-v1'),

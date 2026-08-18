@@ -6,11 +6,12 @@ All notable changes to OAKit are documented here.
 
 ### Added
 
-- native source-free rect, roundRect, and ellipse creation through
+- native source-free rect, roundRect, ellipse, PNG, and JPEG creation through
   `pptx-create-native-v1`, with strict reparse and Office-free render
   verification;
-- source-preserving native shape transform editing through
-  `setPptxRoundTripShapeTransform` and `pptx-roundtrip-native-v1`;
+- source-preserving native shape and image transform editing through
+  `setPptxRoundTripShapeTransform`, `setPptxRoundTripImageTransform`, and
+  `pptx-roundtrip-native-v1`;
 - browser create/edit/render coverage and focused 100% mutation modules for the
   native round-trip path.
 

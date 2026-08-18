@@ -11,18 +11,19 @@ service are not runtime dependencies.
 
 ## Choose the right workflow
 
-| Goal                                         | API                                        | Main result                                   |
-| -------------------------------------------- | ------------------------------------------ | --------------------------------------------- |
-| Inspect or index a deck                      | `parsePptxWithDiagnostics`                 | Normalized `PptxDocument` plus diagnostics    |
-| Fail on malformed optional OOXML             | `parsePptx` with `errorMode: 'strict'`     | Normalized `PptxDocument` or `PptxParseError` |
-| Give an agent a visual preview               | `renderPptxToSvg` or `renderPptxToPng`     | Self-contained slide images plus warnings     |
-| Preserve an unchanged deck exactly           | `readPptxRoundTrip` → `writePptxRoundTrip` | Byte-exact `R0` output                        |
-| Send a deck through JSON                     | `serializePptxRoundTripJson`               | Integrity-bound JSON containing source bytes  |
-| Replace supported plain text                 | `replacePptxRoundTripText`                 | Scheduled, verified round-trip operation      |
-| Move, resize, rotate, or flip supported text | `setPptxRoundTripTextTransform`            | Scheduled, verified transform operation       |
-| Move, resize, rotate, or flip a native shape | `setPptxRoundTripShapeTransform`           | Native shape transform with part preservation |
-| Create a new bounded text deck               | `createPptx`                               | Deterministic PPTX bytes and write report     |
-| Run the same workflows from a shell          | `oakit` CLI                                | JSON, PPTX, SVG, or PNG files                 |
+| Goal                                         | API                                        | Main result                                     |
+| -------------------------------------------- | ------------------------------------------ | ----------------------------------------------- |
+| Inspect or index a deck                      | `parsePptxWithDiagnostics`                 | Normalized `PptxDocument` plus diagnostics      |
+| Fail on malformed optional OOXML             | `parsePptx` with `errorMode: 'strict'`     | Normalized `PptxDocument` or `PptxParseError`   |
+| Give an agent a visual preview               | `renderPptxToSvg` or `renderPptxToPng`     | Self-contained slide images plus warnings       |
+| Preserve an unchanged deck exactly           | `readPptxRoundTrip` → `writePptxRoundTrip` | Byte-exact `R0` output                          |
+| Send a deck through JSON                     | `serializePptxRoundTripJson`               | Integrity-bound JSON containing source bytes    |
+| Replace supported plain text                 | `replacePptxRoundTripText`                 | Scheduled, verified round-trip operation        |
+| Move, resize, rotate, or flip supported text | `setPptxRoundTripTextTransform`            | Scheduled, verified transform operation         |
+| Move, resize, rotate, or flip a native shape | `setPptxRoundTripShapeTransform`           | Native shape transform with part preservation   |
+| Move, resize, rotate, or flip a native image | `setPptxRoundTripImageTransform`           | Native picture transform; media bytes preserved |
+| Create a new bounded text deck               | `createPptx`                               | Deterministic PPTX bytes and write report       |
+| Run the same workflows from a shell          | `oakit` CLI                                | JSON, PPTX, SVG, or PNG files                   |
 
 Do not use the normalized `PptxDocument` as a lossless serialization format.
 Use the round-trip API when package preservation matters.
@@ -459,6 +460,74 @@ console.log(output.report.level); // R2
 console.log(output.report.supportProfile.id); // pptx-roundtrip-native-v1
 ```
 
+## Create and edit native image media
+
+Creation accepts bounded, signature-checked PNG and JPEG `Uint8Array` data.
+OAKit writes binary media parts, content types, slide relationships, and native
+`p:pic` elements. The creator owns the bytes synchronously, so caller mutation
+after the API call cannot alter the package being built.
+
+```ts
+import {
+  createPptx,
+  readPptxRoundTrip,
+  setPptxRoundTripImageTransform,
+  writePptxRoundTrip,
+  type PptxSceneDocument,
+} from '@evoelsewhere/oakit';
+
+const pngBytes = new Uint8Array(
+  await fetch('/logo.png').then((response) => response.arrayBuffer()),
+);
+const imageScene: PptxSceneDocument = {
+  schemaVersion: 2,
+  size: { width: 960, height: 540 },
+  themes: [],
+  masters: [],
+  layouts: [],
+  media: [{ data: pngBytes, key: 'logo-media', mimeType: 'image/png' }],
+  slides: [
+    {
+      key: 'slide-1',
+      elements: [
+        {
+          type: 'image',
+          key: 'logo-picture',
+          mediaKey: 'logo-media',
+          authored: {
+            transform: { x: 500, y: 300, width: 120, height: 90 },
+          },
+          resolved: { hidden: false },
+        },
+      ],
+    },
+  ],
+};
+
+const createdImage = await createPptx(imageScene);
+const imageSnapshot = await readPptxRoundTrip(createdImage.data);
+const image = imageSnapshot.document.slides[0]?.elements.find(
+  (element) => element.type === 'image',
+);
+if (!image?.resolved.transform) throw new Error('No editable image');
+
+const editedImage = await setPptxRoundTripImageTransform(imageSnapshot, {
+  targetKey: image.key,
+  value: {
+    ...image.resolved.transform,
+    rotation: 15,
+    width: 170,
+    x: 450,
+  },
+});
+const imageOutput = await writePptxRoundTrip(editedImage);
+```
+
+Image transform editing changes only the owning slide XML. The original media
+part and every other untouched package payload remain byte-exact. Crop editing
+is a separate future operation; direct mutation of preview crop fields is not
+accepted.
+
 ## Create a new native presentation
 
 Creation uses `PptxSceneDocument` schema version 2. Dimensions and transforms
@@ -776,16 +845,16 @@ safe value.
 
 ## Capability boundaries
 
-| Capability                      | Current release claim                                               |
-| ------------------------------- | ------------------------------------------------------------------- |
-| Read PPTX                       | Bounded structured parsing with strict/tolerant diagnostics         |
-| Create PPTX                     | Text C3 producer profile; native shape C2 runtime profile           |
-| Edit PPTX                       | Text R3 producer profile; native shape transform R2 runtime profile |
-| Preserve unchanged PPTX         | Byte-exact R0                                                       |
-| Render SVG                      | Node.js and browser, no Office runtime                              |
-| Render PNG                      | Node.js, no Office runtime                                          |
-| Arbitrary PPTX creation/editing | Not claimed                                                         |
-| Pixel-identical rendering       | Not claimed                                                         |
+| Capability                      | Current release claim                                             |
+| ------------------------------- | ----------------------------------------------------------------- |
+| Read PPTX                       | Bounded structured parsing with strict/tolerant diagnostics       |
+| Create PPTX                     | Text C3 producer profile; native shape/image C2 runtime profile   |
+| Edit PPTX                       | Text R3 producer profile; native shape/image transform R2 profile |
+| Preserve unchanged PPTX         | Byte-exact R0                                                     |
+| Render SVG                      | Node.js and browser, no Office runtime                            |
+| Render PNG                      | Node.js, no Office runtime                                        |
+| Arbitrary PPTX creation/editing | Not claimed                                                       |
+| Pixel-identical rendering       | Not claimed                                                       |
 
 The current real-world evidence covers 30 transient SlidesMania templates, 733
 slides, and 9,285 elements before and after controlled Google Slides

@@ -8,6 +8,7 @@ import {
   readPptxRoundTrip,
   renderPptxToSvg,
   serializePptxRoundTripJson,
+  setPptxRoundTripImageTransform,
   setPptxRoundTripShapeTransform,
   writePptxRoundTrip,
   type PptxSceneDocument,
@@ -50,6 +51,13 @@ const MEDIA_SLIDE = `
       </p:pic>
     </p:spTree></p:cSld>
   </p:sld>`;
+
+const NATIVE_PNG = Uint8Array.from(
+  atob(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+  ),
+  (character) => character.charCodeAt(0),
+);
 
 function exactArrayBuffer(bytes: Uint8Array): ArrayBuffer {
   return bytes.buffer.slice(
@@ -278,6 +286,73 @@ describe('PPTX public API in browsers', () => {
     });
     expect(new TextDecoder().decode(rendered.slides[0]?.data)).toContain(
       '#F97316',
+    );
+  });
+
+  it('creates and edits native image media without an Office runtime', async () => {
+    const scene: PptxSceneDocument = {
+      layouts: [],
+      masters: [],
+      media: [
+        { data: NATIVE_PNG, key: 'browser-media', mimeType: 'image/png' },
+      ],
+      schemaVersion: 2,
+      size: { height: 540, width: 960 },
+      slides: [
+        {
+          elements: [
+            {
+              authored: {
+                transform: { height: 90, width: 120, x: 500, y: 300 },
+              },
+              key: 'browser-picture',
+              mediaKey: 'browser-media',
+              resolved: { hidden: false },
+              type: 'image',
+            },
+          ],
+          key: 'browser-image-slide',
+        },
+      ],
+      themes: [],
+    };
+    const created = await createPptx(scene);
+    const snapshot = await readPptxRoundTrip(created.data);
+    const changed = {
+      flipHorizontal: true,
+      flipVertical: false,
+      height: 130,
+      rotation: 15,
+      width: 170,
+      x: 450,
+      y: 260,
+    };
+    const edited = await setPptxRoundTripImageTransform(snapshot, {
+      targetKey: 'slide-1-element-1',
+      value: changed,
+    });
+    const output = await writePptxRoundTrip(edited);
+    const [parsed, rendered] = await Promise.all([
+      parsePptx(output.data, { errorMode: 'strict', imageMode: 'base64' }),
+      renderPptxToSvg(output.data, { slideNumbers: [1] }),
+    ]);
+
+    expect(created.report.supportProfile.id).toBe('pptx-create-native-v1');
+    expect(output.report.supportProfile.id).toBe('pptx-roundtrip-native-v1');
+    const parsedImage = parsed.slides[0]?.elements[0];
+    expect(parsedImage).toMatchObject({
+      height: changed.height,
+      isFlipH: true,
+      left: changed.x,
+      rotate: changed.rotation,
+      top: changed.y,
+      type: 'image',
+      width: changed.width,
+    });
+    if (parsedImage?.type !== 'image') throw new Error('Expected image');
+    expect(parsedImage.base64).toMatch(/^data:image\/png;base64,/);
+    expect(new TextDecoder().decode(rendered.slides[0]?.data)).toContain(
+      'data:image/png;base64,',
     );
   });
 

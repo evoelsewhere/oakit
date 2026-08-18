@@ -1,6 +1,7 @@
 import JSZip from 'jszip';
 import { describe, expect, it } from 'vitest';
 
+import { decodeBase64 } from '../../src/common/binary/base64';
 import {
   createPptx,
   parsePptx,
@@ -64,6 +65,10 @@ function creationScene(): PptxSceneDocument {
     themes: [],
   };
 }
+
+const PNG_BYTES = decodeBase64(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+);
 
 describe('PowerPoint creation through the public API', () => {
   it('exposes producer-verified creation as a distinct fidelity level', () => {
@@ -227,6 +232,92 @@ describe('PowerPoint creation through the public API', () => {
       .toUpperCase();
     expect(svg).toContain('#F97316');
     expect(svg).toContain('#0F172A');
+  });
+
+  it('creates a native image with exact media, relationships, and rendering', async () => {
+    const scene = creationScene();
+    scene.media = [
+      {
+        data: PNG_BYTES,
+        key: 'logo-media',
+        mimeType: 'image/png',
+      },
+    ];
+    scene.slides[0]?.elements.push({
+      authored: {
+        transform: {
+          flipVertical: true,
+          height: 90,
+          rotation: 5,
+          width: 120,
+          x: 500,
+          y: 300,
+        },
+      },
+      description: 'Native image',
+      key: 'logo-picture',
+      mediaKey: 'logo-media',
+      name: 'Logo picture',
+      resolved: { hidden: false },
+      type: 'image',
+    });
+
+    const created = await createPptx(scene);
+    const [archive, parsed, rendered] = await Promise.all([
+      JSZip.loadAsync(created.data),
+      parsePptx(created.data, { errorMode: 'strict', imageMode: 'base64' }),
+      renderPptxToSvg(created.data, { slideNumbers: [1] }),
+    ]);
+
+    expect(created.report.supportProfile.id).toBe('pptx-create-native-v1');
+    await expect(
+      archive.file('ppt/media/image1.png')?.async('uint8array'),
+    ).resolves.toEqual(PNG_BYTES);
+    await expect(
+      archive.file('[Content_Types].xml')?.async('string'),
+    ).resolves.toContain('<Default Extension="png" ContentType="image/png"/>');
+    await expect(
+      archive.file('ppt/slides/_rels/slide1.xml.rels')?.async('string'),
+    ).resolves.toContain(
+      'Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/image1.png"',
+    );
+    const parsedImage = parsed.slides[0]?.elements[1];
+    expect(parsedImage).toMatchObject({
+      height: 90,
+      isFlipV: true,
+      left: 500,
+      rotate: 5,
+      top: 300,
+      type: 'image',
+      width: 120,
+    });
+    if (parsedImage?.type !== 'image') throw new Error('Expected image');
+    expect(parsedImage.base64).toMatch(/^data:image\/png;base64,/);
+    expect(new TextDecoder().decode(rendered.slides[0]?.data)).toContain(
+      'data:image/png;base64,',
+    );
+  });
+
+  it('owns native media bytes before asynchronous archive generation', async () => {
+    const scene = creationScene();
+    const callerBytes = new Uint8Array(PNG_BYTES);
+    scene.media = [{ data: callerBytes, key: 'image', mimeType: 'image/png' }];
+    scene.slides[0]?.elements.push({
+      authored: { transform: { height: 10, width: 10, x: 0, y: 0 } },
+      key: 'picture',
+      mediaKey: 'image',
+      resolved: { hidden: false },
+      type: 'image',
+    });
+
+    const creating = createPptx(scene);
+    callerBytes.fill(0);
+    const created = await creating;
+    const archive = await JSZip.loadAsync(created.data);
+
+    await expect(
+      archive.file('ppt/media/image1.png')?.async('uint8array'),
+    ).resolves.toEqual(PNG_BYTES);
   });
 
   it('contains only the declared deterministic package inventory', async () => {

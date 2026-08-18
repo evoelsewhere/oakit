@@ -28,6 +28,7 @@ jobs:
           - roundtrip-preview
           - roundtrip-validation
           - writer-shape
+          - writer-image
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4

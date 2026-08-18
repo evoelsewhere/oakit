@@ -22,9 +22,12 @@ const DEFAULT_DEPENDENCIES: PptxCreatorDependencies = {
 type PptxCreationProfile = 'create-native-v1' | 'create-text-v1';
 
 function creationProfile(scene: PptxSceneDocument): PptxCreationProfile {
-  return scene.slides.some((slide) =>
-    slide.elements.some((element) => element.type === 'shape'),
-  )
+  return scene.media.length > 0 ||
+    scene.slides.some((slide) =>
+      slide.elements.some(
+        (element) => element.type === 'image' || element.type === 'shape',
+      ),
+    )
     ? 'create-native-v1'
     : 'create-text-v1';
 }
@@ -59,8 +62,9 @@ export async function createPptxWithDependencies(
   scene: PptxSceneDocument,
   dependencies: PptxCreatorDependencies,
 ): Promise<PptxWriteResult> {
-  const profile = creationProfile(scene);
-  const validation = validatePptxScene(scene, { profile });
+  const ownedScene = structuredClone(scene);
+  const profile = creationProfile(ownedScene);
+  const validation = validatePptxScene(ownedScene, { profile });
   if (!validation.valid) {
     throw new PptxWriteError(
       'invalid-scene',
@@ -72,7 +76,7 @@ export async function createPptxWithDependencies(
   let parts: PptxSerializedPart[];
   let data: Uint8Array;
   try {
-    parts = serializePowerPointParts(scene);
+    parts = serializePowerPointParts(ownedScene);
     data = await dependencies.serializeArchive(parts);
   } catch (cause) {
     throw new PptxWriteError(
@@ -83,7 +87,7 @@ export async function createPptxWithDependencies(
   }
 
   try {
-    await dependencies.verify(data, scene);
+    await dependencies.verify(data, ownedScene);
   } catch (cause) {
     throw new PptxWriteError(
       'verification-failed',

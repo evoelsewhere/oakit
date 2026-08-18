@@ -19,11 +19,20 @@ function assertSlideCount(slideCount: number): void {
   }
 }
 
-export function serializeContentTypes(slideCount: number): string {
+export function serializeContentTypes(
+  slideCount: number,
+  mediaTypes: readonly ('image/jpeg' | 'image/png')[] = [],
+): string {
   assertSlideCount(slideCount);
   const fixed =
     `<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>` +
     `<Default Extension="xml" ContentType="application/xml"/>` +
+    (mediaTypes.includes('image/png')
+      ? '<Default Extension="png" ContentType="image/png"/>'
+      : '') +
+    (mediaTypes.includes('image/jpeg')
+      ? '<Default Extension="jpeg" ContentType="image/jpeg"/>'
+      : '') +
     `<Override PartName="/ppt/presentation.xml" ContentType="${PRESENTATION_CONTENT_TYPE}"/>` +
     `<Override PartName="/ppt/slideMasters/slideMaster1.xml" ContentType="${SLIDE_MASTER_CONTENT_TYPE}"/>` +
     `<Override PartName="/ppt/slideLayouts/slideLayout1.xml" ContentType="${SLIDE_LAYOUT_CONTENT_TYPE}"/>` +

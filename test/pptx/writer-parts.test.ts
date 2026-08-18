@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 
 import type {
   PptxSceneDocument,
+  PptxSceneMedia,
   PptxSceneSlide,
 } from '../../src/formats/pptx/scene-types';
 import {
@@ -44,11 +45,14 @@ function fieldSlide(key: string, fieldType: string): PptxSceneSlide {
   };
 }
 
-function scene(slides: PptxSceneSlide[] = []): PptxSceneDocument {
+function scene(
+  slides: PptxSceneSlide[] = [],
+  media: PptxSceneMedia[] = [],
+): PptxSceneDocument {
   return {
     layouts: [],
     masters: [],
-    media: [],
+    media,
     schemaVersion: 2,
     size: { height: 540, width: 960 },
     slides,
@@ -63,6 +67,12 @@ function partByPath(
   const part = parts.find((candidate) => candidate.path === path);
   if (!part) throw new Error(`Missing test package part: ${path}`);
   return part;
+}
+
+function xmlByPath(parts: readonly PptxSerializedPart[], path: string): string {
+  const data = partByPath(parts, path).data;
+  if (typeof data !== 'string') throw new Error(`Expected XML part: ${path}`);
+  return data;
 }
 
 function relationshipTargets(xml: string): string[] {
@@ -112,10 +122,10 @@ describe('PowerPoint package part serialization', () => {
       'ppt/slides/slide2.xml',
       'ppt/slides/_rels/slide2.xml.rels',
     ]);
-    expect(partByPath(parts, '[Content_Types].xml').xml).toContain(
+    expect(xmlByPath(parts, '[Content_Types].xml')).toContain(
       'PartName="/ppt/slides/slide2.xml"',
     );
-    expect(partByPath(parts, 'ppt/presentation.xml').xml).toContain(
+    expect(xmlByPath(parts, 'ppt/presentation.xml')).toContain(
       '<p:sldId id="257" r:id="rId3"/>',
     );
   });
@@ -124,8 +134,8 @@ describe('PowerPoint package part serialization', () => {
     const parts = serializePowerPointParts(
       scene([fieldSlide('first', 'slidenum'), fieldSlide('second', 'date')]),
     );
-    const first = partByPath(parts, 'ppt/slides/slide1.xml').xml;
-    const second = partByPath(parts, 'ppt/slides/slide2.xml').xml;
+    const first = xmlByPath(parts, 'ppt/slides/slide1.xml');
+    const second = xmlByPath(parts, 'ppt/slides/slide2.xml');
 
     expect(first).toContain('id="{00000000-0000-0000-0000-000000000001}"');
     expect(second).toContain('id="{00000000-0000-0000-0000-000000000002}"');
@@ -146,7 +156,8 @@ describe('PowerPoint package part serialization', () => {
 
     for (const part of parts) {
       const parser = new SaxesParser({ xmlns: true });
-      expect(() => parser.write(part.xml).close(), part.path).not.toThrow();
+      if (typeof part.data !== 'string') continue;
+      expect(() => parser.write(part.data).close(), part.path).not.toThrow();
     }
   });
 
@@ -161,7 +172,8 @@ describe('PowerPoint package part serialization', () => {
       candidate.path.endsWith('.rels'),
     )) {
       const owner = relationshipOwner(part.path);
-      for (const target of relationshipTargets(part.xml)) {
+      if (typeof part.data !== 'string') continue;
+      for (const target of relationshipTargets(part.data)) {
         const path = posix.normalize(posix.join(posix.dirname(owner), target));
         resolved.push(path);
         expect(paths.has(path), `${part.path} -> ${path}`).toBe(true);
@@ -176,6 +188,70 @@ describe('PowerPoint package part serialization', () => {
       'ppt/slideMasters/slideMaster1.xml',
       'ppt/slideLayouts/slideLayout1.xml',
     ]);
+  });
+
+  it('owns native media and binds image elements to binary package parts', () => {
+    const callerBytes = new Uint8Array([0x89, 0x50, 0x4e, 0x47]);
+    const input = scene(
+      [
+        {
+          elements: [
+            {
+              authored: {
+                transform: { height: 40, width: 50, x: 10, y: 20 },
+              },
+              key: 'picture',
+              mediaKey: 'media',
+              resolved: { hidden: false },
+              type: 'image',
+            },
+          ],
+          key: 'slide',
+        },
+      ],
+      [{ data: callerBytes, key: 'media', mimeType: 'image/png' }],
+    );
+
+    const parts = serializePowerPointParts(input);
+    callerBytes.fill(0);
+
+    expect(parts.map(({ path }) => path).slice(9)).toEqual([
+      'ppt/media/image1.png',
+      'ppt/slides/slide1.xml',
+      'ppt/slides/_rels/slide1.xml.rels',
+    ]);
+    expect(partByPath(parts, 'ppt/media/image1.png').data).toEqual(
+      new Uint8Array([0x89, 0x50, 0x4e, 0x47]),
+    );
+    expect(xmlByPath(parts, 'ppt/slides/slide1.xml')).toContain(
+      '<a:blip r:embed="rId2"/>',
+    );
+    expect(xmlByPath(parts, 'ppt/slides/_rels/slide1.xml.rels')).toContain(
+      'Target="../media/image1.png"',
+    );
+  });
+
+  it('rejects an image reference missing from the media inventory', () => {
+    const input = scene([
+      {
+        elements: [
+          {
+            authored: {
+              transform: { height: 40, width: 50, x: 10, y: 20 },
+            },
+            key: 'picture',
+            mediaKey: 'missing',
+            resolved: { hidden: false },
+            type: 'image',
+          },
+        ],
+        key: 'slide',
+      },
+    ]);
+
+    expect(() => serializePowerPointParts(input)).toThrow(
+      'PowerPoint image element picture references missing media missing',
+    );
   });
 
   it('rejects an oversized internal scene before allocating package parts', () => {

@@ -28,6 +28,7 @@ describe('PowerPoint usage guide', () => {
       'serializePptxRoundTripJson',
       'setPptxRoundTripTextTransform',
       'setPptxRoundTripShapeTransform',
+      'setPptxRoundTripImageTransform',
       'validatePptxScene',
       'writePptxRoundTrip',
     ]) {

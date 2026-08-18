@@ -1,16 +1,24 @@
 import {
   MAX_POWERPOINT_CREATION_ELEMENTS,
+  MAX_POWERPOINT_CREATION_MEDIA,
+  MAX_POWERPOINT_CREATION_MEDIA_BYTES,
   MAX_POWERPOINT_CREATION_PARAGRAPHS,
   MAX_POWERPOINT_CREATION_STRING_CODE_UNITS,
   MAX_POWERPOINT_CREATION_TEXT_NODES,
+  MAX_POWERPOINT_CREATION_TOTAL_MEDIA_BYTES,
 } from './creation-limits';
-import type { PptxSceneSlide, PptxSceneValidationIssue } from './scene-types';
+import type {
+  PptxSceneMedia,
+  PptxSceneSlide,
+  PptxSceneValidationIssue,
+} from './scene-types';
 
 type JsonObject = Record<string, unknown>;
 
 function stringCodeUnits(value: unknown): number {
   if (typeof value === 'string') return value.length;
   if (value === null) return 0;
+  if (ArrayBuffer.isView(value)) return 0;
   switch (typeof value) {
     case 'object':
       return Object.values(value).reduce<number>(
@@ -24,6 +32,9 @@ function stringCodeUnits(value: unknown): number {
 
 interface CreationResourceCounts {
   elements: number;
+  media: number;
+  mediaBytes: number;
+  maxMediaBytes: number;
   paragraphs: number;
   textNodes: number;
 }
@@ -31,6 +42,9 @@ interface CreationResourceCounts {
 function countCreationResources(document: JsonObject): CreationResourceCounts {
   const counts: CreationResourceCounts = {
     elements: 0,
+    media: 0,
+    mediaBytes: 0,
+    maxMediaBytes: 0,
     paragraphs: 0,
     textNodes: 0,
   };
@@ -47,6 +61,15 @@ function countCreationResources(document: JsonObject): CreationResourceCounts {
       });
     });
   });
+  const media = Array.isArray(document.media)
+    ? (document.media as PptxSceneMedia[])
+    : [];
+  counts.media = media.length;
+  for (const item of media) {
+    if (item === undefined) continue;
+    counts.mediaBytes += item.data.byteLength;
+    counts.maxMediaBytes = Math.max(counts.maxMediaBytes, item.data.byteLength);
+  }
   return counts;
 }
 
@@ -61,6 +84,27 @@ export function validatePowerPointCreationResources(
       code: 'resource-limit-exceeded',
       message: `Creation profile ${profile} supports at most ${MAX_POWERPOINT_CREATION_ELEMENTS} elements`,
       path: '$.slides',
+    });
+  }
+  if (counts.media > MAX_POWERPOINT_CREATION_MEDIA) {
+    issues.push({
+      code: 'resource-limit-exceeded',
+      message: `Creation profile ${profile} supports at most ${MAX_POWERPOINT_CREATION_MEDIA} media resources`,
+      path: '$.media',
+    });
+  }
+  if (counts.maxMediaBytes > MAX_POWERPOINT_CREATION_MEDIA_BYTES) {
+    issues.push({
+      code: 'resource-limit-exceeded',
+      message: `Creation profile ${profile} supports at most ${MAX_POWERPOINT_CREATION_MEDIA_BYTES} bytes per media resource`,
+      path: '$.media',
+    });
+  }
+  if (counts.mediaBytes > MAX_POWERPOINT_CREATION_TOTAL_MEDIA_BYTES) {
+    issues.push({
+      code: 'resource-limit-exceeded',
+      message: `Creation profile ${profile} supports at most ${MAX_POWERPOINT_CREATION_TOTAL_MEDIA_BYTES} total media bytes`,
+      path: '$.media',
     });
   }
   if (counts.paragraphs > MAX_POWERPOINT_CREATION_PARAGRAPHS) {

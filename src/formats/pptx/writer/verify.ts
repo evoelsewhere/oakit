@@ -1,14 +1,23 @@
 import { RATIO_EMUs_Points } from '../../../common/ooxml/units';
+import { encodeBase64 } from '../../../common/binary/base64';
 import { renderPptxDocumentToSvg } from '../render-svg';
 import type { PptxSvgRenderResult } from '../render-types';
 import type {
   PptxSceneDocument,
+  PptxSceneImageElement,
+  PptxSceneMedia,
   PptxSceneShapeElement,
   PptxSceneTextElement,
   PptxSceneTextNode,
 } from '../scene-types';
 import { parse } from '../parser';
-import type { PptxDocument, PptxParseOptions, Shape, Text } from '../types';
+import type {
+  Image,
+  PptxDocument,
+  PptxParseOptions,
+  Shape,
+  Text,
+} from '../types';
 import { plainTextFromPowerPointHtml } from '../roundtrip/preview';
 import { pointsToEmu } from './units';
 
@@ -66,8 +75,9 @@ function verifyTextElement(
 }
 
 function verifyElementTransform(
-  generated: Shape | Text,
-  expected: PptxSceneShapeElement | PptxSceneTextElement,
+  generated: Image | Shape | Text,
+  expected:
+    PptxSceneImageElement | PptxSceneShapeElement | PptxSceneTextElement,
   location: string,
 ): void {
   const transform = expected.authored.transform;
@@ -98,6 +108,32 @@ function verifyElementTransform(
     JSON.stringify(generatedTransform) !== JSON.stringify(expectedTransform)
   ) {
     throw new Error(`Generated PowerPoint transform mismatch at ${location}`);
+  }
+}
+
+function verifyImageElement(
+  generated: PptxDocument['slides'][number]['elements'][number] | undefined,
+  expected: PptxSceneImageElement,
+  media: PptxSceneMedia | undefined,
+  slideIndex: number,
+  elementIndex: number,
+): void {
+  const location = `slide ${slideIndex + 1}, element ${elementIndex + 1}`;
+  if (generated?.type !== 'image') {
+    throw new Error(`Generated PowerPoint image missing at ${location}`);
+  }
+  if (media === undefined) {
+    throw new Error(`Expected PowerPoint image media missing at ${location}`);
+  }
+  verifyElementTransform(generated, expected, location);
+  const expectedBase64 = `data:${media.mimeType};base64,${encodeBase64(media.data)}`;
+  if (generated.base64 !== expectedBase64) {
+    throw new Error(`Generated PowerPoint image data mismatch at ${location}`);
+  }
+  if (generated.geom !== 'rect') {
+    throw new Error(
+      `Generated PowerPoint image geometry mismatch at ${location}`,
+    );
   }
 }
 
@@ -180,9 +216,9 @@ export async function verifyPowerPointCreationWithParser(
   const document = await parseDocument(data, {
     audioMode: 'none',
     errorMode: 'strict',
-    imageMode: 'none',
+    imageMode: scene.media.length === 0 ? 'none' : 'base64',
     limits: {
-      maxEntries: scene.slides.length * 2 + 9,
+      maxEntries: scene.slides.length * 2 + scene.media.length + 9,
       maxSlides: Math.max(1, scene.slides.length),
     },
     videoMode: 'none',
@@ -221,6 +257,14 @@ export async function verifyPowerPointCreationWithParser(
         verifyShapeElement(
           generated.elements[elementIndex],
           element,
+          index,
+          elementIndex,
+        );
+      } else if (element.type === 'image') {
+        verifyImageElement(
+          generated.elements[elementIndex],
+          element,
+          scene.media.find((media) => media.key === element.mediaKey),
           index,
           elementIndex,
         );

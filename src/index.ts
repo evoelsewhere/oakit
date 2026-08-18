@@ -10,6 +10,7 @@ export {
   PptxWriteError,
   readPptxRoundTrip,
   replacePptxRoundTripText,
+  setPptxRoundTripImageTransform,
   setPptxRoundTripShapeTransform,
   setPptxRoundTripTextTransform,
   renderPptxDocumentToSvg,

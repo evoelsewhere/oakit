@@ -188,7 +188,7 @@ describe('PowerPoint round-trip semantic preview', () => {
       width: 30,
     };
     const unsupportedWithoutText = {
-      height: 0,
+      height: 20,
       left: 1,
       name: 'Broken',
       top: 2,
@@ -257,10 +257,12 @@ describe('PowerPoint round-trip semantic preview', () => {
       },
       {
         authored: {},
-        feature: 'image',
         key: 'slide-2-element-3',
-        resolved: { hidden: false },
-        type: 'unsupported',
+        resolved: {
+          hidden: false,
+          transform: { height: 20, width: 30, x: 1, y: 2 },
+        },
+        type: 'image',
       },
     ]);
   });

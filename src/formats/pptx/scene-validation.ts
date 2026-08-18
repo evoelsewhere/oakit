@@ -690,6 +690,29 @@ function validateElement(
         'Creation profile create-text-v1 supports text elements only',
       );
     }
+  } else if (element.type === 'image') {
+    rejectUnknownKeys(element, [...baseKeys, 'mediaKey'], path, issues);
+    if (typeof element.mediaKey === 'string') {
+      referenceKeys.push({
+        path: `${path}.mediaKey`,
+        value: element.mediaKey,
+      });
+    } else if (profile === 'create-native-v1') {
+      addIssue(
+        issues,
+        'invalid-scene-document',
+        `${path}.mediaKey`,
+        'Expected a media key',
+      );
+    }
+    if (profile === 'create-text-v1') {
+      addIssue(
+        issues,
+        'unsupported-feature',
+        path,
+        'Creation profile create-text-v1 supports text elements only',
+      );
+    }
   } else if (element.type === 'unsupported') {
     rejectUnknownKeys(
       element,
@@ -774,6 +797,21 @@ function validateElement(
         );
       }
     }
+    if (
+      profile === 'create-native-v1' &&
+      element.type === 'image' &&
+      (authored.fillColor !== undefined ||
+        authored.geometry !== undefined ||
+        authored.lineColor !== undefined ||
+        authored.lineWidth !== undefined)
+    ) {
+      addIssue(
+        issues,
+        'unsupported-feature',
+        `${path}.authored`,
+        'Creation profile create-native-v1 does not apply shape styling to images',
+      );
+    }
     if (authored.transform !== undefined) {
       validateTransform(
         authored.transform,
@@ -783,7 +821,9 @@ function validateElement(
       );
     } else if (
       isCreationProfile(profile) &&
-      (element.type === 'shape' || element.type === 'text')
+      (element.type === 'image' ||
+        element.type === 'shape' ||
+        element.type === 'text')
     ) {
       addIssue(
         issues,
@@ -833,6 +873,69 @@ function validateElement(
         `Creation profile ${profile} does not support placeholders yet`,
       );
     }
+  }
+}
+
+function startsWithBytes(
+  data: Uint8Array,
+  expected: readonly number[],
+): boolean {
+  return expected.every((value, index) => data[index] === value);
+}
+
+function validateMedia(
+  value: unknown,
+  path: string,
+  keys: Set<string>,
+  issues: PptxSceneValidationIssue[],
+): void {
+  const media = requireObject(value, path, issues);
+  if (!media) return;
+  rejectUnknownKeys(media, ['data', 'key', 'mimeType'], path, issues);
+  registerKey(media.key, `${path}.key`, keys, issues);
+  if (!(media.data instanceof Uint8Array) || media.data.byteLength === 0) {
+    addIssue(
+      issues,
+      'invalid-scene-document',
+      `${path}.data`,
+      'Expected non-empty Uint8Array media data',
+    );
+    return;
+  }
+  if (media.mimeType === 'image/png') {
+    if (
+      !startsWithBytes(
+        media.data,
+        [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a],
+      )
+    ) {
+      addIssue(
+        issues,
+        'invalid-scene-document',
+        `${path}.data`,
+        'PNG media data has an invalid signature',
+      );
+    }
+  } else if (media.mimeType === 'image/jpeg') {
+    if (
+      !startsWithBytes(media.data, [0xff, 0xd8, 0xff]) ||
+      media.data.at(-2) !== 0xff ||
+      media.data.at(-1) !== 0xd9
+    ) {
+      addIssue(
+        issues,
+        'invalid-scene-document',
+        `${path}.data`,
+        'JPEG media data has an invalid signature',
+      );
+    }
+  } else {
+    addIssue(
+      issues,
+      'invalid-scene-document',
+      `${path}.mimeType`,
+      'Expected image/png or image/jpeg media type',
+    );
   }
 }
 
@@ -1015,12 +1118,15 @@ export function validatePptxScene(
   });
 
   const media = requireArray(document.media, '$.media', issues);
-  if (media && media.length > 0) {
+  media?.forEach((value, index) =>
+    validateMedia(value, `$.media[${index}]`, keys, issues),
+  );
+  if (profile === 'create-text-v1' && media && media.length > 0) {
     addIssue(
       issues,
       'unsupported-feature',
       '$.media',
-      'The first scene contract does not support media resources',
+      'Creation profile create-text-v1 does not support media resources',
     );
   }
 

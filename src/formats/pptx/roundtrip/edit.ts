@@ -2,6 +2,7 @@ import { resolvePptxResourceLimits } from '../internal/resource-limits';
 import { isValidXmlText } from '../scene-validation';
 import { PptxWriteError } from '../write-error';
 import type {
+  PptxSceneImageElement,
   PptxSceneShapeElement,
   PptxSceneTextElement,
   PptxSceneTransform,
@@ -39,7 +40,9 @@ export function applyPptxRoundTripOperationsToPreview(
       for (const slide of document.slides) {
         for (const element of slide.elements) {
           if (
-            (element.type === 'shape' || element.type === 'text') &&
+            (element.type === 'image' ||
+              element.type === 'shape' ||
+              element.type === 'text') &&
             element.key === operation.targetKey
           ) {
             element.resolved.transform = structuredClone(operation.value);
@@ -79,7 +82,8 @@ export function applyPptxRoundTripOperationsToPreview(
   return document;
 }
 
-type PptxTransformElement = PptxSceneShapeElement | PptxSceneTextElement;
+type PptxTransformElement =
+  PptxSceneImageElement | PptxSceneShapeElement | PptxSceneTextElement;
 
 function findTransformElement(
   snapshot: PptxRoundTripSnapshot,
@@ -97,7 +101,7 @@ function findTransformElement(
     invalidEdit(
       targetType === 'text'
         ? 'PowerPoint transform target key does not exist'
-        : 'PowerPoint shape transform target key does not exist',
+        : `PowerPoint ${targetType} transform target key does not exist`,
     );
   }
   return matched;
@@ -269,6 +273,7 @@ async function setPptxRoundTripTransform(
   };
   snapshot.operations.push(operation);
   snapshot.supportProfile =
+    targetType === 'image' ||
     targetType === 'shape' ||
     snapshot.supportProfile.id === 'pptx-roundtrip-native-v1'
       ? createPptxRoundTripNativeEditSupportProfile()
@@ -294,4 +299,11 @@ export function setPptxRoundTripShapeTransform(
   request: PptxRoundTripSetTransformRequest,
 ): Promise<PptxRoundTripSnapshot> {
   return setPptxRoundTripTransform(value, request, 'shape');
+}
+
+export function setPptxRoundTripImageTransform(
+  value: PptxRoundTripSnapshot,
+  request: PptxRoundTripSetTransformRequest,
+): Promise<PptxRoundTripSnapshot> {
+  return setPptxRoundTripTransform(value, request, 'image');
 }

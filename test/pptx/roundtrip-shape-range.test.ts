@@ -4,6 +4,7 @@ import {
   escapePptxXmlPattern,
   pptxShapeHasElement,
   qualifiedPptxName,
+  resolvePptxEditablePictureXml,
   resolvePptxEditableShapeXml,
 } from '../../src/formats/pptx/roundtrip/shape-range';
 import { PptxWriteError } from '../../src/formats/pptx/write-error';
@@ -30,6 +31,19 @@ describe('PowerPoint editable shape range', () => {
       shape: '<p:cNvPr id="2"/><a:t>Text</a:t></p:sp>',
     });
     expect(result.range.end).toBeGreaterThan(result.range.start);
+  });
+
+  it('returns a unique native picture without accepting a shape decoy', () => {
+    const xml = slideXml(
+      '<p:sp><p:cNvPr id="2"/></p:sp><p:pic><p:nvPicPr><p:cNvPr id="2"/></p:nvPicPr><p:spPr/></p:pic>',
+    );
+
+    expect(resolvePptxEditablePictureXml(xml, '2').shape).toBe(
+      '<p:nvPicPr><p:cNvPr id="2"/></p:nvPicPr><p:spPr/></p:pic>',
+    );
+    expect(() => resolvePptxEditablePictureXml(slideXml(), '2')).toThrow(
+      'PowerPoint text edit requires one unique picture for id 2',
+    );
   });
 
   it('supports strict and default presentation namespaces', () => {

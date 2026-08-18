@@ -63,6 +63,8 @@ describe('PowerPoint patch orchestration', () => {
     ).rejects.toThrow(
       'PowerPoint text edit target is not a slide-owned text element',
     );
+    (document.slides[0]?.elements[0] as unknown as { type: string }).type =
+      'audio';
 
     const transformOperation: PptxRoundTripOperation = {
       expectedTransform: {
@@ -95,7 +97,7 @@ describe('PowerPoint patch orchestration', () => {
         resolvePptxResourceLimits(),
       ),
     ).rejects.toThrow(
-      'PowerPoint transform target is not a slide-owned text or shape element',
+      'PowerPoint transform target is not a slide-owned text, shape, or image element',
     );
 
     transformOperation.targetKey = `slide-${'9'.repeat(20)}-element-1`;

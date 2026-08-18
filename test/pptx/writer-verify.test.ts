@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import type {
+  Image,
   PptxDocument,
   PptxParseOptions,
   Shape,
@@ -59,6 +60,27 @@ function shapeSlide(key: string): PptxSceneSlide {
         key: `${key}-shape`,
         resolved: { hidden: false },
         type: 'shape',
+      },
+    ],
+    key,
+  };
+}
+
+const IMAGE_BYTES = new Uint8Array([
+  0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
+]);
+
+function imageSlide(key: string): PptxSceneSlide {
+  return {
+    elements: [
+      {
+        authored: {
+          transform: { height: 40, width: 160, x: 10, y: 20 },
+        },
+        key: `${key}-image`,
+        mediaKey: 'media-1',
+        resolved: { hidden: false },
+        type: 'image',
       },
     ],
     key,
@@ -134,6 +156,29 @@ function generatedNativeShape(): Shape {
     borderColor: '#0F172A',
     borderWidth: 2,
     fill: { type: 'color', value: '#F97316' },
+  };
+}
+
+function generatedImage(): Image {
+  return {
+    base64: 'data:image/png;base64,iVBORw0KGgo=',
+    blob: '',
+    borderColor: '#000000',
+    borderStrokeDasharray: '0',
+    borderType: 'solid',
+    borderWidth: 0,
+    geom: 'rect',
+    height: 40,
+    id: '2',
+    isFlipH: false,
+    isFlipV: false,
+    left: 10,
+    order: 0,
+    ref: 'ppt/media/image1.png',
+    rotate: 0,
+    top: 20,
+    type: 'image',
+    width: 160,
   };
 }
 
@@ -289,6 +334,75 @@ describe('PowerPoint creation verification', () => {
         rendered,
       ),
     ).rejects.toThrow(`${message} at slide 1, element 1`);
+  });
+
+  it('verifies native image transform, media data, and geometry', async () => {
+    const input = scene([imageSlide('slide-1')]);
+    input.media = [
+      { data: IMAGE_BYTES, key: 'media-1', mimeType: 'image/png' },
+    ];
+    const output = document(1);
+    output.slides[0]?.elements.push(generatedImage());
+
+    await expect(
+      verifyPowerPointCreationWithParser(
+        new Uint8Array(),
+        input,
+        () => Promise.resolve(output),
+        rendered,
+      ),
+    ).resolves.toBeUndefined();
+  });
+
+  it.each([
+    ['missing image', undefined, 'Generated PowerPoint image missing'],
+    [
+      'media data',
+      { base64: 'data:image/png;base64,AAAA' },
+      'Generated PowerPoint image data mismatch',
+    ],
+    [
+      'geometry',
+      { geom: 'ellipse' },
+      'Generated PowerPoint image geometry mismatch',
+    ],
+    ['transform', { left: 11 }, 'Generated PowerPoint transform mismatch'],
+  ])('rejects native image %s mismatches', async (_name, change, message) => {
+    const input = scene([imageSlide('slide-1')]);
+    input.media = [
+      { data: IMAGE_BYTES, key: 'media-1', mimeType: 'image/png' },
+    ];
+    const output = document(1);
+    if (change !== undefined) {
+      output.slides[0]?.elements.push({ ...generatedImage(), ...change });
+    } else if (output.slides[0] !== undefined) {
+      output.slides[0].elements = new Array<Image>(1);
+    }
+
+    await expect(
+      verifyPowerPointCreationWithParser(
+        new Uint8Array(),
+        input,
+        () => Promise.resolve(output),
+        rendered,
+      ),
+    ).rejects.toThrow(`${message} at slide 1, element 1`);
+  });
+
+  it('rejects native image media missing from the scene inventory', async () => {
+    const output = document(1);
+    output.slides[0]?.elements.push(generatedImage());
+
+    await expect(
+      verifyPowerPointCreationWithParser(
+        new Uint8Array(),
+        scene([imageSlide('slide-1')]),
+        () => Promise.resolve(output),
+        rendered,
+      ),
+    ).rejects.toThrow(
+      'Expected PowerPoint image media missing at slide 1, element 1',
+    );
   });
 
   it('rejects a generated text value that differs from the source scene', async () => {

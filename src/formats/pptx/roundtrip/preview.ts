@@ -2,6 +2,7 @@ import { decodeXmlEntities } from '../../../common/text/html';
 import type {
   PptxSceneDocument,
   PptxSceneElement,
+  PptxSceneImageElement,
   PptxSceneShapeElement,
   PptxSceneSlide,
   PptxSceneTextBodyProperties,
@@ -9,7 +10,7 @@ import type {
   PptxSceneTransform,
   PptxSceneUnsupportedElement,
 } from '../scene-types';
-import type { PptxDocument, PptxElement, Shape, Text } from '../types';
+import type { Image, PptxDocument, PptxElement, Shape, Text } from '../types';
 
 function resolvedTransform(
   element: PptxElement,
@@ -121,6 +122,23 @@ function sceneShapeElement(
   };
 }
 
+function sceneImageElement(
+  element: Image,
+  slideIndex: number,
+  elementIndex: number,
+): PptxSceneImageElement {
+  const transform = resolvedTransform(element);
+  return {
+    authored: {},
+    key: `slide-${slideIndex + 1}-element-${elementIndex + 1}`,
+    resolved: {
+      hidden: false,
+      ...(transform === undefined ? {} : { transform }),
+    },
+    type: 'image',
+  };
+}
+
 function sceneUnsupportedElement(
   element: PptxElement,
   slideIndex: number,
@@ -153,6 +171,9 @@ function sceneElement(
     return plainTextFromPowerPointHtml(element.content) === ''
       ? sceneShapeElement(element, slideIndex, elementIndex)
       : sceneUnsupportedElement(element, slideIndex, elementIndex);
+  }
+  if (element.type === 'image') {
+    return sceneImageElement(element, slideIndex, elementIndex);
   }
   return sceneUnsupportedElement(element, slideIndex, elementIndex);
 }

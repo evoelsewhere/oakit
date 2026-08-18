@@ -1,6 +1,6 @@
 export const mutationModules = [
   {
-    estimatedSeconds: 133,
+    estimatedSeconds: 158,
     name: 'orchestration',
     source: 'src/formats/pptx/roundtrip/orchestration.ts',
     tests: [
@@ -8,6 +8,7 @@ export const mutationModules = [
       'test/pptx/roundtrip-patch-text.test.ts',
       'test/pptx/roundtrip-transform.test.ts',
       'test/black-box/roundtrip-shape-transform.test.ts',
+      'test/black-box/roundtrip-image-transform.test.ts',
     ],
   },
   {
@@ -29,7 +30,7 @@ export const mutationModules = [
     tests: ['test/pptx/roundtrip-relationships.test.ts'],
   },
   {
-    estimatedSeconds: 240,
+    estimatedSeconds: 236,
     name: 'shape-range',
     source: 'src/formats/pptx/roundtrip/shape-range.ts',
     tests: ['test/pptx/roundtrip-shape-range.test.ts'],
@@ -41,7 +42,7 @@ export const mutationModules = [
     tests: ['test/pptx/roundtrip-text-xml.test.ts'],
   },
   {
-    estimatedSeconds: 150,
+    estimatedSeconds: 210,
     name: 'transform-xml',
     source: 'src/formats/pptx/roundtrip/transform-xml.ts',
     tests: ['test/pptx/roundtrip-transform-xml.test.ts'],
@@ -56,17 +57,18 @@ export const mutationModules = [
     ],
   },
   {
-    estimatedSeconds: 336,
+    estimatedSeconds: 465,
     name: 'roundtrip-edit',
     source: 'src/formats/pptx/roundtrip/edit.ts',
     tests: [
       'test/pptx/roundtrip-edit.test.ts',
       'test/pptx/roundtrip-transform.test.ts',
       'test/black-box/roundtrip-shape-transform.test.ts',
+      'test/black-box/roundtrip-image-transform.test.ts',
     ],
   },
   {
-    estimatedSeconds: 201,
+    estimatedSeconds: 329,
     name: 'roundtrip-preview',
     source: 'src/formats/pptx/roundtrip/preview.ts',
     tests: [
@@ -75,12 +77,13 @@ export const mutationModules = [
     ],
   },
   {
-    estimatedSeconds: 422,
+    estimatedSeconds: 559,
     name: 'roundtrip-validation',
     source: 'src/formats/pptx/roundtrip/validate.ts',
     tests: [
       'test/pptx/roundtrip-validation.test.ts',
       'test/black-box/roundtrip-shape-transform.test.ts',
+      'test/black-box/roundtrip-image-transform.test.ts',
     ],
   },
   {
@@ -91,6 +94,12 @@ export const mutationModules = [
       'test/pptx/writer-shape.test.ts',
       'test/pptx/writer-text-shape.test.ts',
     ],
+  },
+  {
+    estimatedSeconds: 61,
+    name: 'writer-image',
+    source: 'src/formats/pptx/writer/image.ts',
+    tests: ['test/pptx/writer-image.test.ts'],
   },
 ];
 

@@ -9,7 +9,7 @@ export async function serializePowerPointArchive(
 ): Promise<Uint8Array> {
   const archive = new JSZip();
   for (const part of parts) {
-    archive.file(part.path, part.xml, {
+    archive.file(part.path, part.data, {
       createFolders: false,
       date: POWERPOINT_ARCHIVE_DATE,
     });

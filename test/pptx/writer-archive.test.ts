@@ -6,12 +6,12 @@ import type { PptxSerializedPart } from '../../src/formats/pptx/writer/parts';
 
 const PARTS: readonly PptxSerializedPart[] = [
   {
+    data: '<?xml version="1.0"?><Types><Repeated>aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa</Repeated></Types>',
     path: '[Content_Types].xml',
-    xml: '<?xml version="1.0"?><Types><Repeated>aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa</Repeated></Types>',
   },
   {
+    data: '<?xml version="1.0"?><Relationships/>',
     path: '_rels/.rels',
-    xml: '<?xml version="1.0"?><Relationships/>',
   },
 ];
 
@@ -54,9 +54,9 @@ describe('PowerPoint archive serialization', () => {
 
     await expect(
       archive.file('[Content_Types].xml')?.async('string'),
-    ).resolves.toBe(PARTS[0]?.xml);
+    ).resolves.toBe(PARTS[0]?.data);
     await expect(archive.file('_rels/.rels')?.async('string')).resolves.toBe(
-      PARTS[1]?.xml,
+      PARTS[1]?.data,
     );
   });
 
@@ -84,6 +84,18 @@ describe('PowerPoint archive serialization', () => {
     await serializePowerPointArchive(parts);
 
     expect(parts).toEqual(before);
+  });
+
+  it('writes binary package parts without UTF-8 coercion', async () => {
+    const data = new Uint8Array([0, 255, 1, 254]);
+    const bytes = await serializePowerPointArchive([
+      { data, path: 'ppt/media/image1.png' },
+    ]);
+    const archive = await JSZip.loadAsync(bytes);
+
+    await expect(
+      archive.file('ppt/media/image1.png')?.async('uint8array'),
+    ).resolves.toEqual(data);
   });
 
   it('emits a valid empty ZIP for an empty internal inventory', async () => {
