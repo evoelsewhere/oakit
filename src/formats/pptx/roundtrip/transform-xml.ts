@@ -146,9 +146,6 @@ function replaceIntegerAttribute(
   value: number,
 ): string {
   const pattern = new RegExp(`(\\s${name}\\s*=\\s*)(?:"[^"]*"|'[^']*')`);
-  if (!pattern.test(tag)) {
-    unsupportedPptxEdit(`PowerPoint table ${name} attribute is missing`);
-  }
   return tag.replace(pattern, `$1"${value}"`);
 }
 
@@ -188,7 +185,7 @@ function scaleTableAttributeTags(
   }
   const replacements: number[] = [];
   let allocated = 0;
-  for (let index = 0; index < source.length; index += 1) {
+  source.forEach((sourceValue, index) => {
     const remaining = source.length - index - 1;
     const value =
       index === source.length - 1
@@ -196,15 +193,13 @@ function scaleTableAttributeTags(
         : Math.max(
             1,
             Math.min(
-              Math.round(
-                ((source[index] as number) * replacementTotal) / expectedTotal,
-              ),
+              Math.round((sourceValue * replacementTotal) / expectedTotal),
               replacementTotal - allocated - remaining,
             ),
           );
     replacements.push(value);
     allocated += value;
-  }
+  });
 
   let result = shape;
   for (let index = matches.length - 1; index >= 0; index -= 1) {

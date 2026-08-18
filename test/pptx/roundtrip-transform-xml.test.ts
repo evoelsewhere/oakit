@@ -133,6 +133,51 @@ describe('PowerPoint literal shape transform patching', () => {
     expect(output).toContain('<a:tr h="476250">');
     expect(output).toContain('<a:tr h="793750">');
     expect(output).toContain('<p:graphicFrame>');
+    expect(output.match(/<p:sld\b/g)).toHaveLength(1);
+    expect(output.match(/<\/p:sld>/g)).toHaveLength(1);
+  });
+
+  it('distributes integer rounding while preserving every tiny grid unit', () => {
+    const input = tableXml(['1', '1', '1', '1'], ['1'])
+      .replace('cx="3810000"', 'cx="4"')
+      .replace('cy="1016000"', 'cy="1"');
+    const exactBoundary = patchPptxGraphicFrameTransformXml(
+      input,
+      '2',
+      operation(
+        { height: 1 / 12_700, width: 4 / 12_700 },
+        { height: 1 / 12_700, width: 4 / 12_700 },
+      ),
+    );
+    expect(exactBoundary.match(/<a:gridCol w="1"\/>/g)).toHaveLength(4);
+
+    const rounded = patchPptxGraphicFrameTransformXml(
+      input,
+      '2',
+      operation(
+        { height: 1 / 12_700, width: 6 / 12_700 },
+        { height: 1 / 12_700, width: 4 / 12_700 },
+      ),
+    );
+    expect(rounded).toContain(
+      '<a:gridCol w="2"/><a:gridCol w="2"/><a:gridCol w="1"/><a:gridCol w="1"/>',
+    );
+    expect(rounded.match(/<a:gridCol\b/g)).toHaveLength(4);
+
+    const lastRemainderInput = tableXml(['1', '1', '1'], ['1'])
+      .replace('cx="3810000"', 'cx="3"')
+      .replace('cy="1016000"', 'cy="1"');
+    const lastRemainder = patchPptxGraphicFrameTransformXml(
+      lastRemainderInput,
+      '2',
+      operation(
+        { height: 1 / 12_700, width: 4 / 12_700 },
+        { height: 1 / 12_700, width: 3 / 12_700 },
+      ),
+    );
+    expect(lastRemainder).toContain(
+      '<a:gridCol w="1"/><a:gridCol w="1"/><a:gridCol w="2"/>',
+    );
   });
 
   it('rejects table grids that disagree with the semantic precondition', () => {
@@ -189,6 +234,13 @@ describe('PowerPoint literal shape transform patching', () => {
     ).toThrow(
       'PowerPoint table column widths cannot fit the requested transform',
     );
+    expect(() =>
+      patchPptxGraphicFrameTransformXml(
+        tableXml().replaceAll('a:tbl', 'a:notTbl'),
+        '2',
+        operation(),
+      ),
+    ).toThrow('PowerPoint graphic frame is not a native table');
   });
 
   it.each([
