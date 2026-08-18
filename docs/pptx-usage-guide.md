@@ -22,6 +22,7 @@ service are not runtime dependencies.
 | Move, resize, rotate, or flip supported text | `setPptxRoundTripTextTransform`            | Scheduled, verified transform operation         |
 | Move, resize, rotate, or flip a native shape | `setPptxRoundTripShapeTransform`           | Native shape transform with part preservation   |
 | Move, resize, rotate, or flip a native image | `setPptxRoundTripImageTransform`           | Native picture transform; media bytes preserved |
+| Move, resize, rotate, or flip a native table | `setPptxRoundTripTableTransform`           | Native table frame and proportional grid patch  |
 | Create a new bounded text deck               | `createPptx`                               | Deterministic PPTX bytes and write report       |
 | Run the same workflows from a shell          | `oakit` CLI                                | JSON, PPTX, SVG, or PNG files                   |
 
@@ -528,6 +529,136 @@ part and every other untouched package payload remain byte-exact. Crop editing
 is a separate future operation; direct mutation of preview crop fields is not
 accepted.
 
+## Create and edit a native table
+
+Tables are first-class scene elements. A table declares its column widths,
+row heights, structured cell text, optional fills, and optional per-edge
+borders. All dimensions use points. For creation, the sum of `columns` must
+equal the authored transform width, every row must contain exactly one cell per
+grid column, and the sum of row heights must equal the transform height.
+
+```ts
+import {
+  createPptx,
+  readPptxRoundTrip,
+  setPptxRoundTripTableTransform,
+  writePptxRoundTrip,
+  type PptxSceneDocument,
+  type PptxSceneTableCell,
+  type PptxSceneTextBody,
+} from '@evoelsewhere/oakit';
+
+function cellText(key: string, value: string): PptxSceneTextBody {
+  return {
+    body: { anchor: 'center', wrap: true },
+    paragraphs: [
+      {
+        key: `${key}-paragraph`,
+        children: [
+          {
+            type: 'run',
+            key: `${key}-run`,
+            text: value,
+            properties: { color: '#0F172A', fontSize: 14 },
+          },
+        ],
+      },
+    ],
+  };
+}
+
+function cell(
+  key: string,
+  value: string,
+  fillColor: string,
+): PptxSceneTableCell {
+  return {
+    fillColor,
+    borders: {
+      top: { color: '#334155', width: 1 },
+      right: { color: '#334155', width: 1 },
+      bottom: { color: '#334155', width: 1 },
+      left: { color: '#334155', width: 1 },
+    },
+    text: cellText(key, value),
+  };
+}
+
+const tableScene: PptxSceneDocument = {
+  schemaVersion: 2,
+  size: { width: 960, height: 540 },
+  themes: [],
+  masters: [],
+  layouts: [],
+  media: [],
+  slides: [
+    {
+      key: 'slide-1',
+      elements: [
+        {
+          type: 'table',
+          key: 'sales-table',
+          name: 'Quarterly sales',
+          authored: {
+            transform: { x: 72, y: 90, width: 300, height: 100 },
+          },
+          resolved: { hidden: false },
+          columns: [120, 180],
+          rows: [
+            {
+              height: 40,
+              cells: [
+                cell('product-heading', 'Product', '#E0F2FE'),
+                cell('revenue-heading', 'Revenue', '#E0F2FE'),
+              ],
+            },
+            {
+              height: 60,
+              cells: [
+                cell('product-value', 'Atlas', '#FFFFFF'),
+                cell('revenue-value', '$125K', '#FFFFFF'),
+              ],
+            },
+          ],
+        },
+      ],
+    },
+  ],
+};
+
+const createdTable = await createPptx(tableScene);
+const tableSnapshot = await readPptxRoundTrip(createdTable.data);
+const table = tableSnapshot.document.slides[0]?.elements.find(
+  (element) => element.type === 'table',
+);
+if (!table?.resolved.transform) throw new Error('No editable native table');
+
+const editedTable = await setPptxRoundTripTableTransform(tableSnapshot, {
+  targetKey: table.key,
+  value: {
+    ...table.resolved.transform,
+    x: 120,
+    y: 140,
+    width: 400,
+    height: 150,
+    rotation: 10,
+  },
+});
+const tableOutput = await writePptxRoundTrip(editedTable);
+```
+
+The table transform operation updates the `p:graphicFrame` transform and scales
+the native `a:gridCol` widths and `a:tr` heights proportionally using exact
+integer EMUs. Only the owning slide XML is dirty; every other package payload
+remains byte-exact. Table frames with zero, inconsistent, non-rectangular, or
+otherwise unsafe grids stay preservation-only and are not exposed as transform
+targets. Cell-content editing is not yet a separate public operation.
+
+For merged cells, the origin uses `colSpan` and/or `rowSpan`. Continuation cells
+must set `hMerge`, `vMerge`, or both to match the occupied grid rectangle. Scene
+validation rejects out-of-bounds, overlapping, or inconsistent spans before
+package generation.
+
 ## Create a new native presentation
 
 Creation uses `PptxSceneDocument` schema version 2. Dimensions and transforms
@@ -845,16 +976,16 @@ safe value.
 
 ## Capability boundaries
 
-| Capability                      | Current release claim                                             |
-| ------------------------------- | ----------------------------------------------------------------- |
-| Read PPTX                       | Bounded structured parsing with strict/tolerant diagnostics       |
-| Create PPTX                     | Text C3 producer profile; native shape/image C2 runtime profile   |
-| Edit PPTX                       | Text R3 producer profile; native shape/image transform R2 profile |
-| Preserve unchanged PPTX         | Byte-exact R0                                                     |
-| Render SVG                      | Node.js and browser, no Office runtime                            |
-| Render PNG                      | Node.js, no Office runtime                                        |
-| Arbitrary PPTX creation/editing | Not claimed                                                       |
-| Pixel-identical rendering       | Not claimed                                                       |
+| Capability                      | Current release claim                                                   |
+| ------------------------------- | ----------------------------------------------------------------------- |
+| Read PPTX                       | Bounded structured parsing with strict/tolerant diagnostics             |
+| Create PPTX                     | Text C3 producer profile; native shape/image/table C2 runtime profile   |
+| Edit PPTX                       | Text R3 producer profile; native shape/image/table transform R2 profile |
+| Preserve unchanged PPTX         | Byte-exact R0                                                           |
+| Render SVG                      | Node.js and browser, no Office runtime                                  |
+| Render PNG                      | Node.js, no Office runtime                                              |
+| Arbitrary PPTX creation/editing | Not claimed                                                             |
+| Pixel-identical rendering       | Not claimed                                                             |
 
 The current real-world evidence covers 30 transient SlidesMania templates, 733
 slides, and 9,285 elements before and after controlled Google Slides

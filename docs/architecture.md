@@ -10,8 +10,8 @@ The implemented PowerPoint production paths are:
 .pptx package ──parse──────────> normalized typed JSON + diagnostics
 .pptx package ──snapshot───────> portable integrity-bound JSON ──restore──> R0 .pptx
                                        │
-                                       └──bound text/shape/image ops─────> part-preserved R2 .pptx
-scene JSON──── ──create─────────> bounded text/shape/image C2 .pptx
+                                       └──bound text/shape/image/table ops─────> part-preserved R2 .pptx
+scene JSON──── ──create─────────> bounded text/shape/image/table C2 .pptx
 .pptx/model─── ──render─────────> self-contained SVG or Node-only PNG + warnings
 ```
 
@@ -43,10 +43,10 @@ The normalized parser does not attempt byte-for-byte preservation. Exact `R0`
 preservation is implemented by a separate round-trip snapshot that owns the
 source package and hashes its bound semantic preview, operation log, and source
 manifest. The same snapshot accepts narrow `R2` single-run replacement,
-text-element transforms, and native shape/image transforms with exact preconditions,
+text-element transforms, and native shape/image/table transforms with exact preconditions,
 part-preserving patching, strict output reparse, and semantic verification.
 Source-free creation accepts bounded text, native rect/roundRect/ellipse, and
-PNG/JPEG profiles and reports `C2`; arbitrary semantic editing, streaming ZIP processing,
+PNG/JPEG and structured table profiles and reports `C2`; arbitrary semantic editing, streaming ZIP processing,
 full XSD validation, macro execution, and package repair are not implemented.
 
 ## System context
@@ -60,7 +60,7 @@ flowchart LR
     XML["OOXML parts and relationships"]
     Model["Typed PptxDocument"]
     Snapshot["Portable R0/R2 snapshot"]
-    Operation["Bound text or native shape operation"]
+    Operation["Bound text or native shape/image/table operation"]
     Scene["Validated scene JSON"]
     Writer["R0 restore, R2 patch, or C2 creator"]
     PackageOutput["Verified PPTX bytes"]
@@ -702,7 +702,9 @@ operations it writes byte-identical `R0` data. For the CLI-supported `R2` text
 profile it patches text and/or one text-owned transform in the owning slide
 part, verifies every untouched part payload, strict-parses the output, and
 compares the complete semantic preview. The programmatic API additionally
-supports empty native shape transforms through `pptx-roundtrip-native-v1`.
+supports native shape, image, and safe table transforms through
+`pptx-roundtrip-native-v1`. A table resize patches both its graphic-frame
+extent and proportional grid/row dimensions in the owning slide.
 
 Command parsing, conversion, hand-off, edit, and render orchestration live in
 `cli/run.ts` behind the injected `OakitCliIo` contract. The contract separates
@@ -866,9 +868,9 @@ PowerPoint public API
 ├── normalized reader -> PptxDocument + optional diagnostics
 ├── round-trip reader -> source-bound R0 runtime snapshot
 ├── portable codec -> bounded JSON transport with canonical Base64
-├── text/shape/image operations -> stable targets plus exact preconditions
+├── text/shape/image/table operations -> stable targets plus exact preconditions
 ├── round-trip writer -> verified R0 copy or part-preserving R2 package
-├── creation writer -> deterministic C2 text/shape/image package
+├── creation writer -> deterministic C2 text/shape/image/table package
 ├── preview renderer -> approximate SVG/PNG with warnings
 └── shared scene, package, and format-domain rules
 ```
@@ -880,7 +882,7 @@ returns an owned copy of the original package; this is how unknown parts remain
 exact without leaking raw OOXML into the normalized model. For declared `R2`
 profiles, it resolves slide ownership through relationships, rejects ambiguous
 or extension-bearing targets, patches one DrawingML text node, text transform,
-or native shape/image transform, proves every untouched payload remains exact,
+or native shape/image/table transform, proves every untouched payload remains exact,
 and verifies the full output preview.
 Broader edit and creation profiles remain future work rather than implied
 capabilities.
