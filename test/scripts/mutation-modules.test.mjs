@@ -37,6 +37,7 @@ describe('focused mutation modules', () => {
       'writer-shape',
       'writer-image',
       'writer-table',
+      'writer-table-verify',
       'font-style',
     ]);
     expect(new Set(mutationModules.map(({ source }) => source)).size).toBe(

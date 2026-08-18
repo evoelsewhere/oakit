@@ -35,6 +35,7 @@ jobs:
           - writer-shape
           - writer-image
           - writer-table
+          - writer-table-verify
           - font-style
     steps:
       - uses: actions/checkout@v4

@@ -141,6 +141,12 @@ export const mutationModules = [
     tests: ['test/pptx/writer-table.test.ts'],
   },
   {
+    estimatedSeconds: 300,
+    name: 'writer-table-verify',
+    source: 'src/formats/pptx/writer/table-verify.ts',
+    tests: ['test/pptx/writer-table-verify.test.ts'],
+  },
+  {
     estimatedSeconds: 690,
     name: 'font-style',
     source: 'src/formats/pptx/internal/font-style.ts',
