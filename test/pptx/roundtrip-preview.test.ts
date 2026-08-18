@@ -277,6 +277,104 @@ describe('PowerPoint round-trip semantic preview', () => {
     expect(parsed).toEqual(before);
   });
 
+  it('maps safe native tables and preserves unsafe grids as opaque', () => {
+    const nativeTable = {
+      borders: {},
+      colWidths: [100, 200],
+      data: [
+        [
+          {
+            borders: {
+              top: {
+                borderColor: '#334155',
+                borderType: 'dashed',
+                borderWidth: 1,
+              },
+            },
+            fillColor: '#E0F2FE',
+            fontBold: true,
+            fontColor: '#0F172A',
+            text: '<b>Alpha &amp; Beta</b>',
+            vAlign: 'mid',
+          },
+          { borders: {}, text: 'Value', vAlign: 'down' },
+        ],
+      ],
+      height: 40,
+      id: '2',
+      isFlipH: false,
+      isFlipV: false,
+      left: 10,
+      name: 'Native table',
+      order: 0,
+      rotate: 0,
+      rowHeights: [40],
+      top: 20,
+      type: 'table',
+      width: 300,
+    };
+    const unsafeTable = {
+      ...structuredClone(nativeTable),
+      colWidths: [100, 199],
+      id: '3',
+    };
+    const document = {
+      size: { height: 540, width: 960 },
+      slides: [
+        {
+          elements: [nativeTable, unsafeTable],
+          fill: { type: 'color', value: '#ffffff' },
+          layoutElements: [],
+          note: '',
+        },
+      ],
+      themeColors: [],
+      usedFonts: [],
+    } as unknown as PptxDocument;
+
+    const preview = createPowerPointRoundTripPreview(document);
+
+    expect(preview.slides[0]?.elements[0]).toMatchObject({
+      columns: [100, 200],
+      key: 'slide-1-element-1',
+      name: 'Native table',
+      rows: [
+        {
+          cells: [
+            {
+              borders: {
+                top: { color: '#334155', style: 'dashed', width: 1 },
+              },
+              fillColor: '#E0F2FE',
+              text: {
+                body: { anchor: 'center' },
+                paragraphs: [
+                  {
+                    children: [
+                      {
+                        properties: { bold: true, color: '#0F172A' },
+                        text: 'Alpha & Beta',
+                      },
+                    ],
+                  },
+                ],
+              },
+            },
+            { text: { body: { anchor: 'bottom' } } },
+          ],
+          height: 40,
+        },
+      ],
+      type: 'table',
+    });
+    expect(preview.slides[0]?.elements[1]).toMatchObject({
+      feature: 'table',
+      key: 'slide-1-element-2',
+      type: 'unsupported',
+    });
+    expect(validatePptxScene(preview)).toEqual({ issues: [], valid: true });
+  });
+
   it.each([
     ['left', Number.NaN],
     ['top', Number.POSITIVE_INFINITY],

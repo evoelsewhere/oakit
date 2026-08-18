@@ -5,12 +5,24 @@ import type {
   PptxSceneImageElement,
   PptxSceneShapeElement,
   PptxSceneSlide,
+  PptxSceneTableBorder,
+  PptxSceneTableCell,
+  PptxSceneTableElement,
   PptxSceneTextBodyProperties,
   PptxSceneTextElement,
   PptxSceneTransform,
   PptxSceneUnsupportedElement,
 } from '../scene-types';
-import type { Image, PptxDocument, PptxElement, Shape, Text } from '../types';
+import type {
+  Border,
+  Image,
+  PptxDocument,
+  PptxElement,
+  Shape,
+  Table,
+  TableCell,
+  Text,
+} from '../types';
 
 function resolvedTransform(
   element: PptxElement,
@@ -139,6 +151,127 @@ function sceneImageElement(
   };
 }
 
+function sceneTableBorder(border: Border): PptxSceneTableBorder {
+  return {
+    color: border.borderColor,
+    style: border.borderType,
+    width: border.borderWidth,
+  };
+}
+
+function hasVisibleTableBorder(border: Border | undefined): border is Border {
+  return border !== undefined && border.borderWidth > 0;
+}
+
+function sceneTableCell(
+  cell: TableCell,
+  tableKey: string,
+  rowIndex: number,
+  columnIndex: number,
+): PptxSceneTableCell {
+  const key = `${tableKey}-row-${rowIndex + 1}-cell-${columnIndex + 1}`;
+  const properties = {
+    ...(cell.fontBold === undefined ? {} : { bold: cell.fontBold }),
+    ...(cell.fontColor === undefined ? {} : { color: cell.fontColor }),
+  };
+  return {
+    borders: {
+      ...(!hasVisibleTableBorder(cell.borders.bottom)
+        ? {}
+        : { bottom: sceneTableBorder(cell.borders.bottom) }),
+      ...(!hasVisibleTableBorder(cell.borders.left)
+        ? {}
+        : { left: sceneTableBorder(cell.borders.left) }),
+      ...(!hasVisibleTableBorder(cell.borders.right)
+        ? {}
+        : { right: sceneTableBorder(cell.borders.right) }),
+      ...(!hasVisibleTableBorder(cell.borders.top)
+        ? {}
+        : { top: sceneTableBorder(cell.borders.top) }),
+    },
+    ...(cell.colSpan === undefined ? {} : { colSpan: cell.colSpan }),
+    ...(cell.fillColor === undefined ? {} : { fillColor: cell.fillColor }),
+    ...(cell.hMerge === undefined ? {} : { hMerge: cell.hMerge === 1 }),
+    ...(cell.rowSpan === undefined ? {} : { rowSpan: cell.rowSpan }),
+    text: {
+      body: {
+        anchor:
+          cell.vAlign === 'down'
+            ? 'bottom'
+            : cell.vAlign === 'mid'
+              ? 'center'
+              : 'top',
+      },
+      paragraphs: [
+        {
+          children: [
+            {
+              key: `${key}-run-1`,
+              ...(Object.keys(properties).length === 0 ? {} : { properties }),
+              text: plainTextFromPowerPointHtml(cell.text),
+              type: 'run',
+            },
+          ],
+          key: `${key}-paragraph-1`,
+        },
+      ],
+    },
+    ...(cell.vMerge === undefined ? {} : { vMerge: cell.vMerge === 1 }),
+  };
+}
+
+function isNativeTablePreview(element: Table): boolean {
+  if (element.colWidths.length === 0 || element.data.length === 0) return false;
+  if (
+    element.colWidths.some((value) => !Number.isFinite(value) || value <= 0) ||
+    element.rowHeights.length !== element.data.length ||
+    element.rowHeights.some((value) => !Number.isFinite(value) || value <= 0) ||
+    element.data.some((row) => row.length !== element.colWidths.length)
+  ) {
+    return false;
+  }
+  const transform = resolvedTransform(element);
+  if (transform === undefined) return false;
+  const columnWidth = element.colWidths.reduce(
+    (total, value) => total + value,
+    0,
+  );
+  const rowHeight = element.rowHeights.reduce(
+    (total, value) => total + value,
+    0,
+  );
+  return (
+    Math.round(columnWidth * 12_700) === Math.round(transform.width * 12_700) &&
+    Math.round(rowHeight * 12_700) === Math.round(transform.height * 12_700)
+  );
+}
+
+function sceneTableElement(
+  element: Table,
+  slideIndex: number,
+  elementIndex: number,
+): PptxSceneTableElement {
+  const key = `slide-${slideIndex + 1}-element-${elementIndex + 1}`;
+  const transform = resolvedTransform(element);
+  return {
+    authored: {},
+    columns: [...element.colWidths],
+    key,
+    ...(element.name === undefined ? {} : { name: element.name }),
+    resolved: {
+      hidden: false,
+      ...(transform === undefined ? {} : { transform }),
+    },
+    rows: element.data.map((row, rowIndex) => ({
+      cells: row.map((cell, columnIndex) =>
+        sceneTableCell(cell, key, rowIndex, columnIndex),
+      ),
+      height: element.rowHeights[rowIndex] ?? 0,
+    })),
+    type: 'table',
+  };
+}
+
 function sceneUnsupportedElement(
   element: PptxElement,
   slideIndex: number,
@@ -174,6 +307,11 @@ function sceneElement(
   }
   if (element.type === 'image') {
     return sceneImageElement(element, slideIndex, elementIndex);
+  }
+  if (element.type === 'table') {
+    return isNativeTablePreview(element)
+      ? sceneTableElement(element, slideIndex, elementIndex)
+      : sceneUnsupportedElement(element, slideIndex, elementIndex);
   }
   return sceneUnsupportedElement(element, slideIndex, elementIndex);
 }

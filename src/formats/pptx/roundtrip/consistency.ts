@@ -26,15 +26,29 @@ export interface PptxRoundTripConsistencyInput {
 }
 
 function elementKeyManifest(element: PptxSceneElement): unknown {
-  return element.type === 'text'
-    ? {
-        key: element.key,
-        paragraphs: element.text.paragraphs.map((paragraph) => ({
-          children: paragraph.children.map((child) => child.key),
-          key: paragraph.key,
-        })),
-      }
-    : { key: element.key };
+  if (element.type === 'text') {
+    return {
+      key: element.key,
+      paragraphs: element.text.paragraphs.map((paragraph) => ({
+        children: paragraph.children.map((child) => child.key),
+        key: paragraph.key,
+      })),
+    };
+  }
+  if (element.type === 'table') {
+    return {
+      key: element.key,
+      rows: element.rows.map((row) =>
+        row.cells.map((cell) =>
+          cell.text.paragraphs.map((paragraph) => ({
+            children: paragraph.children.map((child) => child.key),
+            key: paragraph.key,
+          })),
+        ),
+      ),
+    };
+  }
+  return { key: element.key };
 }
 
 function keyManifest(document: PptxSceneDocument): unknown {
