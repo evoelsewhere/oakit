@@ -31,6 +31,12 @@ import {
   XlsxResourceLimitError,
 } from './internal/resource-limits';
 import { resolveXlsxSelection } from './internal/selection';
+import {
+  loadXlsxAnalyticCaches,
+  loadXlsxAnalyticDisplays,
+  type XlsxAnalyticCacheLoadResult,
+  type XlsxSlicerBudget,
+} from './internal/slicer';
 import { loadXlsxStyles } from './internal/styles';
 import { discoverXlsxWorkbook } from './internal/workbook-discovery';
 import {
@@ -215,6 +221,12 @@ export async function parseXlsxWithDiagnostics(
     caches: [],
     registry: new Map(),
   };
+  const slicerBudget: XlsxSlicerBudget = { objects: 0 };
+  let analyticCacheResult: XlsxAnalyticCacheLoadResult = {
+    registry: new Map(),
+    slicerCaches: [],
+    timelineCaches: [],
+  };
   try {
     pivotCacheResult = await loadXlsxPivotCaches(
       manifest.pivotCaches,
@@ -223,6 +235,20 @@ export async function parseXlsxWithDiagnostics(
       reader,
       limits,
       pivotBudget,
+      budget,
+    );
+  } catch (error) {
+    if (error instanceof XlsxResourceLimitError) {
+      failResource(error, diagnostics);
+    }
+    if (!recoverOptionalFeature(error, options, diagnostics)) throw error;
+  }
+  try {
+    analyticCacheResult = await loadXlsxAnalyticCaches(
+      manifest.workbookRelationships,
+      discovery,
+      reader,
+      limits,
       budget,
     );
   } catch (error) {
@@ -359,6 +385,24 @@ export async function parseXlsxWithDiagnostics(
       } catch (error) {
         if (!recoverOptionalFeature(error, options, diagnostics)) throw error;
       }
+      let analyticDisplays: Awaited<
+        ReturnType<typeof loadXlsxAnalyticDisplays>
+      > = { slicers: [], timelines: [] };
+      try {
+        analyticDisplays = await loadXlsxAnalyticDisplays(
+          worksheetRelationships,
+          analyticCacheResult.registry,
+          discovery,
+          reader,
+          limits,
+          budget,
+          slicerBudget,
+          selection,
+          manifest.sheetParts[index]!,
+        );
+      } catch (error) {
+        if (!recoverOptionalFeature(error, options, diagnostics)) throw error;
+      }
       sheets.push({
         ...sheet,
         ...payload,
@@ -367,7 +411,13 @@ export async function parseXlsxWithDiagnostics(
         payload:
           selection.kind === 'full-sheet' ? 'full-sheet' : 'selected-ranges',
         ...(pivotTables.length === 0 ? {} : { pivotTables }),
+        ...(analyticDisplays.slicers.length === 0
+          ? {}
+          : { slicers: analyticDisplays.slicers }),
         tables,
+        ...(analyticDisplays.timelines.length === 0
+          ? {}
+          : { timelines: analyticDisplays.timelines }),
       });
     }
   } catch (error) {
@@ -384,7 +434,13 @@ export async function parseXlsxWithDiagnostics(
       ? {}
       : { pivotCaches: pivotCacheResult.caches }),
     sheets,
+    ...(analyticCacheResult.slicerCaches.length === 0
+      ? {}
+      : { slicerCaches: analyticCacheResult.slicerCaches }),
     styles: [...styles.styles],
+    ...(analyticCacheResult.timelineCaches.length === 0
+      ? {}
+      : { timelineCaches: analyticCacheResult.timelineCaches }),
     workbook: {
       ...manifest.properties,
       ...(persons.values.length === 0

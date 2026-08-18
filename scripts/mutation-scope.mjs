@@ -92,6 +92,7 @@ export const mutatedFiles = [
   'src/formats/xlsx/internal/resource-limits.ts',
   'src/formats/xlsx/internal/selection.ts',
   'src/formats/xlsx/internal/shared-strings.ts',
+  'src/formats/xlsx/internal/slicer.ts',
   'src/formats/xlsx/internal/sparkline.ts',
   'src/formats/xlsx/internal/style-border.ts',
   'src/formats/xlsx/internal/style-color.ts',

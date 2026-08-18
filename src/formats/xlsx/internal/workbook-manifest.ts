@@ -8,7 +8,7 @@ import type {
 } from '../types';
 import { getXlsxRelationshipPartName } from './package-identity';
 import { XlsxPartReader } from './part-reader';
-import { parseXlsxRelationships } from './relationships';
+import { parseXlsxRelationships, type XlsxRelationship } from './relationships';
 import {
   type ResolvedXlsxResourceLimits,
   XlsxResourceLimitError,
@@ -38,6 +38,7 @@ export interface XlsxWorkbookManifest {
   protectionTextCharacters: number;
   sheetParts: string[];
   sheets: XlsxSheet[];
+  workbookRelationships: ReadonlyMap<string, XlsxRelationship>;
 }
 
 export interface XlsxPivotCacheDeclaration {
@@ -403,5 +404,6 @@ export async function parseXlsxWorkbookManifest(
     protectionTextCharacters: protection.textCharacters,
     sheetParts,
     sheets,
+    workbookRelationships: relationships,
   };
 }

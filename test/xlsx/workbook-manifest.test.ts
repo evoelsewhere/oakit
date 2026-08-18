@@ -133,6 +133,35 @@ describe('XLSX workbook manifest', () => {
           views: [],
         },
       ],
+      workbookRelationships: new Map([
+        [
+          'rIdSheet1',
+          {
+            id: 'rIdSheet1',
+            mode: 'internal',
+            target: 'xl/worksheets/sheet1.xml',
+            type: `${XLSX_OFFICE_REL_TYPE}worksheet`,
+          },
+        ],
+        [
+          'rIdStyles',
+          {
+            id: 'rIdStyles',
+            mode: 'internal',
+            target: 'xl/styles.xml',
+            type: `${XLSX_OFFICE_REL_TYPE}styles`,
+          },
+        ],
+        [
+          'rIdSharedStrings',
+          {
+            id: 'rIdSharedStrings',
+            mode: 'internal',
+            target: 'xl/sharedStrings.xml',
+            type: `${XLSX_OFFICE_REL_TYPE}sharedStrings`,
+          },
+        ],
+      ]),
     });
   });
 

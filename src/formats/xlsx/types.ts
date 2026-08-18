@@ -1520,6 +1520,62 @@ export interface XlsxPivotTable {
   style: XlsxPivotTableStyle;
 }
 
+export interface XlsxSlicerPivotTableOwner {
+  name: string;
+  sheetId: number;
+}
+
+export interface XlsxSlicerCache {
+  crossFilter?: 'none' | 'showItemsWithDataAtTop' | 'showItemsWithNoData';
+  index: number;
+  customListSort?: boolean;
+  name: string;
+  pivotCacheId?: number;
+  pivotTables: XlsxSlicerPivotTableOwner[];
+  showMissing?: boolean;
+  sortOrder?: 'ascending' | 'descending';
+  sourceKind: 'olap' | 'table' | 'tabular';
+  sourceName: string;
+  table?: { column: number; id: number };
+}
+
+export interface XlsxTimelineCache {
+  index: number;
+  name: string;
+  pivotCacheId?: number;
+  pivotTables: XlsxSlicerPivotTableOwner[];
+  sourceName: string;
+}
+
+export interface XlsxSlicer {
+  cacheIndex: number;
+  caption?: string;
+  columnCount: number;
+  level?: number;
+  lockedPosition: boolean;
+  name: string;
+  rowHeight: number;
+  selectionRelation: 'full-sheet';
+  showCaption: boolean;
+  startItem: number;
+  style?: string;
+}
+
+export interface XlsxTimeline {
+  cacheIndex: number;
+  caption?: string;
+  level: number;
+  name: string;
+  scrollPosition?: string;
+  selectionLevel: number;
+  selectionRelation: 'full-sheet';
+  showHeader: boolean;
+  showHorizontalScrollbar: boolean;
+  showSelectionLabel: boolean;
+  showTimeLevel: boolean;
+  style?: string;
+}
+
 export interface XlsxSheetBase {
   index: number;
   name: string;
@@ -1546,9 +1602,11 @@ export interface XlsxWorksheet extends XlsxSheetBase {
   pivotTables?: XlsxPivotTable[];
   rows: XlsxRow[];
   sheetFormat?: XlsxWorksheetFormat;
+  slicers?: XlsxSlicer[];
   sparklineGroups?: XlsxSparklineGroup[];
   tabColor?: XlsxColor;
   tables: XlsxTable[];
+  timelines?: XlsxTimeline[];
   views: XlsxWorksheetView[];
 }
 
@@ -1563,6 +1621,8 @@ export interface XlsxDocument {
   namedStyles: XlsxNamedStyle[];
   pivotCaches?: XlsxPivotCache[];
   sheets: XlsxSheet[];
+  slicerCaches?: XlsxSlicerCache[];
   styles: XlsxStyle[];
+  timelineCaches?: XlsxTimelineCache[];
   workbook: XlsxWorkbookProperties;
 }
