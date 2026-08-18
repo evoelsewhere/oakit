@@ -591,16 +591,15 @@ describe('XLSX drawing anchors and images', () => {
     });
   });
 
-  it('skips a chart graphic frame until the chart capability owns it', async () => {
+  it('rejects a chart graphic frame without typed chart data', async () => {
     const frame = `<xdr:graphicFrame><xdr:nvGraphicFramePr><xdr:cNvPr id="200" name="Chart"/><xdr:cNvGraphicFramePr/></xdr:nvGraphicFramePr><xdr:xfrm><a:off x="0" y="0"/><a:ext cx="12700" cy="12700"/></xdr:xfrm><a:graphic><a:graphicData uri="chart"/></a:graphic></xdr:graphicFrame>`;
-    const document = await parseXlsx(
-      await bytes({
-        'xl/drawings/drawing1.xml': drawingDocument(oneCellObject(frame)),
-      }),
-      { errorMode: 'strict' },
-    );
-    const sheet = document.sheets[0]!;
-    expect(sheet.kind === 'worksheet' ? sheet.drawings : []).toEqual([]);
+    expect(
+      (
+        await capture({
+          'xl/drawings/drawing1.xml': drawingDocument(oneCellObject(frame)),
+        })
+      ).diagnostic,
+    ).toMatchObject({ message: 'Chart graphic data URI is invalid' });
   });
 
   it('enforces shape text and nested drawing counts exactly', async () => {

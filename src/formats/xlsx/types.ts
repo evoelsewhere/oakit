@@ -1026,7 +1026,162 @@ export interface XlsxEmbeddedImage {
   transform: XlsxDrawingTransform;
 }
 
+export type XlsxChartType =
+  | 'area'
+  | 'area-3d'
+  | 'bar'
+  | 'bar-3d'
+  | 'bubble'
+  | 'doughnut'
+  | 'line'
+  | 'line-3d'
+  | 'of-pie'
+  | 'pie'
+  | 'pie-3d'
+  | 'radar'
+  | 'scatter'
+  | 'stock'
+  | 'surface'
+  | 'surface-3d';
+
+export interface XlsxChartNumericPoint {
+  index: number;
+  value: number;
+}
+
+export interface XlsxChartStringPoint {
+  index: number;
+  value: string;
+}
+
+export type XlsxChartDataSource =
+  | {
+      formatCode?: string;
+      formula?: string;
+      kind: 'number';
+      pointCount?: number;
+      points: XlsxChartNumericPoint[];
+    }
+  | {
+      formula?: string;
+      kind: 'string';
+      pointCount?: number;
+      points: XlsxChartStringPoint[];
+    }
+  | {
+      formula?: string;
+      kind: 'multi-level-string';
+      levels: XlsxChartStringPoint[][];
+      pointCount?: number;
+    };
+
+export interface XlsxChartText {
+  formula?: string;
+  text: string;
+}
+
+export interface XlsxChartMarker {
+  size?: number;
+  symbol?: string;
+}
+
+export interface XlsxChartDataLabels {
+  position?: string;
+  separator?: string;
+  showBubbleSize: boolean;
+  showCategoryName: boolean;
+  showLegendKey: boolean;
+  showPercent: boolean;
+  showSeriesName: boolean;
+  showValue: boolean;
+}
+
+export interface XlsxChartSeries {
+  bubbleSizes?: XlsxChartDataSource;
+  categories?: XlsxChartDataSource;
+  color?: XlsxDrawingColor;
+  dataLabels?: XlsxChartDataLabels;
+  index: number;
+  marker?: XlsxChartMarker;
+  name?: XlsxChartText;
+  order: number;
+  smooth?: boolean;
+  values?: XlsxChartDataSource;
+  xValues?: XlsxChartDataSource;
+  yValues?: XlsxChartDataSource;
+}
+
+export interface XlsxChartPlot {
+  axisIds: number[];
+  barDirection?: 'bar' | 'column';
+  bubbleScale?: number;
+  dataLabels?: XlsxChartDataLabels;
+  firstSliceAngle?: number;
+  gapDepth?: number;
+  gapWidth?: number;
+  grouping?: string;
+  holeSize?: number;
+  overlap?: number;
+  radarStyle?: string;
+  scatterStyle?: string;
+  series: XlsxChartSeries[];
+  type: XlsxChartType;
+  varyColors: boolean;
+}
+
+export interface XlsxChartAxis {
+  crossAxis?: number;
+  crosses?: string;
+  crossesAt?: number;
+  deleted: boolean;
+  id: number;
+  kind: 'category' | 'date' | 'series' | 'value';
+  logBase?: number;
+  majorGridlines: boolean;
+  majorUnit?: number;
+  maximum?: number;
+  minimum?: number;
+  minorGridlines: boolean;
+  minorUnit?: number;
+  numberFormat?: { code: string; sourceLinked: boolean };
+  orientation: 'max-min' | 'min-max';
+  position?: 'bottom' | 'left' | 'right' | 'top';
+  title?: XlsxChartText;
+}
+
+export interface XlsxChartLegendEntry {
+  deleted: boolean;
+  index: number;
+}
+
+export interface XlsxChartLegend {
+  entries: XlsxChartLegendEntry[];
+  overlay: boolean;
+  position?: 'bottom' | 'left' | 'right' | 'top' | 'top-right';
+}
+
+export interface XlsxChart {
+  axes: XlsxChartAxis[];
+  autoTitleDeleted: boolean;
+  description?: string;
+  displayBlanksAs: 'gap' | 'span' | 'zero';
+  hidden: boolean;
+  id: number;
+  kind: 'chart';
+  legend?: XlsxChartLegend;
+  name: string;
+  part: string;
+  plots: XlsxChartPlot[];
+  plotVisibleOnly: boolean;
+  roundedCorners: boolean;
+  showDataLabelsOverMaximum: boolean;
+  style?: number;
+  title?: XlsxChartText;
+  transform: XlsxDrawingObjectTransform;
+}
+
 export type XlsxDrawingObject =
+  | XlsxChart
   | XlsxDrawingConnector
   | XlsxDrawingGroup
   | XlsxDrawingShape

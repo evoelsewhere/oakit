@@ -215,7 +215,7 @@ export async function parseXlsxWithDiagnostics(
   const sheets: XlsxDocument['sheets'] = [];
   const tableRegistry = createXlsxTableRegistry();
   const commentBudget: XlsxCommentBudget = { comments: 0 };
-  const drawingBudget: XlsxDrawingBudget = { drawings: 0 };
+  const drawingBudget: XlsxDrawingBudget = { charts: 0, drawings: 0 };
   const media = new XlsxMediaSession(options.imageMode ?? 'none', limits);
   try {
     for (const [index, sheet] of manifest.sheets.entries()) {

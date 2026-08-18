@@ -4,6 +4,7 @@ import type { XmlLookupValue } from '../../../common/xml/tree';
 import { getXmlNodeOrder } from '../../../common/xml/tree';
 import { XlsxParseError } from '../errors';
 import type {
+  XlsxChart,
   XlsxDrawing,
   XlsxDrawingColor,
   XlsxDrawingConnector,
@@ -19,6 +20,7 @@ import type {
   XlsxImageCrop,
   XlsxImageMode,
 } from '../types';
+import { loadXlsxChart } from './chart';
 import { getXlsxRelationshipPartName } from './package-identity';
 import { XlsxPartReader } from './part-reader';
 import { parseXlsxRelationships, type XlsxRelationship } from './relationships';
@@ -51,7 +53,16 @@ const OFFICE_RELATIONSHIPS = {
 } as const;
 const DRAWING_CONTENT_TYPE =
   'application/vnd.openxmlformats-officedocument.drawing+xml';
+const CHART_CONTENT_TYPE =
+  'application/vnd.openxmlformats-officedocument.drawingml.chart+xml';
 const EMU_PER_POINT = 12_700;
+const DRAWING_OBJECT_NAMES = [
+  'pic',
+  'sp',
+  'cxnSp',
+  'grpSp',
+  'graphicFrame',
+] as const;
 
 const SAFE_IMAGE_CONTENT_TYPES = new Set([
   'image/bmp',
@@ -65,6 +76,7 @@ const SAFE_IMAGE_CONTENT_TYPES = new Set([
 ]);
 
 export interface XlsxDrawingBudget {
+  charts: number;
   drawings: number;
 }
 
@@ -479,6 +491,23 @@ function consumeDrawing(
     );
   }
   budget.drawings = actual;
+}
+
+function consumeChart(
+  budget: XlsxDrawingBudget,
+  limits: ResolvedXlsxResourceLimits,
+  part: string,
+): void {
+  const actual = budget.charts + 1;
+  if (!Number.isSafeInteger(actual) || actual > limits.maxCharts) {
+    throw new XlsxResourceLimitError(
+      'maxCharts',
+      actual,
+      limits.maxCharts,
+      part,
+    );
+  }
+  budget.charts = actual;
 }
 
 async function picture(
@@ -904,6 +933,83 @@ function shapeObject(
   };
 }
 
+async function chartObject(
+  frame: XmlRecord,
+  relationships: ReadonlyMap<string, XlsxRelationship>,
+  discovery: XlsxWorkbookDiscovery,
+  reader: XlsxPartReader,
+  drawingBudget: XlsxDrawingBudget,
+  worksheetBudget: XlsxWorksheetBudget,
+  limits: ResolvedXlsxResourceLimits,
+  part: string,
+): Promise<XlsxChart> {
+  const props = objectProperties(frame, 'nvGraphicFramePr', part);
+  const transform = objectTransform(childByLocal(frame, 'xfrm'), part);
+  const graphic = record(childByLocal(frame, 'graphic'));
+  const graphicData = graphic
+    ? record(childByLocal(graphic, 'graphicData'))
+    : undefined;
+  if (!graphicData) {
+    fail('invalid-document-structure', 'Chart graphic data is missing', part);
+  }
+  const chartNamespace =
+    discovery.dialect === 'strict'
+      ? 'http://purl.oclc.org/ooxml/drawingml/chart'
+      : 'http://schemas.openxmlformats.org/drawingml/2006/chart';
+  if (attributes(graphicData).uri !== chartNamespace) {
+    fail('invalid-document-value', 'Chart graphic data URI is invalid', part);
+  }
+  const chart = record(childByLocal(graphicData, 'chart'));
+  if (!chart) {
+    fail('invalid-document-structure', 'Chart reference is missing', part);
+  }
+  const relationshipId = attributes(chart)['r:id'];
+  if (!relationshipId) {
+    fail(
+      'invalid-document-value',
+      'Chart relationship reference is invalid',
+      part,
+    );
+  }
+  const relationshipNamespace = OFFICE_RELATIONSHIPS[discovery.dialect];
+  const relation = relationships.get(relationshipId);
+  if (relation?.mode === 'external') {
+    fail(
+      'security-rejected-content',
+      'Externally linked charts are not loaded',
+      part,
+    );
+  }
+  if (!relation || relation.type !== `${relationshipNamespace}/chart`) {
+    fail('invalid-document-structure', 'Chart relationship is invalid', part);
+  }
+  if (
+    discovery.contentTypes.contentTypeFor(relation.target) !==
+    CHART_CONTENT_TYPE
+  ) {
+    fail(
+      'invalid-document-structure',
+      'Chart target has the wrong content type',
+      relation.target,
+    );
+  }
+  consumeChart(drawingBudget, limits, relation.target);
+  const loaded = await loadXlsxChart(
+    relation.target,
+    discovery,
+    reader,
+    worksheetBudget,
+    limits,
+  );
+  return {
+    ...loaded,
+    ...props,
+    kind: 'chart',
+    part: relation.target,
+    transform,
+  };
+}
+
 function registerObjectId(id: number, ids: Set<number>, part: string): void {
   if (ids.has(id)) {
     fail(
@@ -930,12 +1036,19 @@ async function drawingObject(
 ): Promise<
   { extent: XlsxDrawingExtent; object: XlsxDrawingObject } | undefined
 > {
-  const candidates = ['pic', 'sp', 'cxnSp', 'grpSp']
-    .map((name) => ({ name, node: record(childByLocal(node, name)) }))
-    .filter(
-      (candidate): candidate is { name: string; node: XmlRecord } =>
-        candidate.node !== undefined,
-    );
+  const candidates = DRAWING_OBJECT_NAMES.flatMap((name) => {
+    const value = childByLocal(node, name);
+    if (value === undefined) return [];
+    const nodes = records(value);
+    if (!nodes) {
+      fail(
+        'invalid-document-structure',
+        'Drawing anchor objects are invalid',
+        part,
+      );
+    }
+    return nodes.map((candidate) => ({ name, node: candidate }));
+  });
   if (candidates.length === 0) return undefined;
   if (candidates.length !== 1) {
     fail(
@@ -962,6 +1075,26 @@ async function drawingObject(
     const parsed = shapeObject(
       candidate.node,
       candidate.name === 'cxnSp',
+      worksheetBudget,
+      limits,
+      part,
+    );
+    registerObjectId(parsed.id, ids, part);
+    return {
+      extent: {
+        height: parsed.transform.height,
+        width: parsed.transform.width,
+      },
+      object: parsed,
+    };
+  }
+  if (candidate.name === 'graphicFrame') {
+    const parsed = await chartObject(
+      candidate.node,
+      relationships,
+      discovery,
+      reader,
+      drawingBudget,
       worksheetBudget,
       limits,
       part,
@@ -1002,7 +1135,12 @@ async function drawingObject(
   const childSize = extent(childExtent, part);
   const childNodes = Object.entries(candidate.node)
     .flatMap(([name, value]) => {
-      if (!['pic', 'sp', 'cxnSp', 'grpSp'].includes(localName(name))) return [];
+      if (
+        !DRAWING_OBJECT_NAMES.includes(
+          localName(name) as (typeof DRAWING_OBJECT_NAMES)[number],
+        )
+      )
+        return [];
       const nodes = records(value);
       if (!nodes) {
         fail(

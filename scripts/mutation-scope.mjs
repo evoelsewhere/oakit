@@ -73,6 +73,7 @@ export const mutatedFiles = [
   'src/formats/xlsx/internal/auto-filter.ts',
   'src/formats/xlsx/internal/cell-reference.ts',
   'src/formats/xlsx/internal/cell-value.ts',
+  'src/formats/xlsx/internal/chart.ts',
   'src/formats/xlsx/internal/chart-sheet.ts',
   'src/formats/xlsx/internal/comments.ts',
   'src/formats/xlsx/internal/content-types.ts',
