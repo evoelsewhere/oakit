@@ -43,6 +43,20 @@ function tableElement(): PptxSceneTableElement {
                 style: 'dashed',
                 width: 1.5,
               },
+              left: {
+                color: '#F97316',
+                style: 'dotted',
+                width: 2,
+              },
+              right: {
+                color: '#22C55E',
+                style: 'solid',
+                width: 2.5,
+              },
+              top: {
+                color: '#A855F7',
+                width: 3,
+              },
             },
             text: {
               body: {},
@@ -56,6 +70,35 @@ function tableElement(): PptxSceneTableElement {
           },
         ],
         height: 40,
+      },
+      {
+        cells: [
+          {
+            text: {
+              body: { anchor: 'bottom' },
+              paragraphs: [
+                {
+                  children: [{ key: 'cell-3-run', text: 'Third', type: 'run' }],
+                  key: 'cell-3-paragraph',
+                },
+              ],
+            },
+          },
+          {
+            text: {
+              body: {},
+              paragraphs: [
+                {
+                  children: [
+                    { key: 'cell-4-run', text: 'Fourth', type: 'run' },
+                  ],
+                  key: 'cell-4-paragraph',
+                },
+              ],
+            },
+          },
+        ],
+        height: 30,
       },
     ],
     type: 'table',
@@ -75,6 +118,9 @@ describe('native PowerPoint table serialization', () => {
       '<p:graphicFrame><p:nvGraphicFramePr><p:cNvPr id="2" name="Table 2"/><p:cNvGraphicFramePr/><p:nvPr/></p:nvGraphicFramePr>',
     );
     expect(xml).toContain(
+      'uri="http://schemas.openxmlformats.org/drawingml/2006/table"',
+    );
+    expect(xml).toContain(
       '<p:xfrm><a:off x="127000" y="254000"/><a:ext cx="3810000" cy="508000"/></p:xfrm>',
     );
     expect(xml).toContain(
@@ -87,6 +133,21 @@ describe('native PowerPoint table serialization', () => {
     expect(xml).toContain(
       '<a:lnB w="19050"><a:solidFill><a:srgbClr val="38BDF8"/></a:solidFill><a:prstDash val="dash"/></a:lnB>',
     );
+    expect(xml).toContain(
+      '<a:lnL w="25400"><a:solidFill><a:srgbClr val="F97316"/></a:solidFill><a:prstDash val="dot"/></a:lnL>',
+    );
+    expect(xml).toContain(
+      '<a:lnR w="31750"><a:solidFill><a:srgbClr val="22C55E"/></a:solidFill><a:prstDash val="solid"/></a:lnR>',
+    );
+    expect(xml).toContain(
+      '<a:lnT w="38100"><a:solidFill><a:srgbClr val="A855F7"/></a:solidFill><a:prstDash val="solid"/></a:lnT>',
+    );
+    expect(xml).toContain('</a:tr><a:tr h="381000">');
+    expect(xml).toContain('<a:tcPr anchor="b"/>');
+    expect(xml).toContain('<a:tcPr/>');
+    expect(xml).toContain('<a:tc><a:txBody>');
+    expect(xml).not.toContain('<a:tc >');
+    expect(xml).not.toContain('Stryker was here!');
   });
 
   it('serializes merged-cell flags, metadata, rotation, and visibility', () => {
@@ -151,5 +212,43 @@ describe('native PowerPoint table serialization', () => {
         allocation,
       ),
     ).toContain('id="{00000000-0000-0000-0000-000000000001}"');
+  });
+
+  it.each([
+    ['bottom', 'b'],
+    ['center', 'ctr'],
+    ['distributed', 'dist'],
+    ['justified', 'just'],
+    ['top', 't'],
+  ] as const)('maps table cell anchor %s to %s', (anchor, expected) => {
+    const element = tableElement();
+    element.columns = [100];
+    element.rows = [
+      {
+        cells: [
+          {
+            text: {
+              body: { anchor },
+              paragraphs: [
+                {
+                  children: [{ key: 'anchor-run', text: '', type: 'run' }],
+                  key: 'anchor-paragraph',
+                },
+              ],
+            },
+          },
+        ],
+        height: 40,
+      },
+    ];
+
+    const xml = serializeTable(
+      element,
+      { height: 40, width: 100, x: 0, y: 0 },
+      2,
+      createFieldIdAllocator(),
+    );
+    expect(xml).toContain(`<a:tcPr anchor="${expected}"/>`);
+    expect(xml).not.toContain('Stryker was here!');
   });
 });

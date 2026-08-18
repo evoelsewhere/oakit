@@ -9,6 +9,7 @@ export const mutationModules = [
       'test/pptx/roundtrip-transform.test.ts',
       'test/black-box/roundtrip-shape-transform.test.ts',
       'test/black-box/roundtrip-image-transform.test.ts',
+      'test/black-box/roundtrip-table-transform.test.ts',
     ],
   },
   {
@@ -65,6 +66,7 @@ export const mutationModules = [
       'test/pptx/roundtrip-transform.test.ts',
       'test/black-box/roundtrip-shape-transform.test.ts',
       'test/black-box/roundtrip-image-transform.test.ts',
+      'test/black-box/roundtrip-table-transform.test.ts',
     ],
   },
   {
@@ -100,6 +102,12 @@ export const mutationModules = [
     name: 'writer-image',
     source: 'src/formats/pptx/writer/image.ts',
     tests: ['test/pptx/writer-image.test.ts'],
+  },
+  {
+    estimatedSeconds: 232,
+    name: 'writer-table',
+    source: 'src/formats/pptx/writer/table.ts',
+    tests: ['test/pptx/writer-table.test.ts'],
   },
   {
     estimatedSeconds: 690,

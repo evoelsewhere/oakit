@@ -172,6 +172,7 @@ jobs:
           - roundtrip-validation
           - writer-shape
           - writer-image
+          - writer-table
           - font-style
     steps:
       - uses: actions/checkout@v4
