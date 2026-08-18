@@ -8,7 +8,6 @@ export function validatePptxSceneTableMerges(
   issues: PptxSceneValidationIssue[],
   dependencies: PptxTableValidationDependencies,
 ): void {
-  if (rows.length === 0 || columns.length === 0) return;
   const expectedHorizontal = rows.map(() => columns.map(() => false));
   const expectedVertical = rows.map(() => columns.map(() => false));
   const occupied = rows.map(() => columns.map(() => false));
@@ -18,13 +17,15 @@ export function validatePptxSceneTableMerges(
     }
     rowValue.cells.forEach((cellValue, columnIndex) => {
       if (!dependencies.isObject(cellValue)) return;
-      const rowSpan = Number.isSafeInteger(cellValue.rowSpan)
-        ? Number(cellValue.rowSpan)
-        : 1;
-      const colSpan = Number.isSafeInteger(cellValue.colSpan)
-        ? Number(cellValue.colSpan)
-        : 1;
-      if (rowSpan < 1 || colSpan < 1) return;
+      const rowSpan =
+        Number.isSafeInteger(cellValue.rowSpan) && Number(cellValue.rowSpan) > 1
+          ? Number(cellValue.rowSpan)
+          : 1;
+      const colSpan =
+        Number.isSafeInteger(cellValue.colSpan) && Number(cellValue.colSpan) > 1
+          ? Number(cellValue.colSpan)
+          : 1;
+      if (rowSpan === 1 && colSpan === 1) return;
       if (
         rowIndex + rowSpan > rows.length ||
         columnIndex + colSpan > columns.length
@@ -37,7 +38,6 @@ export function validatePptxSceneTableMerges(
         );
         return;
       }
-      if (occupied[rowIndex]?.[columnIndex]) return;
       const rowOffsets = Array.from({ length: rowSpan }, (_, index) => index);
       const columnOffsets = Array.from(
         { length: colSpan },
@@ -45,7 +45,6 @@ export function validatePptxSceneTableMerges(
       );
       for (const rowOffset of rowOffsets) {
         for (const columnOffset of columnOffsets) {
-          if (rowOffset === 0 && columnOffset === 0) continue;
           const targetRow = rowIndex + rowOffset;
           const targetColumn = columnIndex + columnOffset;
           if (occupied[targetRow]?.[targetColumn]) {
@@ -58,8 +57,10 @@ export function validatePptxSceneTableMerges(
             continue;
           }
           occupied[targetRow]![targetColumn] = true;
-          expectedHorizontal[targetRow]![targetColumn] = columnOffset > 0;
-          expectedVertical[targetRow]![targetColumn] = rowOffset > 0;
+          if (rowOffset !== 0 || columnOffset !== 0) {
+            expectedHorizontal[targetRow]![targetColumn] = columnOffset > 0;
+            expectedVertical[targetRow]![targetColumn] = rowOffset > 0;
+          }
         }
       }
     });

@@ -171,20 +171,26 @@ export function validatePptxSceneTableDimensions(
   dependencies: PptxTableValidationDependencies,
 ): void {
   if (!Array.isArray(element.columns) || !Array.isArray(element.rows)) return;
-  const columnWidth = element.columns.reduce<number>(
-    (total, value) =>
-      typeof value === 'number' && Number.isFinite(value)
-        ? total + value
-        : total,
+  if (
+    !element.columns.every(
+      (value): value is number =>
+        typeof value === 'number' && Number.isFinite(value),
+    ) ||
+    !element.rows.every(
+      (value): value is PptxTableValidationObject =>
+        dependencies.isObject(value) &&
+        typeof value.height === 'number' &&
+        Number.isFinite(value.height),
+    )
+  ) {
+    return;
+  }
+  const columnWidth = element.columns.reduce(
+    (total, value) => total + value,
     0,
   );
-  const rowHeight = element.rows.reduce<number>(
-    (total, value) =>
-      dependencies.isObject(value) &&
-      typeof value.height === 'number' &&
-      Number.isFinite(value.height)
-        ? total + value.height
-        : total,
+  const rowHeight = element.rows.reduce(
+    (total, value) => total + (value.height as number),
     0,
   );
   if (

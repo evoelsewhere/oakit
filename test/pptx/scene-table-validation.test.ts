@@ -170,6 +170,30 @@ describe('native PowerPoint table scene validation', () => {
     );
   });
 
+  it('requires positive serialized EMUs for tiny column and row dimensions', () => {
+    const value = table();
+    value.columns = [0.000_01, 299.999_99];
+    firstRow(value).height = 0.000_01;
+    const authored = value.authored as Mutable;
+    const transform = authored.transform as Mutable;
+    transform.height = 0.000_01;
+
+    expect(validate(value).issues).toEqual(
+      expect.arrayContaining([
+        {
+          code: 'invalid-numeric-value',
+          message: 'Value must round to a positive OOXML integer',
+          path: `${ELEMENT_PATH}.columns[0]`,
+        },
+        {
+          code: 'invalid-numeric-value',
+          message: 'Value must round to a positive OOXML integer',
+          path: `${ELEMENT_PATH}.rows[0].height`,
+        },
+      ]),
+    );
+  });
+
   it('rejects malformed rows and exact cell-count mismatches', () => {
     const primitive = table();
     primitive.rows = [null];
@@ -322,8 +346,71 @@ describe('native PowerPoint table scene validation', () => {
     );
   });
 
+  it('accepts sparse borders, an omitted style, and a valid cell fill', () => {
+    const value = table();
+    const target = firstCell(value);
+    target.fillColor = '#ABCDEF';
+    target.borders = {
+      top: { color: '#123456', width: 1 },
+    };
+
+    expect(validate(value)).toEqual({ issues: [], valid: true });
+  });
+
+  it('reports exact border color, positive EMU, and cell text paths', () => {
+    const value = table();
+    const target = firstCell(value);
+    target.borders = {
+      top: { color: 'blue', width: 0.000_01 },
+    };
+    target.text = null;
+
+    expect(validate(value).issues).toEqual(
+      expect.arrayContaining([
+        {
+          code: 'invalid-scene-document',
+          message: 'Expected a #RRGGBB color',
+          path: `${ELEMENT_PATH}.rows[0].cells[0].borders.top.color`,
+        },
+        {
+          code: 'invalid-numeric-value',
+          message: 'Value must round to a positive OOXML integer',
+          path: `${ELEMENT_PATH}.rows[0].cells[0].borders.top.width`,
+        },
+        {
+          code: 'invalid-scene-document',
+          message: 'Expected an object',
+          path: `${ELEMENT_PATH}.rows[0].cells[0].text`,
+        },
+      ]),
+    );
+  });
+
   it('accepts an exact 2x2 merge rectangle', () => {
     expect(validate(mergedTable())).toEqual({ issues: [], valid: true });
+  });
+
+  it('accepts independent horizontal-only and vertical-only merges', () => {
+    const horizontal = table();
+    firstRow(horizontal).cells = [
+      { colSpan: 2, text: text('horizontal-origin') },
+      { hMerge: true, text: text('horizontal-tail') },
+    ];
+    expect(validate(horizontal)).toEqual({ issues: [], valid: true });
+
+    const vertical = table();
+    vertical.columns = [300];
+    vertical.rows = [
+      {
+        cells: [{ rowSpan: 2, text: text('vertical-origin') }],
+        height: 40,
+      },
+      {
+        cells: [{ text: text('vertical-tail'), vMerge: true }],
+        height: 40,
+      },
+    ];
+    expect(validate(vertical)).toEqual({ issues: [], valid: true });
   });
 
   it.each([
@@ -422,6 +509,20 @@ describe('native PowerPoint table scene validation', () => {
       message: `Table transform ${key} must equal the sum of its ${source}`,
       path: `${ELEMENT_PATH}.authored.transform.${key}`,
     });
+  });
+
+  it('does not cascade grid-total diagnostics from malformed dimensions', () => {
+    const value = table();
+    value.columns = ['bad', 200];
+    firstRow(value).height = 'bad';
+    const messages = validate(value).issues.map(({ message }) => message);
+
+    expect(messages).not.toContain(
+      'Table transform width must equal the sum of its column widths',
+    );
+    expect(messages).not.toContain(
+      'Table transform height must equal the sum of its row heights',
+    );
   });
 
   it('requires an authored table transform and rejects shape styling', () => {
