@@ -27,6 +27,7 @@ describe('PowerPoint usage guide', () => {
       'replacePptxRoundTripText',
       'serializePptxRoundTripJson',
       'setPptxRoundTripTextTransform',
+      'setPptxRoundTripShapeTransform',
       'validatePptxScene',
       'writePptxRoundTrip',
     ]) {

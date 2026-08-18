@@ -37,7 +37,7 @@ describe('release documentation', () => {
     expect(metadata.version).toBe('0.0.2');
     expect(changelog).toContain('## 0.0.2 - 2026-08-18');
     expect(changelog).toContain('## 0.0.1 - 2026-08-18');
-    expect(changelog).not.toContain('## Unreleased');
+    expect(changelog).toContain('## Unreleased');
     expect(checklist).toContain(
       '[run 32045412714](https://github.com/evoelsewhere/oakit/actions/runs/32045412714)',
     );

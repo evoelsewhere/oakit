@@ -2,13 +2,14 @@ import { decodeXmlEntities } from '../../../common/text/html';
 import type {
   PptxSceneDocument,
   PptxSceneElement,
+  PptxSceneShapeElement,
   PptxSceneSlide,
   PptxSceneTextBodyProperties,
   PptxSceneTextElement,
   PptxSceneTransform,
   PptxSceneUnsupportedElement,
 } from '../scene-types';
-import type { PptxDocument, PptxElement, Text } from '../types';
+import type { PptxDocument, PptxElement, Shape, Text } from '../types';
 
 function resolvedTransform(
   element: PptxElement,
@@ -102,6 +103,24 @@ function sceneTextElement(
   };
 }
 
+function sceneShapeElement(
+  element: Shape,
+  slideIndex: number,
+  elementIndex: number,
+): PptxSceneShapeElement {
+  const transform = resolvedTransform(element);
+  return {
+    authored: {},
+    key: `slide-${slideIndex + 1}-element-${elementIndex + 1}`,
+    name: element.name,
+    resolved: {
+      hidden: false,
+      ...(transform === undefined ? {} : { transform }),
+    },
+    type: 'shape',
+  };
+}
+
 function sceneUnsupportedElement(
   element: PptxElement,
   slideIndex: number,
@@ -127,9 +146,15 @@ function sceneElement(
   slideIndex: number,
   elementIndex: number,
 ): PptxSceneElement {
-  return element.type === 'text'
-    ? sceneTextElement(element, slideIndex, elementIndex)
-    : sceneUnsupportedElement(element, slideIndex, elementIndex);
+  if (element.type === 'text') {
+    return sceneTextElement(element, slideIndex, elementIndex);
+  }
+  if (element.type === 'shape') {
+    return plainTextFromPowerPointHtml(element.content) === ''
+      ? sceneShapeElement(element, slideIndex, elementIndex)
+      : sceneUnsupportedElement(element, slideIndex, elementIndex);
+  }
+  return sceneUnsupportedElement(element, slideIndex, elementIndex);
 }
 
 function sceneSlide(slide: PptxDocument['slides'][number], index: number) {

@@ -8,6 +8,7 @@ import {
   readPptxRoundTrip,
   renderPptxToSvg,
   serializePptxRoundTripJson,
+  setPptxRoundTripShapeTransform,
   writePptxRoundTrip,
   type PptxSceneDocument,
 } from '../../src';
@@ -211,6 +212,73 @@ describe('PPTX public API in browsers', () => {
     expect(parsed.size).toEqual({ height: 540, width: 960 });
     expect(parsed.slides).toHaveLength(1);
     expect(JSON.stringify(parsed)).toContain('Created&nbsp;in&nbsp;browser');
+  });
+
+  it('creates and edits a native shape without an Office runtime', async () => {
+    const scene: PptxSceneDocument = {
+      layouts: [],
+      masters: [],
+      media: [],
+      schemaVersion: 2,
+      size: { height: 540, width: 960 },
+      slides: [
+        {
+          elements: [
+            {
+              authored: {
+                fillColor: '#F97316',
+                geometry: 'ellipse',
+                lineColor: '#0F172A',
+                lineWidth: 2,
+                transform: { height: 120, width: 180, x: 420, y: 220 },
+              },
+              key: 'browser-shape',
+              resolved: { hidden: false },
+              type: 'shape',
+            },
+          ],
+          key: 'browser-shape-slide',
+        },
+      ],
+      themes: [],
+    };
+    const created = await createPptx(scene);
+    const snapshot = await readPptxRoundTrip(created.data);
+    const changed = {
+      flipHorizontal: true,
+      flipVertical: false,
+      height: 140,
+      rotation: 25,
+      width: 210,
+      x: 380,
+      y: 190,
+    };
+    const edited = await setPptxRoundTripShapeTransform(snapshot, {
+      targetKey: 'slide-1-element-1',
+      value: changed,
+    });
+    const output = await writePptxRoundTrip(edited);
+    const [parsed, rendered] = await Promise.all([
+      parsePptx(output.data, { errorMode: 'strict', imageMode: 'none' }),
+      renderPptxToSvg(output.data, { slideNumbers: [1] }),
+    ]);
+
+    expect(created.report.supportProfile.id).toBe('pptx-create-native-v1');
+    expect(output.report.supportProfile.id).toBe('pptx-roundtrip-native-v1');
+    expect(parsed.slides[0]?.elements[0]).toMatchObject({
+      fill: { type: 'color', value: '#F97316' },
+      height: changed.height,
+      isFlipH: true,
+      left: changed.x,
+      rotate: changed.rotation,
+      shapType: 'ellipse',
+      top: changed.y,
+      type: 'shape',
+      width: changed.width,
+    });
+    expect(new TextDecoder().decode(rendered.slides[0]?.data)).toContain(
+      '#F97316',
+    );
   });
 
   it('keeps input forms and concurrent parses deterministic', async () => {

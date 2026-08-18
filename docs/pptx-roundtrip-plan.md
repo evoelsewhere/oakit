@@ -1,9 +1,11 @@
 # PPTX Parser-to-Writer and Round-Trip Plan
 
-> Status: active foundation plan. The frozen production capability remains
-> PPTX-to-JSON reading until individual creation and edit capability rows pass
-> their gates. This document does not claim that unfinished JSON-to-PPTX or
-> edited round-tripping is implemented.
+> Status: active native-authoring plan. Text creation and text editing are
+> implemented and producer-certified at C3/R3. Native non-text rect, roundRect,
+> and ellipse creation is runtime-verified at C2, while slide-owned shape
+> transform editing is part-preserving and runtime-verified at R2. Broader
+> native element domains remain gated capability rows rather than blanket PPTX
+> claims.
 
 This plan defines how OAKit should evolve the PowerPoint parser model, add a
 strict JSON-to-PPTX writer, and add a source-preserving edit pipeline. The work

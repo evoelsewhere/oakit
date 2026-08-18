@@ -10,9 +10,10 @@ import {
   PPTX_ROUND_TRIP_CAPABILITY_PROFILE_VERSION,
   PPTX_ROUND_TRIP_CONTRACT_VERSION,
   PPTX_ROUND_TRIP_KEY_ALGORITHM_VERSION,
+  PPTX_ROUND_TRIP_NATIVE_CAPABILITY_PROFILE_VERSION,
 } from './consistency';
 import { assertPptxRoundTripDataTree } from './data-tree';
-import type { PptxRoundTripSnapshot } from './types';
+import type { PptxRoundTripOperation, PptxRoundTripSnapshot } from './types';
 
 const ROOT_KEYS = [
   'consistency',
@@ -160,7 +161,14 @@ function validateSource(
   );
 }
 
-function validateSupportProfile(value: unknown, hasOperations: boolean): void {
+type PptxRoundTripSupportProfileId =
+  'pptx-roundtrip-native-v1' | 'pptx-roundtrip-r0' | 'pptx-roundtrip-text-v1';
+
+function validateSupportProfile(
+  value: unknown,
+  expectedId: PptxRoundTripSupportProfileId,
+): void {
+  const hasOperations = expectedId !== 'pptx-roundtrip-r0';
   const profile = exactRecord(
     value,
     SUPPORT_PROFILE_KEYS,
@@ -170,12 +178,14 @@ function validateSupportProfile(value: unknown, hasOperations: boolean): void {
     profile.effectiveLevel,
     hasOperations ? 'R2' : 'R0',
     hasOperations
-      ? 'PowerPoint text edit snapshot support level must be R2'
+      ? expectedId === 'pptx-roundtrip-text-v1'
+        ? 'PowerPoint text edit snapshot support level must be R2'
+        : 'PowerPoint native edit snapshot support level must be R2'
       : 'PowerPoint round-trip snapshot support level must be R0',
   );
   assertLiteral(
     profile.id,
-    hasOperations ? 'pptx-roundtrip-text-v1' : 'pptx-roundtrip-r0',
+    expectedId,
     'PowerPoint round-trip snapshot support profile id is unsupported',
   );
   assertLiteral(
@@ -219,7 +229,7 @@ function editableTransforms(
   const transforms = new Map<string, unknown>();
   for (const slide of value.slides) {
     for (const element of slide.elements) {
-      if (element.type !== 'text') continue;
+      if (element.type !== 'shape' && element.type !== 'text') continue;
       transforms.set(element.key, element.resolved.transform);
     }
   }
@@ -353,7 +363,10 @@ function validateOperations(
   }
 }
 
-function validateConsistency(value: unknown): void {
+function validateConsistency(
+  value: unknown,
+  capabilityProfileVersion: string,
+): void {
   const consistency = exactRecord(
     value,
     CONSISTENCY_KEYS,
@@ -367,7 +380,7 @@ function validateConsistency(value: unknown): void {
     ],
     [
       consistency.capabilityProfileVersion,
-      PPTX_ROUND_TRIP_CAPABILITY_PROFILE_VERSION,
+      capabilityProfileVersion,
       'PowerPoint round-trip snapshot capability profile version is unsupported',
     ],
     [
@@ -401,6 +414,22 @@ function validateConsistency(value: unknown): void {
     consistency.sourceManifestSha256,
     'PowerPoint round-trip snapshot source manifest SHA-256 is invalid',
   );
+}
+
+function expectedSupportProfileId(
+  operations: readonly PptxRoundTripOperation[],
+  document: PptxRoundTripSnapshot['document'],
+): PptxRoundTripSupportProfileId {
+  if (operations.length === 0) return 'pptx-roundtrip-r0';
+  const shapeKeys = new Set<string>();
+  for (const slide of document.slides) {
+    for (const element of slide.elements) {
+      if (element.type === 'shape') shapeKeys.add(element.key);
+    }
+  }
+  return operations.some((operation) => shapeKeys.has(operation.targetKey))
+    ? 'pptx-roundtrip-native-v1'
+    : 'pptx-roundtrip-text-v1';
 }
 
 export function validatePptxRoundTripSnapshot(
@@ -439,15 +468,21 @@ export function validatePptxRoundTripSnapshot(
     );
   }
   validateOperations(
-    snapshot.operations,
+    snapshot.operations as PptxRoundTripOperation[],
     snapshot.document as PptxRoundTripSnapshot['document'],
     limits,
   );
-  validateSupportProfile(
-    snapshot.supportProfile,
-    snapshot.operations.length !== 0,
+  const supportProfileId = expectedSupportProfileId(
+    snapshot.operations,
+    snapshot.document as PptxRoundTripSnapshot['document'],
   );
-  validateConsistency(snapshot.consistency);
+  validateSupportProfile(snapshot.supportProfile, supportProfileId);
+  validateConsistency(
+    snapshot.consistency,
+    supportProfileId === 'pptx-roundtrip-native-v1'
+      ? PPTX_ROUND_TRIP_NATIVE_CAPABILITY_PROFILE_VERSION
+      : PPTX_ROUND_TRIP_CAPABILITY_PROFILE_VERSION,
+  );
 
   return snapshot as unknown as PptxRoundTripSnapshot;
 }

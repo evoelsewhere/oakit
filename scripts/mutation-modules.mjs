@@ -1,12 +1,13 @@
 export const mutationModules = [
   {
-    estimatedSeconds: 180,
+    estimatedSeconds: 133,
     name: 'orchestration',
     source: 'src/formats/pptx/roundtrip/orchestration.ts',
     tests: [
       'test/pptx/roundtrip-orchestration.test.ts',
       'test/pptx/roundtrip-patch-text.test.ts',
       'test/pptx/roundtrip-transform.test.ts',
+      'test/black-box/roundtrip-shape-transform.test.ts',
     ],
   },
   {
@@ -44,6 +45,43 @@ export const mutationModules = [
     name: 'transform-xml',
     source: 'src/formats/pptx/roundtrip/transform-xml.ts',
     tests: ['test/pptx/roundtrip-transform-xml.test.ts'],
+  },
+  {
+    estimatedSeconds: 77,
+    name: 'roundtrip-consistency',
+    source: 'src/formats/pptx/roundtrip/consistency.ts',
+    tests: [
+      'test/pptx/roundtrip-consistency.test.ts',
+      'test/black-box/roundtrip-shape-transform.test.ts',
+    ],
+  },
+  {
+    estimatedSeconds: 336,
+    name: 'roundtrip-edit',
+    source: 'src/formats/pptx/roundtrip/edit.ts',
+    tests: [
+      'test/pptx/roundtrip-edit.test.ts',
+      'test/pptx/roundtrip-transform.test.ts',
+      'test/black-box/roundtrip-shape-transform.test.ts',
+    ],
+  },
+  {
+    estimatedSeconds: 201,
+    name: 'roundtrip-preview',
+    source: 'src/formats/pptx/roundtrip/preview.ts',
+    tests: [
+      'test/pptx/roundtrip-preview.test.ts',
+      'test/black-box/roundtrip-shape-transform.test.ts',
+    ],
+  },
+  {
+    estimatedSeconds: 422,
+    name: 'roundtrip-validation',
+    source: 'src/formats/pptx/roundtrip/validate.ts',
+    tests: [
+      'test/pptx/roundtrip-validation.test.ts',
+      'test/black-box/roundtrip-shape-transform.test.ts',
+    ],
   },
   {
     estimatedSeconds: 105,

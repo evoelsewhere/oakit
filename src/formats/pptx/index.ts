@@ -18,6 +18,7 @@ export {
 export { readPptxRoundTrip } from './roundtrip/read';
 export {
   replacePptxRoundTripText,
+  setPptxRoundTripShapeTransform,
   setPptxRoundTripTextTransform,
 } from './roundtrip/edit';
 export { writePptxRoundTrip } from './roundtrip/write';

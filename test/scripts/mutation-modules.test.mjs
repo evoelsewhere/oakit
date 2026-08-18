@@ -25,6 +25,10 @@ describe('focused mutation modules', () => {
       'shape-range',
       'text-xml',
       'transform-xml',
+      'roundtrip-consistency',
+      'roundtrip-edit',
+      'roundtrip-preview',
+      'roundtrip-validation',
       'writer-shape',
     ]);
     expect(new Set(mutationModules.map(({ source }) => source)).size).toBe(

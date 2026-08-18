@@ -1,9 +1,14 @@
 import { resolvePptxResourceLimits } from '../internal/resource-limits';
 import { isValidXmlText } from '../scene-validation';
 import { PptxWriteError } from '../write-error';
-import type { PptxSceneTextElement, PptxSceneTransform } from '../scene-types';
+import type {
+  PptxSceneShapeElement,
+  PptxSceneTextElement,
+  PptxSceneTransform,
+} from '../scene-types';
 import { canonicalJson } from './canonical-json';
 import {
+  createPptxRoundTripNativeEditSupportProfile,
   createPptxRoundTripTextEditSupportProfile,
   createPptxSnapshotConsistency,
 } from './consistency';
@@ -33,7 +38,10 @@ export function applyPptxRoundTripOperationsToPreview(
       let applied = false;
       for (const slide of document.slides) {
         for (const element of slide.elements) {
-          if (element.type === 'text' && element.key === operation.targetKey) {
+          if (
+            (element.type === 'shape' || element.type === 'text') &&
+            element.key === operation.targetKey
+          ) {
             element.resolved.transform = structuredClone(operation.value);
             applied = true;
           }
@@ -71,19 +79,26 @@ export function applyPptxRoundTripOperationsToPreview(
   return document;
 }
 
-function findTextElement(
+type PptxTransformElement = PptxSceneShapeElement | PptxSceneTextElement;
+
+function findTransformElement(
   snapshot: PptxRoundTripSnapshot,
   targetKey: string,
-): PptxSceneTextElement {
-  let matched: PptxSceneTextElement | undefined;
+  targetType: PptxTransformElement['type'],
+): PptxTransformElement {
+  let matched: PptxTransformElement | undefined;
   for (const slide of snapshot.document.slides) {
     for (const element of slide.elements) {
-      if (element.type !== 'text' || element.key !== targetKey) continue;
+      if (element.type !== targetType || element.key !== targetKey) continue;
       matched = element;
     }
   }
   if (matched === undefined) {
-    invalidEdit('PowerPoint transform target key does not exist');
+    invalidEdit(
+      targetType === 'text'
+        ? 'PowerPoint transform target key does not exist'
+        : 'PowerPoint shape transform target key does not exist',
+    );
   }
   return matched;
 }
@@ -205,7 +220,10 @@ export async function replacePptxRoundTripText(
     value: request.value,
   };
   snapshot.operations.push(operation);
-  snapshot.supportProfile = createPptxRoundTripTextEditSupportProfile();
+  snapshot.supportProfile =
+    snapshot.supportProfile.id === 'pptx-roundtrip-native-v1'
+      ? createPptxRoundTripNativeEditSupportProfile()
+      : createPptxRoundTripTextEditSupportProfile();
   snapshot.consistency = await createPptxSnapshotConsistency({
     document: snapshot.document,
     operations: snapshot.operations,
@@ -215,9 +233,10 @@ export async function replacePptxRoundTripText(
   return validatePptxRoundTripSnapshot(snapshot, limits);
 }
 
-export async function setPptxRoundTripTextTransform(
+async function setPptxRoundTripTransform(
   value: PptxRoundTripSnapshot,
   request: PptxRoundTripSetTransformRequest,
+  targetType: PptxTransformElement['type'],
 ): Promise<PptxRoundTripSnapshot> {
   const limits = resolvePptxResourceLimits();
   const validated = validatePptxRoundTripSnapshot(value, limits);
@@ -225,7 +244,7 @@ export async function setPptxRoundTripTextTransform(
   if (typeof request.targetKey !== 'string' || request.targetKey.length === 0) {
     invalidEdit('PowerPoint transform target key must be a non-empty string');
   }
-  const target = findTextElement(snapshot, request.targetKey);
+  const target = findTransformElement(snapshot, request.targetKey, targetType);
   const expectedTransform = target.resolved.transform;
   if (expectedTransform === undefined) {
     invalidEdit('PowerPoint transform target has no resolved transform');
@@ -249,7 +268,11 @@ export async function setPptxRoundTripTextTransform(
     value: transform,
   };
   snapshot.operations.push(operation);
-  snapshot.supportProfile = createPptxRoundTripTextEditSupportProfile();
+  snapshot.supportProfile =
+    targetType === 'shape' ||
+    snapshot.supportProfile.id === 'pptx-roundtrip-native-v1'
+      ? createPptxRoundTripNativeEditSupportProfile()
+      : createPptxRoundTripTextEditSupportProfile();
   snapshot.consistency = await createPptxSnapshotConsistency({
     document: snapshot.document,
     operations: snapshot.operations,
@@ -257,4 +280,18 @@ export async function setPptxRoundTripTextTransform(
     supportProfile: snapshot.supportProfile,
   });
   return validatePptxRoundTripSnapshot(snapshot, limits);
+}
+
+export function setPptxRoundTripTextTransform(
+  value: PptxRoundTripSnapshot,
+  request: PptxRoundTripSetTransformRequest,
+): Promise<PptxRoundTripSnapshot> {
+  return setPptxRoundTripTransform(value, request, 'text');
+}
+
+export function setPptxRoundTripShapeTransform(
+  value: PptxRoundTripSnapshot,
+  request: PptxRoundTripSetTransformRequest,
+): Promise<PptxRoundTripSnapshot> {
+  return setPptxRoundTripTransform(value, request, 'shape');
 }

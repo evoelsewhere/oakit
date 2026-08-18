@@ -23,6 +23,10 @@ jobs:
           - shape-range
           - text-xml
           - transform-xml
+          - roundtrip-consistency
+          - roundtrip-edit
+          - roundtrip-preview
+          - roundtrip-validation
           - writer-shape
     steps:
       - uses: actions/checkout@v4

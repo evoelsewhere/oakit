@@ -83,9 +83,9 @@ function transformTarget(
     unsupportedPptxEdit('PowerPoint transform target index is unsafe');
   }
   const element = document.slides[slideIndex]?.elements[elementIndex];
-  if (element?.type !== 'text') {
+  if (element?.type !== 'shape' && element?.type !== 'text') {
     unsupportedPptxEdit(
-      'PowerPoint transform target is not a slide-owned text element',
+      'PowerPoint transform target is not a slide-owned text or shape element',
     );
   }
   return { elementIndex, shapeId: element.id, slideIndex };

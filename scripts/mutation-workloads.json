@@ -258,12 +258,6 @@
       "testsCompleted": 813,
       "estimatedMilliseconds": 56473
     },
-    "src/formats/pptx/roundtrip/consistency.ts": {
-      "mutants": 42,
-      "staticMutants": 33,
-      "testsCompleted": 1301,
-      "estimatedMilliseconds": 61532
-    },
     "src/formats/pptx/roundtrip/data-tree.ts": {
       "mutants": 153,
       "staticMutants": 125,
@@ -276,23 +270,11 @@
       "testsCompleted": 12,
       "estimatedMilliseconds": 842
     },
-    "src/formats/pptx/roundtrip/edit.ts": {
-      "mutants": 244,
-      "staticMutants": 0,
-      "testsCompleted": 569,
-      "estimatedMilliseconds": 37249
-    },
     "src/formats/pptx/roundtrip/portable.ts": {
       "mutants": 120,
       "staticMutants": 36,
       "testsCompleted": 245,
       "estimatedMilliseconds": 23857
-    },
-    "src/formats/pptx/roundtrip/preview.ts": {
-      "mutants": 129,
-      "staticMutants": 105,
-      "testsCompleted": 6791,
-      "estimatedMilliseconds": 697078
     },
     "src/formats/pptx/roundtrip/read.ts": {
       "mutants": 20,
@@ -305,12 +287,6 @@
       "staticMutants": 59,
       "testsCompleted": 717,
       "estimatedMilliseconds": 33316
-    },
-    "src/formats/pptx/roundtrip/validate.ts": {
-      "mutants": 295,
-      "staticMutants": 132,
-      "testsCompleted": 3342,
-      "estimatedMilliseconds": 132974
     },
     "src/formats/pptx/roundtrip/write.ts": {
       "mutants": 79,

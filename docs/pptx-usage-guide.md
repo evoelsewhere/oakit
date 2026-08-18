@@ -20,6 +20,7 @@ service are not runtime dependencies.
 | Send a deck through JSON                     | `serializePptxRoundTripJson`               | Integrity-bound JSON containing source bytes  |
 | Replace supported plain text                 | `replacePptxRoundTripText`                 | Scheduled, verified round-trip operation      |
 | Move, resize, rotate, or flip supported text | `setPptxRoundTripTextTransform`            | Scheduled, verified transform operation       |
+| Move, resize, rotate, or flip a native shape | `setPptxRoundTripShapeTransform`           | Native shape transform with part preservation |
 | Create a new bounded text deck               | `createPptx`                               | Deterministic PPTX bytes and write report     |
 | Run the same workflows from a shell          | `oakit` CLI                                | JSON, PPTX, SVG, or PNG files                 |
 
@@ -417,7 +418,48 @@ const output = await writePptxRoundTrip(edited);
 Width and height must remain positive. All numeric values must be finite. Group
 coordinate children and unsupported transform ownership fail closed.
 
-## Create a new text presentation
+## Edit a native shape transform
+
+Empty, slide-owned rect, roundRect, and ellipse shapes are first-class round-trip
+targets. Shapes containing text remain preservation-only until their full rich
+text ownership can be represented without loss.
+
+```ts
+import {
+  readPptxRoundTrip,
+  setPptxRoundTripShapeTransform,
+  writePptxRoundTrip,
+} from '@evoelsewhere/oakit';
+
+const snapshot = await readPptxRoundTrip(input);
+const shape = snapshot.document.slides
+  .flatMap((slide) => slide.elements)
+  .find(
+    (element) =>
+      element.type === 'shape' && element.resolved.transform !== undefined,
+  );
+
+if (!shape?.resolved.transform) {
+  throw new Error('The deck has no native transformable shape');
+}
+
+const current = shape.resolved.transform;
+const edited = await setPptxRoundTripShapeTransform(snapshot, {
+  targetKey: shape.key,
+  value: {
+    ...current,
+    rotation: 25,
+    width: current.width + 30,
+    x: current.x - 20,
+  },
+});
+const output = await writePptxRoundTrip(edited);
+
+console.log(output.report.level); // R2
+console.log(output.report.supportProfile.id); // pptx-roundtrip-native-v1
+```
+
+## Create a new native presentation
 
 Creation uses `PptxSceneDocument` schema version 2. Dimensions and transforms
 are in points. Colors use `#RRGGBB`.
@@ -504,6 +546,26 @@ semantic comparison, and Office-free rendering. The versioned creation profile
 is certified at effective `C3` by the controlled PowerPoint, LibreOffice, and
 Google Slides producer matrix. This is a profile claim, not arbitrary PPTX
 creation.
+
+Add a native shape to the same scene with no Office runtime:
+
+```ts
+scene.slides[0]?.elements.push({
+  authored: {
+    fillColor: '#F97316',
+    geometry: 'ellipse',
+    lineColor: '#0F172A',
+    lineWidth: 2,
+    transform: { height: 120, width: 180, x: 420, y: 220 },
+  },
+  key: 'native-shape',
+  resolved: { hidden: false },
+  type: 'shape',
+});
+
+const native = await createPptx(scene);
+console.log(native.report.supportProfile.id); // pptx-create-native-v1
+```
 
 ## Complete agent workflow
 
@@ -714,16 +776,16 @@ safe value.
 
 ## Capability boundaries
 
-| Capability                      | Current release claim                                                        |
-| ------------------------------- | ---------------------------------------------------------------------------- |
-| Read PPTX                       | Bounded structured parsing with strict/tolerant diagnostics                  |
-| Create PPTX                     | `pptx-create-text-v1`, effective C3 producer profile                         |
-| Edit PPTX                       | `pptx-roundtrip-text-v1`, effective R3 plain-text and text-transform profile |
-| Preserve unchanged PPTX         | Byte-exact R0                                                                |
-| Render SVG                      | Node.js and browser, no Office runtime                                       |
-| Render PNG                      | Node.js, no Office runtime                                                   |
-| Arbitrary PPTX creation/editing | Not claimed                                                                  |
-| Pixel-identical rendering       | Not claimed                                                                  |
+| Capability                      | Current release claim                                               |
+| ------------------------------- | ------------------------------------------------------------------- |
+| Read PPTX                       | Bounded structured parsing with strict/tolerant diagnostics         |
+| Create PPTX                     | Text C3 producer profile; native shape C2 runtime profile           |
+| Edit PPTX                       | Text R3 producer profile; native shape transform R2 runtime profile |
+| Preserve unchanged PPTX         | Byte-exact R0                                                       |
+| Render SVG                      | Node.js and browser, no Office runtime                              |
+| Render PNG                      | Node.js, no Office runtime                                          |
+| Arbitrary PPTX creation/editing | Not claimed                                                         |
+| Pixel-identical rendering       | Not claimed                                                         |
 
 The current real-world evidence covers 30 transient SlidesMania templates, 733
 slides, and 9,285 elements before and after controlled Google Slides

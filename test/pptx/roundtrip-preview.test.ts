@@ -162,7 +162,19 @@ describe('PowerPoint round-trip semantic preview', () => {
     expect(previewElement.text.body).not.toHaveProperty('autoFit');
   });
 
-  it('maps unsupported content, transform, and stable nested keys', () => {
+  it('maps empty native shapes and preserves text-bearing shapes as opaque', () => {
+    const nativeShape = {
+      content: '',
+      height: 25,
+      isFlipH: true,
+      isFlipV: false,
+      left: 5,
+      name: 'Native shape',
+      rotate: 10,
+      top: 6,
+      type: 'shape',
+      width: 35,
+    };
     const unsupportedWithText = {
       content: 'Fallback',
       height: 40,
@@ -193,7 +205,7 @@ describe('PowerPoint round-trip semantic preview', () => {
           note: '',
         },
         {
-          elements: [unsupportedWithText, unsupportedWithoutText],
+          elements: [nativeShape, unsupportedWithText, unsupportedWithoutText],
           fill: { type: 'color', value: '#ffffff' },
           layoutElements: [],
           note: '',
@@ -208,8 +220,26 @@ describe('PowerPoint round-trip semantic preview', () => {
     expect(preview.slides[1]?.elements).toEqual([
       {
         authored: {},
-        feature: 'shape',
         key: 'slide-2-element-1',
+        name: 'Native shape',
+        resolved: {
+          hidden: false,
+          transform: {
+            flipHorizontal: true,
+            flipVertical: false,
+            height: 25,
+            rotation: 10,
+            width: 35,
+            x: 5,
+            y: 6,
+          },
+        },
+        type: 'shape',
+      },
+      {
+        authored: {},
+        feature: 'shape',
+        key: 'slide-2-element-2',
         previewText: 'Fallback',
         resolved: {
           hidden: false,
@@ -228,7 +258,7 @@ describe('PowerPoint round-trip semantic preview', () => {
       {
         authored: {},
         feature: 'image',
-        key: 'slide-2-element-2',
+        key: 'slide-2-element-3',
         resolved: { hidden: false },
         type: 'unsupported',
       },

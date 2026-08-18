@@ -11,6 +11,8 @@ export const PPTX_ROUND_TRIP_KEY_ALGORITHM_VERSION = 'pptx-scene-key-v1';
 export const PPTX_ROUND_TRIP_CANONICALIZATION_VERSION = 'canonical-json-v1';
 export const PPTX_ROUND_TRIP_CAPABILITY_PROFILE_VERSION =
   'pptx-roundtrip-text-v1';
+export const PPTX_ROUND_TRIP_NATIVE_CAPABILITY_PROFILE_VERSION =
+  'pptx-roundtrip-native-v1';
 
 export interface PptxRoundTripConsistencyInput {
   document: PptxSceneDocument;
@@ -71,6 +73,15 @@ export function createPptxRoundTripTextEditSupportProfile(): PptxWriteSupportPro
   };
 }
 
+export function createPptxRoundTripNativeEditSupportProfile(): PptxWriteSupportProfile {
+  return {
+    effectiveLevel: 'R2',
+    id: 'pptx-roundtrip-native-v1',
+    producerMatrix: [],
+    version: '1',
+  };
+}
+
 export async function createPptxSnapshotConsistency(
   input: PptxRoundTripConsistencyInput,
 ): Promise<PptxSnapshotConsistency> {
@@ -93,7 +104,10 @@ export async function createPptxSnapshotConsistency(
 
   return {
     canonicalizationVersion: PPTX_ROUND_TRIP_CANONICALIZATION_VERSION,
-    capabilityProfileVersion: PPTX_ROUND_TRIP_CAPABILITY_PROFILE_VERSION,
+    capabilityProfileVersion:
+      input.supportProfile.id === 'pptx-roundtrip-native-v1'
+        ? PPTX_ROUND_TRIP_NATIVE_CAPABILITY_PROFILE_VERSION
+        : PPTX_ROUND_TRIP_CAPABILITY_PROFILE_VERSION,
     contractVersion: PPTX_ROUND_TRIP_CONTRACT_VERSION,
     hashAlgorithm: 'sha256',
     keyAlgorithmVersion: PPTX_ROUND_TRIP_KEY_ALGORITHM_VERSION,
