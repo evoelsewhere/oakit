@@ -527,7 +527,18 @@ describe('native PowerPoint table scene validation', () => {
     (kind, message) => {
       const value = table();
       if (kind === 'column') value.columns = ['bad', 200];
-      else firstRow(value).height = 'bad';
+      else {
+        value.rows = [
+          {
+            cells: [cell('invalid-row-1'), cell('invalid-row-2')],
+            height: 'bad',
+          },
+          {
+            cells: [cell('valid-row-1'), cell('valid-row-2')],
+            height: 40,
+          },
+        ];
+      }
 
       expect(
         validate(value).issues.map((issue) => issue.message),
