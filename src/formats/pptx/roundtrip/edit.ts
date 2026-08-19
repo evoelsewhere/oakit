@@ -299,14 +299,10 @@ export function normalizePptxRoundTripGroupTransform(
     invalidEdit('PowerPoint group transform value is not valid');
   }
   const outer = normalizePptxRoundTripTransform({
-    ...(value.flipHorizontal === undefined
-      ? {}
-      : { flipHorizontal: value.flipHorizontal }),
-    ...(value.flipVertical === undefined
-      ? {}
-      : { flipVertical: value.flipVertical }),
+    flipHorizontal: value.flipHorizontal ?? false,
+    flipVertical: value.flipVertical ?? false,
     height: value.height,
-    ...(value.rotation === undefined ? {} : { rotation: value.rotation }),
+    rotation: value.rotation ?? 0,
     width: value.width,
     x: value.x,
     y: value.y,

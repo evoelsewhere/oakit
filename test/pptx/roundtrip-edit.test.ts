@@ -417,6 +417,18 @@ describe('PowerPoint round-trip text edit binding', () => {
     ).toThrow(/PowerPoint group child space/);
   });
 
+  it.each([7, 'bad'])('rejects primitive group child space %j', (childSpace) => {
+    expect(() =>
+      normalizePptxRoundTripGroupTransform({
+        childSpace,
+        height: 30,
+        width: 40,
+        x: 3,
+        y: 4,
+      } as never),
+    ).toThrow('PowerPoint group child space must be an object');
+  });
+
   it('normalizes explicit and omitted group optional fields', () => {
     expect(
       normalizePptxRoundTripGroupTransform({
