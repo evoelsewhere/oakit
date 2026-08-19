@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { createPptx } from '../../src/formats/pptx/creator';
 import { parse } from '../../src/formats/pptx/parser';
-import type { PptxDocument, Table } from '../../src/formats/pptx/types';
+import type { Group, PptxDocument, Table } from '../../src/formats/pptx/types';
 import type { PptxSceneDocument } from '../../src/formats/pptx/scene-types';
 import { validatePptxScene } from '../../src/formats/pptx/scene-validation';
 import {
@@ -531,6 +531,76 @@ describe('PowerPoint round-trip semantic preview', () => {
       preview.slides[0]?.elements.slice(2).map((element) => element.type),
     ).toEqual(invalidTables.map(() => 'unsupported'));
     expect(validatePptxScene(preview)).toEqual({ issues: [], valid: true });
+  });
+
+  it('dispatches native groups with stable nested semantic keys', () => {
+    const group: Group = {
+      childSpace: { height: 50, width: 100, x: 10, y: 20 },
+      elements: [
+        {
+          borderColor: '#000000',
+          borderStrokeDasharray: '0',
+          borderType: 'solid',
+          borderWidth: 0,
+          content: '',
+          fill: null,
+          height: 20,
+          id: '3',
+          isFlipH: false,
+          isFlipV: false,
+          left: 30,
+          name: 'Child',
+          order: 0,
+          rotate: 0,
+          shapType: 'rect',
+          top: 40,
+          type: 'shape',
+          vAlign: 'up',
+          width: 25,
+          wrap: true,
+        },
+      ],
+      height: 100,
+      id: '2',
+      isFlipH: false,
+      isFlipV: false,
+      left: 20,
+      order: 0,
+      rotate: 0,
+      top: 30,
+      type: 'group',
+      width: 200,
+    };
+    const document = {
+      size: { height: 540, width: 960 },
+      slides: [
+        {
+          elements: [group],
+          fill: { type: 'color', value: '#ffffff' },
+          layoutElements: [],
+          note: '',
+        },
+      ],
+      themeColors: [],
+      usedFonts: [],
+    } as PptxDocument;
+
+    expect(createPowerPointRoundTripPreview(document).slides[0]?.elements[0])
+      .toMatchObject({
+        elements: [
+          {
+            key: 'slide-1-element-1-element-1',
+            type: 'shape',
+          },
+        ],
+        key: 'slide-1-element-1',
+        resolved: {
+          transform: {
+            childSpace: { height: 50, width: 100, x: 10, y: 20 },
+          },
+        },
+        type: 'group',
+      });
   });
 
   it.each([
