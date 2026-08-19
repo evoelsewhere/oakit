@@ -698,12 +698,16 @@ const edited = await setPptxRoundTripGroupTransform(snapshot, {
 const output = await writePptxRoundTrip(edited);
 ```
 
-The operation patches only the owning slide's direct group transform:
-`a:off`, `a:ext`, `a:chOff`, and `a:chExt`. The semantic verifier recalculates
-direct and nested descendant geometry with the same non-uniform and 90°/270°
-rotation rules as the parser. Every untouched package payload remains
-byte-exact. Groups without a finite positive child space stay
-preservation-only.
+The operation patches only the matching group transform in its owning slide:
+`a:off`, `a:ext`, `a:chOff`, and `a:chExt`. Top-level keys look like
+`slide-1-element-2`; nested keys retain every owner segment, for example
+`slide-1-element-2-element-3`. Before patching a nested group, OAKit maps its
+resolved preview transform back through each ancestor's child coordinate space,
+then verifies the written package against the requested resolved transform.
+The semantic verifier recalculates direct and nested descendant geometry with
+the same non-uniform and 90°/270° rotation rules as the parser. Every untouched
+package payload remains byte-exact. Groups without a finite positive child
+space stay preservation-only.
 
 ## Create a new native presentation
 

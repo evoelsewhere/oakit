@@ -97,8 +97,9 @@ runtime's `R2` verification is certified at effective `R3` for the
 `pptx-roundtrip-text-v1` plain-text and text-transform operations. `R0` means an
 unchanged source package is restored byte for byte through runtime or portable
 JSON. The `pptx-create-native-v1` and `pptx-roundtrip-native-v1` profiles add
-runtime-verified non-text shape/image/table/group creation and slide-owned shape/image/table/group
-transforms; they do not yet claim producer-elevated C3/R3. These profile levels
+runtime-verified non-text shape/image/table/group creation and slide-owned,
+including nested, shape/image/table/group transforms; they do not yet claim
+producer-elevated C3/R3. These profile levels
 do not claim arbitrary PPTX editing, full
 reconstruction from normalized JSON, or pixel-identical rendering.
 

@@ -706,7 +706,10 @@ supports native shape, image, safe table, and group transforms through
 `pptx-roundtrip-native-v1`. A table resize patches both its graphic-frame
 extent and proportional grid/row dimensions in the owning slide.
 A group edit patches both outer and child coordinate spaces, then recursively
-verifies every scaled descendant.
+verifies every scaled descendant. Hierarchical element keys retain the complete
+group-owner path. Nested transform operations are localized from resolved
+preview coordinates back through ancestor child spaces before the matching
+shape XML is patched.
 
 Command parsing, conversion, hand-off, edit, and render orchestration live in
 `cli/run.ts` behind the injected `OakitCliIo` contract. The contract separates
