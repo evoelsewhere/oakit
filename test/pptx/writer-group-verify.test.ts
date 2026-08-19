@@ -109,6 +109,60 @@ describe('native PowerPoint group verification', () => {
     );
   });
 
+  it.each([90, -90])(
+    'scales a rotated child through non-uniform group space at %d degrees',
+    (rotation) => {
+      const expectedValue = expected();
+      expectedValue.authored.transform = {
+        childSpace: { height: 100, width: 100, x: 10, y: 20 },
+        height: 200,
+        width: 300,
+        x: 20,
+        y: 30,
+      };
+      expectedValue.elements[0]!.authored.transform = {
+        height: 40,
+        rotation,
+        width: 20,
+        x: 20,
+        y: 30,
+      };
+      const generatedValue = generated();
+      generatedValue.childSpace = {
+        height: 100,
+        width: 100,
+        x: 10,
+        y: 20,
+      };
+      generatedValue.height = 200;
+      generatedValue.width = 300;
+      const deps = dependencies();
+
+      verifyPowerPointGroupElement(
+        generatedValue,
+        expectedValue,
+        'target',
+        deps.value,
+      );
+
+      expect(deps.verifyChild).toHaveBeenCalledWith(
+        generatedValue.elements[0],
+        expect.objectContaining({
+          authored: {
+            transform: {
+              height: 120,
+              rotation,
+              width: 40,
+              x: 40,
+              y: 0,
+            },
+          },
+        }),
+        0,
+      );
+    },
+  );
+
   it.each([undefined, { type: 'shape' }])(
     'rejects missing or non-group output %#',
     (value) => {
