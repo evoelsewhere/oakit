@@ -79,6 +79,12 @@ export const mutationModules = [
     ],
   },
   {
+    estimatedSeconds: 240,
+    name: 'group-preview',
+    source: 'src/formats/pptx/roundtrip/group-preview.ts',
+    tests: ['test/pptx/roundtrip-group-preview.test.ts'],
+  },
+  {
     estimatedSeconds: 420,
     name: 'table-preview',
     source: 'src/formats/pptx/roundtrip/table-preview.ts',
