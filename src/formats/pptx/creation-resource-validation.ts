@@ -4,6 +4,7 @@ import {
   MAX_POWERPOINT_CREATION_MEDIA_BYTES,
   MAX_POWERPOINT_CREATION_PARAGRAPHS,
   MAX_POWERPOINT_CREATION_STRING_CODE_UNITS,
+  MAX_POWERPOINT_CREATION_TOTAL_CHART_POINTS,
   MAX_POWERPOINT_CREATION_TEXT_NODES,
   MAX_POWERPOINT_CREATION_TOTAL_MEDIA_BYTES,
 } from './creation-limits';
@@ -32,6 +33,7 @@ function stringCodeUnits(value: unknown): number {
 }
 
 interface CreationResourceCounts {
+  chartPoints: number;
   elements: number;
   media: number;
   mediaBytes: number;
@@ -42,6 +44,7 @@ interface CreationResourceCounts {
 
 function countCreationResources(document: JsonObject): CreationResourceCounts {
   const counts: CreationResourceCounts = {
+    chartPoints: 0,
     elements: 0,
     media: 0,
     mediaBytes: 0,
@@ -59,6 +62,18 @@ function countCreationResources(document: JsonObject): CreationResourceCounts {
       if (element.type === 'group' && Array.isArray(element.elements)) {
         pending.push(...element.elements);
         counts.elements += element.elements.length;
+      }
+      if (element.type === 'chart' && Array.isArray(element.series)) {
+        for (const series of element.series) {
+          if (series === null || typeof series !== 'object') continue;
+          const categories = Array.isArray(series.categories)
+            ? series.categories.length
+            : 0;
+          const values = Array.isArray(series.values)
+            ? series.values.length
+            : 0;
+          counts.chartPoints += Math.max(categories, values);
+        }
       }
       const textBodies =
         element.type === 'text'
@@ -96,6 +111,13 @@ export function validatePowerPointCreationResources(
     issues.push({
       code: 'resource-limit-exceeded',
       message: `Creation profile ${profile} supports at most ${MAX_POWERPOINT_CREATION_ELEMENTS} elements`,
+      path: '$.slides',
+    });
+  }
+  if (counts.chartPoints > MAX_POWERPOINT_CREATION_TOTAL_CHART_POINTS) {
+    issues.push({
+      code: 'resource-limit-exceeded',
+      message: `Creation profile ${profile} supports at most ${MAX_POWERPOINT_CREATION_TOTAL_CHART_POINTS} total chart points`,
       path: '$.slides',
     });
   }

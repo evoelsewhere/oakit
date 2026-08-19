@@ -6,6 +6,7 @@ import {
   MAX_POWERPOINT_CREATION_MEDIA_BYTES,
   MAX_POWERPOINT_CREATION_PARAGRAPHS,
   MAX_POWERPOINT_CREATION_STRING_CODE_UNITS,
+  MAX_POWERPOINT_CREATION_TOTAL_CHART_POINTS,
   MAX_POWERPOINT_CREATION_TEXT_NODES,
   MAX_POWERPOINT_CREATION_TOTAL_MEDIA_BYTES,
 } from '../../src/formats/pptx/creation-limits';
@@ -128,6 +129,57 @@ describe('PowerPoint creation resource validation', () => {
     ).toContainEqual({
       code: 'resource-limit-exceeded',
       message: `Creation profile create-native-v1 supports at most ${MAX_POWERPOINT_CREATION_ELEMENTS} elements`,
+      path: '$.slides',
+    });
+  });
+
+  it('enforces the aggregate chart-point budget across native charts', () => {
+    const exact = document([
+      {
+        elements: [
+          {
+            series: [
+              {
+                categories: new Array<string>(
+                  MAX_POWERPOINT_CREATION_TOTAL_CHART_POINTS,
+                ),
+                values: new Array<number>(
+                  MAX_POWERPOINT_CREATION_TOTAL_CHART_POINTS,
+                ),
+              },
+            ],
+            type: 'chart',
+          },
+        ],
+      },
+    ]);
+    expect(
+      validatePowerPointCreationResources(exact, 'create-native-v1'),
+    ).toEqual([]);
+
+    const pointsPerSeries = 10_000;
+    const seriesCount =
+      Math.floor(MAX_POWERPOINT_CREATION_TOTAL_CHART_POINTS / pointsPerSeries) +
+      1;
+    const input = document([
+      {
+        elements: [
+          {
+            series: Array.from({ length: seriesCount }, () => ({
+              categories: new Array<string>(pointsPerSeries),
+              values: new Array<number>(pointsPerSeries),
+            })),
+            type: 'chart',
+          },
+        ],
+      },
+    ]);
+
+    expect(
+      validatePowerPointCreationResources(input, 'create-native-v1'),
+    ).toContainEqual({
+      code: 'resource-limit-exceeded',
+      message: `Creation profile create-native-v1 supports at most ${MAX_POWERPOINT_CREATION_TOTAL_CHART_POINTS} total chart points`,
       path: '$.slides',
     });
   });
