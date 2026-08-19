@@ -63,7 +63,7 @@ describe('PowerPoint editable shape range', () => {
 
   it('returns a unique native group without accepting nested child ids', () => {
     const xml = slideXml(
-      '<p:grpSp><p:nvGrpSpPr><p:cNvPr id="2"/></p:nvGrpSpPr><p:sp><p:nvSpPr><p:cNvPr id="3"/></p:nvSpPr></p:sp></p:grpSp>',
+      '<p:grpSp><p:nvGrpSpPr><p:cNvPr id="2"/></p:nvGrpSpPr><p:sp><p:nvSpPr><p:cNvPr id="3"/></p:nvSpPr></p:sp><p:cxnSp><p:nvCxnSpPr><p:cNvPr id="4"/></p:nvCxnSpPr></p:cxnSp></p:grpSp>',
     );
 
     expect(resolvePptxEditableGroupXml(xml, '2').shape).toContain(
@@ -71,6 +71,9 @@ describe('PowerPoint editable shape range', () => {
     );
     expect(() => resolvePptxEditableGroupXml(xml, '3')).toThrow(
       'PowerPoint text edit requires one unique group shape for id 3',
+    );
+    expect(() => resolvePptxEditableGroupXml(xml, '4')).toThrow(
+      'PowerPoint text edit requires one unique group shape for id 4',
     );
   });
 
