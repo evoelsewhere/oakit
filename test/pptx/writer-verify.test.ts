@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import type {
   Image,
+  Group,
   PptxDocument,
   PptxParseOptions,
   Shape,
@@ -125,6 +126,38 @@ function tableSlide(key: string): PptxSceneSlide {
   };
 }
 
+function groupSlide(key: string): PptxSceneSlide {
+  return {
+    elements: [
+      {
+        authored: {
+          transform: {
+            childSpace: { height: 40, width: 160, x: 0, y: 0 },
+            height: 40,
+            width: 160,
+            x: 10,
+            y: 20,
+          },
+        },
+        elements: [
+          {
+            authored: {
+              transform: { height: 10, width: 20, x: 1, y: 2 },
+            },
+            key: `${key}-child`,
+            resolved: { hidden: false },
+            type: 'shape',
+          },
+        ],
+        key: `${key}-group`,
+        resolved: { hidden: false },
+        type: 'group',
+      },
+    ],
+    key,
+  };
+}
+
 function scene(slides: PptxSceneSlide[]): PptxSceneDocument {
   return {
     layouts: [],
@@ -236,6 +269,32 @@ function generatedTable(text = 'Expected'): Table {
     rowHeights: [40],
     top: 20,
     type: 'table',
+    width: 160,
+  };
+}
+
+function generatedGroup(): Group {
+  return {
+    childSpace: { height: 40, width: 160, x: 0, y: 0 },
+    elements: [
+      {
+        ...generatedShape('rect', ''),
+        height: 10,
+        id: '3',
+        left: 1,
+        top: 2,
+        width: 20,
+      },
+    ],
+    height: 40,
+    id: '2',
+    isFlipH: false,
+    isFlipV: false,
+    left: 10,
+    order: 0,
+    rotate: 0,
+    top: 20,
+    type: 'group',
     width: 160,
   };
 }
@@ -457,6 +516,47 @@ describe('PowerPoint creation verification', () => {
       ),
     ).rejects.toThrow(
       'Generated PowerPoint table text mismatch at slide 1, element 1, row 1, cell 1',
+    );
+  });
+
+  it('reports a missing group at its exact slide and element location', async () => {
+    const secondSlide = groupSlide('slide-2');
+    secondSlide.elements.unshift(textSlide('decoy').elements[0]!);
+    const output = document(2);
+    output.slides[1]?.elements.push(
+      generatedText(),
+      generatedShape('rect', ''),
+    );
+
+    await expect(
+      verifyPowerPointCreationWithParser(
+        new Uint8Array(),
+        scene([emptySlide('slide-1'), secondSlide]),
+        () => Promise.resolve(output),
+        rendered,
+      ),
+    ).rejects.toThrow(
+      'Generated PowerPoint group missing at slide 2, element 2',
+    );
+  });
+
+  it('recursively verifies every generated group child', async () => {
+    const output = document(1);
+    const group = generatedGroup();
+    const child = group.elements[0];
+    if (child?.type !== 'shape') throw new Error('Expected generated child');
+    child.shapType = 'ellipse';
+    output.slides[0]?.elements.push(group);
+
+    await expect(
+      verifyPowerPointCreationWithParser(
+        new Uint8Array(),
+        scene([groupSlide('slide-1')]),
+        () => Promise.resolve(output),
+        rendered,
+      ),
+    ).rejects.toThrow(
+      'Generated PowerPoint shape missing at slide 1, element 1',
     );
   });
 
