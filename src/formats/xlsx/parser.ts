@@ -33,6 +33,7 @@ import {
 import { XlsxPartReader } from './internal/part-reader';
 import {
   EMPTY_XLSX_RICH_VALUES,
+  hydrateXlsxRichValueImages,
   loadXlsxRichValues,
   type XlsxRichValueRegistry,
 } from './internal/rich-value';
@@ -580,6 +581,7 @@ async function parseXlsxCore(
           : { timelines: analyticDisplays.timelines }),
       });
     }
+    await hydrateXlsxRichValueImages(sheets, media, reader);
   } catch (error) {
     media.revokeAll();
     if (error instanceof XlsxResourceLimitError) {

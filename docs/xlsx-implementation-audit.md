@@ -165,8 +165,19 @@ validation remains independent of range selection. Public and normalized tests
 cover strict/tolerant failure, safe redaction, standalone JSON, exact R0,
 relationship ownership, prefix normalization, scalar boundaries, graph
 integrity, and exact/one-over limits.
-Full-module force mutation is 100% (`rich-value.ts`: 297 killed, 230 compile
+Full-module force mutation is 100% (`rich-value.ts`: 387 killed, 338 compile
 errors) with zero survivor, no-coverage, or timeout.
+
+The same rich-value graph now validates `rdRichValueTypes` and the Microsoft
+2022/10 `richValueRel` owner graph for `_localImage` values. Internal image
+relationships and safe media MIME types resolve into portable canonical part
+metadata while the source identifier remains explicitly omitted. The existing
+media session hydrates only selected cells for `base64`/`blob` modes, performs
+no fetch, verifies every referenced package part even in `none` mode, and
+charges repeated returned bytes independently. Tests cover Transitional and
+Strict relationship namespaces, external-image rejection/tolerant redaction,
+exact metadata/text/media limits, selection, standalone JSON, and byte-identical
+R0. The changed drawing media-type helper range is also mutation-clean.
 
 `internal/feature-property-bag.ts` now follows the workbook-owned Microsoft
 2022/11 FeaturePropertyBag relationship, validates internal ownership and
@@ -181,9 +192,9 @@ and exact aggregate style limits. Mutation is 100% (`feature-property-bag.ts`:
 168 killed, 85 compile errors; `styles.ts`: 343 killed, 159 compile errors) with
 zero survivor, no-coverage, or timeout.
 
-The feature-matrix row remains Partial until safe cell-image/web-image metadata,
-the remaining linked-data companion parts, and cross-producer corpus evidence
-are complete.
+The feature-matrix row remains Partial until web-image and remaining legacy
+cell-image variants, the remaining linked-data companion forms, and
+cross-producer corpus evidence are complete.
 
 ## Reader contract audit
 

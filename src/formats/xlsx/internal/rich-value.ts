@@ -2,13 +2,17 @@ import { decodeXmlEntities } from '../../../common/text/html';
 import type { XmlLookupValue } from '../../../common/xml/tree';
 import { XlsxParseError } from '../errors';
 import type {
+  XlsxDocument,
   XlsxRichValue,
   XlsxRichValueField,
+  XlsxRichValueImage,
   XlsxRichValueScalar,
 } from '../types';
 import type { XlsxCellMetadataBudget } from './cell-metadata';
+import { isSafeXlsxImageContentType, type XlsxMediaSession } from './drawing';
+import { getXlsxRelationshipPartName } from './package-identity';
 import { XlsxPartReader } from './part-reader';
-import type { XlsxRelationship } from './relationships';
+import { parseXlsxRelationships, type XlsxRelationship } from './relationships';
 import {
   type ResolvedXlsxResourceLimits,
   XlsxResourceLimitError,
@@ -26,6 +30,16 @@ interface RichValueStructure {
   keys: RichValueKey[];
   type: string;
 }
+
+interface RichValueImageRegistry {
+  images: readonly XlsxRichValueImage[];
+  part: string | null;
+}
+
+const EMPTY_RICH_VALUE_IMAGES: RichValueImageRegistry = {
+  images: [],
+  part: null,
+};
 
 export interface XlsxRichValueRegistry {
   part: string | null;
@@ -45,7 +59,8 @@ function fail(
   code:
     | 'invalid-document-structure'
     | 'invalid-document-value'
-    | 'missing-required-part',
+    | 'missing-required-part'
+    | 'security-rejected-content',
   message: string,
   part: string,
 ): never {
@@ -399,6 +414,7 @@ function parseData(
   structures: readonly RichValueStructure[],
   budget: XlsxCellMetadataBudget,
   limits: ResolvedXlsxResourceLimits,
+  imageRegistry: RichValueImageRegistry,
 ): XlsxRichValue[] {
   const definition = root(value, 'rvData', part);
   const values = children(definition.node, 'rv', definition.attrs, part);
@@ -430,19 +446,23 @@ function parseData(
         part,
       );
     }
+    let localImageIndex: number | undefined;
     const fields = rawValues.map((node, index) => {
       consumeRecord(budget, limits, part);
       const key = structure.keys[index]!;
+      const raw = scalar(node, 'Rich-value field is invalid', part);
+      if (key.name === '_rvRel:LocalImageIdentifier' && key.type === 'i') {
+        localImageIndex = unsignedInteger(
+          raw,
+          'Rich-value local-image reference is invalid',
+          part,
+        );
+      }
       const omitted = sensitiveKey(key.name);
       return {
         name: key.name,
         type: key.type,
-        value: scalarValue(
-          scalar(node, 'Rich-value field is invalid', part),
-          key.type,
-          omitted,
-          part,
-        ),
+        value: scalarValue(raw, key.type, omitted, part),
       };
     });
     const fallbacks = elementValues(richValue, 'fb', definition.attrs, part);
@@ -453,11 +473,33 @@ function parseData(
         part,
       );
     }
+    let image: XlsxRichValueImage | undefined;
+    if (structure.type === '_localImage') {
+      if (imageRegistry.part === null) {
+        fail(
+          'missing-required-part',
+          'Rich-value local-image relationship graph is missing',
+          part,
+        );
+      }
+      image =
+        localImageIndex === undefined
+          ? undefined
+          : imageRegistry.images[localImageIndex];
+      if (image === undefined) {
+        fail(
+          'invalid-document-value',
+          'Rich-value local-image reference is invalid',
+          part,
+        );
+      }
+    }
     return {
       ...(fallbacks[0] === undefined
         ? {}
         : { fallback: fallbackValue(fallbacks[0], part) }),
       fields,
+      ...(image === undefined ? {} : { image }),
       sourceDataOmitted: fields.some((field) => field.value.kind === 'omitted'),
       type: structure.type,
     };
@@ -473,6 +515,185 @@ function parseData(
     }
   }
   return output;
+}
+
+function companionRoot(
+  value: XmlLookupValue,
+  name: 'richValueRels' | 'rvTypesInfo',
+  namespace: string,
+  part: string,
+): RootResult {
+  const entries = Object.entries(value).filter(
+    ([qualifiedName]) => localName(qualifiedName) === name,
+  );
+  if (entries.length !== 1) {
+    fail(
+      'invalid-document-structure',
+      `Rich-value ${name} root is missing or duplicated`,
+      part,
+    );
+  }
+  const [qualifiedName, rawNode] = entries[0]!;
+  const node = record(rawNode);
+  if (
+    !node ||
+    namespaceFor(qualifiedName, node, attributes(node)) !== namespace
+  ) {
+    fail(
+      'invalid-document-structure',
+      `Rich-value ${name} root has the wrong namespace`,
+      part,
+    );
+  }
+  return { attrs: attributes(node), node };
+}
+
+function companionChildren(
+  node: XmlRecord,
+  name: string,
+  namespace: string,
+  inherited: Readonly<Record<string, string>>,
+  part: string,
+): XmlRecord[] {
+  const output: XmlRecord[] = [];
+  for (const [qualifiedName, value] of Object.entries(node)) {
+    if (localName(qualifiedName) !== name) continue;
+    const values = records(value);
+    if (!values) {
+      fail(
+        'invalid-document-structure',
+        'Rich-value companion collection is invalid',
+        part,
+      );
+    }
+    for (const child of values) {
+      if (namespaceFor(qualifiedName, child, inherited) !== namespace) {
+        fail(
+          'invalid-document-structure',
+          'Rich-value companion element has the wrong namespace',
+          part,
+        );
+      }
+      output.push(child);
+    }
+  }
+  return output;
+}
+
+async function loadRichValueImages(
+  relationships: ReadonlyMap<string, XlsxRelationship>,
+  discovery: XlsxWorkbookDiscovery,
+  reader: XlsxPartReader,
+  limits: ResolvedXlsxResourceLimits,
+  budget: XlsxCellMetadataBudget,
+): Promise<RichValueImageRegistry> {
+  const typesPart = target(
+    relationships,
+    'http://schemas.microsoft.com/office/2017/06/relationships/rdRichValueTypes',
+    'application/vnd.ms-excel.rdrichvaluetypes+xml',
+    discovery,
+  );
+  const relationPart = target(
+    relationships,
+    'http://schemas.microsoft.com/office/2022/10/relationships/richValueRel',
+    'application/vnd.ms-excel.richvaluerel+xml',
+    discovery,
+  );
+  if (!typesPart && !relationPart) return EMPTY_RICH_VALUE_IMAGES;
+  if (!typesPart || !relationPart) {
+    fail(
+      'missing-required-part',
+      'Rich-value image types and relationships must both exist',
+      discovery.part,
+    );
+  }
+  companionRoot(
+    await reader.readXml(typesPart, { required: true }),
+    'rvTypesInfo',
+    'http://schemas.microsoft.com/office/spreadsheetml/2017/richdata2',
+    typesPart,
+  );
+  const relationDefinition = companionRoot(
+    await reader.readXml(relationPart, { required: true }),
+    'richValueRels',
+    'http://schemas.microsoft.com/office/spreadsheetml/2022/richvaluerel',
+    relationPart,
+  );
+  if (
+    relationDefinition.attrs['xmlns:r'] !==
+      'http://schemas.openxmlformats.org/officeDocument/2006/relationships' &&
+    relationDefinition.attrs['xmlns:r'] !==
+      'http://purl.oclc.org/ooxml/officeDocument/relationships'
+  ) {
+    fail(
+      'invalid-document-structure',
+      'Rich-value image relationship namespace is invalid',
+      relationPart,
+    );
+  }
+  const ownerRelationships = parseXlsxRelationships(
+    await reader.readXml(getXlsxRelationshipPartName(relationPart), {
+      required: true,
+    }),
+    relationPart,
+    limits.maxRelationships,
+  );
+  const relationNodes = companionChildren(
+    relationDefinition.node,
+    'rel',
+    'http://schemas.microsoft.com/office/spreadsheetml/2022/richvaluerel',
+    relationDefinition.attrs,
+    relationPart,
+  );
+  const allowedImageRelationships = new Set([
+    'http://schemas.openxmlformats.org/officeDocument/2006/relationships/image',
+    'http://purl.oclc.org/ooxml/officeDocument/relationships/image',
+  ]);
+  const images = relationNodes.map((node) => {
+    consumeRecord(budget, limits, relationPart);
+    const relationshipId = attributes(node)['r:id'];
+    const relationship =
+      typeof relationshipId === 'string'
+        ? ownerRelationships.get(relationshipId)
+        : undefined;
+    if (!relationship || !allowedImageRelationships.has(relationship.type)) {
+      fail(
+        'invalid-document-value',
+        'Rich-value image relationship is invalid',
+        relationPart,
+      );
+    }
+    if (relationship.mode !== 'internal') {
+      fail(
+        'security-rejected-content',
+        'External rich-value images are not loaded',
+        relationPart,
+      );
+    }
+    const contentType = discovery.contentTypes.contentTypeFor(
+      relationship.target,
+    );
+    if (!contentType || !isSafeXlsxImageContentType(contentType)) {
+      fail(
+        'security-rejected-content',
+        'Rich-value image content type is not safely supported',
+        relationship.target,
+      );
+    }
+    if (!reader.hasPart(relationship.target)) {
+      fail(
+        'missing-required-part',
+        'Rich-value image part is missing',
+        relationship.target,
+      );
+    }
+    return {
+      contentType,
+      kind: 'local-image' as const,
+      part: relationship.target,
+    };
+  });
+  return { images, part: relationPart };
 }
 
 function target(
@@ -539,13 +760,14 @@ export async function loadXlsxRichValues(
       discovery.part,
     );
   }
-  return parseXlsxRichValueParts(
+  return parseRichValueParts(
     await reader.readXml(structurePart, { required: true }),
     await reader.readXml(dataPart, { required: true }),
     structurePart,
     dataPart,
     limits,
     budget,
+    await loadRichValueImages(relationships, discovery, reader, limits, budget),
   );
 }
 
@@ -557,6 +779,26 @@ export function parseXlsxRichValueParts(
   limits: ResolvedXlsxResourceLimits,
   budget: XlsxCellMetadataBudget,
 ): XlsxRichValueRegistry {
+  return parseRichValueParts(
+    structureValue,
+    dataValue,
+    structurePart,
+    dataPart,
+    limits,
+    budget,
+    EMPTY_RICH_VALUE_IMAGES,
+  );
+}
+
+function parseRichValueParts(
+  structureValue: XmlLookupValue,
+  dataValue: XmlLookupValue,
+  structurePart: string,
+  dataPart: string,
+  limits: ResolvedXlsxResourceLimits,
+  budget: XlsxCellMetadataBudget,
+  imageRegistry: RichValueImageRegistry,
+): XlsxRichValueRegistry {
   const structures = parseStructures(
     structureValue,
     structurePart,
@@ -565,7 +807,14 @@ export function parseXlsxRichValueParts(
   );
   return {
     part: dataPart,
-    values: parseData(dataValue, dataPart, structures, budget, limits),
+    values: parseData(
+      dataValue,
+      dataPart,
+      structures,
+      budget,
+      limits,
+      imageRegistry,
+    ),
   };
 }
 
@@ -596,6 +845,10 @@ export function cloneXlsxRichValueForOutput(
 ): XlsxRichValue {
   consumeRecord(metadataBudget, limits, part, value.fields.length);
   consumeText(textBudget, value.type, limits, part);
+  if (value.image !== undefined) {
+    consumeText(textBudget, value.image.contentType, limits, part);
+    consumeText(textBudget, value.image.part, limits, part);
+  }
   const cloneScalar = (scalar: XlsxRichValueScalar): XlsxRichValueScalar => {
     if (scalar.kind === 'text')
       consumeText(textBudget, scalar.value, limits, part);
@@ -611,7 +864,38 @@ export function cloneXlsxRichValueForOutput(
       consumeText(textBudget, field.name, limits, part);
       return { ...field, value: cloneScalar(field.value) };
     }),
+    ...(value.image === undefined ? {} : { image: { ...value.image } }),
     sourceDataOmitted: value.sourceDataOmitted,
     type: value.type,
   };
+}
+
+export async function hydrateXlsxRichValueImages(
+  sheets: XlsxDocument['sheets'],
+  media: XlsxMediaSession,
+  reader: XlsxPartReader,
+): Promise<void> {
+  for (const sheet of sheets) {
+    if (sheet.kind !== 'worksheet') continue;
+    for (const row of sheet.rows) {
+      for (const cell of row.cells) {
+        const entries = [
+          ...(cell.metadata?.cell ?? []),
+          ...(cell.metadata?.value ?? []),
+        ];
+        for (const entry of entries) {
+          if (entry.kind !== 'rich-value' || entry.data?.image === undefined) {
+            continue;
+          }
+          const image = entry.data.image;
+          const payload = await media.image(
+            image.part,
+            image.contentType,
+            reader,
+          );
+          Object.assign(image, payload);
+        }
+      }
+    }
+  }
 }

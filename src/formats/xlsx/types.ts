@@ -159,8 +159,18 @@ export interface XlsxRichValueField {
 export interface XlsxRichValue {
   fallback?: XlsxRichValueScalar;
   fields: XlsxRichValueField[];
+  image?: XlsxRichValueImage;
   sourceDataOmitted: boolean;
   type: string;
+}
+
+export interface XlsxRichValueImage {
+  base64?: string;
+  blobUrl?: string;
+  byteLength?: number;
+  contentType: string;
+  kind: 'local-image';
+  part: string;
 }
 
 export interface XlsxCellMetadata {

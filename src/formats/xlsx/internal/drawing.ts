@@ -75,6 +75,10 @@ const SAFE_IMAGE_CONTENT_TYPES = new Set([
   'image/x-wmf',
 ]);
 
+export function isSafeXlsxImageContentType(contentType: string): boolean {
+  return SAFE_IMAGE_CONTENT_TYPES.has(contentType);
+}
+
 export interface XlsxDrawingBudget {
   charts: number;
   drawings: number;
@@ -569,7 +573,7 @@ async function picture(
     fail('invalid-document-structure', 'Image relationship is invalid', part);
   }
   const contentType = discovery.contentTypes.contentTypeFor(relation.target);
-  if (!contentType || !SAFE_IMAGE_CONTENT_TYPES.has(contentType)) {
+  if (!contentType || !isSafeXlsxImageContentType(contentType)) {
     fail(
       'security-rejected-content',
       'Drawing image content type is not safely supported',
