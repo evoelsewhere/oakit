@@ -133,6 +133,12 @@ export const mutationModules = [
   },
   {
     estimatedSeconds: 105,
+    name: 'writer-chart',
+    source: 'src/formats/pptx/writer/chart.ts',
+    tests: ['test/pptx/writer-chart.test.ts'],
+  },
+  {
+    estimatedSeconds: 105,
     name: 'writer-shape',
     source: 'src/formats/pptx/writer/shape.ts',
     tests: [

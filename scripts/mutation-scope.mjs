@@ -83,6 +83,7 @@ export const mutatedFiles = [
   'src/formats/pptx/scene-table-merge-validation.ts',
   'src/formats/pptx/write-error.ts',
   'src/formats/pptx/writer/archive.ts',
+  'src/formats/pptx/writer/chart.ts',
   'src/formats/pptx/writer/color.ts',
   'src/formats/pptx/writer/content-types.ts',
   'src/formats/pptx/writer/group.ts',
