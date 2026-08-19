@@ -52,6 +52,7 @@ export interface XlsxResourceLimits {
   maxHyperlinks?: number;
   maxInputBytes?: number;
   maxMediaBytes?: number;
+  maxMetadataRecords?: number;
   maxMergedRanges?: number;
   maxPartBytes?: number;
   maxPivotRecords?: number;
@@ -123,7 +124,24 @@ export interface XlsxCellBase {
   address: string;
   column: number;
   displayText?: string;
+  metadata?: XlsxCellMetadata;
   style?: number;
+}
+
+export type XlsxCellMetadataEntry =
+  | {
+      collapsed: boolean;
+      dynamic: boolean;
+      kind: 'dynamic-array';
+    }
+  | {
+      kind: 'rich-value';
+      valueIndex: number;
+    };
+
+export interface XlsxCellMetadata {
+  cell?: XlsxCellMetadataEntry[];
+  value?: XlsxCellMetadataEntry[];
 }
 
 export type XlsxCell = XlsxCellBase &

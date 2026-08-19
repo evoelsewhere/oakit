@@ -4,56 +4,61 @@ import type {
   XlsxEditOperation,
 } from './types';
 
-const DOMAINS = [
-  'active-content',
-  'calculation',
-  'cells',
-  'charts',
-  'comments',
-  'conditional-formatting',
-  'connections',
-  'defined-names',
-  'document-properties',
-  'drawings-images',
-  'external-links',
-  'filters-sorts',
-  'formulas',
-  'hyperlinks',
-  'known-extensions',
-  'merges',
-  'pivots',
-  'print-layout',
-  'protection',
-  'rows-columns',
-  'shared-strings',
-  'sheet-metadata',
-  'sparklines',
-  'styles',
-  'tables',
-  'unknown-extensions',
-  'validation',
-  'views',
-  'workbook-sheets',
-] as const;
+function capabilityDomains(): string[] {
+  return [
+    'active-content',
+    'calculation',
+    'cells',
+    'charts',
+    'comments',
+    'conditional-formatting',
+    'connections',
+    'defined-names',
+    'document-properties',
+    'drawings-images',
+    'external-links',
+    'filters-sorts',
+    'formulas',
+    'hyperlinks',
+    'known-extensions',
+    'merges',
+    'modern-cell-metadata',
+    'pivots',
+    'print-layout',
+    'protection',
+    'rows-columns',
+    'shared-strings',
+    'sheet-metadata',
+    'sparklines',
+    'styles',
+    'tables',
+    'unknown-extensions',
+    'validation',
+    'views',
+    'workbook-sheets',
+  ];
+}
 
-const OPERATIONS: Array<XlsxEditOperation['kind']> = [
-  'add-worksheet',
-  'clear-cell',
-  'delete-columns',
-  'delete-rows',
-  'delete-worksheet',
-  'insert-columns',
-  'insert-rows',
-  'rename-worksheet',
-  'set-cell',
-  'set-cell-style',
-  'set-column',
-  'set-hyperlink',
-  'set-row',
-];
+function capabilityOperations(): Array<XlsxEditOperation['kind']> {
+  return [
+    'add-worksheet',
+    'clear-cell',
+    'delete-columns',
+    'delete-rows',
+    'delete-worksheet',
+    'insert-columns',
+    'insert-rows',
+    'rename-worksheet',
+    'set-cell',
+    'set-cell-style',
+    'set-column',
+    'set-hyperlink',
+    'set-row',
+  ];
+}
 
 export function createXlsxCapabilityManifest(): XlsxCapabilityManifest {
-  const domains: XlsxCapabilityEntry[] = DOMAINS.map((domain) => ({
+  const domains: XlsxCapabilityEntry[] = capabilityDomains().map((domain) => ({
     domain,
     level:
       domain === 'cells' || domain === 'formulas'
@@ -64,7 +69,7 @@ export function createXlsxCapabilityManifest(): XlsxCapabilityManifest {
     domains,
     effectiveLevel: 'R2',
     id: 'xlsx-agent-ready',
-    operations: OPERATIONS.map((operation) => ({
+    operations: capabilityOperations().map((operation) => ({
       ...(operation === 'clear-cell' || operation === 'set-cell'
         ? {
             constraints: [

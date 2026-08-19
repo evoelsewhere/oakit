@@ -20,6 +20,7 @@ export function defaultXlsxResourceLimits(): ResolvedXlsxResourceLimits {
     maxHyperlinks: 100_000,
     maxInputBytes: 100 * mebibyte,
     maxMediaBytes: 64 * mebibyte,
+    maxMetadataRecords: 250_000,
     maxMergedRanges: 100_000,
     maxPartBytes: 64 * mebibyte,
     maxPivotRecords: 100_000,

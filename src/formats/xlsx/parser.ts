@@ -8,6 +8,12 @@ import {
 } from './internal/archive';
 import { validateXlsxChartSheetPart } from './internal/chart-sheet';
 import {
+  EMPTY_XLSX_CELL_METADATA,
+  loadXlsxCellMetadata,
+  type XlsxCellMetadataBudget,
+  type XlsxCellMetadataRegistry,
+} from './internal/cell-metadata';
+import {
   type XlsxCommentBudget,
   type XlsxCommentPersonTable,
   loadXlsxCommentPersons,
@@ -231,6 +237,8 @@ async function parseXlsxCore(
       xlsxDefinedNameTextCharacters(manifest.properties.definedNames) +
       manifest.protectionTextCharacters,
   });
+  const metadataBudget: XlsxCellMetadataBudget = { records: 0 };
+  let metadataRegistry: XlsxCellMetadataRegistry = EMPTY_XLSX_CELL_METADATA;
   if (
     !Number.isSafeInteger(budget.textCharacters) ||
     budget.textCharacters > limits.maxTextCharacters
@@ -262,6 +270,20 @@ async function parseXlsxCore(
     externalLinks: [],
   };
   let documentProperties: XlsxDocumentProperties | undefined;
+  try {
+    metadataRegistry = await loadXlsxCellMetadata(
+      manifest.workbookRelationships,
+      discovery,
+      reader,
+      limits,
+      metadataBudget,
+    );
+  } catch (error) {
+    if (error instanceof XlsxResourceLimitError) {
+      failResource(error, diagnostics);
+    }
+    if (!recoverOptionalFeature(error, options, diagnostics)) throw error;
+  }
   try {
     documentProperties = await loadXlsxDocumentProperties(
       discovery,
@@ -376,6 +398,8 @@ async function parseXlsxCore(
           dialect: discovery.dialect,
           drawingRelationshipIds,
           legacyDrawingRelationshipIds,
+          metadataBudget,
+          metadataRegistry,
           pivotTableRelationshipIds,
           relationships: worksheetRelationships,
           styles,
@@ -383,11 +407,28 @@ async function parseXlsxCore(
           workbookViewCount: manifest.properties.views.length,
         },
       );
-      const { unsupportedExtensions, ...payload } = parsedPayload;
+      const { unsupportedExtensions, unsupportedMetadata, ...payload } =
+        parsedPayload;
       if (unsupportedExtensions) {
         const diagnostic: XlsxDiagnostic = {
           code: 'unsupported-feature',
           message: 'Worksheet extension content was omitted',
+          part: manifest.sheetParts[index]!,
+          severity:
+            options.errorMode === 'strict' && activeContentMode === 'reject'
+              ? 'error'
+              : 'warning',
+          sheet: sheet.name,
+        };
+        diagnostics.push(diagnostic);
+        if (diagnostic.severity === 'error') {
+          throw new XlsxParseError(diagnostic);
+        }
+      }
+      if (unsupportedMetadata) {
+        const diagnostic: XlsxDiagnostic = {
+          code: 'unsupported-feature',
+          message: 'Worksheet modern metadata content was omitted',
           part: manifest.sheetParts[index]!,
           severity:
             options.errorMode === 'strict' && activeContentMode === 'reject'

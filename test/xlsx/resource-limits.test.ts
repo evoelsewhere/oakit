@@ -21,6 +21,7 @@ const EXPECTED_DEFAULTS: Required<XlsxResourceLimits> = {
   maxHyperlinks: 100_000,
   maxInputBytes: 100 * 1024 * 1024,
   maxMediaBytes: 64 * 1024 * 1024,
+  maxMetadataRecords: 250_000,
   maxMergedRanges: 100_000,
   maxPartBytes: 64 * 1024 * 1024,
   maxPivotRecords: 100_000,

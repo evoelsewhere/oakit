@@ -1,6 +1,7 @@
 import { XlsxParseError } from '../errors';
 import type {
   XlsxCell,
+  XlsxCellMetadata,
   XlsxCellValue,
   XlsxAutoFilter,
   XlsxColumnRange,
@@ -67,6 +68,12 @@ import {
 } from './selection';
 import type { XlsxSharedStringTable } from './shared-strings';
 import { XlsxWorksheetExtensionsCapture } from './sparkline';
+import {
+  EMPTY_XLSX_CELL_METADATA,
+  resolveXlsxCellMetadata,
+  type XlsxCellMetadataBudget,
+  type XlsxCellMetadataRegistry,
+} from './cell-metadata';
 import type { XlsxRelationship } from './relationships';
 import { EMPTY_XLSX_STYLE_TABLE, type XlsxStyleTable } from './styles';
 import type { XlsxXmlElement, XlsxXmlEventSink } from './streaming-xml';
@@ -120,6 +127,7 @@ interface PendingCell {
   inlineMode: 'plain' | 'rich' | 'unset';
   inlineRuns: XlsxRichTextRun[];
   inlineText: string;
+  metadata?: XlsxCellMetadata;
   numberFormat?: string;
   selected: boolean;
   style?: number;
@@ -169,6 +177,7 @@ export interface XlsxWorksheetPayload {
   sparklineGroups?: XlsxSparklineGroup[];
   tabColor?: XlsxColor;
   unsupportedExtensions?: true;
+  unsupportedMetadata?: true;
   views: XlsxWorksheetView[];
 }
 
@@ -178,6 +187,8 @@ export interface XlsxWorksheetSemantics {
   drawingRelationshipIds?: string[];
   relationships: ReadonlyMap<string, XlsxRelationship>;
   legacyDrawingRelationshipIds?: string[];
+  metadataBudget?: XlsxCellMetadataBudget;
+  metadataRegistry?: XlsxCellMetadataRegistry;
   pivotTableRelationshipIds?: string[];
   styles: XlsxStyleTable;
   tableRelationshipIds?: string[];
@@ -469,6 +480,9 @@ class WorksheetSink implements XlsxXmlEventSink {
   private extensionsCapture: XlsxWorksheetExtensionsCapture | undefined;
   private extensionsSeen = false;
   private unsupportedExtensionsSeen = false;
+  private unsupportedMetadataSeen = false;
+  private readonly metadataBudget: XlsxCellMetadataBudget;
+  private readonly metadataRegistry: XlsxCellMetadataRegistry;
   private readonly stack: XlsxXmlElement[] = [];
   private readonly rows: XlsxRow[] = [];
   private readonly viewIds = new Set<number>();
@@ -521,6 +535,9 @@ class WorksheetSink implements XlsxXmlEventSink {
     private readonly selection: XlsxResolvedSheetSelection,
     private readonly semantics: XlsxWorksheetSemantics,
   ) {
+    this.metadataBudget = semantics.metadataBudget ?? { records: 0 };
+    this.metadataRegistry =
+      semantics.metadataRegistry ?? EMPTY_XLSX_CELL_METADATA;
     this.selectedColumnPrefix = new Uint32Array(
       this.limits.maxColumnsPerWorksheet + 1,
     );
@@ -851,6 +868,9 @@ class WorksheetSink implements XlsxXmlEventSink {
       ...(this.tabColor === undefined ? {} : { tabColor: this.tabColor }),
       ...(this.unsupportedExtensionsSeen
         ? { unsupportedExtensions: true as const }
+        : {}),
+      ...(this.unsupportedMetadataSeen
+        ? { unsupportedMetadata: true as const }
         : {}),
       views: this.views,
     };
@@ -1931,6 +1951,49 @@ class WorksheetSink implements XlsxXmlEventSink {
         this.part,
       );
     }
+    const cellMetadata = resolveXlsxCellMetadata(
+      this.metadataRegistry,
+      'cell',
+      unsignedInteger(
+        attribute(element, 'cm'),
+        this.part,
+        address,
+        'Worksheet cell metadata index is invalid',
+      ),
+      this.metadataBudget,
+      this.limits,
+      this.part,
+      address,
+    );
+    const valueMetadata = resolveXlsxCellMetadata(
+      this.metadataRegistry,
+      'value',
+      unsignedInteger(
+        attribute(element, 'vm'),
+        this.part,
+        address,
+        'Worksheet value metadata index is invalid',
+      ),
+      this.metadataBudget,
+      this.limits,
+      this.part,
+      address,
+    );
+    if (cellMetadata?.unsupported || valueMetadata?.unsupported) {
+      this.unsupportedMetadataSeen = true;
+    }
+    const metadata: XlsxCellMetadata | undefined =
+      (cellMetadata?.entries.length ?? 0) === 0 &&
+      (valueMetadata?.entries.length ?? 0) === 0
+        ? undefined
+        : {
+            ...(cellMetadata?.entries.length
+              ? { cell: cellMetadata.entries }
+              : {}),
+            ...(valueMetadata?.entries.length
+              ? { value: valueMetadata.entries }
+              : {}),
+          };
     this.currentCell = {
       address,
       column,
@@ -1939,6 +2002,7 @@ class WorksheetSink implements XlsxXmlEventSink {
       inlineMode: 'unset',
       inlineRuns: [],
       inlineText: '',
+      ...(metadata === undefined ? {} : { metadata }),
       ...(styleXf?.numberFormat === undefined
         ? {}
         : { numberFormat: styleXf.numberFormat }),
@@ -2126,6 +2190,7 @@ class WorksheetSink implements XlsxXmlEventSink {
     const base = {
       address: cell.address,
       column: cell.column,
+      ...(cell.metadata === undefined ? {} : { metadata: cell.metadata }),
       ...(cell.style === undefined ? {} : { style: cell.style }),
     };
     if (content.kind === 'blank') {

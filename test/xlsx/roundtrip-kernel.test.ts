@@ -380,9 +380,54 @@ describe('XLSX round-trip canonical kernel', () => {
     });
   });
 
-  it('publishes non-empty domain and operation capability arrays', () => {
+  it('publishes stable domain and operation capability inventories', () => {
     const manifest = createXlsxCapabilityManifest();
-    expect(manifest.domains.length).toBe(29);
-    expect(manifest.operations.length).toBe(13);
+    expect(manifest.domains.map((entry) => entry.domain)).toStrictEqual([
+      'active-content',
+      'calculation',
+      'cells',
+      'charts',
+      'comments',
+      'conditional-formatting',
+      'connections',
+      'defined-names',
+      'document-properties',
+      'drawings-images',
+      'external-links',
+      'filters-sorts',
+      'formulas',
+      'hyperlinks',
+      'known-extensions',
+      'merges',
+      'modern-cell-metadata',
+      'pivots',
+      'print-layout',
+      'protection',
+      'rows-columns',
+      'shared-strings',
+      'sheet-metadata',
+      'sparklines',
+      'styles',
+      'tables',
+      'unknown-extensions',
+      'validation',
+      'views',
+      'workbook-sheets',
+    ]);
+    expect(manifest.operations.map((entry) => entry.operation)).toStrictEqual([
+      'add-worksheet',
+      'clear-cell',
+      'delete-columns',
+      'delete-rows',
+      'delete-worksheet',
+      'insert-columns',
+      'insert-rows',
+      'rename-worksheet',
+      'set-cell',
+      'set-cell-style',
+      'set-column',
+      'set-hyperlink',
+      'set-row',
+    ]);
   });
 });

@@ -125,6 +125,36 @@ global extension rows: workbook, style, table, pivot, conditional-format,
 validation, and remaining feature-owned extension lists still need the same
 inventory, and modern cell metadata remains a separate Required slice.
 
+### Modern cell-metadata milestone
+
+`internal/cell-metadata.ts` now follows the workbook-owned `sheetMetadata`
+relationship and validates the `metadata.xml` content type, Transitional/Strict
+root namespaces, metadata type/future block registries, count contracts,
+boolean/UInt32 lexicals, one-based cell/value block references, zero-based
+future-value references, and complete owner integrity. Worksheet `cm` and `vm`
+attributes resolve into portable per-cell metadata without exposing relationship
+IDs, extension URIs, raw XML, or shared object identities. Known XLDAPR blocks
+normalize dynamic/collapsed spill flags; known XLRICHVALUE blocks normalize safe
+rich-value indexes. The capability manifest now publishes the stable
+`modern-cell-metadata` preservation domain. Unknown future types preserve any
+supported records in the same block, omit only the unknown record, and produce
+a bounded strict/tolerant diagnostic. Round-trip preservation mode retains exact
+R0.
+
+The new `maxMetadataRecords` reader limit counts both registry records and each
+resolved copy, preventing a small registry referenced by many cells from
+amplifying public JSON without bound. Invalid configuration, exact and one-over
+resolution/loader boundaries, selection validation, missing dependency,
+Strict/Transitional, normalized-tree, standalone JSON, and R0 tests are in
+`cell-metadata.test.ts` and `cell-metadata-internal.test.ts`. Full-module force
+mutation is 100% (`cell-metadata.ts`: 252 killed, 164 compile errors), and all
+changed worksheet/parser/resource ranges keep aggregate mutation at 100% with
+zero survivor, no-coverage, or timeout.
+
+The feature-matrix row remains Partial until rich-value structures/data/types,
+safe cell-image/web-image metadata, checkbox metadata, and linked-data metadata
+without refresh are normalized and cross-producer corpus evidence exists.
+
 ## Reader contract audit
 
 ### Public boundary and core behavior
@@ -170,7 +200,7 @@ Every row below retains the class assigned by the reader plan.
 | Cells                        | Required   | Sparse authored cells, inferred refs, all value kinds, duplicates/order/bounds                  | Missing  |
 | Shared strings               | Required   | Plain/rich/phonetic text, whitespace, index and output-accounting boundaries                    | Missing  |
 | Formulas                     | Required   | Normal/shared/array/data-table/dynamic-array, caches, token-aware translation, no execution     | Missing  |
-| Modern cell metadata         | Required   | Rich values, cell images, checkboxes, spill and linked-data metadata under versioned namespaces | Missing  |
+| Modern cell metadata         | Required   | Rich values, cell images, checkboxes, spill and linked-data metadata under versioned namespaces | Partial  |
 | References                   | Required   | A1, quoted sheets, 3D, external, and structured references with seeded properties               | Missing  |
 | Defined names                | Required   | Workbook/sheet scopes, collisions, print areas/titles, hidden names                             | Missing  |
 | Styles                       | Required   | Fonts, fills, borders, alignment, formats, protection, named and differential styles            | Missing  |
