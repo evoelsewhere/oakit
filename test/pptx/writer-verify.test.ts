@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type {
   Image,
   Group,
+  Chart,
   PptxDocument,
   PptxParseOptions,
   Shape,
@@ -158,6 +159,34 @@ function groupSlide(key: string): PptxSceneSlide {
   };
 }
 
+function chartSlide(key: string): PptxSceneSlide {
+  return {
+    elements: [
+      {
+        authored: {
+          transform: { height: 200, width: 400, x: 10, y: 20 },
+        },
+        barDirection: 'col',
+        chartType: 'barChart',
+        grouping: 'clustered',
+        key: `${key}-chart`,
+        resolved: { hidden: false },
+        series: [
+          {
+            categories: ['A', 'B'],
+            color: '#4F46E5',
+            key: `${key}-series`,
+            name: 'Series',
+            values: [1, 2],
+          },
+        ],
+        type: 'chart',
+      },
+    ],
+    key,
+  };
+}
+
 function scene(slides: PptxSceneSlide[]): PptxSceneDocument {
   return {
     layouts: [],
@@ -296,6 +325,32 @@ function generatedGroup(): Group {
     top: 20,
     type: 'group',
     width: 160,
+  };
+}
+
+function generatedChart(): Chart {
+  return {
+    barDir: 'col',
+    chartType: 'barChart',
+    colors: ['#4F46E5'],
+    data: [
+      {
+        key: 'Series',
+        values: [
+          { x: '0', y: 1 },
+          { x: '1', y: 2 },
+        ],
+        xlabels: { '0': 'A', '1': 'B' },
+      },
+    ],
+    grouping: 'clustered',
+    height: 200,
+    id: '2',
+    left: 10,
+    order: 0,
+    top: 20,
+    type: 'chart',
+    width: 400,
   };
 }
 
@@ -518,6 +573,53 @@ describe('PowerPoint creation verification', () => {
       'Generated PowerPoint table text mismatch at slide 1, element 1, row 1, cell 1',
     );
   });
+
+  it('verifies native chart transform, type, data, color, and options', async () => {
+    const output = document(1);
+    output.slides[0]?.elements.push(generatedChart());
+
+    await expect(
+      verifyPowerPointCreationWithParser(
+        new Uint8Array(),
+        scene([chartSlide('slide-1')]),
+        () => Promise.resolve(output),
+        rendered,
+      ),
+    ).resolves.toBeUndefined();
+  });
+
+  it.each([
+    ['missing', undefined, 'chart missing'],
+    ['transform', { left: 11 }, 'chart transform mismatch'],
+    ['type', { chartType: 'lineChart' }, 'chart type mismatch'],
+    ['data', { data: [] }, 'chart data mismatch'],
+    ['color', { colors: ['#FFFFFF'] }, 'chart color mismatch'],
+    ['options', { grouping: 'stacked' }, 'chart option mismatch'],
+  ] as const)(
+    'rejects a native chart %s mismatch',
+    async (_name, replacement, message) => {
+      const output = document(1);
+      if (replacement === undefined) {
+        output.slides[0]!.elements = new Array<Chart>(1);
+      } else {
+        output.slides[0]?.elements.push({
+          ...generatedChart(),
+          ...replacement,
+        } as Chart);
+      }
+
+      await expect(
+        verifyPowerPointCreationWithParser(
+          new Uint8Array(),
+          scene([chartSlide('slide-1')]),
+          () => Promise.resolve(output),
+          rendered,
+        ),
+      ).rejects.toThrow(
+        `Generated PowerPoint ${message} at slide 1, element 1`,
+      );
+    },
+  );
 
   it('reports a missing group at its exact slide and element location', async () => {
     const secondSlide = groupSlide('slide-2');
