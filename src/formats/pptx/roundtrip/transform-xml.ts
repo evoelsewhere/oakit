@@ -299,6 +299,20 @@ export function patchPptxGraphicFrameTransformXml(
   return scalePptxTableGridXml(transformed, shapeId, operation);
 }
 
+export function patchPptxChartFrameTransformXml(
+  xml: string,
+  shapeId: string,
+  operation: PptxRoundTripSetTransformOperation,
+): string {
+  return patchPptxTransformXml(
+    xml,
+    shapeId,
+    operation,
+    resolvePptxEditableGraphicFrameXml,
+    'presentation',
+  );
+}
+
 function requiredGroupTransform(
   value: PptxRoundTripSetTransformOperation['value'],
 ): PptxSceneGroupTransform {

@@ -20,6 +20,7 @@ import { resolvePptxSlideParts } from './relationships';
 import { patchPptxShapeTextXml } from './text-xml';
 import {
   patchPptxGraphicFrameTransformXml,
+  patchPptxChartFrameTransformXml,
   patchPptxGroupTransformXml,
   patchPptxPictureTransformXml,
   patchPptxShapeTransformXml,
@@ -37,7 +38,7 @@ const TRANSFORM_TARGET_KEY_PATTERN =
 const ELEMENT_INDEX_PATTERN = /-element-([1-9]\d*)/g;
 
 interface TextTarget {
-  elementType: 'group' | 'image' | 'shape' | 'table' | 'text';
+  elementType: 'chart' | 'group' | 'image' | 'shape' | 'table' | 'text';
   elementIndex: number;
   shapeId: string;
   slideIndex: number;
@@ -183,6 +184,7 @@ function transformTarget(
     elements = element.elements;
   }
   if (
+    element?.type !== 'chart' &&
     element?.type !== 'image' &&
     element?.type !== 'group' &&
     element?.type !== 'shape' &&
@@ -190,7 +192,7 @@ function transformTarget(
     element?.type !== 'text'
   ) {
     unsupportedPptxEdit(
-      'PowerPoint transform target is not a slide-owned text, shape, image, table, or group element',
+      'PowerPoint transform target is not a slide-owned text, shape, image, table, chart, or group element',
     );
   }
   return {
@@ -235,29 +237,35 @@ export async function patchPptxOperations(
     const patched =
       operation.kind === 'replace-text'
         ? patchPptxShapeTextXml(current, target.shapeId, operation)
-        : target.elementType === 'image'
-          ? patchPptxPictureTransformXml(
+        : target.elementType === 'chart'
+          ? patchPptxChartFrameTransformXml(
               current,
               target.shapeId,
               target.transformOperation as PptxRoundTripSetTransformOperation,
             )
-          : target.elementType === 'group'
-            ? patchPptxGroupTransformXml(
+          : target.elementType === 'image'
+            ? patchPptxPictureTransformXml(
                 current,
                 target.shapeId,
                 target.transformOperation as PptxRoundTripSetTransformOperation,
               )
-            : target.elementType === 'table'
-              ? patchPptxGraphicFrameTransformXml(
+            : target.elementType === 'group'
+              ? patchPptxGroupTransformXml(
                   current,
                   target.shapeId,
                   target.transformOperation as PptxRoundTripSetTransformOperation,
                 )
-              : patchPptxShapeTransformXml(
-                  current,
-                  target.shapeId,
-                  target.transformOperation as PptxRoundTripSetTransformOperation,
-                );
+              : target.elementType === 'table'
+                ? patchPptxGraphicFrameTransformXml(
+                    current,
+                    target.shapeId,
+                    target.transformOperation as PptxRoundTripSetTransformOperation,
+                  )
+                : patchPptxShapeTransformXml(
+                    current,
+                    target.shapeId,
+                    target.transformOperation as PptxRoundTripSetTransformOperation,
+                  );
     editedXml.set(slidePart, patched);
     patchedParts.add(slidePart);
   }

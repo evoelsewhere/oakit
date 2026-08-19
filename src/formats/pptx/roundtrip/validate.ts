@@ -233,6 +233,7 @@ function editableTransforms(
   const collect = (elements: readonly PptxSceneElement[]): void => {
     for (const element of elements) {
       if (
+        element.type === 'chart' ||
         element.type === 'image' ||
         element.type === 'group' ||
         element.type === 'shape' ||
@@ -463,6 +464,7 @@ function expectedSupportProfileId(
   const collectNativeKeys = (elements: readonly PptxSceneElement[]): void => {
     for (const element of elements) {
       if (
+        element.type === 'chart' ||
         element.type === 'image' ||
         element.type === 'group' ||
         element.type === 'shape' ||

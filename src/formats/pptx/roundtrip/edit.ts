@@ -4,6 +4,7 @@ import { isValidXmlText } from '../scene-validation';
 import { PptxWriteError } from '../write-error';
 import { degreesToAngle, pointsToEmu } from '../writer/units';
 import type {
+  PptxSceneChartElement,
   PptxSceneImageElement,
   PptxSceneGroupElement,
   PptxSceneGroupTransform,
@@ -173,6 +174,7 @@ export function applyPptxRoundTripOperationsToPreview(
 }
 
 type PptxTransformElement =
+  | PptxSceneChartElement
   | PptxSceneGroupElement
   | PptxSceneImageElement
   | PptxSceneShapeElement
@@ -185,6 +187,7 @@ function visitTransformElements(
 ): void {
   for (const element of elements) {
     if (
+      element.type === 'chart' ||
       element.type === 'image' ||
       element.type === 'group' ||
       element.type === 'shape' ||
@@ -469,6 +472,7 @@ async function setPptxRoundTripTransform(
   snapshot.operations.push(operation);
   snapshot.supportProfile =
     targetType === 'image' ||
+    targetType === 'chart' ||
     targetType === 'group' ||
     targetType === 'shape' ||
     targetType === 'table' ||
@@ -510,6 +514,13 @@ export function setPptxRoundTripTableTransform(
   request: PptxRoundTripSetTransformRequest,
 ): Promise<PptxRoundTripSnapshot> {
   return setPptxRoundTripTransform(value, request, 'table');
+}
+
+export function setPptxRoundTripChartTransform(
+  value: PptxRoundTripSnapshot,
+  request: PptxRoundTripSetTransformRequest,
+): Promise<PptxRoundTripSnapshot> {
+  return setPptxRoundTripTransform(value, request, 'chart');
 }
 
 export function setPptxRoundTripGroupTransform(
