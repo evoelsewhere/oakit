@@ -9,6 +9,7 @@ import {
   renderPptxToSvg,
   serializePptxRoundTripJson,
   setPptxRoundTripImageTransform,
+  setPptxRoundTripChartTransform,
   setPptxRoundTripShapeTransform,
   setPptxRoundTripGroupTransform,
   setPptxRoundTripTableTransform,
@@ -288,6 +289,79 @@ describe('PPTX public API in browsers', () => {
     });
     expect(new TextDecoder().decode(rendered.slides[0]?.data)).toContain(
       '#F97316',
+    );
+  });
+
+  it('creates and edits a native chart without an Office runtime', async () => {
+    const scene: PptxSceneDocument = {
+      layouts: [],
+      masters: [],
+      media: [],
+      schemaVersion: 2,
+      size: { height: 540, width: 960 },
+      slides: [
+        {
+          elements: [
+            {
+              authored: {
+                transform: { height: 220, width: 420, x: 40, y: 60 },
+              },
+              barDirection: 'col',
+              chartType: 'barChart',
+              grouping: 'clustered',
+              key: 'browser-chart',
+              resolved: { hidden: false },
+              series: [
+                {
+                  categories: ['A', 'B'],
+                  color: '#4F46E5',
+                  key: 'browser-chart-series',
+                  name: 'Series',
+                  values: [4, 9],
+                },
+              ],
+              type: 'chart',
+            },
+          ],
+          key: 'browser-chart-slide',
+        },
+      ],
+      themes: [],
+    };
+    const created = await createPptx(scene);
+    const snapshot = await readPptxRoundTrip(created.data);
+    const changed = {
+      flipHorizontal: false,
+      flipVertical: false,
+      height: 260,
+      rotation: 0,
+      width: 500,
+      x: 80,
+      y: 90,
+    };
+    const edited = await setPptxRoundTripChartTransform(snapshot, {
+      targetKey: 'slide-1-element-1',
+      value: changed,
+    });
+    const output = await writePptxRoundTrip(edited);
+    const [parsed, rendered] = await Promise.all([
+      parsePptx(output.data, { errorMode: 'strict', imageMode: 'none' }),
+      renderPptxToSvg(output.data),
+    ]);
+
+    expect(created.report.supportProfile.id).toBe('pptx-create-native-v1');
+    expect(output.report.supportProfile.id).toBe('pptx-roundtrip-native-v1');
+    expect(parsed.slides[0]?.elements[0]).toMatchObject({
+      chartType: 'barChart',
+      data: [{ key: 'Series' }],
+      height: changed.height,
+      left: changed.x,
+      top: changed.y,
+      type: 'chart',
+      width: changed.width,
+    });
+    expect(new TextDecoder().decode(rendered.slides[0]?.data)).toContain(
+      'barChart',
     );
   });
 
