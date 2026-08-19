@@ -295,6 +295,7 @@ describe('XLSX worksheet streaming', () => {
           outlineLevel: 0,
         },
       ],
+      unsupportedExtensions: true,
       views: [
         {
           kind: 'normal',
@@ -1398,6 +1399,7 @@ describe('XLSX worksheet streaming', () => {
           index: 1,
         },
       ],
+      unsupportedExtensions: true,
       views: [],
     });
   });

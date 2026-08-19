@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   parseXlsx,
+  parseXlsxWithDiagnostics,
   readXlsxRoundTrip,
   validateXlsxRoundTripJson,
   writeXlsxRoundTrip,
@@ -182,18 +183,35 @@ describe('XLSX sparklines', () => {
     ]);
   });
 
-  it('ignores unrelated extension payloads without confusing nested names', async () => {
+  it('diagnoses unrelated extension payloads without confusing nested names', async () => {
     const unrelated = `<ext uri="urn:other"><foreign xmlns="urn:foreign"><sparklineGroups><sparklineGroup/></sparklineGroups></foreign></ext>`;
-    const document = await parseXlsx(
-      await createIndependentXlsx(
-        overrides(`${unrelated}${sparklineExtension()}`),
-      ),
-      { errorMode: 'strict' },
+    const source = await createIndependentXlsx(
+      overrides(`${unrelated}${sparklineExtension()}`),
     );
-    const sheet = document.sheets[0]!;
+    const result = await parseXlsxWithDiagnostics(source);
+    expect(result.diagnostics).toStrictEqual([
+      {
+        code: 'unsupported-feature',
+        message: 'Worksheet extension content was omitted',
+        part: 'xl/worksheets/sheet1.xml',
+        severity: 'warning',
+        sheet: 'Sheet1',
+      },
+    ]);
+    expect(JSON.stringify(result)).not.toContain('urn:other');
+    const sheet = result.document.sheets[0]!;
     expect(
       sheet.kind === 'worksheet' ? (sheet.sparklineGroups ?? []) : [],
     ).toHaveLength(1);
+    await expect(
+      parseXlsx(source, { errorMode: 'strict' }),
+    ).rejects.toMatchObject({
+      diagnostic: {
+        code: 'unsupported-feature',
+        message: 'Worksheet extension content was omitted',
+        severity: 'error',
+      },
+    });
   });
 
   it('round-trips sparkline metadata through portable exact R0', async () => {

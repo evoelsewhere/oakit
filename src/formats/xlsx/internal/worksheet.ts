@@ -168,6 +168,7 @@ export interface XlsxWorksheetPayload {
   sheetFormat?: XlsxWorksheetFormat;
   sparklineGroups?: XlsxSparklineGroup[];
   tabColor?: XlsxColor;
+  unsupportedExtensions?: true;
   views: XlsxWorksheetView[];
 }
 
@@ -467,6 +468,7 @@ class WorksheetSink implements XlsxXmlEventSink {
   private sparklineGroups: XlsxSparklineGroup[] = [];
   private extensionsCapture: XlsxWorksheetExtensionsCapture | undefined;
   private extensionsSeen = false;
+  private unsupportedExtensionsSeen = false;
   private readonly stack: XlsxXmlElement[] = [];
   private readonly rows: XlsxRow[] = [];
   private readonly viewIds = new Set<number>();
@@ -619,9 +621,13 @@ class WorksheetSink implements XlsxXmlEventSink {
       return;
     }
     if (this.extensionsCapture) {
-      this.extensionsCapture.closeElement(element);
+      const capture = this.extensionsCapture;
+      capture.closeElement(element);
       if (element.localName === 'extLst') {
-        this.sparklineGroups = this.extensionsCapture.result();
+        this.sparklineGroups = capture.result();
+        if (capture.hasUnsupportedExtension()) {
+          this.unsupportedExtensionsSeen = true;
+        }
         this.extensionsCapture = undefined;
       }
       this.stack.pop();
@@ -843,6 +849,9 @@ class WorksheetSink implements XlsxXmlEventSink {
         ? {}
         : { sparklineGroups: this.sparklineGroups }),
       ...(this.tabColor === undefined ? {} : { tabColor: this.tabColor }),
+      ...(this.unsupportedExtensionsSeen
+        ? { unsupportedExtensions: true as const }
+        : {}),
       views: this.views,
     };
   }
@@ -1429,6 +1438,9 @@ class WorksheetSink implements XlsxXmlEventSink {
         element.localName === 'extLst' ||
         element.localName === 'pivotSelection'
       ) {
+        if (element.localName === 'extLst') {
+          this.unsupportedExtensionsSeen = true;
+        }
         this.beginIgnore();
         return;
       }
@@ -1447,6 +1459,7 @@ class WorksheetSink implements XlsxXmlEventSink {
         return;
       }
       if (element.localName === 'extLst') {
+        this.unsupportedExtensionsSeen = true;
         this.beginIgnore();
         return;
       }
@@ -1465,6 +1478,7 @@ class WorksheetSink implements XlsxXmlEventSink {
         return;
       }
       if (element.localName === 'extLst') {
+        this.unsupportedExtensionsSeen = true;
         this.beginIgnore();
         return;
       }

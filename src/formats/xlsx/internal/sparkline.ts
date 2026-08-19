@@ -25,10 +25,17 @@ interface ExtensionNode {
   text: string;
 }
 
-const X14_NAMESPACE =
-  'http://schemas.microsoft.com/office/spreadsheetml/2009/9/main';
-const XM_NAMESPACE = 'http://schemas.microsoft.com/office/excel/2006/main';
-const SPARKLINE_EXTENSION_URI = '{05c60535-1f16-4fd2-b633-f4f36f0b64e0}';
+function x14Namespace(): string {
+  return 'http://schemas.microsoft.com/office/spreadsheetml/2009/9/main';
+}
+
+function xmNamespace(): string {
+  return 'http://schemas.microsoft.com/office/excel/2006/main';
+}
+
+function sparklineExtensionUri(): string {
+  return '{05c60535-1f16-4fd2-b633-f4f36f0b64e0}';
+}
 
 function fail(
   code:
@@ -114,7 +121,7 @@ function color(
   localName: string,
   part: string,
 ): XlsxColor | undefined {
-  const node = child(group, X14_NAMESPACE, localName, part);
+  const node = child(group, x14Namespace(), localName, part);
   if (!node) return undefined;
   return parseXlsxStyleColor(
     {
@@ -161,8 +168,8 @@ function parseSparkline(
   limits: ResolvedXlsxResourceLimits,
   part: string,
 ): XlsxSparkline | null {
-  const formulas = children(node, XM_NAMESPACE, 'f');
-  const locations = children(node, XM_NAMESPACE, 'sqref');
+  const formulas = children(node, xmNamespace(), 'f');
+  const locations = children(node, xmNamespace(), 'sqref');
   if (formulas.length !== 1 || locations.length !== 1) {
     fail(
       'invalid-document-structure',
@@ -212,7 +219,7 @@ function parseGroup(
   limits: ResolvedXlsxResourceLimits,
   part: string,
 ): XlsxSparklineGroup | null {
-  const sparklineContainers = children(node, X14_NAMESPACE, 'sparklines');
+  const sparklineContainers = children(node, x14Namespace(), 'sparklines');
   if (sparklineContainers.length !== 1) {
     fail(
       'invalid-document-structure',
@@ -222,7 +229,7 @@ function parseGroup(
   }
   const sparklineNodes = children(
     sparklineContainers[0]!,
-    X14_NAMESPACE,
+    x14Namespace(),
     'sparkline',
   );
   if (sparklineNodes.length === 0) {
@@ -357,6 +364,7 @@ function parseGroup(
 export class XlsxWorksheetExtensionsCapture implements XlsxXmlEventSink {
   private root: ExtensionNode | undefined;
   private readonly stack: ExtensionNode[] = [];
+  private unsupportedExtensionSeen = false;
 
   constructor(
     private readonly worksheetNamespace: string,
@@ -430,14 +438,27 @@ export class XlsxWorksheetExtensionsCapture implements XlsxXmlEventSink {
     }
     const groups: XlsxSparklineGroup[] = [];
     let sparklineExtensionSeen = false;
-    for (const extension of children(
-      this.root,
-      this.worksheetNamespace,
-      'ext',
-    )) {
+    for (const extension of this.root.children) {
       if (
-        attribute(extension, 'uri')?.toLowerCase() !== SPARKLINE_EXTENSION_URI
+        extension.localName !== 'ext' ||
+        extension.namespace !== this.worksheetNamespace
       ) {
+        fail(
+          'invalid-document-structure',
+          'Worksheet extension entry is invalid',
+          this.part,
+        );
+      }
+      const uri = attribute(extension, 'uri');
+      if (!uri || uri !== uri.trim()) {
+        fail(
+          'invalid-document-value',
+          'Worksheet extension URI is invalid',
+          this.part,
+        );
+      }
+      if (uri.toLowerCase() !== sparklineExtensionUri()) {
+        this.unsupportedExtensionSeen = true;
         continue;
       }
       if (sparklineExtensionSeen) {
@@ -448,7 +469,7 @@ export class XlsxWorksheetExtensionsCapture implements XlsxXmlEventSink {
         );
       }
       sparklineExtensionSeen = true;
-      const containers = children(extension, X14_NAMESPACE, 'sparklineGroups');
+      const containers = children(extension, x14Namespace(), 'sparklineGroups');
       if (containers.length !== 1) {
         fail(
           'invalid-document-structure',
@@ -458,7 +479,7 @@ export class XlsxWorksheetExtensionsCapture implements XlsxXmlEventSink {
       }
       for (const group of children(
         containers[0]!,
-        X14_NAMESPACE,
+        x14Namespace(),
         'sparklineGroup',
       )) {
         const parsed = parseGroup(
@@ -472,5 +493,9 @@ export class XlsxWorksheetExtensionsCapture implements XlsxXmlEventSink {
       }
     }
     return groups;
+  }
+
+  hasUnsupportedExtension(): boolean {
+    return this.unsupportedExtensionSeen;
   }
 }

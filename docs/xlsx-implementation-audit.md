@@ -102,6 +102,29 @@ byte-identical R0 are covered. Full-module force mutation evidence is 100%:
 no-coverage, or timeout; changed parser integration and adjacent owner ranges
 also retain aggregate 100%.
 
+### Worksheet-extension diagnostics milestone
+
+`internal/sparkline.ts`, `internal/worksheet.ts`, and `parser.ts` now inventory
+worksheet-root, view, row, and cell extension containers while streaming the
+already bounded worksheet XML. The supported Office 2010 sparkline URI remains
+fully normalized. Other valid extension URIs are omitted without retaining the
+URI or payload and collapse to one bounded `unsupported-feature` diagnostic per
+worksheet. Tolerant reads continue with a warning; public strict reads reject
+the semantic omission. Internal round-trip preservation mode still accepts the
+opaque source and proves standalone-JSON byte-identical R0. Missing/whitespace
+URIs, foreign extension entries, duplicate lists, and malformed known payloads
+remain structural failures in both modes. View `pivotSelection` is explicitly
+not misclassified as an extension.
+
+`test/xlsx/extensions.test.ts`, `sparkline.test.ts`, `worksheet.test.ts`, and
+round-trip tests cover all four owners, warning deduplication, no raw URI/XML
+escape, strict/tolerant behavior, known/unknown coexistence, and exact R0.
+Changed module/range mutation evidence and the aggregate report are 100% with
+zero survivor, no-coverage, or timeout. This is intentionally Partial for the
+global extension rows: workbook, style, table, pivot, conditional-format,
+validation, and remaining feature-owned extension lists still need the same
+inventory, and modern cell metadata remains a separate Required slice.
+
 ## Reader contract audit
 
 ### Public boundary and core behavior
@@ -172,8 +195,8 @@ Every row below retains the class assigned by the reader plan.
 | External links               | Metadata   | Safe redacted targets/formulas; no linked workbook access                                       | Missing  |
 | Connections/query tables     | Metadata   | Redacted safe metadata; no refresh, credentials, or connection strings                          | Missing  |
 | Active/embedded content      | Diagnostic | Recognize and omit/reject OLE, ActiveX, scripts, and executables by mode                        | Complete |
-| Known extensions             | Required   | Namespace-specific normalized contracts and producer fixtures                                   | Missing  |
-| Unknown extensions           | Diagnostic | Stable safe omission or strict rejection without raw XML                                        | Missing  |
+| Known extensions             | Required   | Namespace-specific normalized contracts and producer fixtures                                   | Partial  |
+| Unknown extensions           | Diagnostic | Stable safe omission or strict rejection without raw XML                                        | Partial  |
 | Document properties          | Required   | Core/app/custom typed values, malformed types, untrusted text                                   | Complete |
 
 ### Reader limits and failure contracts

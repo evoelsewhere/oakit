@@ -363,7 +363,7 @@ async function parseXlsxCore(
       const drawingRelationshipIds: string[] = [];
       const tableRelationshipIds: string[] = [];
       const pivotTableRelationshipIds: string[] = [];
-      const payload = await parseXlsxWorksheetPart(
+      const parsedPayload = await parseXlsxWorksheetPart(
         manifest.sheetParts[index]!,
         discovery.dialect,
         reader,
@@ -383,6 +383,23 @@ async function parseXlsxCore(
           workbookViewCount: manifest.properties.views.length,
         },
       );
+      const { unsupportedExtensions, ...payload } = parsedPayload;
+      if (unsupportedExtensions) {
+        const diagnostic: XlsxDiagnostic = {
+          code: 'unsupported-feature',
+          message: 'Worksheet extension content was omitted',
+          part: manifest.sheetParts[index]!,
+          severity:
+            options.errorMode === 'strict' && activeContentMode === 'reject'
+              ? 'error'
+              : 'warning',
+          sheet: sheet.name,
+        };
+        diagnostics.push(diagnostic);
+        if (diagnostic.severity === 'error') {
+          throw new XlsxParseError(diagnostic);
+        }
+      }
       let drawings: XlsxDrawing[] = [];
       const mediaCheckpoint = media.checkpoint();
       try {
