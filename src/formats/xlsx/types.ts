@@ -135,9 +135,33 @@ export type XlsxCellMetadataEntry =
       kind: 'dynamic-array';
     }
   | {
+      data?: XlsxRichValue;
       kind: 'rich-value';
       valueIndex: number;
     };
+
+export type XlsxRichValueScalar =
+  | { kind: 'array-index'; value: number }
+  | { kind: 'boolean'; value: boolean }
+  | { code: string; kind: 'error' }
+  | { kind: 'integer'; value: number }
+  | { kind: 'number'; value: number }
+  | { kind: 'omitted' }
+  | { kind: 'rich-value-index'; value: number }
+  | { kind: 'text'; value: string };
+
+export interface XlsxRichValueField {
+  name: string;
+  type: 'a' | 'b' | 'd' | 'e' | 'i' | 'r' | 's' | 'spb';
+  value: XlsxRichValueScalar;
+}
+
+export interface XlsxRichValue {
+  fallback?: XlsxRichValueScalar;
+  fields: XlsxRichValueField[];
+  sourceDataOmitted: boolean;
+  type: string;
+}
 
 export interface XlsxCellMetadata {
   cell?: XlsxCellMetadataEntry[];

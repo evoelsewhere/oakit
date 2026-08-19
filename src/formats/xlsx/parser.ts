@@ -32,6 +32,11 @@ import {
 } from './internal/external-metadata';
 import { XlsxPartReader } from './internal/part-reader';
 import {
+  EMPTY_XLSX_RICH_VALUES,
+  loadXlsxRichValues,
+  type XlsxRichValueRegistry,
+} from './internal/rich-value';
+import {
   loadXlsxPivotCaches,
   loadXlsxPivotTables,
   type XlsxPivotBudget,
@@ -239,6 +244,7 @@ async function parseXlsxCore(
   });
   const metadataBudget: XlsxCellMetadataBudget = { records: 0 };
   let metadataRegistry: XlsxCellMetadataRegistry = EMPTY_XLSX_CELL_METADATA;
+  let richValues: XlsxRichValueRegistry = EMPTY_XLSX_RICH_VALUES;
   if (
     !Number.isSafeInteger(budget.textCharacters) ||
     budget.textCharacters > limits.maxTextCharacters
@@ -271,12 +277,27 @@ async function parseXlsxCore(
   };
   let documentProperties: XlsxDocumentProperties | undefined;
   try {
+    richValues = await loadXlsxRichValues(
+      manifest.workbookRelationships,
+      discovery,
+      reader,
+      limits,
+      metadataBudget,
+    );
+  } catch (error) {
+    if (error instanceof XlsxResourceLimitError) {
+      failResource(error, diagnostics);
+    }
+    if (!recoverOptionalFeature(error, options, diagnostics)) throw error;
+  }
+  try {
     metadataRegistry = await loadXlsxCellMetadata(
       manifest.workbookRelationships,
       discovery,
       reader,
       limits,
       metadataBudget,
+      richValues,
     );
   } catch (error) {
     if (error instanceof XlsxResourceLimitError) {

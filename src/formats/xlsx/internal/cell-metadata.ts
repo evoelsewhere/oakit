@@ -8,6 +8,11 @@ import {
   XlsxResourceLimitError,
 } from './resource-limits';
 import type { XlsxWorkbookDiscovery } from './workbook-discovery';
+import {
+  cloneXlsxRichValueForOutput,
+  EMPTY_XLSX_RICH_VALUES,
+  type XlsxRichValueRegistry,
+} from './rich-value';
 
 type XmlRecord = Record<string, unknown>;
 
@@ -346,6 +351,7 @@ function knownFutureBlock(
   block: XmlRecord,
   rootAttrs: Readonly<Record<string, string>>,
   part: string,
+  richValues: XlsxRichValueRegistry,
 ): RegistryEntry {
   if (typeName === 'XLDAPR') {
     const values = descendants(block, 'dynamicArrayProperties');
@@ -398,13 +404,27 @@ function knownFutureBlock(
         part,
       );
     }
-    return {
-      kind: 'rich-value',
-      valueIndex: parseXlsxCellMetadataUnsignedInteger(
-        attributes(node).i,
+    const valueIndex = parseXlsxCellMetadataUnsignedInteger(
+      attributes(node).i,
+      'Rich-value metadata index is invalid',
+      part,
+    );
+    if (
+      richValues.part !== null &&
+      richValues.values[valueIndex] === undefined
+    ) {
+      fail(
+        'invalid-document-value',
         'Rich-value metadata index is invalid',
         part,
-      ),
+      );
+    }
+    return {
+      ...(richValues.values[valueIndex] === undefined
+        ? {}
+        : { data: richValues.values[valueIndex] }),
+      kind: 'rich-value',
+      valueIndex,
     };
   }
   return { kind: 'unsupported' };
@@ -414,6 +434,7 @@ function futureMetadata(
   definition: RootResult,
   namespace: string,
   part: string,
+  richValues: XlsxRichValueRegistry,
 ): ReadonlyMap<string, readonly RegistryEntry[]> {
   const output = new Map<string, readonly RegistryEntry[]>();
   for (const container of children(
@@ -442,7 +463,7 @@ function futureMetadata(
     output.set(
       name,
       blocks.map((block) =>
-        knownFutureBlock(name, block, definition.attrs, part),
+        knownFutureBlock(name, block, definition.attrs, part, richValues),
       ),
     );
   }
@@ -562,6 +583,7 @@ export async function loadXlsxCellMetadata(
   reader: XlsxPartReader,
   limits: ResolvedXlsxResourceLimits,
   budget: XlsxCellMetadataBudget,
+  richValues: XlsxRichValueRegistry = EMPTY_XLSX_RICH_VALUES,
 ): Promise<XlsxCellMetadataRegistry> {
   const part = metadataTarget(relationships, discovery);
   if (!part) return EMPTY_XLSX_CELL_METADATA;
@@ -571,6 +593,7 @@ export async function loadXlsxCellMetadata(
     part,
     limits,
     budget,
+    richValues,
   );
 }
 
@@ -580,11 +603,12 @@ export function parseXlsxCellMetadataPart(
   part: string,
   limits: ResolvedXlsxResourceLimits,
   budget: XlsxCellMetadataBudget,
+  richValues: XlsxRichValueRegistry = EMPTY_XLSX_RICH_VALUES,
 ): XlsxCellMetadataRegistry {
   const namespace = spreadsheetNamespace(dialect);
   const definition = root(value, namespace, part);
   const types = metadataTypes(definition, namespace, part);
-  const future = futureMetadata(definition, namespace, part);
+  const future = futureMetadata(definition, namespace, part, richValues);
   return {
     cellBlocks: metadataBlocks(
       definition,
@@ -615,6 +639,7 @@ export function resolveXlsxCellMetadata(
   source: 'cell' | 'value',
   index: number | undefined,
   budget: XlsxCellMetadataBudget,
+  textBudget: { textCharacters: number },
   limits: ResolvedXlsxResourceLimits,
   worksheetPart: string,
   cell: string,
@@ -644,7 +669,20 @@ export function resolveXlsxCellMetadata(
       .filter(
         (entry): entry is XlsxCellMetadataEntry => entry.kind !== 'unsupported',
       )
-      .map((entry) => ({ ...entry })),
+      .map((entry) =>
+        entry.kind === 'rich-value' && entry.data !== undefined
+          ? {
+              ...entry,
+              data: cloneXlsxRichValueForOutput(
+                entry.data,
+                budget,
+                textBudget,
+                limits,
+                worksheetPart,
+              ),
+            }
+          : { ...entry },
+      ),
     unsupported: block.some((entry) => entry.kind === 'unsupported'),
   };
 }

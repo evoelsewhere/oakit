@@ -147,13 +147,30 @@ amplifying public JSON without bound. Invalid configuration, exact and one-over
 resolution/loader boundaries, selection validation, missing dependency,
 Strict/Transitional, normalized-tree, standalone JSON, and R0 tests are in
 `cell-metadata.test.ts` and `cell-metadata-internal.test.ts`. Full-module force
-mutation is 100% (`cell-metadata.ts`: 252 killed, 164 compile errors), and all
+mutation is 100% (`cell-metadata.ts`: 263 killed, 164 compile errors), and all
 changed worksheet/parser/resource ranges keep aggregate mutation at 100% with
 zero survivor, no-coverage, or timeout.
 
-The feature-matrix row remains Partial until rich-value structures/data/types,
-safe cell-image/web-image metadata, checkbox metadata, and linked-data metadata
-without refresh are normalized and cross-producer corpus evidence exists.
+`internal/rich-value.ts` now follows the workbook-owned Microsoft rich-value
+structure/data relationships, requires internal targets and exact content
+types, and validates the versioned rich-data namespace, collection counts,
+structure and graph references, and typed scalar lexicals. Cell metadata
+resolves the graph into portable text, boolean, number, integer, error, array
+index, and rich-value-index unions. Provider/source/address/identifier/license,
+URL, service/entity/record IDs, supporting-property-bag values, and `%` source
+fields are represented only as explicit `omitted` values; the reader performs
+no fetch or refresh and never exposes those payloads. Rich output is copied per
+cell and charged to the shared metadata/text budgets, while complete graph
+validation remains independent of range selection. Public and normalized tests
+cover strict/tolerant failure, safe redaction, standalone JSON, exact R0,
+relationship ownership, prefix normalization, scalar boundaries, graph
+integrity, and exact/one-over limits.
+Full-module force mutation is 100% (`rich-value.ts`: 297 killed, 230 compile
+errors) with zero survivor, no-coverage, or timeout.
+
+The feature-matrix row remains Partial until safe cell-image/web-image metadata,
+checkbox metadata, the remaining linked-data companion parts, and
+cross-producer corpus evidence are complete.
 
 ## Reader contract audit
 
