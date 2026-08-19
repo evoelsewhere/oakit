@@ -42,10 +42,12 @@ export function createPptxRoundTripTablePreview(
   elementIndex: number,
   plainText: PptxPlainTextReader,
   resolveTransform: TableTransformResolver,
+  keyOverride?: string,
 ): PptxSceneTableElement | undefined {
   const transform = resolveTransform(element);
   if (!hasNativeTableGrid(element, transform)) return undefined;
-  const key = `slide-${slideIndex + 1}-element-${elementIndex + 1}`;
+  const key =
+    keyOverride ?? `slide-${slideIndex + 1}-element-${elementIndex + 1}`;
   return {
     authored: {},
     columns: [...element.colWidths],

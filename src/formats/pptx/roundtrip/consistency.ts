@@ -48,6 +48,12 @@ function elementKeyManifest(element: PptxSceneElement): unknown {
       ),
     };
   }
+  if (element.type === 'group') {
+    return {
+      elements: element.elements.map(elementKeyManifest),
+      key: element.key,
+    };
+  }
   return { key: element.key };
 }
 

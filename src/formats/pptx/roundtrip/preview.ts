@@ -12,6 +12,7 @@ import type {
 } from '../scene-types';
 import type { Image, PptxDocument, PptxElement, Shape, Text } from '../types';
 import { createPptxRoundTripTablePreview } from './table-preview';
+import { createPptxRoundTripGroupPreview } from './group-preview';
 
 function resolvedTransform(
   element: PptxElement,
@@ -75,8 +76,10 @@ function sceneTextElement(
   element: Text,
   slideIndex: number,
   elementIndex: number,
+  keyOverride?: string,
 ): PptxSceneTextElement {
-  const key = `slide-${slideIndex + 1}-element-${elementIndex + 1}`;
+  const key =
+    keyOverride ?? `slide-${slideIndex + 1}-element-${elementIndex + 1}`;
   const transform = resolvedTransform(element) as PptxSceneTransform;
   return {
     authored: {},
@@ -109,11 +112,12 @@ function sceneShapeElement(
   element: Shape,
   slideIndex: number,
   elementIndex: number,
+  keyOverride?: string,
 ): PptxSceneShapeElement {
   const transform = resolvedTransform(element);
   return {
     authored: {},
-    key: `slide-${slideIndex + 1}-element-${elementIndex + 1}`,
+    key: keyOverride ?? `slide-${slideIndex + 1}-element-${elementIndex + 1}`,
     name: element.name,
     resolved: {
       hidden: false,
@@ -127,11 +131,12 @@ function sceneImageElement(
   element: Image,
   slideIndex: number,
   elementIndex: number,
+  keyOverride?: string,
 ): PptxSceneImageElement {
   const transform = resolvedTransform(element);
   return {
     authored: {},
-    key: `slide-${slideIndex + 1}-element-${elementIndex + 1}`,
+    key: keyOverride ?? `slide-${slideIndex + 1}-element-${elementIndex + 1}`,
     resolved: {
       hidden: false,
       ...(transform === undefined ? {} : { transform }),
@@ -144,13 +149,14 @@ function sceneUnsupportedElement(
   element: PptxElement,
   slideIndex: number,
   elementIndex: number,
+  keyOverride?: string,
 ): PptxSceneUnsupportedElement {
   const text = previewText(element);
   const transform = resolvedTransform(element);
   return {
     authored: {},
     feature: element.type,
-    key: `slide-${slideIndex + 1}-element-${elementIndex + 1}`,
+    key: keyOverride ?? `slide-${slideIndex + 1}-element-${elementIndex + 1}`,
     ...(text === undefined ? {} : { previewText: text }),
     resolved: {
       hidden: false,
@@ -164,17 +170,18 @@ function sceneElement(
   element: PptxElement,
   slideIndex: number,
   elementIndex: number,
+  keyOverride?: string,
 ): PptxSceneElement {
   if (element.type === 'text') {
-    return sceneTextElement(element, slideIndex, elementIndex);
+    return sceneTextElement(element, slideIndex, elementIndex, keyOverride);
   }
   if (element.type === 'shape') {
     return plainTextFromPowerPointHtml(element.content) === ''
-      ? sceneShapeElement(element, slideIndex, elementIndex)
-      : sceneUnsupportedElement(element, slideIndex, elementIndex);
+      ? sceneShapeElement(element, slideIndex, elementIndex, keyOverride)
+      : sceneUnsupportedElement(element, slideIndex, elementIndex, keyOverride);
   }
   if (element.type === 'image') {
-    return sceneImageElement(element, slideIndex, elementIndex);
+    return sceneImageElement(element, slideIndex, elementIndex, keyOverride);
   }
   if (element.type === 'table') {
     return (
@@ -184,10 +191,33 @@ function sceneElement(
         elementIndex,
         plainTextFromPowerPointHtml,
         resolvedTransform,
-      ) ?? sceneUnsupportedElement(element, slideIndex, elementIndex)
+        keyOverride,
+      ) ??
+      sceneUnsupportedElement(element, slideIndex, elementIndex, keyOverride)
     );
   }
-  return sceneUnsupportedElement(element, slideIndex, elementIndex);
+  if (element.type === 'group') {
+    return (
+      createPptxRoundTripGroupPreview(
+        element,
+        slideIndex,
+        elementIndex,
+        {
+          mapChild: (child, childIndex, key) =>
+            sceneElement(child, slideIndex, childIndex, key),
+          resolveTransform: resolvedTransform,
+        },
+        keyOverride,
+      ) ??
+      sceneUnsupportedElement(element, slideIndex, elementIndex, keyOverride)
+    );
+  }
+  return sceneUnsupportedElement(
+    element,
+    slideIndex,
+    elementIndex,
+    keyOverride,
+  );
 }
 
 function sceneSlide(slide: PptxDocument['slides'][number], index: number) {
