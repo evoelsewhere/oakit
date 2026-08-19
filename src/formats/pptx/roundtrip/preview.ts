@@ -1,6 +1,7 @@
 import { decodeXmlEntities } from '../../../common/text/html';
 import type {
   PptxSceneDocument,
+  PptxSceneChartElement,
   PptxSceneElement,
   PptxSceneImageElement,
   PptxSceneShapeElement,
@@ -10,7 +11,14 @@ import type {
   PptxSceneTransform,
   PptxSceneUnsupportedElement,
 } from '../scene-types';
-import type { Image, PptxDocument, PptxElement, Shape, Text } from '../types';
+import type {
+  Chart,
+  Image,
+  PptxDocument,
+  PptxElement,
+  Shape,
+  Text,
+} from '../types';
 import { createPptxRoundTripTablePreview } from './table-preview';
 import { createPptxRoundTripGroupPreview } from './group-preview';
 
@@ -145,6 +153,105 @@ function sceneImageElement(
   };
 }
 
+function sceneChartElement(
+  element: Chart,
+  slideIndex: number,
+  elementIndex: number,
+  keyOverride?: string,
+): PptxSceneChartElement | undefined {
+  if (
+    element.chartType !== 'barChart' &&
+    element.chartType !== 'doughnutChart' &&
+    element.chartType !== 'lineChart' &&
+    element.chartType !== 'pieChart'
+  ) {
+    return undefined;
+  }
+  const transform = resolvedTransform(element);
+  if (transform === undefined || !Array.isArray(element.data)) return undefined;
+  const key =
+    keyOverride ?? `slide-${slideIndex + 1}-element-${elementIndex + 1}`;
+  const series: PptxSceneChartElement['series'] = [];
+  for (const [seriesIndex, item] of element.data.entries()) {
+    if (
+      Array.isArray(item) ||
+      typeof item.key !== 'string' ||
+      item.key.trim() === '' ||
+      !Array.isArray(item.values) ||
+      item.values.length === 0
+    ) {
+      return undefined;
+    }
+    const categories: string[] = [];
+    const values: number[] = [];
+    for (const point of item.values) {
+      if (
+        typeof point.x !== 'string' ||
+        typeof point.y !== 'number' ||
+        !Number.isFinite(point.y)
+      ) {
+        return undefined;
+      }
+      categories.push(item.xlabels[point.x] ?? point.x);
+      values.push(point.y);
+    }
+    const color = element.colors[seriesIndex];
+    series.push({
+      categories,
+      ...(typeof color === 'string' && /^#[0-9a-f]{6}$/i.test(color)
+        ? { color }
+        : {}),
+      key: `${key}-series-${seriesIndex + 1}`,
+      name: item.key,
+      values,
+    });
+  }
+  if (
+    (element.chartType === 'pieChart' ||
+      element.chartType === 'doughnutChart') &&
+    series.length !== 1
+  ) {
+    return undefined;
+  }
+  if (
+    element.grouping !== undefined &&
+    element.grouping !== 'clustered' &&
+    element.grouping !== 'percentStacked' &&
+    element.grouping !== 'stacked' &&
+    element.grouping !== 'standard'
+  ) {
+    return undefined;
+  }
+  const holeSize =
+    element.holeSize === undefined ? undefined : Number(element.holeSize);
+  if (
+    holeSize !== undefined &&
+    (!Number.isSafeInteger(holeSize) || holeSize < 10 || holeSize > 90)
+  ) {
+    return undefined;
+  }
+  return {
+    authored: {},
+    ...(element.barDir === undefined ? {} : { barDirection: element.barDir }),
+    chartType: element.chartType,
+    ...(element.grouping === undefined ? {} : { grouping: element.grouping }),
+    ...(holeSize === undefined ? {} : { holeSize }),
+    key,
+    ...(element.marker === undefined ? {} : { marker: element.marker }),
+    resolved: {
+      hidden: false,
+      transform: {
+        ...transform,
+        flipHorizontal: false,
+        flipVertical: false,
+        rotation: 0,
+      },
+    },
+    series,
+    type: 'chart',
+  };
+}
+
 function sceneUnsupportedElement(
   element: PptxElement,
   slideIndex: number,
@@ -182,6 +289,12 @@ function sceneElement(
   }
   if (element.type === 'image') {
     return sceneImageElement(element, slideIndex, elementIndex, keyOverride);
+  }
+  if (element.type === 'chart') {
+    return (
+      sceneChartElement(element, slideIndex, elementIndex, keyOverride) ??
+      sceneUnsupportedElement(element, slideIndex, elementIndex, keyOverride)
+    );
   }
   if (element.type === 'table') {
     return (
