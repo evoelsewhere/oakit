@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { createPptx } from '../../src/formats/pptx/creator';
 import {
   applyPptxRoundTripOperationsToPreview,
+  normalizePptxRoundTripGroupTransform,
   normalizePptxRoundTripTransform,
   replacePptxRoundTripText,
   setPptxRoundTripTextTransform,
@@ -374,6 +375,82 @@ describe('PowerPoint round-trip text edit binding', () => {
       width: 20,
       x: 1,
       y: 2,
+    });
+  });
+
+  it.each([null, [], 7])('rejects group transform value %j', (value) => {
+    expect(() => normalizePptxRoundTripGroupTransform(value as never)).toThrow(
+      'PowerPoint group transform value must be an object',
+    );
+  });
+
+  it('rejects unknown group transform fields', () => {
+    expect(() =>
+      normalizePptxRoundTripGroupTransform({
+        childSpace: { height: 10, width: 20, x: 1, y: 2 },
+        extra: true,
+        height: 30,
+        width: 40,
+        x: 3,
+        y: 4,
+      } as never),
+    ).toThrow('PowerPoint group transform value is not valid');
+  });
+
+  it.each([
+    null,
+    [],
+    { extra: true, height: 10, width: 20, x: 1, y: 2 },
+    { height: 10, width: 0, x: 1, y: 2 },
+    { height: 0, width: 20, x: 1, y: 2 },
+    { height: 10, width: 20, x: Number.NaN, y: 2 },
+    { height: 10, width: 20, x: 1, y: Number.MAX_VALUE },
+  ])('rejects invalid group child space %j', (childSpace) => {
+    expect(() =>
+      normalizePptxRoundTripGroupTransform({
+        childSpace,
+        height: 30,
+        width: 40,
+        x: 3,
+        y: 4,
+      } as never),
+    ).toThrow(/PowerPoint group child space/);
+  });
+
+  it('normalizes explicit and omitted group optional fields', () => {
+    expect(
+      normalizePptxRoundTripGroupTransform({
+        childSpace: { height: 10, width: 20, x: 1, y: 2 },
+        flipHorizontal: true,
+        flipVertical: true,
+        height: 30,
+        rotation: -90,
+        width: 40,
+        x: 3,
+        y: 4,
+      }),
+    ).toEqual({
+      childSpace: { height: 10, width: 20, x: 1, y: 2 },
+      flipHorizontal: true,
+      flipVertical: true,
+      height: 30,
+      rotation: -90,
+      width: 40,
+      x: 3,
+      y: 4,
+    });
+    expect(
+      normalizePptxRoundTripGroupTransform({
+        childSpace: { height: 10, width: 20, x: 1, y: 2 },
+        height: 30,
+        width: 40,
+        x: 3,
+        y: 4,
+      }),
+    ).toMatchObject({
+      flipHorizontal: false,
+      flipVertical: false,
+      rotation: 0,
     });
   });
 });

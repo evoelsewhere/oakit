@@ -248,7 +248,7 @@ function editableTransforms(
 function validateTransform(
   value: unknown,
   message: string,
-  groupTransform = false,
+  groupTransform: boolean,
 ): Record<string, unknown> {
   const transform = exactRecord(
     value,
@@ -336,10 +336,10 @@ function validateOperations(
           'PowerPoint round-trip transform target does not exist',
         );
       }
-      const groupTransform =
-        sourceTransform !== null &&
-        typeof sourceTransform === 'object' &&
-        Object.hasOwn(sourceTransform, 'childSpace');
+      const groupTransform = Object.hasOwn(
+        sourceTransform as object,
+        'childSpace',
+      );
       const expectedTransform = validateTransform(
         operation.expectedTransform,
         `PowerPoint round-trip operation ${index + 1} expectedTransform is invalid`,

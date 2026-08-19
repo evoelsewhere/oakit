@@ -90,12 +90,12 @@ function scene(): PptxSceneDocument {
 }
 
 const CHANGED_TRANSFORM: PptxSceneGroupTransform = {
-  childSpace: { height: 100, width: 150, x: 0, y: 0 },
+  childSpace: { height: 80, width: 150, x: 7, y: 11 },
   flipHorizontal: true,
   flipVertical: false,
-  height: 200,
+  height: 320,
   rotation: 15,
-  width: 300,
+  width: 450,
   x: 150,
   y: 160,
 };
@@ -135,11 +135,11 @@ describe('native PowerPoint group transform editing', () => {
         {
           resolved: {
             transform: {
-              height: 80,
+              height: 120,
               rotation: 90,
-              width: 40,
-              x: 40,
-              y: 60,
+              width: 80,
+              x: 29,
+              y: 96,
             },
           },
           type: 'shape',
@@ -148,17 +148,17 @@ describe('native PowerPoint group transform editing', () => {
           elements: [
             {
               resolved: {
-                transform: { height: 20, width: 20, x: 10, y: 10 },
+                transform: { height: 40, width: 30, x: 15, y: 20 },
               },
             },
           ],
           resolved: {
             transform: {
               childSpace: { height: 30, width: 30, x: 0, y: 0 },
-              height: 60,
-              width: 60,
-              x: 120,
-              y: 40,
+              height: 120,
+              width: 90,
+              x: 159,
+              y: 36,
             },
           },
           type: 'group',
@@ -212,5 +212,74 @@ describe('native PowerPoint group transform editing', () => {
       code: 'invalid-edit-operation',
       message: 'PowerPoint shape transform target key does not exist',
     });
+  });
+
+  it('rescales negative right-angle rotations through both coordinate spaces', async () => {
+    const negativeRotationScene = scene();
+    const group = negativeRotationScene.slides[0]?.elements[0];
+    if (group?.type !== 'group') throw new Error('Expected group');
+    const child = group.elements[0];
+    if (child === undefined) throw new Error('Expected group child');
+    const childTransform = child.authored.transform;
+    if (childTransform === undefined) throw new Error('Expected child transform');
+    childTransform.rotation = -90;
+    const snapshot = await readPptxRoundTrip(
+      (await createPptx(negativeRotationScene)).data,
+    );
+    const edited = await setPptxRoundTripGroupTransform(snapshot, {
+      targetKey: 'slide-1-element-1',
+      value: CHANGED_TRANSFORM,
+    });
+
+    const preview = await readPptxRoundTrip(
+      (await writePptxRoundTrip(edited)).data,
+    );
+    const previewGroup = preview.document.slides[0]?.elements[0];
+    if (previewGroup?.type !== 'group') throw new Error('Expected group');
+    expect(previewGroup.elements[0]).toMatchObject({
+      resolved: {
+        transform: {
+          height: 120,
+          rotation: -90,
+          width: 80,
+          x: 29,
+          y: 96,
+        },
+      },
+    });
+  });
+
+  it('rejects malformed group coordinate spaces in portable snapshots', async () => {
+    const snapshot = await readPptxRoundTrip((await createPptx(scene())).data);
+    const edited = await setPptxRoundTripGroupTransform(snapshot, {
+      targetKey: 'slide-1-element-1',
+      value: CHANGED_TRANSFORM,
+    });
+    const malformedChildSpaces: unknown[] = [
+      null,
+      { height: 80, width: 150, x: 7 },
+      { extra: 1, height: 80, width: 150, x: 7, y: 11 },
+      { height: 80, width: 150, x: Number.NaN, y: 11 },
+      { height: 80, width: 150, x: 7, y: Number.POSITIVE_INFINITY },
+      { height: 80, width: 0, x: 7, y: 11 },
+      { height: 0, width: 150, x: 7, y: 11 },
+    ];
+    for (const field of ['value', 'expectedTransform'] as const) {
+      for (const childSpace of malformedChildSpaces) {
+        const invalid = structuredClone(edited);
+        const operation = invalid.operations[0];
+        if (operation?.kind !== 'set-transform') {
+          throw new Error('Expected transform operation');
+        }
+        operation[field] = {
+          ...(operation[field] as PptxSceneGroupTransform),
+          childSpace,
+        } as never;
+
+        await expect(writePptxRoundTrip(invalid)).rejects.toMatchObject({
+          code: 'invalid-snapshot',
+        });
+      }
+    }
   });
 });
