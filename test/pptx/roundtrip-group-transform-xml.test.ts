@@ -57,7 +57,10 @@ function operation(
 
 describe('PowerPoint group transform patching', () => {
   it('patches outer and child coordinate spaces with exact EMUs', () => {
-    const input = xml();
+    const input = xml().replace(
+      '<p:grpSpPr><a:xfrm>',
+      '<p:grpSpPr><a:prelude/><a:xfrm>',
+    );
     const sourceTransform =
       '<a:xfrm><a:off x="254000" y="381000"/><a:ext cx="2540000" cy="1270000"/><a:chOff x="127000" y="254000"/><a:chExt cx="1270000" cy="1270000"/></a:xfrm>';
     const replacementTransform =
