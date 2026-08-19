@@ -163,6 +163,57 @@ describe('native PowerPoint group verification', () => {
     },
   );
 
+  it('does not swap non-rotated child scaling axes', () => {
+    const expectedValue = expected();
+    expectedValue.authored.transform = {
+      childSpace: { height: 100, width: 100, x: 10, y: 20 },
+      height: 200,
+      width: 300,
+      x: 20,
+      y: 30,
+    };
+    expectedValue.elements[0]!.authored.transform = {
+      height: 40,
+      rotation: 0,
+      width: 20,
+      x: 20,
+      y: 30,
+    };
+    const generatedValue = generated();
+    generatedValue.childSpace = {
+      height: 100,
+      width: 100,
+      x: 10,
+      y: 20,
+    };
+    generatedValue.height = 200;
+    generatedValue.width = 300;
+    const deps = dependencies();
+
+    verifyPowerPointGroupElement(
+      generatedValue,
+      expectedValue,
+      'target',
+      deps.value,
+    );
+
+    expect(deps.verifyChild).toHaveBeenCalledWith(
+      generatedValue.elements[0],
+      expect.objectContaining({
+        authored: {
+          transform: {
+            height: 80,
+            rotation: 0,
+            width: 60,
+            x: 30,
+            y: 20,
+          },
+        },
+      }),
+      0,
+    );
+  });
+
   it.each([undefined, { type: 'shape' }])(
     'rejects missing or non-group output %#',
     (value) => {
