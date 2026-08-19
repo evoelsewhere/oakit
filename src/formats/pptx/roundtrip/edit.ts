@@ -106,15 +106,8 @@ export function applyPptxRoundTripOperationsToPreview(
     if (operation.kind === 'set-transform') {
       let applied = false;
       for (const slide of document.slides) {
-        for (const element of slide.elements) {
-          if (
-            (element.type === 'image' ||
-              element.type === 'group' ||
-              element.type === 'shape' ||
-              element.type === 'table' ||
-              element.type === 'text') &&
-            element.key === operation.targetKey
-          ) {
+        visitTransformElements(slide.elements, (element) => {
+          if (element.key === operation.targetKey) {
             if (element.type === 'table') {
               element.columns = scaledTableSizes(
                 element.columns,
@@ -145,7 +138,7 @@ export function applyPptxRoundTripOperationsToPreview(
             element.resolved.transform = structuredClone(operation.value);
             applied = true;
           }
-        }
+        });
       }
       if (!applied) {
         throw new PptxWriteError(
@@ -186,6 +179,26 @@ type PptxTransformElement =
   | PptxSceneTableElement
   | PptxSceneTextElement;
 
+function visitTransformElements(
+  elements: readonly PptxSceneElement[],
+  visitor: (element: PptxTransformElement) => void,
+): void {
+  for (const element of elements) {
+    if (
+      element.type === 'image' ||
+      element.type === 'group' ||
+      element.type === 'shape' ||
+      element.type === 'table' ||
+      element.type === 'text'
+    ) {
+      visitor(element);
+    }
+    if (element.type === 'group') {
+      visitTransformElements(element.elements, visitor);
+    }
+  }
+}
+
 function findTransformElement(
   snapshot: PptxRoundTripSnapshot,
   targetKey: string,
@@ -193,10 +206,11 @@ function findTransformElement(
 ): PptxTransformElement {
   let matched: PptxTransformElement | undefined;
   for (const slide of snapshot.document.slides) {
-    for (const element of slide.elements) {
-      if (element.type !== targetType || element.key !== targetKey) continue;
-      matched = element;
-    }
+    visitTransformElements(slide.elements, (element) => {
+      if (element.type === targetType && element.key === targetKey) {
+        matched = element;
+      }
+    });
   }
   if (matched === undefined) {
     invalidEdit(

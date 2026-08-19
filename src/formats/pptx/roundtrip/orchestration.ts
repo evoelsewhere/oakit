@@ -3,7 +3,11 @@ import {
   assertPptxInputWithinLimits,
   type ResolvedPptxResourceLimits,
 } from '../internal/resource-limits';
-import type { PptxDocument } from '../types';
+import type {
+  PptxSceneGroupTransform,
+  PptxSceneTransform,
+} from '../scene-types';
+import type { Element, Group, PptxDocument } from '../types';
 import {
   assertSafeEditablePptxPackage,
   decodeEditablePptxXml,
@@ -28,13 +32,78 @@ import type {
 import JSZip from 'jszip';
 
 const TARGET_KEY_PATTERN = /^slide-([1-9]\d*)-element-([1-9]\d*)-run-1$/;
-const TRANSFORM_TARGET_KEY_PATTERN = /^slide-([1-9]\d*)-element-([1-9]\d*)$/;
+const TRANSFORM_TARGET_KEY_PATTERN =
+  /^slide-([1-9]\d*)((?:-element-[1-9]\d*)+)$/;
+const ELEMENT_INDEX_PATTERN = /-element-([1-9]\d*)/g;
 
 interface TextTarget {
   elementType: 'group' | 'image' | 'shape' | 'table' | 'text';
   elementIndex: number;
   shapeId: string;
   slideIndex: number;
+  transformOperation?: PptxRoundTripSetTransformOperation;
+}
+
+function parsedGroupTransform(group: Group): PptxSceneGroupTransform {
+  if (group.childSpace === undefined) {
+    unsupportedPptxEdit(
+      'PowerPoint nested transform ancestor has no child coordinate space',
+    );
+  }
+  return {
+    childSpace: { ...group.childSpace },
+    flipHorizontal: group.isFlipH,
+    flipVertical: group.isFlipV,
+    height: group.height,
+    rotation: group.rotate,
+    width: group.width,
+    x: group.left,
+    y: group.top,
+  };
+}
+
+function localizeNestedTransform(
+  transform: PptxSceneTransform,
+  ancestors: readonly PptxSceneGroupTransform[],
+): PptxSceneTransform {
+  let result = { ...transform };
+  ancestors.forEach((ancestor, index) => {
+    const widthScale = ancestor.width / ancestor.childSpace.width;
+    const heightScale = ancestor.height / ancestor.childSpace.height;
+    const directChild = index === ancestors.length - 1;
+    const offsetX = directChild ? ancestor.childSpace.x : 0;
+    const offsetY = directChild ? ancestor.childSpace.y : 0;
+    const rotation = (((result.rotation ?? 0) % 360) + 360) % 360;
+    const swapped = rotation === 90 || rotation === 270;
+    const width = result.width / (swapped ? heightScale : widthScale);
+    const height = result.height / (swapped ? widthScale : heightScale);
+    result = {
+      ...result,
+      height,
+      width,
+      x: (result.x + result.width / 2) / widthScale + offsetX - width / 2,
+      y: (result.y + result.height / 2) / heightScale + offsetY - height / 2,
+    };
+  });
+  return result;
+}
+
+function localizedOperation(
+  operation: PptxRoundTripSetTransformOperation,
+  ancestors: readonly PptxSceneGroupTransform[],
+): PptxRoundTripSetTransformOperation {
+  if (ancestors.length === 0) return operation;
+  return {
+    ...operation,
+    expectedTransform: {
+      ...operation.expectedTransform,
+      ...localizeNestedTransform(operation.expectedTransform, ancestors),
+    },
+    value: {
+      ...operation.value,
+      ...localizeNestedTransform(operation.value, ancestors),
+    },
+  };
 }
 
 export interface PptxPatchedPackage {
@@ -86,14 +155,35 @@ function transformTarget(
     );
   }
   const slideIndex = Number(match[1]) - 1;
-  const elementIndex = Number(match[2]) - 1;
+  const elementIndexes = [
+    ...(match[2] as string).matchAll(ELEMENT_INDEX_PATTERN),
+  ].map((indexMatch) => Number(indexMatch[1]) - 1);
   if (
     !Number.isSafeInteger(slideIndex) ||
-    !Number.isSafeInteger(elementIndex)
+    elementIndexes.length === 0 ||
+    elementIndexes.some((index) => !Number.isSafeInteger(index))
   ) {
     unsupportedPptxEdit('PowerPoint transform target index is unsafe');
   }
-  const element = document.slides[slideIndex]?.elements[elementIndex];
+  let elements = document.slides[slideIndex]?.elements;
+  let element: Element | undefined;
+  const ancestors: PptxSceneGroupTransform[] = [];
+  for (const [depth, elementIndex] of elementIndexes.entries()) {
+    element = elements?.[elementIndex];
+    if (depth === elementIndexes.length - 1) break;
+    if (element?.type !== 'group') {
+      unsupportedPptxEdit(
+        'PowerPoint transform target path crosses a non-group element',
+      );
+    }
+    const resolvedAncestor = parsedGroupTransform(element);
+    const localAncestor = localizeNestedTransform(
+      resolvedAncestor,
+      ancestors,
+    ) as PptxSceneGroupTransform;
+    ancestors.push(localAncestor);
+    elements = element.elements;
+  }
   if (
     element?.type !== 'image' &&
     element?.type !== 'group' &&
@@ -106,10 +196,11 @@ function transformTarget(
     );
   }
   return {
-    elementIndex,
+    elementIndex: elementIndexes[elementIndexes.length - 1] as number,
     elementType: element.type,
     shapeId: element.id,
     slideIndex,
+    transformOperation: localizedOperation(operation, ancestors),
   };
 }
 
@@ -147,16 +238,28 @@ export async function patchPptxOperations(
       operation.kind === 'replace-text'
         ? patchPptxShapeTextXml(current, target.shapeId, operation)
         : target.elementType === 'image'
-          ? patchPptxPictureTransformXml(current, target.shapeId, operation)
+          ? patchPptxPictureTransformXml(
+              current,
+              target.shapeId,
+              target.transformOperation as PptxRoundTripSetTransformOperation,
+            )
           : target.elementType === 'group'
-            ? patchPptxGroupTransformXml(current, target.shapeId, operation)
+            ? patchPptxGroupTransformXml(
+                current,
+                target.shapeId,
+                target.transformOperation as PptxRoundTripSetTransformOperation,
+              )
             : target.elementType === 'table'
               ? patchPptxGraphicFrameTransformXml(
                   current,
                   target.shapeId,
-                  operation,
+                  target.transformOperation as PptxRoundTripSetTransformOperation,
                 )
-              : patchPptxShapeTransformXml(current, target.shapeId, operation);
+              : patchPptxShapeTransformXml(
+                  current,
+                  target.shapeId,
+                  target.transformOperation as PptxRoundTripSetTransformOperation,
+                );
     editedXml.set(slidePart, patched);
     patchedParts.add(slidePart);
   }

@@ -3,6 +3,7 @@ import {
   type ResolvedPptxResourceLimits,
 } from '../internal/resource-limits';
 import { isValidXmlText, validatePptxScene } from '../scene-validation';
+import type { PptxSceneElement } from '../scene-types';
 import { PptxWriteError } from '../write-error';
 import { canonicalJson } from './canonical-json';
 import {
@@ -229,18 +230,22 @@ function editableTransforms(
   value: PptxRoundTripSnapshot['document'],
 ): Map<string, unknown> {
   const transforms = new Map<string, unknown>();
-  for (const slide of value.slides) {
-    for (const element of slide.elements) {
+  const collect = (elements: readonly PptxSceneElement[]): void => {
+    for (const element of elements) {
       if (
-        element.type !== 'image' &&
-        element.type !== 'group' &&
-        element.type !== 'shape' &&
-        element.type !== 'table' &&
-        element.type !== 'text'
-      )
-        continue;
-      transforms.set(element.key, element.resolved.transform);
+        element.type === 'image' ||
+        element.type === 'group' ||
+        element.type === 'shape' ||
+        element.type === 'table' ||
+        element.type === 'text'
+      ) {
+        transforms.set(element.key, element.resolved.transform);
+      }
+      if (element.type === 'group') collect(element.elements);
     }
+  };
+  for (const slide of value.slides) {
+    collect(slide.elements);
   }
   return transforms;
 }
@@ -455,8 +460,8 @@ function expectedSupportProfileId(
 ): PptxRoundTripSupportProfileId {
   if (operations.length === 0) return 'pptx-roundtrip-r0';
   const nativeKeys = new Set<string>();
-  for (const slide of document.slides) {
-    for (const element of slide.elements) {
+  const collectNativeKeys = (elements: readonly PptxSceneElement[]): void => {
+    for (const element of elements) {
       if (
         element.type === 'image' ||
         element.type === 'group' ||
@@ -465,7 +470,11 @@ function expectedSupportProfileId(
       ) {
         nativeKeys.add(element.key);
       }
+      if (element.type === 'group') collectNativeKeys(element.elements);
     }
+  };
+  for (const slide of document.slides) {
+    collectNativeKeys(slide.elements);
   }
   return operations.some((operation) => nativeKeys.has(operation.targetKey))
     ? 'pptx-roundtrip-native-v1'
