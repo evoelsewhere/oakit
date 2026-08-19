@@ -57,13 +57,41 @@ function operation(
 
 describe('PowerPoint group transform patching', () => {
   it('patches outer and child coordinate spaces with exact EMUs', () => {
-    const output = patchPptxGroupTransformXml(xml(), '2', operation());
+    const input = xml();
+    const sourceTransform =
+      '<a:xfrm><a:off x="254000" y="381000"/><a:ext cx="2540000" cy="1270000"/><a:chOff x="127000" y="254000"/><a:chExt cx="1270000" cy="1270000"/></a:xfrm>';
+    const replacementTransform =
+      '<a:xfrm rot="900000" flipH="1" flipV="1"><a:off x="508000" y="635000"/><a:ext cx="3810000" cy="2286000"/><a:chOff x="0" y="0"/><a:chExt cx="1905000" cy="1524000"/></a:xfrm>';
+    const output = patchPptxGroupTransformXml(input, '2', operation());
 
-    expect(output).toContain(
-      '<a:xfrm rot="900000" flipH="1" flipV="1"><a:off x="508000" y="635000"/><a:ext cx="3810000" cy="2286000"/><a:chOff x="0" y="0"/><a:chExt cx="1905000" cy="1524000"/></a:xfrm>',
+    expect(output).toBe(input.replace(sourceTransform, replacementTransform));
+  });
+
+  it('binds source rotation and flip attributes exactly', () => {
+    const output = patchPptxGroupTransformXml(
+      xml('', ' rot="900000" flipH="1" flipV="1"'),
+      '2',
+      operation({}, { flipHorizontal: true, flipVertical: true, rotation: 15 }),
     );
-    expect(output).toContain('<p:cNvPr id="3"/>');
-    expect(output.match(/<p:grpSp>/g)).toHaveLength(1);
+
+    expect(output).toContain('<a:xfrm rot="900000" flipH="1" flipV="1">');
+  });
+
+  it('treats omitted expected optional attributes as false and zero', () => {
+    expect(() =>
+      patchPptxGroupTransformXml(
+        xml(),
+        '2',
+        operation(
+          {},
+          {
+            flipHorizontal: undefined,
+            flipVertical: undefined,
+            rotation: undefined,
+          },
+        ),
+      ),
+    ).not.toThrow();
   });
 
   it('supports namespace aliases and omits false optional attributes', () => {
@@ -130,6 +158,15 @@ describe('PowerPoint group transform patching', () => {
       ),
     ).toThrow(
       'PowerPoint group target must contain one simple group transform',
+    );
+    expect(() =>
+      patchPptxGroupTransformXml(
+        xml().replaceAll('p:grpSpPr', 'p:otherGroupProperties'),
+        '2',
+        operation(),
+      ),
+    ).toThrow(
+      'PowerPoint group target must contain one direct group property block',
     );
   });
 
