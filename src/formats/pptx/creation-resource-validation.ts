@@ -65,7 +65,7 @@ function countCreationResources(document: JsonObject): CreationResourceCounts {
       }
       if (element.type === 'chart' && Array.isArray(element.series)) {
         for (const series of element.series) {
-          if (series === null || typeof series !== 'object') continue;
+          if (series === null || series === undefined) continue;
           const categories = Array.isArray(series.categories)
             ? series.categories.length
             : 0;

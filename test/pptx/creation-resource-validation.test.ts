@@ -201,6 +201,52 @@ describe('PowerPoint creation resource validation', () => {
     ).toEqual([]);
   });
 
+  it('ignores primitive chart series while traversing resource counts', () => {
+    const input = document([
+      {
+        elements: [
+          {
+            series: [null, undefined, 'primitive', 7, false],
+            type: 'chart',
+          },
+        ],
+      },
+    ]);
+
+    expect(
+      validatePowerPointCreationResources(input, 'create-native-v1'),
+    ).toEqual([]);
+  });
+
+  it('counts the larger side of mismatched chart point arrays', () => {
+    const input = document([
+      {
+        elements: [
+          {
+            series: [
+              {
+                categories: new Array<string>(
+                  MAX_POWERPOINT_CREATION_TOTAL_CHART_POINTS + 1,
+                ),
+                values: [],
+              },
+            ],
+            type: 'chart',
+          },
+        ],
+      },
+    ]);
+
+    expect(
+      validatePowerPointCreationResources(input, 'create-native-v1'),
+    ).toContainEqual(
+      expect.objectContaining({
+        code: 'resource-limit-exceeded',
+        path: '$.slides',
+      }),
+    );
+  });
+
   it('rejects a paragraph count beyond the XML-node budget', () => {
     const input = document([
       {
