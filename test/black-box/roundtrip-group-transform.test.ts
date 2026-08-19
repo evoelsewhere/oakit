@@ -259,6 +259,8 @@ describe('native PowerPoint group transform editing', () => {
       null,
       { height: 80, width: 150, x: 7 },
       { extra: 1, height: 80, width: 150, x: 7, y: 11 },
+      { height: 80, width: 150, x: 'bad', y: 11 },
+      { height: 80, width: 150, x: 7, y: 'bad' },
       { height: 80, width: 150, x: Number.NaN, y: 11 },
       { height: 80, width: 150, x: 7, y: Number.POSITIVE_INFINITY },
       { height: 80, width: 0, x: 7, y: 11 },
