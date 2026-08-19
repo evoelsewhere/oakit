@@ -25,6 +25,7 @@ function creationProfile(scene: PptxSceneDocument): PptxCreationProfile {
   return scene.slides.some((slide) =>
     slide.elements.some(
       (element) =>
+        element.type === 'chart' ||
         element.type === 'image' ||
         element.type === 'group' ||
         element.type === 'shape' ||

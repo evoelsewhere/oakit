@@ -822,6 +822,24 @@ function validateChartElement(
       'Creation profile create-text-v1 supports text elements only',
     );
   }
+  const authored = isObject(element.authored) ? element.authored : undefined;
+  const transform = isObject(authored?.transform)
+    ? authored.transform
+    : undefined;
+  if (
+    profile === 'create-native-v1' &&
+    transform !== undefined &&
+    (transform.flipHorizontal === true ||
+      transform.flipVertical === true ||
+      (transform.rotation !== undefined && transform.rotation !== 0))
+  ) {
+    addIssue(
+      issues,
+      'unsupported-feature',
+      `${path}.authored.transform`,
+      'Native chart creation supports unrotated, unflipped graphic frames only',
+    );
+  }
 }
 
 function validatePlaceholder(

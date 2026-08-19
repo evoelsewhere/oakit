@@ -4,6 +4,7 @@ import { renderPptxDocumentToSvg } from '../render-svg';
 import type { PptxSvgRenderResult } from '../render-types';
 import type {
   PptxSceneDocument,
+  PptxSceneChartElement,
   PptxSceneElement,
   PptxSceneImageElement,
   PptxSceneMedia,
@@ -13,6 +14,7 @@ import type {
 } from '../scene-types';
 import { parse } from '../parser';
 import type {
+  Chart,
   Image,
   Group,
   PptxDocument,
@@ -32,6 +34,15 @@ type PptxCreationParser = (
 ) => Promise<PptxDocument>;
 
 type PptxCreationRenderer = (document: PptxDocument) => PptxSvgRenderResult;
+
+function countSceneCharts(elements: readonly PptxSceneElement[]): number {
+  let count = 0;
+  for (const element of elements) {
+    if (element.type === 'chart') count += 1;
+    if (element.type === 'group') count += countSceneCharts(element.elements);
+  }
+  return count;
+}
 
 function expectedPointValue(value: number): number {
   return pointsToEmu(value) * RATIO_EMUs_Points;
@@ -133,6 +144,8 @@ function verifySceneElement(
     verifyTextElement(generated, expected, slideIndex, elementIndex);
   } else if (expected.type === 'shape') {
     verifyShapeElement(generated, expected, slideIndex, elementIndex);
+  } else if (expected.type === 'chart') {
+    verifyChartElement(generated, expected, slideIndex, elementIndex);
   } else if (expected.type === 'image') {
     verifyImageElement(
       generated,
@@ -166,6 +179,70 @@ function verifySceneElement(
   } else {
     throw new Error(
       `Expected PowerPoint text element missing at slide ${slideIndex + 1}, element ${elementIndex + 1}`,
+    );
+  }
+}
+
+function verifyChartElement(
+  generated: PptxDocument['slides'][number]['elements'][number] | undefined,
+  expected: PptxSceneChartElement,
+  slideIndex: number,
+  elementIndex: number,
+): void {
+  const location = `slide ${slideIndex + 1}, element ${elementIndex + 1}`;
+  if (generated?.type !== 'chart') {
+    throw new Error(`Generated PowerPoint chart missing at ${location}`);
+  }
+  const transform = expected.authored.transform;
+  if (transform === undefined) {
+    throw new Error(
+      `Expected PowerPoint authored transform missing at ${location}`,
+    );
+  }
+  if (
+    generated.left !== expectedPointValue(transform.x) ||
+    generated.top !== expectedPointValue(transform.y) ||
+    generated.width !== expectedPointValue(transform.width) ||
+    generated.height !== expectedPointValue(transform.height)
+  ) {
+    throw new Error(
+      `Generated PowerPoint chart transform mismatch at ${location}`,
+    );
+  }
+  if (generated.chartType !== expected.chartType) {
+    throw new Error(`Generated PowerPoint chart type mismatch at ${location}`);
+  }
+  const expectedData: Chart['data'] = expected.series.map((series) => ({
+    key: series.name,
+    values: series.values.map((value, index) => ({
+      x: String(index),
+      y: value,
+    })),
+    xlabels: Object.fromEntries(
+      series.categories.map((category, index) => [String(index), category]),
+    ),
+  }));
+  if (JSON.stringify(generated.data) !== JSON.stringify(expectedData)) {
+    throw new Error(`Generated PowerPoint chart data mismatch at ${location}`);
+  }
+  const expectedColors = expected.series.map((series) => series.color ?? '');
+  if (
+    (expected.chartType === 'barChart' || expected.chartType === 'lineChart') &&
+    JSON.stringify(generated.colors) !== JSON.stringify(expectedColors)
+  ) {
+    throw new Error(`Generated PowerPoint chart color mismatch at ${location}`);
+  }
+  if (
+    generated.barDir !== expected.barDirection ||
+    generated.grouping !== expected.grouping ||
+    generated.holeSize !==
+      (expected.holeSize === undefined
+        ? undefined
+        : String(expected.holeSize)) ||
+    generated.marker !== expected.marker
+  ) {
+    throw new Error(
+      `Generated PowerPoint chart option mismatch at ${location}`,
     );
   }
 }
@@ -272,12 +349,16 @@ export async function verifyPowerPointCreationWithParser(
   parseDocument: PptxCreationParser,
   renderDocument: PptxCreationRenderer = renderPptxDocumentToSvg,
 ): Promise<void> {
+  const chartCount = scene.slides.reduce(
+    (count, slide) => count + countSceneCharts(slide.elements),
+    0,
+  );
   const document = await parseDocument(data, {
     audioMode: 'none',
     errorMode: 'strict',
     imageMode: scene.media.length === 0 ? 'none' : 'base64',
     limits: {
-      maxEntries: scene.slides.length * 2 + scene.media.length + 9,
+      maxEntries: scene.slides.length * 2 + scene.media.length + chartCount + 9,
       maxSlides: Math.max(1, scene.slides.length),
     },
     videoMode: 'none',
