@@ -2,8 +2,8 @@
 
 > Status: active native-authoring plan. Text creation and text editing are
 > implemented and producer-certified at C3/R3. Native non-text rect, roundRect,
-> ellipse, PNG, JPEG, structured table, and explicit group creation is
-> runtime-verified at C2, while slide-owned shape/image/table/group transform editing is part-preserving and
+> ellipse, PNG, JPEG, structured table, explicit group, and common bar/line/pie/doughnut chart creation is
+> runtime-verified at C2, while slide-owned shape/image/table/group/chart transform editing is part-preserving and
 > runtime-verified at R2. Broader
 > native element domains remain gated capability rows rather than blanket PPTX
 > claims.

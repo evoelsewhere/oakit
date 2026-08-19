@@ -24,6 +24,7 @@ service are not runtime dependencies.
 | Move, resize, rotate, or flip a native image | `setPptxRoundTripImageTransform`           | Native picture transform; media bytes preserved |
 | Move, resize, rotate, or flip a native table | `setPptxRoundTripTableTransform`           | Native table frame and proportional grid patch  |
 | Transform a native nested group              | `setPptxRoundTripGroupTransform`           | Outer/child spaces and descendants verified     |
+| Move or resize a native chart                | `setPptxRoundTripChartTransform`           | Chart frame patched; ChartML bytes preserved    |
 | Create a new bounded text deck               | `createPptx`                               | Deterministic PPTX bytes and write report       |
 | Run the same workflows from a shell          | `oakit` CLI                                | JSON, PPTX, SVG, or PNG files                   |
 
@@ -92,7 +93,8 @@ and agent context. It is not intended to reproduce every original package byte.
 
 This is the versioned scene model used by source-free creation and the
 round-trip semantic preview. The current creation profile supports bounded
-structured text slides. Unsupported creation elements fail validation instead
+structured text, native shape/image/table/group content, and common bar, line,
+pie, and doughnut charts. Unsupported creation elements fail validation instead
 of being guessed.
 
 ### `PptxRoundTripSnapshot`
@@ -709,6 +711,62 @@ the same non-uniform and 90°/270° rotation rules as the parser. Every untouche
 package payload remains byte-exact. Groups without a finite positive child
 space stay preservation-only.
 
+## Create and resize a native chart
+
+The native chart profile currently writes `barChart`, `lineChart`, `pieChart`,
+and `doughnutChart` elements. Each series owns aligned `categories` and numeric
+`values`, an optional `#RRGGBB` color, and a stable key. Chart data is stored in
+deterministic ChartML caches, so creation and rendering do not require Excel or
+another Office runtime.
+
+```ts
+import {
+  readPptxRoundTrip,
+  setPptxRoundTripChartTransform,
+  writePptxRoundTrip,
+  type PptxSceneChartElement,
+} from '@evoelsewhere/oakit';
+
+const chart: PptxSceneChartElement = {
+  authored: { transform: { x: 40, y: 60, width: 420, height: 220 } },
+  barDirection: 'col',
+  chartType: 'barChart',
+  grouping: 'clustered',
+  key: 'revenue-chart',
+  resolved: { hidden: false },
+  series: [
+    {
+      categories: ['Q1', 'Q2', 'Q3'],
+      color: '#4F46E5',
+      key: 'revenue-series',
+      name: 'Revenue',
+      values: [12, 18, 27],
+    },
+  ],
+  type: 'chart',
+};
+
+const snapshot = await readPptxRoundTrip(input);
+const edited = await setPptxRoundTripChartTransform(snapshot, {
+  targetKey: 'slide-1-element-1',
+  value: {
+    x: 80,
+    y: 90,
+    width: 500,
+    height: 260,
+    rotation: 0,
+    flipHorizontal: false,
+    flipVertical: false,
+  },
+});
+const output = await writePptxRoundTrip(edited);
+```
+
+Chart editing patches only the owning `p:graphicFrame` transform. The related
+`ppt/charts/chartN.xml` payload and every unrelated package part remain
+byte-exact. Scatter, bubble, 3D, radar, surface, stock, and chart data/style
+editing remain preservation-only.
+
 ## Create a new native presentation
 
 Creation uses `PptxSceneDocument` schema version 2. Dimensions and transforms
@@ -1026,16 +1084,16 @@ safe value.
 
 ## Capability boundaries
 
-| Capability                      | Current release claim                                                         |
-| ------------------------------- | ----------------------------------------------------------------------------- |
-| Read PPTX                       | Bounded structured parsing with strict/tolerant diagnostics                   |
-| Create PPTX                     | Text C3 producer profile; native shape/image/table/group C2 runtime profile   |
-| Edit PPTX                       | Text R3 producer profile; native shape/image/table/group transform R2 profile |
-| Preserve unchanged PPTX         | Byte-exact R0                                                                 |
-| Render SVG                      | Node.js and browser, no Office runtime                                        |
-| Render PNG                      | Node.js, no Office runtime                                                    |
-| Arbitrary PPTX creation/editing | Not claimed                                                                   |
-| Pixel-identical rendering       | Not claimed                                                                   |
+| Capability                      | Current release claim                                                               |
+| ------------------------------- | ----------------------------------------------------------------------------------- |
+| Read PPTX                       | Bounded structured parsing with strict/tolerant diagnostics                         |
+| Create PPTX                     | Text C3 producer profile; native shape/image/table/group/chart C2 runtime profile   |
+| Edit PPTX                       | Text R3 producer profile; native shape/image/table/group/chart transform R2 profile |
+| Preserve unchanged PPTX         | Byte-exact R0                                                                       |
+| Render SVG                      | Node.js and browser, no Office runtime                                              |
+| Render PNG                      | Node.js, no Office runtime                                                          |
+| Arbitrary PPTX creation/editing | Not claimed                                                                         |
+| Pixel-identical rendering       | Not claimed                                                                         |
 
 The current real-world evidence covers 30 transient SlidesMania templates, 733
 slides, and 9,285 elements before and after controlled Google Slides

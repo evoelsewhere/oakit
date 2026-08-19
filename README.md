@@ -18,7 +18,7 @@ meaningful document data instead of raw XML.
 > **Project status:** pre-stable (`0.0.x`). Implemented PowerPoint capabilities
 > include bounded reading, producer-verified text-profile `C3` creation,
 > byte-exact `R0` portable hand-offs, producer-verified `R3` plain-text and text
-> transform editing, runtime-verified native shape/image/table/group `C2` creation and `R2`
+> transform editing, runtime-verified native shape/image/table/group/chart `C2` creation and `R2`
 > transform editing, and Office-free SVG/PNG previews. Excel and Word remain
 > product direction rather than completed APIs.
 
@@ -83,11 +83,11 @@ agent runtime, tool-calling protocol, or vector database.
 
 ## Format support
 
-| Format               | Read | Create                                      | Edit                                                  | Preserve      | Preview |
-| -------------------- | ---- | ------------------------------------------- | ----------------------------------------------------- | ------------- | ------- |
-| PowerPoint (`.pptx`) | Yes  | Text C3 + native shape/image/table/group C2 | Text R3 + native shape/image/table/group transform R2 | Byte-exact R0 | SVG/PNG |
-| Excel (`.xlsx`)      | No   | No                                          | No                                                    | No            | No      |
-| Word (`.docx`)       | No   | No                                          | No                                                    | No            | No      |
+| Format               | Read | Create                                            | Edit                                                        | Preserve      | Preview |
+| -------------------- | ---- | ------------------------------------------------- | ----------------------------------------------------------- | ------------- | ------- |
+| PowerPoint (`.pptx`) | Yes  | Text C3 + native shape/image/table/group/chart C2 | Text R3 + native shape/image/table/group/chart transform R2 | Byte-exact R0 | SVG/PNG |
+| Excel (`.xlsx`)      | No   | No                                                | No                                                          | No            | No      |
+| Word (`.docx`)       | No   | No                                                | No                                                          | No            | No      |
 
 The runtime reports `C2` after deterministic package construction, strict
 reparse, semantic comparison, and Office-free rendering. The declared
@@ -97,8 +97,8 @@ runtime's `R2` verification is certified at effective `R3` for the
 `pptx-roundtrip-text-v1` plain-text and text-transform operations. `R0` means an
 unchanged source package is restored byte for byte through runtime or portable
 JSON. The `pptx-create-native-v1` and `pptx-roundtrip-native-v1` profiles add
-runtime-verified non-text shape/image/table/group creation and slide-owned,
-including nested, shape/image/table/group transforms; they do not yet claim
+runtime-verified non-text shape/image/table/group/chart creation and slide-owned,
+including nested, shape/image/table/group/chart transforms; they do not yet claim
 producer-elevated C3/R3. These profile levels
 do not claim arbitrary PPTX editing, full
 reconstruction from normalized JSON, or pixel-identical rendering.

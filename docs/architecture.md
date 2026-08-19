@@ -43,10 +43,11 @@ The normalized parser does not attempt byte-for-byte preservation. Exact `R0`
 preservation is implemented by a separate round-trip snapshot that owns the
 source package and hashes its bound semantic preview, operation log, and source
 manifest. The same snapshot accepts narrow `R2` single-run replacement,
-text-element transforms, and native shape/image/table/group transforms with exact preconditions,
+text-element transforms, and native shape/image/table/group/chart transforms with exact preconditions,
 part-preserving patching, strict output reparse, and semantic verification.
-Source-free creation accepts bounded text, native rect/roundRect/ellipse, and
-PNG/JPEG, structured table, and explicit group-coordinate profiles and reports `C2`; arbitrary semantic editing, streaming ZIP processing,
+Source-free creation accepts bounded text, native rect/roundRect/ellipse,
+PNG/JPEG, structured tables, explicit group-coordinate profiles, and common
+cache-backed ChartML charts and reports `C2`; arbitrary semantic editing, streaming ZIP processing,
 full XSD validation, macro execution, and package repair are not implemented.
 
 ## System context
@@ -702,9 +703,11 @@ operations it writes byte-identical `R0` data. For the CLI-supported `R2` text
 profile it patches text and/or one text-owned transform in the owning slide
 part, verifies every untouched part payload, strict-parses the output, and
 compares the complete semantic preview. The programmatic API additionally
-supports native shape, image, safe table, and group transforms through
+supports native shape, image, safe table, group, and chart transforms through
 `pptx-roundtrip-native-v1`. A table resize patches both its graphic-frame
 extent and proportional grid/row dimensions in the owning slide.
+A chart resize patches only its graphic-frame transform and preserves the
+owned ChartML part byte-for-byte.
 A group edit patches both outer and child coordinate spaces, then recursively
 verifies every scaled descendant. Hierarchical element keys retain the complete
 group-owner path. Nested transform operations are localized from resolved
