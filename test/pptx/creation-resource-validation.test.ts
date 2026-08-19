@@ -110,6 +110,45 @@ describe('PowerPoint creation resource validation', () => {
     ]);
   });
 
+  it('counts every element nested inside native groups', () => {
+    const input = document([
+      {
+        elements: [
+          {
+            elements: new Array(MAX_POWERPOINT_CREATION_ELEMENTS),
+            type: 'group',
+          },
+        ],
+        key: 'slide-1',
+      },
+    ]);
+
+    expect(
+      validatePowerPointCreationResources(input, 'create-native-v1'),
+    ).toContainEqual({
+      code: 'resource-limit-exceeded',
+      message: `Creation profile create-native-v1 supports at most ${MAX_POWERPOINT_CREATION_ELEMENTS} elements`,
+      path: '$.slides',
+    });
+  });
+
+  it('ignores primitive entries while traversing nested group resources', () => {
+    const input = document([
+      {
+        elements: [
+          null,
+          'primitive',
+          { elements: [undefined, 7, false], type: 'group' },
+        ],
+        key: 'slide-1',
+      },
+    ]);
+
+    expect(
+      validatePowerPointCreationResources(input, 'create-native-v1'),
+    ).toEqual([]);
+  });
+
   it('rejects a paragraph count beyond the XML-node budget', () => {
     const input = document([
       {
