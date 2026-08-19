@@ -127,6 +127,27 @@ export interface PptxSceneImageElement extends PptxSceneElementBase {
   type: 'image';
 }
 
+export type PptxSceneChartType =
+  'barChart' | 'doughnutChart' | 'lineChart' | 'pieChart';
+
+export interface PptxSceneChartSeries {
+  categories: string[];
+  color?: string;
+  key: string;
+  name: string;
+  values: number[];
+}
+
+export interface PptxSceneChartElement extends PptxSceneElementBase {
+  barDirection?: 'bar' | 'col';
+  chartType: PptxSceneChartType;
+  grouping?: 'clustered' | 'percentStacked' | 'stacked' | 'standard';
+  holeSize?: number;
+  marker?: boolean;
+  series: PptxSceneChartSeries[];
+  type: 'chart';
+}
+
 export interface PptxSceneTableBorder {
   color: string;
   style?: 'dashed' | 'dotted' | 'solid';
@@ -182,6 +203,7 @@ export interface PptxSceneUnsupportedElement extends PptxSceneElementBase {
 }
 
 export type PptxSceneElement =
+  | PptxSceneChartElement
   | PptxSceneGroupElement
   | PptxSceneImageElement
   | PptxSceneShapeElement

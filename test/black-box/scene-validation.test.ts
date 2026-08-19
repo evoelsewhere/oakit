@@ -384,7 +384,7 @@ describe('PowerPoint scene validation', () => {
   it('rejects unknown element fields, kinds, and malformed base state', () => {
     const scene = minimalScene();
     const element = mutableElement(scene);
-    element.type = 'chart';
+    element.type = 'widget';
     element.raw = {};
     element.authored = { hidden: 'false' };
     element.resolved = { hidden: 0 };
@@ -1404,7 +1404,7 @@ describe('PowerPoint scene validation', () => {
 
   it('returns exact element-base and resolved-transform diagnostics', () => {
     const unknownType = minimalScene();
-    mutableElement(unknownType).type = 'chart';
+    mutableElement(unknownType).type = 'widget';
     expect(validatePptxScene(unknownType).issues).toContainEqual({
       code: 'invalid-scene-document',
       message: 'Unknown scene element type',

@@ -6,6 +6,8 @@ import type {
 } from './scene-types';
 import {
   isSupportedPowerPointCreationSlideCount,
+  MAX_POWERPOINT_CREATION_CHART_POINTS,
+  MAX_POWERPOINT_CREATION_CHART_SERIES,
   MAX_POWERPOINT_CREATION_SLIDES,
 } from './creation-limits';
 import { validatePowerPointCreationResources } from './creation-resource-validation';
@@ -22,6 +24,12 @@ const EMUS_PER_POINT = 12_700;
 const ANGLE_UNITS_PER_DEGREE = 60_000;
 const FONT_SIZE_UNITS_PER_POINT = 100;
 const HEX_COLOR_PATTERN = /^#[0-9a-f]{6}$/i;
+const CHART_TYPES = [
+  'barChart',
+  'doughnutChart',
+  'lineChart',
+  'pieChart',
+] as const;
 
 type ValidationProfile = NonNullable<PptxSceneValidationOptions['profile']>;
 type CreationValidationProfile = Exclude<ValidationProfile, 'scene'>;
@@ -612,6 +620,210 @@ const TABLE_VALIDATION_DEPENDENCIES: PptxTableValidationDependencies = {
   validateTextBody,
 };
 
+function validateChartSeries(
+  value: unknown,
+  path: string,
+  keys: Set<string>,
+  issues: PptxSceneValidationIssue[],
+): void {
+  const series = requireArray(value, path, issues);
+  if (!series) return;
+  if (series.length === 0) {
+    addIssue(
+      issues,
+      'invalid-scene-document',
+      path,
+      'A chart needs at least one series',
+    );
+  }
+  if (series.length > MAX_POWERPOINT_CREATION_CHART_SERIES) {
+    addIssue(
+      issues,
+      'resource-limit-exceeded',
+      path,
+      `A chart supports at most ${MAX_POWERPOINT_CREATION_CHART_SERIES} series`,
+    );
+  }
+  series.forEach((item, seriesIndex) => {
+    const itemPath = `${path}[${seriesIndex}]`;
+    const record = requireObject(item, itemPath, issues);
+    if (!record) return;
+    rejectUnknownKeys(
+      record,
+      ['categories', 'color', 'key', 'name', 'values'],
+      itemPath,
+      issues,
+    );
+    registerKey(record.key, `${itemPath}.key`, keys, issues);
+    if (typeof record.name !== 'string' || record.name.trim() === '') {
+      addIssue(
+        issues,
+        'invalid-scene-document',
+        `${itemPath}.name`,
+        'Expected a non-empty chart series name',
+      );
+    } else if (!isValidXmlText(record.name)) {
+      addIssue(
+        issues,
+        'invalid-office-text-escape',
+        `${itemPath}.name`,
+        'Chart series name cannot be serialized safely',
+      );
+    }
+    optionalColor(record, 'color', itemPath, issues);
+    const categories = requireArray(
+      record.categories,
+      `${itemPath}.categories`,
+      issues,
+    );
+    const values = requireArray(record.values, `${itemPath}.values`, issues);
+    if (categories && values && categories.length !== values.length) {
+      addIssue(
+        issues,
+        'invalid-scene-document',
+        itemPath,
+        'Chart categories and values must have equal lengths',
+      );
+    }
+    if (
+      (categories?.length ?? 0) > MAX_POWERPOINT_CREATION_CHART_POINTS ||
+      (values?.length ?? 0) > MAX_POWERPOINT_CREATION_CHART_POINTS
+    ) {
+      addIssue(
+        issues,
+        'resource-limit-exceeded',
+        itemPath,
+        `A chart series supports at most ${MAX_POWERPOINT_CREATION_CHART_POINTS} points`,
+      );
+    }
+    categories?.forEach((category, pointIndex) =>
+      validateTextValue(
+        category,
+        `${itemPath}.categories[${pointIndex}]`,
+        issues,
+      ),
+    );
+    values?.forEach((point, pointIndex) =>
+      requireFiniteNumber(
+        point,
+        `${itemPath}.values[${pointIndex}]`,
+        issues,
+        false,
+      ),
+    );
+  });
+}
+
+function validateChartElement(
+  element: JsonObject,
+  path: string,
+  baseKeys: readonly string[],
+  profile: ValidationProfile,
+  keys: Set<string>,
+  issues: PptxSceneValidationIssue[],
+): void {
+  rejectUnknownKeys(
+    element,
+    [
+      ...baseKeys,
+      'barDirection',
+      'chartType',
+      'grouping',
+      'holeSize',
+      'marker',
+      'series',
+    ],
+    path,
+    issues,
+  );
+  if (!isOneOf(element.chartType, CHART_TYPES)) {
+    addIssue(
+      issues,
+      'invalid-scene-document',
+      `${path}.chartType`,
+      'Unknown native chart type',
+    );
+  }
+  validateChartSeries(element.series, `${path}.series`, keys, issues);
+  if (
+    element.barDirection !== undefined &&
+    !isOneOf(element.barDirection, ['bar', 'col'])
+  ) {
+    addIssue(
+      issues,
+      'invalid-scene-document',
+      `${path}.barDirection`,
+      'Unknown chart bar direction',
+    );
+  }
+  if (
+    element.grouping !== undefined &&
+    !isOneOf(element.grouping, [
+      'clustered',
+      'percentStacked',
+      'stacked',
+      'standard',
+    ])
+  ) {
+    addIssue(
+      issues,
+      'invalid-scene-document',
+      `${path}.grouping`,
+      'Unknown chart grouping',
+    );
+  }
+  optionalBoolean(element, 'marker', path, issues);
+  if (
+    element.holeSize !== undefined &&
+    (!Number.isSafeInteger(element.holeSize) ||
+      Number(element.holeSize) < 10 ||
+      Number(element.holeSize) > 90)
+  ) {
+    addIssue(
+      issues,
+      'invalid-numeric-value',
+      `${path}.holeSize`,
+      'Doughnut hole size must be an integer from 10 through 90',
+    );
+  }
+  if (
+    (element.chartType === 'pieChart' ||
+      element.chartType === 'doughnutChart') &&
+    Array.isArray(element.series) &&
+    element.series.length !== 1
+  ) {
+    addIssue(
+      issues,
+      'invalid-scene-document',
+      `${path}.series`,
+      'Pie and doughnut charts require exactly one series',
+    );
+  }
+  const incompatible =
+    (element.barDirection !== undefined && element.chartType !== 'barChart') ||
+    (element.holeSize !== undefined && element.chartType !== 'doughnutChart') ||
+    (element.marker !== undefined && element.chartType !== 'lineChart') ||
+    (element.grouping !== undefined &&
+      element.chartType !== 'barChart' &&
+      element.chartType !== 'lineChart');
+  if (incompatible) {
+    addIssue(
+      issues,
+      'unsupported-feature',
+      path,
+      'Chart options must match the selected native chart type',
+    );
+  }
+  if (profile === 'create-text-v1') {
+    addIssue(
+      issues,
+      'unsupported-feature',
+      path,
+      'Creation profile create-text-v1 supports text elements only',
+    );
+  }
+}
+
 function validatePlaceholder(
   value: unknown,
   path: string,
@@ -770,6 +982,8 @@ function validateElement(
         'Creation profile create-text-v1 supports text elements only',
       );
     }
+  } else if (element.type === 'chart') {
+    validateChartElement(element, path, baseKeys, profile, keys, issues);
   } else if (element.type === 'group') {
     rejectUnknownKeys(element, [...baseKeys, 'elements'], path, issues);
     validateElementArray(
@@ -894,7 +1108,8 @@ function validateElement(
     }
     if (
       profile === 'create-native-v1' &&
-      (element.type === 'group' ||
+      (element.type === 'chart' ||
+        element.type === 'group' ||
         element.type === 'image' ||
         element.type === 'table') &&
       (authored.fillColor !== undefined ||
@@ -930,6 +1145,7 @@ function validateElement(
     } else if (
       isCreationProfile(profile) &&
       (element.type === 'image' ||
+        element.type === 'chart' ||
         element.type === 'group' ||
         element.type === 'shape' ||
         element.type === 'table' ||
