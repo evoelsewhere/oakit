@@ -5,6 +5,7 @@ import { decodeBase64 } from '../../src/common/binary/base64';
 import {
   createPptx,
   parsePptx,
+  readPptxRoundTrip,
   renderPptxToSvg,
   type PptxSceneDocument,
   type PptxSceneGroupElement,
@@ -167,5 +168,40 @@ describe('native PowerPoint group creation', () => {
 
     expect(second.data).toEqual(first.data);
     expect(second.report).toEqual(first.report);
+  });
+
+  it('creates recursive round-trip keys with exact group child spaces', async () => {
+    const created = await createPptx(scene());
+    const snapshot = await readPptxRoundTrip(created.data);
+
+    expect(snapshot.document.slides[0]?.elements[0]).toMatchObject({
+      elements: [
+        { key: 'slide-1-element-1-element-1', type: 'shape' },
+        { key: 'slide-1-element-1-element-2', type: 'text' },
+        { key: 'slide-1-element-1-element-3', type: 'image' },
+        {
+          elements: [
+            {
+              key: 'slide-1-element-1-element-4-element-1',
+              type: 'shape',
+            },
+          ],
+          key: 'slide-1-element-1-element-4',
+          resolved: {
+            transform: {
+              childSpace: { height: 80, width: 80, x: 0, y: 0 },
+            },
+          },
+          type: 'group',
+        },
+      ],
+      key: 'slide-1-element-1',
+      resolved: {
+        transform: {
+          childSpace: { height: 200, width: 400, x: 0, y: 0 },
+        },
+      },
+      type: 'group',
+    });
   });
 });

@@ -139,6 +139,39 @@ function tableScene(): PptxSceneDocument {
   };
 }
 
+function groupScene(): PptxSceneDocument {
+  return {
+    layouts: [],
+    masters: [],
+    media: [],
+    schemaVersion: 2,
+    size: { height: 540, width: 960 },
+    slides: [
+      {
+        elements: [
+          {
+            authored: {},
+            elements: [
+              {
+                authored: {},
+                feature: 'shape',
+                key: 'group-child',
+                resolved: { hidden: false },
+                type: 'unsupported',
+              },
+            ],
+            key: 'group-1',
+            resolved: { hidden: false },
+            type: 'group',
+          },
+        ],
+        key: 'group-slide',
+      },
+    ],
+    themes: [],
+  };
+}
+
 describe('PowerPoint round-trip snapshot consistency', () => {
   it('locks the R0 support and version identifiers', () => {
     expect(createPptxRoundTripSupportProfile()).toEqual({
@@ -340,6 +373,19 @@ describe('PowerPoint round-trip snapshot consistency', () => {
     });
     const expectedManifest =
       '{"format":"pptx","keyManifest":{"layouts":[],"masters":[],"slides":[{"elements":[{"key":"table-1","rows":[[[{"children":["table-run"],"key":"table-paragraph"}]]]}],"key":"table-slide"}],"themes":[]},"schemaVersion":1,"source":{"byteLength":3,"conformance":"strict","sha256":"abc"},"supportProfile":{"effectiveLevel":"R0","id":"pptx-roundtrip-r0","producerMatrix":[],"version":"1"}}';
+
+    expect(consistency.sourceManifestSha256).toBe(sha256(expectedManifest));
+  });
+
+  it('binds recursive native group ownership into the source manifest', async () => {
+    const consistency = await createPptxSnapshotConsistency({
+      document: groupScene(),
+      operations: [],
+      source: { byteLength: 3, conformance: 'strict', sha256: 'abc' },
+      supportProfile: createPptxRoundTripSupportProfile(),
+    });
+    const expectedManifest =
+      '{"format":"pptx","keyManifest":{"layouts":[],"masters":[],"slides":[{"elements":[{"elements":[{"key":"group-child"}],"key":"group-1"}],"key":"group-slide"}],"themes":[]},"schemaVersion":1,"source":{"byteLength":3,"conformance":"strict","sha256":"abc"},"supportProfile":{"effectiveLevel":"R0","id":"pptx-roundtrip-r0","producerMatrix":[],"version":"1"}}';
 
     expect(consistency.sourceManifestSha256).toBe(sha256(expectedManifest));
   });
