@@ -28,7 +28,7 @@ function scene(): PptxSceneDocument {
             authored: {
               transform: {
                 childSpace: { height: 100, width: 100, x: 10, y: 20 },
-                height: 100,
+                height: 200,
                 width: 200,
                 x: 100,
                 y: 120,
