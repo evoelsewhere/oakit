@@ -18,6 +18,7 @@ import {
   XlsxMediaSession,
   loadXlsxDrawings,
 } from './internal/drawing';
+import { loadXlsxDocumentProperties } from './internal/document-properties';
 import {
   loadXlsxExternalMetadata,
   loadXlsxQueryTables,
@@ -64,6 +65,7 @@ import type {
   XlsxComment,
   XlsxDiagnostic,
   XlsxDocument,
+  XlsxDocumentProperties,
   XlsxDrawing,
   XlsxInput,
   XlsxParseOptions,
@@ -259,6 +261,20 @@ async function parseXlsxCore(
     connections: [],
     externalLinks: [],
   };
+  let documentProperties: XlsxDocumentProperties | undefined;
+  try {
+    documentProperties = await loadXlsxDocumentProperties(
+      discovery,
+      reader,
+      limits,
+      budget,
+    );
+  } catch (error) {
+    if (error instanceof XlsxResourceLimitError) {
+      failResource(error, diagnostics);
+    }
+    if (!recoverOptionalFeature(error, options, diagnostics)) throw error;
+  }
   try {
     pivotCacheResult = await loadXlsxPivotCaches(
       manifest.pivotCaches,
@@ -497,6 +513,7 @@ async function parseXlsxCore(
       ? {}
       : { connections: externalMetadataResult.connections }),
     differentialStyles: [...styles.differentialStyles],
+    ...(documentProperties === undefined ? {} : { documentProperties }),
     ...(externalMetadataResult.externalLinks.length === 0
       ? {}
       : { externalLinks: externalMetadataResult.externalLinks }),

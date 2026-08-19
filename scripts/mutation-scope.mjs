@@ -80,6 +80,7 @@ export const mutatedFiles = [
   'src/formats/xlsx/internal/conditional-format.ts',
   'src/formats/xlsx/internal/date-system.ts',
   'src/formats/xlsx/internal/data-validation.ts',
+  'src/formats/xlsx/internal/document-properties.ts',
   'src/formats/xlsx/internal/drawing.ts',
   'src/formats/xlsx/internal/external-metadata.ts',
   'src/formats/xlsx/internal/formula.ts',

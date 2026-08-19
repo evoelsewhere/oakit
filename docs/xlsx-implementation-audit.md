@@ -79,6 +79,29 @@ zero survivor, no-coverage, or timeout. Known/unknown extension inventory,
 producer corpus, and edited-output active/signature policy remain separate
 release slices.
 
+### Document-properties milestone
+
+Complete reader evidence now exists in `internal/document-properties.ts`,
+`test/xlsx/document-properties.test.ts`, and
+`test/xlsx/document-properties-internal.test.ts`. Package-root relationships,
+content types, Transitional/Strict core/app/custom namespaces, mixed namespace
+ownership, duplicate roots/properties/IDs/names, and malformed typed values are
+validated without exposing relationship IDs or raw XML. Core and application
+metadata is normalized into portable optional fields; application heading and
+title vectors retain ordered typed values. Custom safe scalars preserve strings,
+booleans, finite numbers, exact decimals, validated date-times, empty/null, and
+signed/unsigned integers through 64 bits without precision loss. Binary,
+container, signature, and hyperlink-vector property payloads fail with a stable
+`unsupported-feature` diagnostic instead of escaping opaque data.
+
+All returned text is XML-decoded, remains explicitly untrusted, and shares the
+aggregate `maxTextCharacters` budget. Tolerant mode omits a malformed optional
+property set with a bounded warning; strict mode rejects it. Standalone JSON and
+byte-identical R0 are covered. Full-module force mutation evidence is 100%:
+495 killed plus 221 compile errors across 716 mutants, with zero survivor,
+no-coverage, or timeout; changed parser integration and adjacent owner ranges
+also retain aggregate 100%.
+
 ## Reader contract audit
 
 ### Public boundary and core behavior
@@ -151,7 +174,7 @@ Every row below retains the class assigned by the reader plan.
 | Active/embedded content      | Diagnostic | Recognize and omit/reject OLE, ActiveX, scripts, and executables by mode                        | Complete |
 | Known extensions             | Required   | Namespace-specific normalized contracts and producer fixtures                                   | Missing  |
 | Unknown extensions           | Diagnostic | Stable safe omission or strict rejection without raw XML                                        | Missing  |
-| Document properties          | Required   | Core/app/custom typed values, malformed types, untrusted text                                   | Missing  |
+| Document properties          | Required   | Core/app/custom typed values, malformed types, untrusted text                                   | Complete |
 
 ### Reader limits and failure contracts
 

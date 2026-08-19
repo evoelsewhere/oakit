@@ -409,6 +409,77 @@ export interface XlsxWorkbookProperties {
   views: XlsxWorkbookView[];
 }
 
+export interface XlsxCoreDocumentProperties {
+  category?: string;
+  contentStatus?: string;
+  contentType?: string;
+  created?: string;
+  creator?: string;
+  description?: string;
+  identifier?: string;
+  keywords?: string;
+  language?: string;
+  lastModifiedBy?: string;
+  lastPrinted?: string;
+  modified?: string;
+  revision?: string;
+  subject?: string;
+  title?: string;
+  version?: string;
+}
+
+export interface XlsxApplicationDocumentProperties {
+  application?: string;
+  applicationVersion?: string;
+  characters?: number;
+  charactersWithSpaces?: number;
+  company?: string;
+  documentSecurity?: number;
+  headingPairs?: { count: number; heading: string }[];
+  hiddenSlides?: number;
+  hyperlinkBase?: string;
+  hyperlinksChanged?: boolean;
+  lines?: number;
+  linksUpToDate?: boolean;
+  manager?: string;
+  multimediaClips?: number;
+  notes?: number;
+  pages?: number;
+  paragraphs?: number;
+  presentationFormat?: string;
+  scaleCrop?: boolean;
+  sharedDocument?: boolean;
+  slides?: number;
+  template?: string;
+  titlesOfParts?: string[];
+  totalTimeMinutes?: number;
+  words?: number;
+}
+
+export type XlsxCustomDocumentPropertyValue =
+  | { kind: 'boolean'; value: boolean }
+  | { kind: 'date-time'; value: string }
+  | { kind: 'decimal'; value: string }
+  | { kind: 'empty' }
+  | { kind: 'integer'; value: string }
+  | { kind: 'null' }
+  | { kind: 'number'; value: number }
+  | { kind: 'string'; value: string };
+
+export interface XlsxCustomDocumentProperty {
+  formatId: string;
+  linkTarget?: string;
+  name: string;
+  propertyId: number;
+  value: XlsxCustomDocumentPropertyValue;
+}
+
+export interface XlsxDocumentProperties {
+  application?: XlsxApplicationDocumentProperties;
+  core?: XlsxCoreDocumentProperties;
+  custom?: XlsxCustomDocumentProperty[];
+}
+
 export interface XlsxWorkbookView {
   activeSheetIndex: number;
   autoFilterDateGrouping: boolean;
@@ -1671,6 +1742,7 @@ export type XlsxSheet = XlsxChartSheet | XlsxWorksheet;
 export interface XlsxDocument {
   connections?: XlsxConnection[];
   differentialStyles: XlsxStyle[];
+  documentProperties?: XlsxDocumentProperties;
   externalLinks?: XlsxExternalLink[];
   namedStyles: XlsxNamedStyle[];
   pivotCaches?: XlsxPivotCache[];
