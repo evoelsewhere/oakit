@@ -148,4 +148,97 @@ describe('PowerPoint patch orchestration', () => {
       ).rejects.toThrow('PowerPoint text edit target index is unsafe');
     }
   });
+
+  it('rejects invalid nested transform ownership paths', async () => {
+    const data = await createMinimalPptx();
+    const document = await parse(data, { imageMode: 'none' });
+    const operation: PptxRoundTripOperation = {
+      expectedTransform: {
+        flipHorizontal: false,
+        flipVertical: false,
+        height: 10,
+        rotation: 0,
+        width: 10,
+        x: 1,
+        y: 2,
+      },
+      id: 'set-transform-1',
+      kind: 'set-transform',
+      targetKey: 'slide-1-element-1-element-1',
+      value: {
+        flipHorizontal: false,
+        flipVertical: false,
+        height: 20,
+        rotation: 0,
+        width: 20,
+        x: 3,
+        y: 4,
+      },
+    };
+    const child = {
+      height: 10,
+      id: '3',
+      isFlipH: false,
+      isFlipV: false,
+      left: 1,
+      order: 0,
+      rotate: 0,
+      top: 2,
+      type: 'shape',
+      width: 10,
+    } as const;
+    const group = {
+      elements: [child],
+      height: 20,
+      id: '2',
+      isFlipH: false,
+      isFlipV: false,
+      left: 0,
+      order: 0,
+      rotate: 0,
+      top: 0,
+      type: 'group',
+      width: 20,
+    } as const;
+    const slide = document.slides[0];
+    if (slide === undefined) throw new Error('Expected slide');
+    slide.elements = [group as never];
+
+    await expect(
+      patchPptxOperations(
+        data,
+        document,
+        [operation],
+        resolvePptxResourceLimits(),
+      ),
+    ).rejects.toThrow(
+      'PowerPoint nested transform ancestor has no child coordinate space',
+    );
+
+    const groupWithSpace = group as typeof group & {
+      childSpace: { height: number; width: number; x: number; y: number };
+    };
+    groupWithSpace.childSpace = { height: 20, width: 20, x: 0, y: 0 };
+    operation.targetKey = 'slide-1-element-1-element-1-element-1';
+    await expect(
+      patchPptxOperations(
+        data,
+        document,
+        [operation],
+        resolvePptxResourceLimits(),
+      ),
+    ).rejects.toThrow(
+      'PowerPoint transform target path crosses a non-group element',
+    );
+
+    operation.targetKey = `slide-1-element-1-element-${'9'.repeat(20)}`;
+    await expect(
+      patchPptxOperations(
+        data,
+        document,
+        [operation],
+        resolvePptxResourceLimits(),
+      ),
+    ).rejects.toThrow('PowerPoint transform target index is unsafe');
+  });
 });

@@ -291,6 +291,97 @@ describe('native PowerPoint group transform editing', () => {
     });
   });
 
+  it('edits a deep shape through two ancestor coordinate spaces', async () => {
+    const deepScene = scene();
+    const outer = deepScene.slides[0]?.elements[0];
+    if (outer?.type !== 'group') throw new Error('Expected outer group');
+    const outerTransform = outer.authored.transform;
+    if (outerTransform === undefined) {
+      throw new Error('Expected outer group transform');
+    }
+    outerTransform.width = 300;
+    const snapshot = await readPptxRoundTrip(
+      (await createPptx(deepScene)).data,
+    );
+    const value = {
+      flipHorizontal: false,
+      flipVertical: false,
+      height: 60,
+      rotation: 0,
+      width: 60,
+      x: 30,
+      y: 40,
+    };
+    const edited = await setPptxRoundTripShapeTransform(snapshot, {
+      targetKey: 'slide-1-element-1-element-2-element-1',
+      value,
+    });
+    const verified = await readPptxRoundTrip(
+      (await writePptxRoundTrip(edited)).data,
+    );
+    const verifiedOuter = verified.document.slides[0]?.elements[0];
+    if (verifiedOuter?.type !== 'group') {
+      throw new Error('Expected verified outer group');
+    }
+    const nested = verifiedOuter.elements[1];
+    if (nested?.type !== 'group') throw new Error('Expected nested group');
+
+    expect(nested.elements[0]).toMatchObject({
+      key: 'slide-1-element-1-element-2-element-1',
+      resolved: { transform: value },
+      type: 'shape',
+    });
+  });
+
+  it.each([90, -90])(
+    'edits a nested shape rotated by %d degrees',
+    async (rotation) => {
+      const rotatedScene = scene();
+      const outer = rotatedScene.slides[0]?.elements[0];
+      if (outer?.type !== 'group') throw new Error('Expected outer group');
+      const outerTransform = outer.authored.transform;
+      if (outerTransform === undefined) {
+        throw new Error('Expected outer group transform');
+      }
+      outerTransform.width = 300;
+      const child = outer.elements[0];
+      if (child === undefined) throw new Error('Expected rotated child');
+      const sourceTransform = child.authored.transform;
+      if (sourceTransform === undefined) {
+        throw new Error('Expected rotated child transform');
+      }
+      sourceTransform.rotation = rotation;
+      const snapshot = await readPptxRoundTrip(
+        (await createPptx(rotatedScene)).data,
+      );
+      const value = {
+        flipHorizontal: false,
+        flipVertical: false,
+        height: 150,
+        rotation,
+        width: 80,
+        x: 50,
+        y: 60,
+      };
+      const edited = await setPptxRoundTripShapeTransform(snapshot, {
+        targetKey: 'slide-1-element-1-element-1',
+        value,
+      });
+      const verified = await readPptxRoundTrip(
+        (await writePptxRoundTrip(edited)).data,
+      );
+      const verifiedOuter = verified.document.slides[0]?.elements[0];
+      if (verifiedOuter?.type !== 'group') {
+        throw new Error('Expected verified outer group');
+      }
+
+      expect(verifiedOuter.elements[0]).toMatchObject({
+        resolved: { transform: value },
+        type: 'shape',
+      });
+    },
+  );
+
   it('rejects malformed group coordinate spaces in portable snapshots', async () => {
     const snapshot = await readPptxRoundTrip((await createPptx(scene())).data);
     const edited = await setPptxRoundTripGroupTransform(snapshot, {
