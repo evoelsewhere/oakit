@@ -23,6 +23,7 @@ service are not runtime dependencies.
 | Move, resize, rotate, or flip a native shape | `setPptxRoundTripShapeTransform`           | Native shape transform with part preservation   |
 | Move, resize, rotate, or flip a native image | `setPptxRoundTripImageTransform`           | Native picture transform; media bytes preserved |
 | Move, resize, rotate, or flip a native table | `setPptxRoundTripTableTransform`           | Native table frame and proportional grid patch  |
+| Transform a native nested group              | `setPptxRoundTripGroupTransform`           | Outer/child spaces and descendants verified     |
 | Create a new bounded text deck               | `createPptx`                               | Deterministic PPTX bytes and write report       |
 | Run the same workflows from a shell          | `oakit` CLI                                | JSON, PPTX, SVG, or PNG files                   |
 
@@ -659,6 +660,51 @@ must set `hMerge`, `vMerge`, or both to match the occupied grid rectangle. Scene
 validation rejects out-of-bounds, overlapping, or inconsistent spans before
 package generation.
 
+## Create and edit a native group
+
+A group owns an ordered recursive `elements` array. Its authored transform has
+two coordinate systems: the outer `x`, `y`, `width`, and `height`, plus an
+explicit `childSpace` containing `x`, `y`, `width`, and `height`. OAKit assigns
+shape IDs in deterministic preorder and resolves images nested at any depth.
+
+```ts
+import {
+  readPptxRoundTrip,
+  setPptxRoundTripGroupTransform,
+  writePptxRoundTrip,
+} from '@evoelsewhere/oakit';
+
+const snapshot = await readPptxRoundTrip(input);
+const group = snapshot.document.slides
+  .flatMap((slide) => slide.elements)
+  .find(
+    (element) =>
+      element.type === 'group' && element.resolved.transform !== undefined,
+  );
+if (group?.type !== 'group' || !group.resolved.transform) {
+  throw new Error('No editable native group');
+}
+
+const edited = await setPptxRoundTripGroupTransform(snapshot, {
+  targetKey: group.key,
+  value: {
+    ...group.resolved.transform,
+    x: group.resolved.transform.x + 20,
+    width: group.resolved.transform.width * 1.25,
+    rotation: 10,
+    childSpace: { ...group.resolved.transform.childSpace },
+  },
+});
+const output = await writePptxRoundTrip(edited);
+```
+
+The operation patches only the owning slide's direct group transform:
+`a:off`, `a:ext`, `a:chOff`, and `a:chExt`. The semantic verifier recalculates
+direct and nested descendant geometry with the same non-uniform and 90°/270°
+rotation rules as the parser. Every untouched package payload remains
+byte-exact. Groups without a finite positive child space stay
+preservation-only.
+
 ## Create a new native presentation
 
 Creation uses `PptxSceneDocument` schema version 2. Dimensions and transforms
@@ -976,16 +1022,16 @@ safe value.
 
 ## Capability boundaries
 
-| Capability                      | Current release claim                                                   |
-| ------------------------------- | ----------------------------------------------------------------------- |
-| Read PPTX                       | Bounded structured parsing with strict/tolerant diagnostics             |
-| Create PPTX                     | Text C3 producer profile; native shape/image/table C2 runtime profile   |
-| Edit PPTX                       | Text R3 producer profile; native shape/image/table transform R2 profile |
-| Preserve unchanged PPTX         | Byte-exact R0                                                           |
-| Render SVG                      | Node.js and browser, no Office runtime                                  |
-| Render PNG                      | Node.js, no Office runtime                                              |
-| Arbitrary PPTX creation/editing | Not claimed                                                             |
-| Pixel-identical rendering       | Not claimed                                                             |
+| Capability                      | Current release claim                                                         |
+| ------------------------------- | ----------------------------------------------------------------------------- |
+| Read PPTX                       | Bounded structured parsing with strict/tolerant diagnostics                   |
+| Create PPTX                     | Text C3 producer profile; native shape/image/table/group C2 runtime profile   |
+| Edit PPTX                       | Text R3 producer profile; native shape/image/table/group transform R2 profile |
+| Preserve unchanged PPTX         | Byte-exact R0                                                                 |
+| Render SVG                      | Node.js and browser, no Office runtime                                        |
+| Render PNG                      | Node.js, no Office runtime                                                    |
+| Arbitrary PPTX creation/editing | Not claimed                                                                   |
+| Pixel-identical rendering       | Not claimed                                                                   |
 
 The current real-world evidence covers 30 transient SlidesMania templates, 733
 slides, and 9,285 elements before and after controlled Google Slides
