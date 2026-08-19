@@ -11,6 +11,7 @@ export const mutationModules = [
       'test/black-box/roundtrip-image-transform.test.ts',
       'test/black-box/roundtrip-table-transform.test.ts',
       'test/black-box/roundtrip-group-transform.test.ts',
+      'test/black-box/roundtrip-chart-transform.test.ts',
     ],
   },
   {
@@ -50,6 +51,7 @@ export const mutationModules = [
     tests: [
       'test/pptx/roundtrip-transform-xml.test.ts',
       'test/pptx/roundtrip-group-transform-xml.test.ts',
+      'test/black-box/roundtrip-chart-transform.test.ts',
     ],
   },
   {
@@ -59,6 +61,7 @@ export const mutationModules = [
     tests: [
       'test/pptx/roundtrip-consistency.test.ts',
       'test/black-box/roundtrip-shape-transform.test.ts',
+      'test/black-box/roundtrip-chart-transform.test.ts',
     ],
   },
   {
@@ -72,6 +75,7 @@ export const mutationModules = [
       'test/black-box/roundtrip-image-transform.test.ts',
       'test/black-box/roundtrip-table-transform.test.ts',
       'test/black-box/roundtrip-group-transform.test.ts',
+      'test/black-box/roundtrip-chart-transform.test.ts',
     ],
   },
   {
@@ -81,6 +85,7 @@ export const mutationModules = [
     tests: [
       'test/pptx/roundtrip-preview.test.ts',
       'test/black-box/roundtrip-shape-transform.test.ts',
+      'test/black-box/roundtrip-chart-transform.test.ts',
     ],
   },
   {
@@ -129,6 +134,7 @@ export const mutationModules = [
       'test/black-box/roundtrip-image-transform.test.ts',
       'test/black-box/roundtrip-table-transform.test.ts',
       'test/black-box/roundtrip-group-transform.test.ts',
+      'test/black-box/roundtrip-chart-transform.test.ts',
     ],
   },
   {
