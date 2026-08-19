@@ -221,7 +221,8 @@ describe('native PowerPoint group transform editing', () => {
     const child = group.elements[0];
     if (child === undefined) throw new Error('Expected group child');
     const childTransform = child.authored.transform;
-    if (childTransform === undefined) throw new Error('Expected child transform');
+    if (childTransform === undefined)
+      throw new Error('Expected child transform');
     childTransform.rotation = -90;
     const snapshot = await readPptxRoundTrip(
       (await createPptx(negativeRotationScene)).data,

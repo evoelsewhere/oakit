@@ -585,22 +585,23 @@ describe('PowerPoint round-trip semantic preview', () => {
       usedFonts: [],
     } as PptxDocument;
 
-    expect(createPowerPointRoundTripPreview(document).slides[0]?.elements[0])
-      .toMatchObject({
-        elements: [
-          {
-            key: 'slide-1-element-1-element-1',
-            type: 'shape',
-          },
-        ],
-        key: 'slide-1-element-1',
-        resolved: {
-          transform: {
-            childSpace: { height: 50, width: 100, x: 10, y: 20 },
-          },
+    expect(
+      createPowerPointRoundTripPreview(document).slides[0]?.elements[0],
+    ).toMatchObject({
+      elements: [
+        {
+          key: 'slide-1-element-1-element-1',
+          type: 'shape',
         },
-        type: 'group',
-      });
+      ],
+      key: 'slide-1-element-1',
+      resolved: {
+        transform: {
+          childSpace: { height: 50, width: 100, x: 10, y: 20 },
+        },
+      },
+      type: 'group',
+    });
   });
 
   it.each([

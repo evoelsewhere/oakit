@@ -86,9 +86,7 @@ describe('PowerPoint group transform patching', () => {
     delete omitted.expectedTransform.flipVertical;
     delete omitted.expectedTransform.rotation;
 
-    expect(() =>
-      patchPptxGroupTransformXml(xml(), '2', omitted),
-    ).not.toThrow();
+    expect(() => patchPptxGroupTransformXml(xml(), '2', omitted)).not.toThrow();
   });
 
   it('supports namespace aliases and omits false optional attributes', () => {
