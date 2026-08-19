@@ -7,6 +7,7 @@ import { escapeXmlAttribute } from './xml';
 import { serializePicture } from './image';
 import { serializeTable } from './table';
 import { serializeGroup } from './group';
+import { serializeChartFrame } from './chart';
 
 const DRAWING_NAMESPACE =
   'http://schemas.openxmlformats.org/drawingml/2006/main';
@@ -22,6 +23,7 @@ function serializeElement(
   element: PptxSceneElement,
   context: PptxTextSerializationContext,
   imageRelationships: ReadonlyMap<string, string>,
+  chartRelationships: ReadonlyMap<string, string>,
   allocateShapeId: () => number,
 ): string {
   if (element.type === 'unsupported') {
@@ -43,13 +45,28 @@ function serializeElement(
       }
       const children = element.elements
         .map((child) =>
-          serializeElement(child, context, imageRelationships, allocateShapeId),
+          serializeElement(
+            child,
+            context,
+            imageRelationships,
+            chartRelationships,
+            allocateShapeId,
+          ),
         )
         .join('');
       return serializeGroup(element, transform, shapeId, children);
     }
     case 'text':
       return serializeTextShape(element, transform, shapeId, context);
+    case 'chart': {
+      const relationshipId = chartRelationships.get(element.key);
+      if (relationshipId === undefined) {
+        throw new TypeError(
+          `PowerPoint chart element ${element.key} has no chart relationship`,
+        );
+      }
+      return serializeChartFrame(element, transform, shapeId, relationshipId);
+    }
     case 'shape':
       return serializeShape(element, transform, shapeId);
     case 'image': {
@@ -70,6 +87,7 @@ export function serializeSlide(
   slide: PptxSceneSlide,
   context: PptxTextSerializationContext,
   imageRelationships: ReadonlyMap<string, string> = new Map(),
+  chartRelationships: ReadonlyMap<string, string> = new Map(),
 ): string {
   const rootAttributes = [
     `xmlns:a="${DRAWING_NAMESPACE}"`,
@@ -93,7 +111,13 @@ export function serializeSlide(
   };
   const elements = slide.elements
     .map((element) =>
-      serializeElement(element, context, imageRelationships, allocateShapeId),
+      serializeElement(
+        element,
+        context,
+        imageRelationships,
+        chartRelationships,
+        allocateShapeId,
+      ),
     )
     .join('');
   return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><p:sld ${rootAttributes.join(' ')}><p:cSld${commonSlideName}>${background}<p:spTree>${SHAPE_TREE_ROOT}${elements}</p:spTree></p:cSld><p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr></p:sld>`;

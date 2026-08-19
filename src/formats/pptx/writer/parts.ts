@@ -18,6 +18,8 @@ import {
 } from './presentation';
 import { serializeSlide } from './slide';
 import { serializeMinimalTheme } from './theme';
+import { serializeChartPart } from './chart';
+import type { PptxSceneChartElement } from '../scene-types';
 
 export interface PptxSerializedPart {
   data: string | Uint8Array;
@@ -28,6 +30,12 @@ interface SerializedMedia {
   data: Uint8Array;
   key: string;
   mimeType: 'image/jpeg' | 'image/png';
+  path: string;
+}
+
+interface SerializedChart {
+  data: string;
+  element: PptxSceneChartElement;
   path: string;
 }
 
@@ -53,9 +61,23 @@ function serializeMedia(scene: PptxSceneDocument): SerializedMedia[] {
   }));
 }
 
+function serializeCharts(scene: PptxSceneDocument): SerializedChart[] {
+  const charts = scene.slides.flatMap((slide) =>
+    flattenSceneElements(slide.elements).filter(
+      (element): element is PptxSceneChartElement => element.type === 'chart',
+    ),
+  );
+  return charts.map((element, index) => ({
+    data: serializeChartPart(element, index + 1),
+    element,
+    path: `ppt/charts/chart${index + 1}.xml`,
+  }));
+}
+
 function fixedParts(
   scene: PptxSceneDocument,
   media: readonly SerializedMedia[],
+  charts: readonly SerializedChart[],
 ): PptxSerializedPart[] {
   const slideCount = scene.slides.length;
   return [
@@ -63,6 +85,7 @@ function fixedParts(
       data: serializeContentTypes(
         slideCount,
         media.map((item) => item.mimeType),
+        charts.length,
       ),
       path: '[Content_Types].xml',
     },
@@ -100,9 +123,12 @@ export function serializePowerPointParts(
 ): PptxSerializedPart[] {
   assertPowerPointSlideCount(scene.slides.length);
   const media = serializeMedia(scene);
+  const charts = serializeCharts(scene);
   const mediaByKey = new Map(media.map((item) => [item.key, item]));
-  const parts = fixedParts(scene, media);
+  const chartByKey = new Map(charts.map((item) => [item.element.key, item]));
+  const parts = fixedParts(scene, media, charts);
   parts.push(...media.map(({ data, path }) => ({ data, path })));
+  parts.push(...charts.map(({ data, path }) => ({ data, path })));
   const fieldIds = createFieldIdAllocator();
   scene.slides.forEach((slide, index) => {
     const slideNumber = index + 1;
@@ -129,12 +155,35 @@ export function serializePowerPointParts(
         `rId${imageIndex + 2}`,
       ]),
     );
+    const chartElements = flattenSceneElements(slide.elements).filter(
+      (element): element is PptxSceneChartElement => element.type === 'chart',
+    );
+    const chartTargets = chartElements.map((element) => {
+      const item = chartByKey.get(element.key);
+      if (item === undefined) {
+        throw new TypeError(
+          `PowerPoint chart element ${element.key} has no serialized chart part`,
+        );
+      }
+      return `../charts/${item.path.slice('ppt/charts/'.length)}`;
+    });
+    const chartRelationships = new Map(
+      chartElements.map((element, chartIndex) => [
+        element.key,
+        `rId${imageElements.length + chartIndex + 2}`,
+      ]),
+    );
     parts.push({
-      data: serializeSlide(slide, fieldIds, imageRelationships),
+      data: serializeSlide(
+        slide,
+        fieldIds,
+        imageRelationships,
+        chartRelationships,
+      ),
       path: `ppt/slides/slide${slideNumber}.xml`,
     });
     parts.push({
-      data: serializeSlideRelationships(imageTargets),
+      data: serializeSlideRelationships(imageTargets, chartTargets),
       path: `ppt/slides/_rels/slide${slideNumber}.xml.rels`,
     });
   });

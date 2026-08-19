@@ -4,6 +4,7 @@ import { SaxesParser } from 'saxes';
 import { describe, expect, it } from 'vitest';
 
 import type {
+  PptxSceneChartElement,
   PptxSceneDocument,
   PptxSceneMedia,
   PptxSceneSlide,
@@ -42,6 +43,26 @@ function fieldSlide(key: string, fieldType: string): PptxSceneSlide {
       },
     ],
     key,
+  };
+}
+
+function chartElement(key: string): PptxSceneChartElement {
+  return {
+    authored: {
+      transform: { height: 200, width: 400, x: 20, y: 30 },
+    },
+    chartType: 'barChart',
+    key,
+    resolved: { hidden: false },
+    series: [
+      {
+        categories: ['A', 'B'],
+        key: `${key}-series`,
+        name: 'Series',
+        values: [1, 2],
+      },
+    ],
+    type: 'chart',
   };
 }
 
@@ -229,6 +250,52 @@ describe('PowerPoint package part serialization', () => {
     expect(xmlByPath(parts, 'ppt/slides/_rels/slide1.xml.rels')).toContain(
       'Target="../media/image1.png"',
     );
+  });
+
+  it('owns native chart parts and binds them after image relationships', () => {
+    const input = scene(
+      [
+        {
+          elements: [
+            {
+              authored: {
+                transform: { height: 40, width: 50, x: 10, y: 20 },
+              },
+              key: 'picture',
+              mediaKey: 'media',
+              resolved: { hidden: false },
+              type: 'image',
+            },
+            chartElement('chart'),
+          ],
+          key: 'slide',
+        },
+      ],
+      [
+        {
+          data: new Uint8Array([0x89, 0x50, 0x4e, 0x47]),
+          key: 'media',
+          mimeType: 'image/png',
+        },
+      ],
+    );
+
+    const parts = serializePowerPointParts(input);
+
+    expect(parts.map(({ path }) => path).slice(9)).toEqual([
+      'ppt/media/image1.png',
+      'ppt/charts/chart1.xml',
+      'ppt/slides/slide1.xml',
+      'ppt/slides/_rels/slide1.xml.rels',
+    ]);
+    expect(xmlByPath(parts, '[Content_Types].xml')).toContain(
+      'PartName="/ppt/charts/chart1.xml"',
+    );
+    expect(xmlByPath(parts, 'ppt/slides/slide1.xml')).toContain('r:id="rId3"');
+    const relationships = xmlByPath(parts, 'ppt/slides/_rels/slide1.xml.rels');
+    expect(relationships).toContain('Target="../media/image1.png"');
+    expect(relationships).toContain('Target="../charts/chart1.xml"');
+    expect(xmlByPath(parts, 'ppt/charts/chart1.xml')).toContain('<c:barChart>');
   });
 
   it('rejects an image reference missing from the media inventory', () => {

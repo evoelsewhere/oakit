@@ -58,11 +58,17 @@ export function serializeSlideLayoutRelationships(): string {
 
 export function serializeSlideRelationships(
   imageTargets: readonly string[] = [],
+  chartTargets: readonly string[] = [],
 ): string {
   const images = imageTargets.map((target, index) => ({
     id: `rId${index + 2}`,
     target,
     type: `${OFFICE_RELATIONSHIP_BASE}image`,
+  }));
+  const charts = chartTargets.map((target, index) => ({
+    id: `rId${imageTargets.length + index + 2}`,
+    target,
+    type: `${OFFICE_RELATIONSHIP_BASE}chart`,
   }));
   return serializeRelationships([
     {
@@ -71,5 +77,6 @@ export function serializeSlideRelationships(
       type: `${OFFICE_RELATIONSHIP_BASE}slideLayout`,
     },
     ...images,
+    ...charts,
   ]);
 }

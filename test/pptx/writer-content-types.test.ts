@@ -53,4 +53,27 @@ describe('PowerPoint content-type serialization', () => {
     expect(value).toContain('ContentType="image/png"');
     expect(value).toContain('ContentType="image/jpeg"');
   });
+
+  it('adds every native chart override in numeric order', () => {
+    const value = serializeContentTypes(1, [], 2);
+
+    expect(value).toContain(
+      '<Override PartName="/ppt/charts/chart1.xml" ContentType="application/vnd.openxmlformats-officedocument.drawingml.chart+xml"/>',
+    );
+    expect(value).toContain(
+      '<Override PartName="/ppt/charts/chart2.xml" ContentType="application/vnd.openxmlformats-officedocument.drawingml.chart+xml"/>',
+    );
+    expect(value.indexOf('chart1.xml')).toBeLessThan(
+      value.indexOf('chart2.xml'),
+    );
+  });
+
+  it.each([-1, 1.5, Number.NaN, Number.MAX_SAFE_INTEGER + 1])(
+    'rejects invalid chart count %s',
+    (chartCount) => {
+      expect(() => serializeContentTypes(1, [], chartCount)).toThrow(
+        'PowerPoint slide count must be a non-negative safe integer',
+      );
+    },
+  );
 });

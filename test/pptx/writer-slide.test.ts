@@ -204,4 +204,36 @@ describe('PowerPoint slide serialization', () => {
       serializeSlide(slide([image]), createFieldIdAllocator()),
     ).toThrow('PowerPoint image element picture has no media relationship');
   });
+
+  it('serializes chart elements only with an explicit chart relationship', () => {
+    const chart: PptxSceneElement = {
+      authored: {
+        transform: { height: 200, width: 400, x: 10, y: 20 },
+      },
+      chartType: 'barChart',
+      key: 'chart',
+      resolved: { hidden: false },
+      series: [
+        {
+          categories: ['A'],
+          key: 'series',
+          name: 'Series',
+          values: [1],
+        },
+      ],
+      type: 'chart',
+    };
+
+    expect(
+      serializeSlide(
+        slide([chart]),
+        createFieldIdAllocator(),
+        new Map(),
+        new Map([['chart', 'rId2']]),
+      ),
+    ).toContain('<c:chart xmlns:c=');
+    expect(() =>
+      serializeSlide(slide([chart]), createFieldIdAllocator()),
+    ).toThrow('PowerPoint chart element chart has no chart relationship');
+  });
 });

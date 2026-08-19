@@ -69,6 +69,17 @@ describe('PowerPoint package relationship graph serialization', () => {
     );
   });
 
+  it('allocates chart relationships after native images', () => {
+    expect(
+      serializeSlideRelationships(
+        ['../media/image1.png'],
+        ['../charts/chart1.xml', '../charts/chart2.xml'],
+      ),
+    ).toBe(
+      `${PREFIX}<Relationship Id="rId1" Type="${TYPE}slideLayout" Target="../slideLayouts/slideLayout1.xml"/><Relationship Id="rId2" Type="${TYPE}image" Target="../media/image1.png"/><Relationship Id="rId3" Type="${TYPE}chart" Target="../charts/chart1.xml"/><Relationship Id="rId4" Type="${TYPE}chart" Target="../charts/chart2.xml"/></Relationships>`,
+    );
+  });
+
   it.each([-1, 1.5, Number.NaN, Number.POSITIVE_INFINITY, 10_001])(
     'rejects invalid relationship slide count %s',
     (slideCount) => {

@@ -10,6 +10,8 @@ const SLIDE_MASTER_CONTENT_TYPE =
   'application/vnd.openxmlformats-officedocument.presentationml.slideMaster+xml';
 const THEME_CONTENT_TYPE =
   'application/vnd.openxmlformats-officedocument.theme+xml';
+const CHART_CONTENT_TYPE =
+  'application/vnd.openxmlformats-officedocument.drawingml.chart+xml';
 
 function assertSlideCount(slideCount: number): void {
   if (!Number.isSafeInteger(slideCount) || slideCount < 0) {
@@ -22,8 +24,10 @@ function assertSlideCount(slideCount: number): void {
 export function serializeContentTypes(
   slideCount: number,
   mediaTypes: readonly ('image/jpeg' | 'image/png')[] = [],
+  chartCount = 0,
 ): string {
   assertSlideCount(slideCount);
+  assertSlideCount(chartCount);
   const fixed =
     `<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>` +
     `<Default Extension="xml" ContentType="application/xml"/>` +
@@ -42,5 +46,10 @@ export function serializeContentTypes(
     (_, index) =>
       `<Override PartName="/ppt/slides/slide${index + 1}.xml" ContentType="${SLIDE_CONTENT_TYPE}"/>`,
   ).join('');
-  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="${CONTENT_TYPES_NAMESPACE}">${fixed}${slides}</Types>`;
+  const charts = Array.from(
+    { length: chartCount },
+    (_, index) =>
+      `<Override PartName="/ppt/charts/chart${index + 1}.xml" ContentType="${CHART_CONTENT_TYPE}"/>`,
+  ).join('');
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="${CONTENT_TYPES_NAMESPACE}">${fixed}${slides}${charts}</Types>`;
 }
