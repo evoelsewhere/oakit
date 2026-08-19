@@ -168,9 +168,22 @@ integrity, and exact/one-over limits.
 Full-module force mutation is 100% (`rich-value.ts`: 297 killed, 230 compile
 errors) with zero survivor, no-coverage, or timeout.
 
+`internal/feature-property-bag.ts` now follows the workbook-owned Microsoft
+2022/11 FeaturePropertyBag relationship, validates internal ownership and
+content type, and resolves the bounded `Checkbox` → `XFControls` →
+`XFComplement` → `XFComplements` graph. The styles parser recognizes only the
+published checkbox extension GUID and namespace, resolves authored complement
+indexes, and exposes `checkbox: true` on the normalized portable style while
+the cell retains its typed boolean value. Unknown style extensions remain
+unclaimed. Tests cover exact R0, standalone JSON, regular/reserved/default
+namespace forms, mapping order, every dependency and malformed-shape boundary,
+and exact aggregate style limits. Mutation is 100% (`feature-property-bag.ts`:
+168 killed, 85 compile errors; `styles.ts`: 343 killed, 159 compile errors) with
+zero survivor, no-coverage, or timeout.
+
 The feature-matrix row remains Partial until safe cell-image/web-image metadata,
-checkbox metadata, the remaining linked-data companion parts, and
-cross-producer corpus evidence are complete.
+the remaining linked-data companion parts, and cross-producer corpus evidence
+are complete.
 
 ## Reader contract audit
 

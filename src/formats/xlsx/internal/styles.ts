@@ -11,6 +11,12 @@ import {
 } from './resource-limits';
 import { parseXlsxStyleBorder } from './style-border';
 import { parseXlsxDifferentialStyle } from './style-differential';
+import {
+  EMPTY_XLSX_FEATURE_PROPERTY_BAGS,
+  loadXlsxFeaturePropertyBags,
+  xlsxFeaturePropertyBagNamespace,
+  type XlsxFeaturePropertyBagRegistry,
+} from './feature-property-bag';
 import { parseXlsxStyleFont } from './style-font';
 import { parseXlsxStyleFill } from './style-fill';
 import { parseXlsxXfFormatting } from './style-formatting';
@@ -23,7 +29,13 @@ type XmlRecord = Record<string, unknown>;
 
 type StyleCategory = keyof Pick<
   XlsxStyle,
-  'alignment' | 'border' | 'fill' | 'font' | 'numberFormat' | 'protection'
+  | 'alignment'
+  | 'border'
+  | 'checkbox'
+  | 'fill'
+  | 'font'
+  | 'numberFormat'
+  | 'protection'
 >;
 
 interface XlsxDirectXfStyle {
@@ -120,6 +132,82 @@ function rootEntry(
 
 function child(node: XmlRecord, prefix: string, localName: string): unknown {
   return node[prefix ? `${prefix}:${localName}` : localName];
+}
+
+function localName(name: string): string {
+  return name.slice(name.lastIndexOf(':') + 1);
+}
+
+function sourcePrefix(name: string): string {
+  const parts = name.split(':', 2);
+  if (parts.length === 1) return '';
+  return parts[0]!.startsWith('ns_') ? parts[0]!.slice(3) : parts[0]!;
+}
+
+function checkboxStyle(
+  xf: XmlRecord,
+  prefix: string,
+  part: string,
+  featureBags: XlsxFeaturePropertyBagRegistry,
+): boolean {
+  const rawList = child(xf, prefix, 'extLst');
+  if (rawList === undefined) return false;
+  const list = record(rawList);
+  if (!list) structureFailure('Styles XF extension list is invalid', part);
+  const extensions = records(child(list, prefix, 'ext'));
+  if (!extensions)
+    structureFailure('Styles XF extension list is invalid', part);
+  const matches = extensions.filter(
+    (extension) =>
+      attributes(extension).uri === '{C7286773-470A-42A8-94C5-96B5CB345126}',
+  );
+  if (matches.length === 0) return false;
+  if (matches.length !== 1) {
+    structureFailure('Styles checkbox extension is duplicated', part);
+  }
+  if (featureBags.part === null) {
+    throw new XlsxParseError({
+      code: 'missing-required-part',
+      message: 'Styles checkbox feature property bag is missing',
+      part,
+      severity: 'error',
+    });
+  }
+  const values: XmlRecord[] = [];
+  for (const [qualifiedName, value] of Object.entries(matches[0]!)) {
+    if (localName(qualifiedName) !== 'xfComplement') continue;
+    const nodes = Array.isArray(value) ? value : [value];
+    for (const node of nodes) {
+      const parsed = record(node);
+      if (!parsed)
+        structureFailure('Styles checkbox extension is invalid', part);
+      const source = sourcePrefix(qualifiedName);
+      const declaration = source ? `xmlns:${source}` : 'xmlns';
+      if (
+        (attributes(parsed)[declaration] ??
+          attributes(matches[0]!)[declaration]) !==
+        xlsxFeaturePropertyBagNamespace()
+      ) {
+        structureFailure(
+          'Styles checkbox extension has the wrong namespace',
+          part,
+        );
+      }
+      values.push(parsed);
+    }
+  }
+  if (values.length !== 1) {
+    structureFailure('Styles checkbox extension is invalid', part);
+  }
+  const index = unsignedInteger(
+    attributes(values[0]!).i,
+    'Styles checkbox feature reference is invalid',
+    part,
+  );
+  if (!featureBags.checkboxComplements.has(index)) {
+    valueFailure('Styles checkbox feature reference is invalid', part);
+  }
+  return true;
 }
 
 function unsignedInteger(
@@ -268,6 +356,7 @@ function directXfStyle(
   fonts: readonly NonNullable<XlsxStyle['font']>[],
   fills: readonly NonNullable<XlsxStyle['fill']>[],
   borders: readonly NonNullable<XlsxStyle['border']>[],
+  featureBags: XlsxFeaturePropertyBagRegistry,
 ): XlsxDirectXfStyle {
   const attrs = attributes(xf);
   const numFmtId =
@@ -297,6 +386,7 @@ function directXfStyle(
     part,
   );
   const formatting = parseXlsxXfFormatting(xf, prefix, part);
+  const checkbox = checkboxStyle(xf, prefix, part, featureBags);
   const border = borders[borderId]!;
   const fill = semanticFill(fills[fillId]);
   const font = fonts[fontId]!;
@@ -305,6 +395,7 @@ function directXfStyle(
     present: {
       alignment: child(xf, prefix, 'alignment') !== undefined,
       border: attrs.borderId !== undefined,
+      checkbox,
       fill: attrs.fillId !== undefined,
       font: attrs.fontId !== undefined,
       numberFormat: attrs.numFmtId !== undefined,
@@ -312,6 +403,7 @@ function directXfStyle(
     },
     style: {
       ...formatting,
+      ...(checkbox ? { checkbox: true } : {}),
       ...(Object.keys(border).length === 0 ? {} : { border }),
       ...(fill === undefined ? {} : { fill }),
       ...(Object.keys(font).length === 0 ? {} : { font }),
@@ -332,6 +424,7 @@ function applyFlags(attrs: XmlRecord, part: string): XlsxApplyFlags {
       'Styles XF applyBorder flag is invalid',
       part,
     ),
+    checkbox: undefined,
     fill: optionalBoolean(
       attrs.applyFill,
       'Styles XF applyFill flag is invalid',
@@ -375,6 +468,7 @@ function resolvedCellStyle(
   for (const category of [
     'alignment',
     'border',
+    'checkbox',
     'fill',
     'font',
     'numberFormat',
@@ -462,6 +556,7 @@ export function parseXlsxStylePart(
   dialect: XlsxWorkbookDiscovery['dialect'],
   part: string,
   limits: ResolvedXlsxResourceLimits,
+  featureBags: XlsxFeaturePropertyBagRegistry = EMPTY_XLSX_FEATURE_PROPERTY_BAGS,
 ): XlsxStyleTable {
   const { node: root, prefix } = rootEntry(value, dialect, part);
   const custom = customNumberFormats(root, prefix, part);
@@ -501,10 +596,11 @@ export function parseXlsxStylePart(
     xfs.length +
     differentialNodes.length +
     namedNodes.length;
-  if (totalStyles > limits.maxStyles) {
+  const aggregateStyles = totalStyles + featureBags.records;
+  if (aggregateStyles > limits.maxStyles) {
     throw new XlsxResourceLimitError(
       'maxStyles',
-      totalStyles,
+      aggregateStyles,
       limits.maxStyles,
       part,
     );
@@ -516,7 +612,16 @@ export function parseXlsxStylePart(
   const baseStyles = baseXfs.map((xf) => {
     applyFlags(attributes(xf), part);
     return Object.freeze(
-      directXfStyle(xf, prefix, part, custom, fonts, fills, borders).style,
+      directXfStyle(
+        xf,
+        prefix,
+        part,
+        custom,
+        fonts,
+        fills,
+        borders,
+        featureBags,
+      ).style,
     );
   });
   const differentialStyles = differentialNodes.map((dxf) =>
@@ -539,6 +644,7 @@ export function parseXlsxStylePart(
       fonts,
       fills,
       borders,
+      featureBags,
     );
     const style = resolvedCellStyle(
       baseStyles[baseIndex]!,
@@ -600,6 +706,12 @@ export async function loadXlsxStyles(
   const candidates = [...relationships.values()].filter(
     (relationship) => relationship.type === relationshipType,
   );
+  const featureBags = await loadXlsxFeaturePropertyBags(
+    relationships,
+    discovery,
+    reader,
+    limits,
+  );
   if (candidates.length === 0) return EMPTY_XLSX_STYLE_TABLE;
   if (candidates.length !== 1) {
     structureFailure(
@@ -632,5 +744,6 @@ export async function loadXlsxStyles(
     discovery.dialect,
     relationship.target,
     limits,
+    featureBags,
   );
 }

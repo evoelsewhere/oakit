@@ -84,6 +84,7 @@ export const mutatedFiles = [
   'src/formats/xlsx/internal/document-properties.ts',
   'src/formats/xlsx/internal/drawing.ts',
   'src/formats/xlsx/internal/external-metadata.ts',
+  'src/formats/xlsx/internal/feature-property-bag.ts',
   'src/formats/xlsx/internal/formula.ts',
   'src/formats/xlsx/internal/hyperlink.ts',
   'src/formats/xlsx/internal/number-format.ts',

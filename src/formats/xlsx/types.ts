@@ -384,6 +384,7 @@ export interface XlsxProtection {
 export interface XlsxStyle {
   alignment?: XlsxAlignment;
   border?: XlsxBorder;
+  checkbox?: boolean;
   fill?: XlsxFill;
   font?: XlsxFont;
   numberFormat?: string;
