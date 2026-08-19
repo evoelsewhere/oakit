@@ -52,6 +52,31 @@ function scene(): PptxSceneDocument {
   };
 }
 
+function nestedScene(): PptxSceneDocument {
+  const value = scene();
+  const chart = value.slides[0]?.elements[0];
+  if (chart?.type !== 'chart') throw new Error('Expected source chart');
+  chart.authored.transform = { height: 50, width: 100, x: 20, y: 20 };
+  value.slides[0]!.elements = [
+    {
+      authored: {
+        transform: {
+          childSpace: { height: 100, width: 200, x: 0, y: 0 },
+          height: 200,
+          width: 600,
+          x: 100,
+          y: 120,
+        },
+      },
+      elements: [chart],
+      key: 'chart-group',
+      resolved: { hidden: false },
+      type: 'group',
+    },
+  ];
+  return value;
+}
+
 const CHANGED_TRANSFORM: PptxSceneTransform = {
   flipHorizontal: false,
   flipVertical: false,
@@ -145,6 +170,42 @@ describe('native PowerPoint chart transform editing', () => {
     expect(output.report.operations).toMatchObject([
       { kind: 'set-transform', status: 'verified' },
     ]);
+  });
+
+  it('edits a chart nested inside a non-uniform group', async () => {
+    const created = await createPptx(nestedScene());
+    const snapshot = await readPptxRoundTrip(created.data);
+    const changed = {
+      flipHorizontal: false,
+      flipVertical: false,
+      height: 140,
+      rotation: 0,
+      width: 300,
+      x: 90,
+      y: 80,
+    };
+    const edited = await setPptxRoundTripChartTransform(snapshot, {
+      targetKey: 'slide-1-element-1-element-1',
+      value: changed,
+    });
+    const output = await writePptxRoundTrip(edited);
+    const [sourceParts, outputParts, verified] = await Promise.all([
+      payloads(created.data),
+      payloads(output.data),
+      readPptxRoundTrip(output.data),
+    ]);
+    const group = verified.document.slides[0]?.elements[0];
+    if (group?.type !== 'group') throw new Error('Expected chart group');
+
+    expect(group.elements[0]).toMatchObject({
+      chartType: 'barChart',
+      key: 'slide-1-element-1-element-1',
+      resolved: { transform: changed },
+      type: 'chart',
+    });
+    expect(outputParts.get('ppt/charts/chart1.xml')).toEqual(
+      sourceParts.get('ppt/charts/chart1.xml'),
+    );
   });
 
   it('keeps chart and shape transform APIs type-specific', async () => {
