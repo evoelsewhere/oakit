@@ -162,6 +162,26 @@ describe('PowerPoint slide serialization', () => {
     );
   });
 
+  it('rejects a group transform without a child coordinate space', () => {
+    const group = {
+      authored: {
+        transform: { height: 40, width: 50, x: 10, y: 20 },
+      },
+      elements: [],
+      key: 'group-without-child-space',
+      resolved: { hidden: false },
+      type: 'group',
+    } as unknown as PptxSceneElement;
+
+    expect(() =>
+      serializeSlide(slide([group]), createFieldIdAllocator()),
+    ).toThrow(
+      new TypeError(
+        'PowerPoint group element group-without-child-space requires a child-space transform',
+      ),
+    );
+  });
+
   it('serializes image elements only with an explicit media relationship', () => {
     const image: PptxSceneElement = {
       authored: {
