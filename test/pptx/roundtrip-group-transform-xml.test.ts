@@ -78,19 +78,13 @@ describe('PowerPoint group transform patching', () => {
   });
 
   it('treats omitted expected optional attributes as false and zero', () => {
+    const omitted = operation();
+    delete omitted.expectedTransform.flipHorizontal;
+    delete omitted.expectedTransform.flipVertical;
+    delete omitted.expectedTransform.rotation;
+
     expect(() =>
-      patchPptxGroupTransformXml(
-        xml(),
-        '2',
-        operation(
-          {},
-          {
-            flipHorizontal: undefined,
-            flipVertical: undefined,
-            rotation: undefined,
-          },
-        ),
-      ),
+      patchPptxGroupTransformXml(xml(), '2', omitted),
     ).not.toThrow();
   });
 
