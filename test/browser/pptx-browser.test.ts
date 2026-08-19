@@ -10,6 +10,7 @@ import {
   serializePptxRoundTripJson,
   setPptxRoundTripImageTransform,
   setPptxRoundTripShapeTransform,
+  setPptxRoundTripGroupTransform,
   setPptxRoundTripTableTransform,
   writePptxRoundTrip,
   type PptxSceneDocument,
@@ -439,6 +440,85 @@ describe('PPTX public API in browsers', () => {
     const svg = new TextDecoder().decode(rendered.slides[0]?.data);
     expect(svg).toContain('Browser\u00a0table');
     expect(svg).toContain('#E0F2FE');
+  });
+
+  it('creates and edits a native group without an Office runtime', async () => {
+    const scene: PptxSceneDocument = {
+      layouts: [],
+      masters: [],
+      media: [],
+      schemaVersion: 2,
+      size: { height: 540, width: 960 },
+      slides: [
+        {
+          elements: [
+            {
+              authored: {
+                transform: {
+                  childSpace: { height: 100, width: 200, x: 0, y: 0 },
+                  height: 100,
+                  width: 200,
+                  x: 100,
+                  y: 120,
+                },
+              },
+              elements: [
+                {
+                  authored: {
+                    fillColor: '#F97316',
+                    transform: { height: 40, width: 60, x: 20, y: 30 },
+                  },
+                  key: 'browser-group-shape',
+                  resolved: { hidden: false },
+                  type: 'shape',
+                },
+              ],
+              key: 'browser-group',
+              resolved: { hidden: false },
+              type: 'group',
+            },
+          ],
+          key: 'browser-group-slide',
+        },
+      ],
+      themes: [],
+    };
+    const created = await createPptx(scene);
+    const snapshot = await readPptxRoundTrip(created.data);
+    const changed = {
+      childSpace: { height: 100, width: 200, x: 0, y: 0 },
+      flipHorizontal: true,
+      flipVertical: false,
+      height: 150,
+      rotation: 10,
+      width: 300,
+      x: 140,
+      y: 160,
+    };
+    const edited = await setPptxRoundTripGroupTransform(snapshot, {
+      targetKey: 'slide-1-element-1',
+      value: changed,
+    });
+    const output = await writePptxRoundTrip(edited);
+    const [parsed, rendered] = await Promise.all([
+      parsePptx(output.data, { errorMode: 'strict', imageMode: 'none' }),
+      renderPptxToSvg(output.data, { slideNumbers: [1] }),
+    ]);
+
+    expect(output.report.supportProfile.id).toBe('pptx-roundtrip-native-v1');
+    expect(parsed.slides[0]?.elements[0]).toMatchObject({
+      childSpace: changed.childSpace,
+      height: changed.height,
+      isFlipH: true,
+      left: changed.x,
+      rotate: changed.rotation,
+      top: changed.y,
+      type: 'group',
+      width: changed.width,
+    });
+    expect(new TextDecoder().decode(rendered.slides[0]?.data)).toContain(
+      '#F97316',
+    );
   });
 
   it('keeps input forms and concurrent parses deterministic', async () => {

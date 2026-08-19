@@ -11,7 +11,7 @@ function expected(): PptxSceneGroupElement {
   return {
     authored: {
       transform: {
-        childSpace: { height: 80, width: 160, x: 5, y: 10 },
+        childSpace: { height: 100, width: 200, x: 0, y: 0 },
         height: 100,
         width: 200,
         x: 20,
@@ -34,7 +34,7 @@ function expected(): PptxSceneGroupElement {
 
 function generated(): Group {
   return {
-    childSpace: { height: 80, width: 160, x: 5, y: 10 },
+    childSpace: { height: 100, width: 200, x: 0, y: 0 },
     elements: [
       {
         borderColor: '#000000',

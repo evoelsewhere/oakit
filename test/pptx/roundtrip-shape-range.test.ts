@@ -5,6 +5,7 @@ import {
   pptxShapeHasElement,
   qualifiedPptxName,
   resolvePptxEditableGraphicFrameXml,
+  resolvePptxEditableGroupXml,
   resolvePptxEditablePictureXml,
   resolvePptxEditableShapeXml,
 } from '../../src/formats/pptx/roundtrip/shape-range';
@@ -57,6 +58,19 @@ describe('PowerPoint editable shape range', () => {
     );
     expect(() => resolvePptxEditableGraphicFrameXml(slideXml(), '2')).toThrow(
       'PowerPoint text edit requires one unique graphic frame for id 2',
+    );
+  });
+
+  it('returns a unique native group without accepting nested child ids', () => {
+    const xml = slideXml(
+      '<p:grpSp><p:nvGrpSpPr><p:cNvPr id="2"/></p:nvGrpSpPr><p:sp><p:nvSpPr><p:cNvPr id="3"/></p:nvSpPr></p:sp></p:grpSp>',
+    );
+
+    expect(resolvePptxEditableGroupXml(xml, '2').shape).toContain(
+      '<p:sp><p:nvSpPr><p:cNvPr id="3"/></p:nvSpPr></p:sp>',
+    );
+    expect(() => resolvePptxEditableGroupXml(xml, '3')).toThrow(
+      'PowerPoint text edit requires one unique group shape for id 3',
     );
   });
 
