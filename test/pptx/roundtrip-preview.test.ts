@@ -2,7 +2,13 @@ import { describe, expect, it } from 'vitest';
 
 import { createPptx } from '../../src/formats/pptx/creator';
 import { parse } from '../../src/formats/pptx/parser';
-import type { Group, PptxDocument, Table } from '../../src/formats/pptx/types';
+import type {
+  Chart,
+  CommonChart,
+  Group,
+  PptxDocument,
+  Table,
+} from '../../src/formats/pptx/types';
 import type { PptxSceneDocument } from '../../src/formats/pptx/scene-types';
 import { validatePptxScene } from '../../src/formats/pptx/scene-validation';
 import {
@@ -54,6 +60,51 @@ function sourceScene(): PptxSceneDocument {
     ],
     themes: [],
   };
+}
+
+function parsedChart(
+  chartType: CommonChart['chartType'] = 'barChart',
+): CommonChart {
+  return {
+    barDir: 'col',
+    chartType,
+    colors: ['#4F46E5'],
+    data: [
+      {
+        key: 'Revenue',
+        values: [
+          { x: '0', y: 12 },
+          { x: '1', y: 18 },
+        ],
+        xlabels: { '0': 'Q1', '1': 'Q2' },
+      },
+    ],
+    grouping: 'clustered',
+    height: 220,
+    id: '2',
+    left: 40,
+    order: 0,
+    top: 60,
+    type: 'chart',
+    width: 420,
+  };
+}
+
+function chartPreview(element: Chart) {
+  const document = {
+    size: { height: 540, width: 960 },
+    slides: [
+      {
+        elements: [element],
+        fill: { type: 'color', value: '#ffffff' },
+        layoutElements: [],
+        note: '',
+      },
+    ],
+    themeColors: [],
+    usedFonts: [],
+  } as PptxDocument;
+  return createPowerPointRoundTripPreview(document).slides[0]?.elements[0];
 }
 
 describe('PowerPoint round-trip semantic preview', () => {
@@ -602,6 +653,194 @@ describe('PowerPoint round-trip semantic preview', () => {
       },
       type: 'group',
     });
+  });
+
+  it.each(['barChart', 'lineChart', 'pieChart', 'doughnutChart'] as const)(
+    'maps a safe native %s with stable series keys',
+    (chartType) => {
+      const element = parsedChart(chartType);
+      if (chartType === 'lineChart') element.marker = true;
+      if (chartType === 'doughnutChart') element.holeSize = '55';
+
+      expect(chartPreview(element)).toMatchObject({
+        barDirection: 'col',
+        chartType,
+        grouping: 'clustered',
+        key: 'slide-1-element-1',
+        resolved: {
+          hidden: false,
+          transform: {
+            flipHorizontal: false,
+            flipVertical: false,
+            height: 220,
+            rotation: 0,
+            width: 420,
+            x: 40,
+            y: 60,
+          },
+        },
+        series: [
+          {
+            categories: ['Q1', 'Q2'],
+            color: '#4F46E5',
+            key: 'slide-1-element-1-series-1',
+            name: 'Revenue',
+            values: [12, 18],
+          },
+        ],
+        type: 'chart',
+        ...(chartType === 'lineChart' ? { marker: true } : {}),
+        ...(chartType === 'doughnutChart' ? { holeSize: 55 } : {}),
+      });
+    },
+  );
+
+  it('omits absent optional chart fields and invalid colors', () => {
+    for (const color of ['invalid', 'x#4F46E5', '#4F46E5x']) {
+      const element = parsedChart('lineChart');
+      delete element.barDir;
+      delete element.grouping;
+      element.colors = [color];
+
+      const preview = chartPreview(element);
+      if (preview?.type !== 'chart') throw new Error('Expected native chart');
+      expect(preview).not.toHaveProperty('barDirection');
+      expect(preview).not.toHaveProperty('grouping');
+      expect(preview).not.toHaveProperty('marker');
+      expect(preview.series[0]).not.toHaveProperty('color');
+    }
+  });
+
+  it('retains every allowed chart grouping value', () => {
+    for (const grouping of [
+      'clustered',
+      'percentStacked',
+      'stacked',
+      'standard',
+    ] as const) {
+      const element = parsedChart('lineChart');
+      element.grouping = grouping;
+      expect(chartPreview(element)).toMatchObject({ grouping, type: 'chart' });
+    }
+  });
+
+  it.each<[string, (value: CommonChart) => void]>([
+    [
+      'scatter type',
+      (value) => {
+        value.chartType = 'scatterChart' as never;
+      },
+    ],
+    [
+      'array series',
+      (value) => {
+        value.data = [[1, 2]] as never;
+      },
+    ],
+    [
+      'non-string key',
+      (value) => {
+        value.data[0]!.key = 7 as never;
+      },
+    ],
+    [
+      'blank key',
+      (value) => {
+        value.data[0]!.key = '  ';
+      },
+    ],
+    [
+      'non-array values',
+      (value) => {
+        value.data[0]!.values = null as never;
+      },
+    ],
+    [
+      'empty values',
+      (value) => {
+        value.data[0]!.values = [];
+      },
+    ],
+    [
+      'non-string x',
+      (value) => {
+        value.data[0]!.values[0]!.x = 0 as never;
+      },
+    ],
+    [
+      'non-number y',
+      (value) => {
+        value.data[0]!.values[0]!.y = '12' as never;
+      },
+    ],
+    [
+      'non-finite y',
+      (value) => {
+        value.data[0]!.values[0]!.y = Number.NaN;
+      },
+    ],
+    [
+      'invalid grouping',
+      (value) => {
+        value.grouping = 'invalid';
+      },
+    ],
+    [
+      'fractional hole',
+      (value: CommonChart) => {
+        value.chartType = 'doughnutChart';
+        value.holeSize = '50.5';
+      },
+    ],
+    [
+      'small hole',
+      (value: CommonChart) => {
+        value.chartType = 'doughnutChart';
+        value.holeSize = '9';
+      },
+    ],
+    [
+      'large hole',
+      (value: CommonChart) => {
+        value.chartType = 'doughnutChart';
+        value.holeSize = '91';
+      },
+    ],
+  ])('preserves an unsafe %s as opaque', (_name, mutate) => {
+    const element = parsedChart();
+    mutate(element);
+
+    expect(chartPreview(element)).toMatchObject({
+      feature: 'chart',
+      type: 'unsupported',
+    });
+  });
+
+  it('requires exactly one pie-family series but permits multiple bar series', () => {
+    for (const chartType of ['pieChart', 'doughnutChart'] as const) {
+      const element = parsedChart(chartType);
+      element.data.push(structuredClone(element.data[0]!));
+      expect(chartPreview(element)).toMatchObject({
+        feature: 'chart',
+        type: 'unsupported',
+      });
+    }
+    const bar = parsedChart();
+    bar.data.push({
+      key: 'Costs',
+      values: [{ x: '0', y: 5 }],
+      xlabels: { '0': 'Q1' },
+    });
+    expect(chartPreview(bar)).toMatchObject({
+      series: [{ name: 'Revenue' }, { name: 'Costs' }],
+      type: 'chart',
+    });
+  });
+
+  it.each([10, 90])('retains chart hole-size boundary %d', (holeSize) => {
+    const element = parsedChart('doughnutChart');
+    element.holeSize = String(holeSize);
+    expect(chartPreview(element)).toMatchObject({ holeSize, type: 'chart' });
   });
 
   it.each([

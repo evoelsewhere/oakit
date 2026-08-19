@@ -185,11 +185,7 @@ function sceneChartElement(
     const categories: string[] = [];
     const values: number[] = [];
     for (const point of item.values) {
-      if (
-        typeof point.x !== 'string' ||
-        typeof point.y !== 'number' ||
-        !Number.isFinite(point.y)
-      ) {
+      if (typeof point.x !== 'string' || !Number.isFinite(point.y)) {
         return undefined;
       }
       categories.push(item.xlabels[point.x] ?? point.x);
