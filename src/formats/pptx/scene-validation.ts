@@ -218,7 +218,7 @@ function validateTransform(
   path: string,
   issues: PptxSceneValidationIssue[],
   profile: ValidationProfile,
-  groupTransform = false,
+  groupTransform: boolean,
   coordinateSpace = false,
 ): void {
   const transform = requireObject(value, path, issues);

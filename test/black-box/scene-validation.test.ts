@@ -96,6 +96,28 @@ function mutableTextNode(
   );
 }
 
+function convertFirstElementToGroup(
+  scene: Record<string, unknown>,
+): Record<string, unknown> {
+  const element = mutableElement(scene);
+  delete element.text;
+  element.type = 'group';
+  element.elements = [];
+  const transform = {
+    childSpace: { height: 40, width: 160, x: 0, y: 0 },
+    height: 40,
+    width: 160,
+    x: 10,
+    y: 20,
+  };
+  element.authored = { transform: structuredClone(transform) };
+  element.resolved = {
+    hidden: false,
+    transform: structuredClone(transform),
+  };
+  return element;
+}
+
 function issuePairs(value: unknown): Array<[string, string]> {
   const result = validatePptxScene(value);
   expect(result.valid).toBe(result.issues.length === 0);
@@ -122,6 +144,47 @@ describe('PowerPoint scene validation', () => {
       validatePptxScene(minimalScene(), { profile: 'create-text-v1' }),
     ).toEqual({ issues: [], valid: true });
   });
+
+  it('rejects an unknown ordinary transform property', () => {
+    const scene = minimalScene();
+    const authored = mutableElement(scene).authored as Record<string, unknown>;
+    const transform = authored.transform as Record<string, unknown>;
+    transform['Stryker was here'] = true;
+
+    expect(validatePptxScene(scene).issues).toContainEqual({
+      code: 'invalid-scene-document',
+      message: 'Unknown property',
+      path: '$.slides[0].elements[0].authored.transform.Stryker was here',
+    });
+  });
+
+  it.each([
+    ['flipHorizontal', 'bad'],
+    ['rotation', Number.MAX_VALUE],
+  ])(
+    'does not treat group child-space %s as a transform field',
+    (key, value) => {
+      const scene = minimalScene();
+      const group = convertFirstElementToGroup(scene);
+      const authored = group.authored as Record<string, unknown>;
+      const transform = authored.transform as Record<string, unknown>;
+      const childSpace = transform.childSpace as Record<string, unknown>;
+      childSpace[key] = value;
+      const path = `$.slides[0].elements[0].authored.transform.childSpace.${key}`;
+
+      expect(
+        validatePptxScene(scene, { profile: 'create-native-v1' }).issues.filter(
+          (issue) => issue.path === path,
+        ),
+      ).toEqual([
+        {
+          code: 'invalid-scene-document',
+          message: 'Unknown property',
+          path,
+        },
+      ]);
+    },
+  );
 
   it('does not mutate caller-owned scene data', () => {
     const scene = minimalScene();
