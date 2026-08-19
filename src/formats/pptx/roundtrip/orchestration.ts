@@ -92,7 +92,6 @@ function localizedOperation(
   operation: PptxRoundTripSetTransformOperation,
   ancestors: readonly PptxSceneGroupTransform[],
 ): PptxRoundTripSetTransformOperation {
-  if (ancestors.length === 0) return operation;
   return {
     ...operation,
     expectedTransform: {
@@ -160,7 +159,6 @@ function transformTarget(
   ].map((indexMatch) => Number(indexMatch[1]) - 1);
   if (
     !Number.isSafeInteger(slideIndex) ||
-    elementIndexes.length === 0 ||
     elementIndexes.some((index) => !Number.isSafeInteger(index))
   ) {
     unsupportedPptxEdit('PowerPoint transform target index is unsafe');
