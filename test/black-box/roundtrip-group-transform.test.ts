@@ -250,6 +250,47 @@ describe('native PowerPoint group transform editing', () => {
     });
   });
 
+  it('edits a nested group through its stable hierarchical key', async () => {
+    const created = await createPptx(scene());
+    const snapshot = await readPptxRoundTrip(created.data);
+    const nestedTransform: PptxSceneGroupTransform = {
+      childSpace: { height: 30, width: 30, x: 3, y: 4 },
+      flipHorizontal: false,
+      flipVertical: false,
+      height: 60,
+      rotation: 0,
+      width: 90,
+      x: 130,
+      y: 20,
+    };
+    const edited = await setPptxRoundTripGroupTransform(snapshot, {
+      targetKey: 'slide-1-element-1-element-2',
+      value: nestedTransform,
+    });
+    const output = await writePptxRoundTrip(edited);
+    const verified = await readPptxRoundTrip(output.data);
+    const outer = verified.document.slides[0]?.elements[0];
+    if (outer?.type !== 'group') throw new Error('Expected outer group');
+
+    expect(outer.elements[1]).toMatchObject({
+      elements: [
+        {
+          resolved: {
+            transform: { height: 20, width: 30, x: 6, y: 2 },
+          },
+          type: 'shape',
+        },
+      ],
+      key: 'slide-1-element-1-element-2',
+      resolved: { transform: nestedTransform },
+      type: 'group',
+    });
+    expect(output.report).toMatchObject({
+      patchedPartCount: 1,
+      supportProfile: { id: 'pptx-roundtrip-native-v1' },
+    });
+  });
+
   it('rejects malformed group coordinate spaces in portable snapshots', async () => {
     const snapshot = await readPptxRoundTrip((await createPptx(scene())).data);
     const edited = await setPptxRoundTripGroupTransform(snapshot, {
