@@ -84,6 +84,8 @@ export const mutatedFiles = [
   'src/formats/pptx/writer/archive.ts',
   'src/formats/pptx/writer/color.ts',
   'src/formats/pptx/writer/content-types.ts',
+  'src/formats/pptx/writer/group.ts',
+  'src/formats/pptx/writer/group-verify.ts',
   'src/formats/pptx/writer/hierarchy.ts',
   'src/formats/pptx/writer/identifiers.ts',
   'src/formats/pptx/writer/image.ts',

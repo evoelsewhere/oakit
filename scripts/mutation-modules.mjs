@@ -129,6 +129,18 @@ export const mutationModules = [
     ],
   },
   {
+    estimatedSeconds: 180,
+    name: 'writer-group',
+    source: 'src/formats/pptx/writer/group.ts',
+    tests: ['test/pptx/writer-group.test.ts'],
+  },
+  {
+    estimatedSeconds: 180,
+    name: 'writer-group-verify',
+    source: 'src/formats/pptx/writer/group-verify.ts',
+    tests: ['test/pptx/writer-group-verify.test.ts'],
+  },
+  {
     estimatedSeconds: 61,
     name: 'writer-image',
     source: 'src/formats/pptx/writer/image.ts',

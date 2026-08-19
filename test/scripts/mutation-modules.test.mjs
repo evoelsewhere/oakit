@@ -35,6 +35,8 @@ describe('focused mutation modules', () => {
       'scene-table-merge-validation',
       'roundtrip-validation',
       'writer-shape',
+      'writer-group',
+      'writer-group-verify',
       'writer-image',
       'writer-table',
       'writer-table-verify',
