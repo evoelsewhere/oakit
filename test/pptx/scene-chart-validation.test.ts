@@ -112,12 +112,14 @@ describe('native PowerPoint chart scene validation', () => {
       }),
     );
     const tooManyPoints = chart();
-    tooManyPoints.series[0]!.categories = new Array(
-      MAX_POWERPOINT_CREATION_CHART_POINTS + 1,
-    ).fill('A');
-    tooManyPoints.series[0]!.values = new Array(
-      MAX_POWERPOINT_CREATION_CHART_POINTS + 1,
-    ).fill(1);
+    tooManyPoints.series[0]!.categories = Array.from(
+      { length: MAX_POWERPOINT_CREATION_CHART_POINTS + 1 },
+      () => 'A',
+    );
+    tooManyPoints.series[0]!.values = Array.from(
+      { length: MAX_POWERPOINT_CREATION_CHART_POINTS + 1 },
+      () => 1,
+    );
 
     for (const value of [tooManySeries, tooManyPoints]) {
       expect(
