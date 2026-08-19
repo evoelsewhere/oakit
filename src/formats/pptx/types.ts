@@ -339,6 +339,12 @@ export interface Group {
   order: number;
   isFlipH: boolean;
   isFlipV: boolean;
+  childSpace?: {
+    height: number;
+    width: number;
+    x: number;
+    y: number;
+  };
 }
 export type Element = BaseElement | Group;
 

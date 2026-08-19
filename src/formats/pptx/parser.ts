@@ -1172,6 +1172,12 @@ async function processGroupSpNode(
 
   return {
     type: 'group',
+    childSpace: {
+      height: numberToFixed(childHeight),
+      width: numberToFixed(childWidth),
+      x: numberToFixed(childX),
+      y: numberToFixed(childY),
+    },
     top: numberToFixed(y),
     left: numberToFixed(x),
     width: numberToFixed(width),

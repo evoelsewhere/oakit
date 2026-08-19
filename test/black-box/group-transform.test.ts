@@ -102,6 +102,7 @@ describe('PowerPoint group transforms through the public API', () => {
     const outer = findGroup(elements, '200');
 
     expect(outer).toMatchObject({
+      childSpace: { height: 72, width: 144, x: 36, y: 18 },
       isFlipH: true,
       isFlipV: true,
       height: 216,
