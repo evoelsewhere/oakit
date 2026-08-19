@@ -218,12 +218,25 @@ function validateTransform(
   path: string,
   issues: PptxSceneValidationIssue[],
   profile: ValidationProfile,
+  groupTransform = false,
+  coordinateSpace = false,
 ): void {
   const transform = requireObject(value, path, issues);
   if (!transform) return;
   rejectUnknownKeys(
     transform,
-    ['flipHorizontal', 'flipVertical', 'height', 'rotation', 'width', 'x', 'y'],
+    coordinateSpace
+      ? ['height', 'width', 'x', 'y']
+      : [
+          ...(groupTransform ? ['childSpace'] : []),
+          'flipHorizontal',
+          'flipVertical',
+          'height',
+          'rotation',
+          'width',
+          'x',
+          'y',
+        ],
     path,
     issues,
   );
@@ -231,11 +244,13 @@ function validateTransform(
   requireFiniteNumber(transform.y, `${path}.y`, issues, false);
   requireFiniteNumber(transform.width, `${path}.width`, issues, true);
   requireFiniteNumber(transform.height, `${path}.height`, issues, true);
-  if (transform.rotation !== undefined) {
+  if (!coordinateSpace && transform.rotation !== undefined) {
     requireFiniteNumber(transform.rotation, `${path}.rotation`, issues, false);
   }
-  optionalBoolean(transform, 'flipHorizontal', path, issues);
-  optionalBoolean(transform, 'flipVertical', path, issues);
+  if (!coordinateSpace) {
+    optionalBoolean(transform, 'flipHorizontal', path, issues);
+    optionalBoolean(transform, 'flipVertical', path, issues);
+  }
   if (isCreationProfile(profile)) {
     for (const key of ['x', 'y'] as const) {
       requireSerializableInteger(
@@ -255,12 +270,24 @@ function validateTransform(
         true,
       );
     }
-    requireSerializableInteger(
-      transform.rotation,
-      ANGLE_UNITS_PER_DEGREE,
-      `${path}.rotation`,
+    if (!coordinateSpace) {
+      requireSerializableInteger(
+        transform.rotation,
+        ANGLE_UNITS_PER_DEGREE,
+        `${path}.rotation`,
+        issues,
+        false,
+      );
+    }
+  }
+  if (groupTransform) {
+    validateTransform(
+      transform.childSpace,
+      `${path}.childSpace`,
       issues,
+      profile,
       false,
+      true,
     );
   }
 }
@@ -682,9 +709,20 @@ function validateElement(
   keys: Set<string>,
   referenceKeys: Array<{ path: string; value: string }>,
   issues: PptxSceneValidationIssue[],
+  elementObjects: WeakSet<object>,
 ): void {
   const element = requireObject(value, path, issues);
   if (!element) return;
+  if (elementObjects.has(element)) {
+    addIssue(
+      issues,
+      'invalid-scene-document',
+      path,
+      'Scene elements must not contain repeated or cyclic object references',
+    );
+    return;
+  }
+  elementObjects.add(element);
   registerKey(element.key, `${path}.key`, keys, issues);
   const baseKeys = [
     'authored',
@@ -724,6 +762,25 @@ function validateElement(
         'Expected a media key',
       );
     }
+    if (profile === 'create-text-v1') {
+      addIssue(
+        issues,
+        'unsupported-feature',
+        path,
+        'Creation profile create-text-v1 supports text elements only',
+      );
+    }
+  } else if (element.type === 'group') {
+    rejectUnknownKeys(element, [...baseKeys, 'elements'], path, issues);
+    validateElementArray(
+      element.elements,
+      `${path}.elements`,
+      profile,
+      keys,
+      referenceKeys,
+      issues,
+      elementObjects,
+    );
     if (profile === 'create-text-v1') {
       addIssue(
         issues,
@@ -837,7 +894,9 @@ function validateElement(
     }
     if (
       profile === 'create-native-v1' &&
-      (element.type === 'image' || element.type === 'table') &&
+      (element.type === 'group' ||
+        element.type === 'image' ||
+        element.type === 'table') &&
       (authored.fillColor !== undefined ||
         authored.geometry !== undefined ||
         authored.lineColor !== undefined ||
@@ -856,6 +915,7 @@ function validateElement(
         `${path}.authored.transform`,
         issues,
         profile,
+        element.type === 'group',
       );
       if (isObject(authored.transform)) {
         validatePptxSceneTableDimensions(
@@ -870,6 +930,7 @@ function validateElement(
     } else if (
       isCreationProfile(profile) &&
       (element.type === 'image' ||
+        element.type === 'group' ||
         element.type === 'shape' ||
         element.type === 'table' ||
         element.type === 'text')
@@ -904,6 +965,7 @@ function validateElement(
         `${path}.resolved.transform`,
         issues,
         profile,
+        element.type === 'group',
       );
     }
   }
@@ -995,6 +1057,7 @@ function validateElementArray(
   keys: Set<string>,
   referenceKeys: Array<{ path: string; value: string }>,
   issues: PptxSceneValidationIssue[],
+  elementObjects: WeakSet<object>,
 ): void {
   const elements = requireArray(value, path, issues);
   elements?.forEach((element, index) =>
@@ -1005,6 +1068,7 @@ function validateElementArray(
       keys,
       referenceKeys,
       issues,
+      elementObjects,
     ),
   );
 }
@@ -1045,6 +1109,7 @@ export function validatePptxScene(
   const themeKeys = new Set<string>();
   const masterKeys = new Set<string>();
   const layoutKeys = new Set<string>();
+  const elementObjects = new WeakSet<object>();
 
   const themes = requireArray(document.themes, '$.themes', issues);
   themes?.forEach((value, index) => {
@@ -1086,6 +1151,7 @@ export function validatePptxScene(
       keys,
       references,
       issues,
+      elementObjects,
     );
   });
 
@@ -1118,6 +1184,7 @@ export function validatePptxScene(
       keys,
       references,
       issues,
+      elementObjects,
     );
   });
 
@@ -1163,6 +1230,7 @@ export function validatePptxScene(
       keys,
       references,
       issues,
+      elementObjects,
     );
   });
 

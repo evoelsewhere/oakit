@@ -4,16 +4,17 @@ import { renderPptxDocumentToSvg } from '../render-svg';
 import type { PptxSvgRenderResult } from '../render-types';
 import type {
   PptxSceneDocument,
+  PptxSceneElement,
   PptxSceneImageElement,
   PptxSceneMedia,
   PptxSceneShapeElement,
-  PptxSceneTableElement,
   PptxSceneTextElement,
   PptxSceneTextNode,
 } from '../scene-types';
 import { parse } from '../parser';
 import type {
   Image,
+  Group,
   PptxDocument,
   PptxParseOptions,
   Shape,
@@ -22,6 +23,7 @@ import type {
 } from '../types';
 import { plainTextFromPowerPointHtml } from '../roundtrip/preview';
 import { verifyPowerPointTableElement } from './table-verify';
+import { verifyPowerPointGroupElement } from './group-verify';
 import { pointsToEmu } from './units';
 
 type PptxCreationParser = (
@@ -78,12 +80,8 @@ function verifyTextElement(
 }
 
 function verifyElementTransform(
-  generated: Image | Shape | Table | Text,
-  expected:
-    | PptxSceneImageElement
-    | PptxSceneShapeElement
-    | PptxSceneTableElement
-    | PptxSceneTextElement,
+  generated: Group | Image | Shape | Table | Text,
+  expected: PptxSceneElement,
   location: string,
 ): void {
   const transform = expected.authored.transform;
@@ -123,6 +121,54 @@ const TABLE_VERIFICATION_DEPENDENCIES = {
   textNodeValue,
   verifyTransform: verifyElementTransform,
 };
+
+function verifySceneElement(
+  generated: PptxDocument['slides'][number]['elements'][number] | undefined,
+  expected: PptxSceneElement,
+  scene: PptxSceneDocument,
+  slideIndex: number,
+  elementIndex: number,
+): void {
+  if (expected.type === 'text') {
+    verifyTextElement(generated, expected, slideIndex, elementIndex);
+  } else if (expected.type === 'shape') {
+    verifyShapeElement(generated, expected, slideIndex, elementIndex);
+  } else if (expected.type === 'image') {
+    verifyImageElement(
+      generated,
+      expected,
+      scene.media.find((media) => media.key === expected.mediaKey),
+      slideIndex,
+      elementIndex,
+    );
+  } else if (expected.type === 'table') {
+    verifyPowerPointTableElement(
+      generated,
+      expected,
+      slideIndex,
+      elementIndex,
+      TABLE_VERIFICATION_DEPENDENCIES,
+    );
+  } else if (expected.type === 'group') {
+    const location = `slide ${slideIndex + 1}, element ${elementIndex + 1}`;
+    verifyPowerPointGroupElement(generated, expected, location, {
+      expectedPointValue,
+      verifyChild: (generatedChild, expectedChild, childIndex) =>
+        verifySceneElement(
+          generatedChild,
+          expectedChild,
+          scene,
+          slideIndex,
+          childIndex,
+        ),
+      verifyTransform: verifyElementTransform,
+    });
+  } else {
+    throw new Error(
+      `Expected PowerPoint text element missing at slide ${slideIndex + 1}, element ${elementIndex + 1}`,
+    );
+  }
+}
 
 function verifyImageElement(
   generated: PptxDocument['slides'][number]['elements'][number] | undefined,
@@ -258,43 +304,15 @@ export async function verifyPowerPointCreationWithParser(
         `Generated PowerPoint element count mismatch on slide ${index + 1}: expected ${slide.elements.length}, received ${generated?.elements.length ?? 0}`,
       );
     }
-    slide.elements.forEach((element, elementIndex) => {
-      if (element.type === 'text') {
-        verifyTextElement(
-          generated.elements[elementIndex],
-          element,
-          index,
-          elementIndex,
-        );
-      } else if (element.type === 'shape') {
-        verifyShapeElement(
-          generated.elements[elementIndex],
-          element,
-          index,
-          elementIndex,
-        );
-      } else if (element.type === 'image') {
-        verifyImageElement(
-          generated.elements[elementIndex],
-          element,
-          scene.media.find((media) => media.key === element.mediaKey),
-          index,
-          elementIndex,
-        );
-      } else if (element.type === 'table') {
-        verifyPowerPointTableElement(
-          generated.elements[elementIndex],
-          element,
-          index,
-          elementIndex,
-          TABLE_VERIFICATION_DEPENDENCIES,
-        );
-      } else {
-        throw new Error(
-          `Expected PowerPoint text element missing at slide ${index + 1}, element ${elementIndex + 1}`,
-        );
-      }
-    });
+    slide.elements.forEach((element, elementIndex) =>
+      verifySceneElement(
+        generated.elements[elementIndex],
+        element,
+        scene,
+        index,
+        elementIndex,
+      ),
+    );
   });
   verifyRenderedSlides(document, renderDocument(document));
 }

@@ -31,6 +31,19 @@ interface SerializedMedia {
   path: string;
 }
 
+function flattenSceneElements(
+  elements: readonly PptxSceneDocument['slides'][number]['elements'][number][],
+): PptxSceneDocument['slides'][number]['elements'] {
+  const result: PptxSceneDocument['slides'][number]['elements'] = [];
+  for (const element of elements) {
+    result.push(element);
+    if (element.type === 'group') {
+      result.push(...flattenSceneElements(element.elements));
+    }
+  }
+  return result;
+}
+
 function serializeMedia(scene: PptxSceneDocument): SerializedMedia[] {
   return scene.media.map((media, index) => ({
     data: new Uint8Array(media.data),
@@ -93,7 +106,7 @@ export function serializePowerPointParts(
   const fieldIds = createFieldIdAllocator();
   scene.slides.forEach((slide, index) => {
     const slideNumber = index + 1;
-    const imageElements = slide.elements.filter(
+    const imageElements = flattenSceneElements(slide.elements).filter(
       (element) => element.type === 'image',
     );
     const imageTargets = imageElements.map((element) => {

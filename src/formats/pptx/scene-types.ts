@@ -11,8 +11,13 @@ export interface PptxSceneTransform extends PptxSceneSize {
   y: number;
 }
 
+export interface PptxSceneCoordinateSpace extends PptxSceneSize {
+  x: number;
+  y: number;
+}
+
 export interface PptxSceneGroupTransform extends PptxSceneTransform {
-  childSpace: PptxSceneTransform;
+  childSpace: PptxSceneCoordinateSpace;
 }
 
 export interface PptxSceneAuthoredElement {
@@ -156,6 +161,20 @@ export interface PptxSceneTableElement extends PptxSceneElementBase {
   type: 'table';
 }
 
+export interface PptxSceneGroupElement extends Omit<
+  PptxSceneElementBase,
+  'authored' | 'resolved'
+> {
+  authored: Omit<PptxSceneAuthoredElement, 'transform'> & {
+    transform?: PptxSceneGroupTransform;
+  };
+  elements: PptxSceneElement[];
+  resolved: Omit<PptxSceneResolvedElement, 'transform'> & {
+    transform?: PptxSceneGroupTransform;
+  };
+  type: 'group';
+}
+
 export interface PptxSceneUnsupportedElement extends PptxSceneElementBase {
   feature: string;
   previewText?: string;
@@ -163,6 +182,7 @@ export interface PptxSceneUnsupportedElement extends PptxSceneElementBase {
 }
 
 export type PptxSceneElement =
+  | PptxSceneGroupElement
   | PptxSceneImageElement
   | PptxSceneShapeElement
   | PptxSceneTableElement

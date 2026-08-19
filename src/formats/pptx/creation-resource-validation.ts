@@ -9,6 +9,7 @@ import {
 } from './creation-limits';
 import type {
   PptxSceneMedia,
+  PptxSceneElement,
   PptxSceneSlide,
   PptxSceneValidationIssue,
 } from './scene-types';
@@ -50,9 +51,15 @@ function countCreationResources(document: JsonObject): CreationResourceCounts {
   };
   const slides = document.slides as PptxSceneSlide[];
   slides.forEach((slide) => {
-    const elements = slide.elements;
-    counts.elements += elements.length;
-    elements.forEach((element) => {
+    const pending: unknown[] = [...slide.elements];
+    counts.elements += pending.length;
+    for (const current of pending) {
+      if (current === null || typeof current !== 'object') continue;
+      const element = current as PptxSceneElement;
+      if (element.type === 'group' && Array.isArray(element.elements)) {
+        pending.push(...element.elements);
+        counts.elements += element.elements.length;
+      }
       const textBodies =
         element.type === 'text'
           ? [element.text]
@@ -65,7 +72,7 @@ function countCreationResources(document: JsonObject): CreationResourceCounts {
           counts.textNodes += paragraph.children.length;
         });
       }
-    });
+    }
   });
   const media = Array.isArray(document.media)
     ? (document.media as PptxSceneMedia[])

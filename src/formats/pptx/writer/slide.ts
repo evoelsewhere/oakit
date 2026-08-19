@@ -6,6 +6,7 @@ import { serializeTextShape } from './text-shape';
 import { escapeXmlAttribute } from './xml';
 import { serializePicture } from './image';
 import { serializeTable } from './table';
+import { serializeGroup } from './group';
 
 const DRAWING_NAMESPACE =
   'http://schemas.openxmlformats.org/drawingml/2006/main';
@@ -19,9 +20,9 @@ const SHAPE_TREE_ROOT =
 
 function serializeElement(
   element: PptxSceneElement,
-  shapeId: number,
   context: PptxTextSerializationContext,
   imageRelationships: ReadonlyMap<string, string>,
+  allocateShapeId: () => number,
 ): string {
   if (element.type === 'unsupported') {
     throw new TypeError('PowerPoint slide writer rejects opaque elements');
@@ -32,7 +33,21 @@ function serializeElement(
       `PowerPoint slide writer requires an authored ${element.type} transform`,
     );
   }
+  const shapeId = allocateShapeId();
   switch (element.type) {
+    case 'group': {
+      if (!('childSpace' in transform)) {
+        throw new TypeError(
+          `PowerPoint group element ${element.key} requires a child-space transform`,
+        );
+      }
+      const children = element.elements
+        .map((child) =>
+          serializeElement(child, context, imageRelationships, allocateShapeId),
+        )
+        .join('');
+      return serializeGroup(element, transform, shapeId, children);
+    }
     case 'text':
       return serializeTextShape(element, transform, shapeId, context);
     case 'shape':
@@ -70,9 +85,15 @@ export function serializeSlide(
     slide.backgroundColor === undefined
       ? ''
       : `<p:bg><p:bgPr>${serializeSolidColorFill(slide.backgroundColor)}<a:effectLst/></p:bgPr></p:bg>`;
+  let nextShapeId = 2;
+  const allocateShapeId = (): number => {
+    const result = nextShapeId;
+    nextShapeId += 1;
+    return result;
+  };
   const elements = slide.elements
-    .map((element, index) =>
-      serializeElement(element, index + 2, context, imageRelationships),
+    .map((element) =>
+      serializeElement(element, context, imageRelationships, allocateShapeId),
     )
     .join('');
   return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><p:sld ${rootAttributes.join(' ')}><p:cSld${commonSlideName}>${background}<p:spTree>${SHAPE_TREE_ROOT}${elements}</p:spTree></p:cSld><p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr></p:sld>`;
