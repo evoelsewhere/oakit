@@ -5,6 +5,9 @@ import { PptxWriteError } from '../write-error';
 import { degreesToAngle, pointsToEmu } from '../writer/units';
 import type {
   PptxSceneImageElement,
+  PptxSceneGroupElement,
+  PptxSceneGroupTransform,
+  PptxSceneElement,
   PptxSceneShapeElement,
   PptxSceneTableElement,
   PptxSceneTextElement,
@@ -34,6 +37,11 @@ export interface PptxRoundTripSetTransformRequest {
   value: PptxSceneTransform;
 }
 
+export interface PptxRoundTripSetGroupTransformRequest {
+  targetKey: string;
+  value: PptxSceneGroupTransform;
+}
+
 function scaledTableSizes(
   values: readonly number[],
   replacementTotal: number,
@@ -43,6 +51,51 @@ function scaledTableSizes(
   return scalePptxTableIntegerSizes(source, replacement).map(
     (value) => value * RATIO_EMUs_Points,
   );
+}
+
+function scaleGroupElementTransform(
+  element: PptxSceneElement,
+  expected: PptxSceneGroupTransform,
+  replacement: PptxSceneGroupTransform,
+  directChild: boolean,
+): void {
+  const transform = element.resolved.transform;
+  if (transform !== undefined) {
+    const oldWidthScale = expected.width / expected.childSpace.width;
+    const oldHeightScale = expected.height / expected.childSpace.height;
+    const newWidthScale = replacement.width / replacement.childSpace.width;
+    const newHeightScale = replacement.height / replacement.childSpace.height;
+    const oldOffsetX = directChild ? expected.childSpace.x : 0;
+    const oldOffsetY = directChild ? expected.childSpace.y : 0;
+    const newOffsetX = directChild ? replacement.childSpace.x : 0;
+    const newOffsetY = directChild ? replacement.childSpace.y : 0;
+    const centerX = transform.x + transform.width / 2;
+    const centerY = transform.y + transform.height / 2;
+    const rawCenterX = centerX / oldWidthScale + oldOffsetX;
+    const rawCenterY = centerY / oldHeightScale + oldOffsetY;
+    const rotation = (((transform.rotation ?? 0) % 360) + 360) % 360;
+    const swapped = rotation === 90 || rotation === 270;
+    const oldElementWidthScale = swapped ? oldHeightScale : oldWidthScale;
+    const oldElementHeightScale = swapped ? oldWidthScale : oldHeightScale;
+    const newElementWidthScale = swapped ? newHeightScale : newWidthScale;
+    const newElementHeightScale = swapped ? newWidthScale : newHeightScale;
+    const width =
+      (transform.width / oldElementWidthScale) * newElementWidthScale;
+    const height =
+      (transform.height / oldElementHeightScale) * newElementHeightScale;
+    element.resolved.transform = {
+      ...transform,
+      height,
+      width,
+      x: (rawCenterX - newOffsetX) * newWidthScale - width / 2,
+      y: (rawCenterY - newOffsetY) * newHeightScale - height / 2,
+    };
+  }
+  if (element.type === 'group') {
+    element.elements.forEach((child) =>
+      scaleGroupElementTransform(child, expected, replacement, false),
+    );
+  }
 }
 
 export function applyPptxRoundTripOperationsToPreview(
@@ -56,6 +109,7 @@ export function applyPptxRoundTripOperationsToPreview(
         for (const element of slide.elements) {
           if (
             (element.type === 'image' ||
+              element.type === 'group' ||
               element.type === 'shape' ||
               element.type === 'table' ||
               element.type === 'text') &&
@@ -73,6 +127,20 @@ export function applyPptxRoundTripOperationsToPreview(
               element.rows.forEach((row, index) => {
                 row.height = rowHeights[index] as number;
               });
+            }
+            if (
+              element.type === 'group' &&
+              'childSpace' in operation.expectedTransform &&
+              'childSpace' in operation.value
+            ) {
+              element.elements.forEach((child) =>
+                scaleGroupElementTransform(
+                  child,
+                  operation.expectedTransform as PptxSceneGroupTransform,
+                  operation.value as PptxSceneGroupTransform,
+                  true,
+                ),
+              );
             }
             element.resolved.transform = structuredClone(operation.value);
             applied = true;
@@ -112,6 +180,7 @@ export function applyPptxRoundTripOperationsToPreview(
 }
 
 type PptxTransformElement =
+  | PptxSceneGroupElement
   | PptxSceneImageElement
   | PptxSceneShapeElement
   | PptxSceneTableElement
@@ -183,6 +252,66 @@ export function normalizePptxRoundTripTransform(
     x: value.x,
     y: value.y,
   };
+}
+
+function normalizeCoordinateSpace(
+  value: PptxSceneGroupTransform['childSpace'],
+): PptxSceneGroupTransform['childSpace'] {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    invalidEdit('PowerPoint group child space must be an object');
+  }
+  const allowedKeys = new Set(['height', 'width', 'x', 'y']);
+  if (
+    Object.keys(value).some((key) => !allowedKeys.has(key)) ||
+    value.width <= 0 ||
+    value.height <= 0
+  ) {
+    invalidEdit('PowerPoint group child space is not valid');
+  }
+  try {
+    pointsToEmu(value.x);
+    pointsToEmu(value.y);
+    pointsToEmu(value.width);
+    pointsToEmu(value.height);
+  } catch {
+    invalidEdit('PowerPoint group child space is not valid');
+  }
+  return { height: value.height, width: value.width, x: value.x, y: value.y };
+}
+
+export function normalizePptxRoundTripGroupTransform(
+  value: PptxSceneGroupTransform,
+): PptxSceneGroupTransform {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    invalidEdit('PowerPoint group transform value must be an object');
+  }
+  const allowedKeys = new Set([
+    'childSpace',
+    'flipHorizontal',
+    'flipVertical',
+    'height',
+    'rotation',
+    'width',
+    'x',
+    'y',
+  ]);
+  if (Object.keys(value).some((key) => !allowedKeys.has(key))) {
+    invalidEdit('PowerPoint group transform value is not valid');
+  }
+  const outer = normalizePptxRoundTripTransform({
+    ...(value.flipHorizontal === undefined
+      ? {}
+      : { flipHorizontal: value.flipHorizontal }),
+    ...(value.flipVertical === undefined
+      ? {}
+      : { flipVertical: value.flipVertical }),
+    height: value.height,
+    ...(value.rotation === undefined ? {} : { rotation: value.rotation }),
+    width: value.width,
+    x: value.x,
+    y: value.y,
+  });
+  return { ...outer, childSpace: normalizeCoordinateSpace(value.childSpace) };
 }
 
 function validateTableTransformSize(
@@ -286,7 +415,8 @@ export async function replacePptxRoundTripText(
 
 async function setPptxRoundTripTransform(
   value: PptxRoundTripSnapshot,
-  request: PptxRoundTripSetTransformRequest,
+  request:
+    PptxRoundTripSetGroupTransformRequest | PptxRoundTripSetTransformRequest,
   targetType: PptxTransformElement['type'],
 ): Promise<PptxRoundTripSnapshot> {
   const limits = resolvePptxResourceLimits();
@@ -300,7 +430,12 @@ async function setPptxRoundTripTransform(
   if (expectedTransform === undefined) {
     invalidEdit('PowerPoint transform target has no resolved transform');
   }
-  const transform = normalizePptxRoundTripTransform(request.value);
+  const transform =
+    target.type === 'group'
+      ? normalizePptxRoundTripGroupTransform(
+          request.value as PptxSceneGroupTransform,
+        )
+      : normalizePptxRoundTripTransform(request.value);
   if (target.type === 'table') {
     validateTableTransformSize(target, transform);
   }
@@ -324,6 +459,7 @@ async function setPptxRoundTripTransform(
   snapshot.operations.push(operation);
   snapshot.supportProfile =
     targetType === 'image' ||
+    targetType === 'group' ||
     targetType === 'shape' ||
     targetType === 'table' ||
     snapshot.supportProfile.id === 'pptx-roundtrip-native-v1'
@@ -364,4 +500,11 @@ export function setPptxRoundTripTableTransform(
   request: PptxRoundTripSetTransformRequest,
 ): Promise<PptxRoundTripSnapshot> {
   return setPptxRoundTripTransform(value, request, 'table');
+}
+
+export function setPptxRoundTripGroupTransform(
+  value: PptxRoundTripSnapshot,
+  request: PptxRoundTripSetGroupTransformRequest,
+): Promise<PptxRoundTripSnapshot> {
+  return setPptxRoundTripTransform(value, request, 'group');
 }

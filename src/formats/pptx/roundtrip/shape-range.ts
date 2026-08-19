@@ -17,7 +17,16 @@ interface ShapeFrame {
   parentPresentationShape: ShapeFrame | undefined;
   presentationShape: boolean;
   start: number;
+  targetShape: boolean;
 }
+
+const PRESENTATION_SHAPE_OWNERS = new Set([
+  'cxnSp',
+  'graphicFrame',
+  'grpSp',
+  'pic',
+  'sp',
+]);
 
 interface ShapeRange {
   end: number;
@@ -77,7 +86,7 @@ function requiredNamespacePrefix(
 function shapeRange(
   xml: string,
   shapeId: string,
-  localName: 'graphicFrame' | 'pic' | 'sp',
+  localName: 'graphicFrame' | 'grpSp' | 'pic' | 'sp',
   description: string,
 ): ShapeRange {
   const stack: ShapeFrame[] = [];
@@ -87,7 +96,9 @@ function shapeRange(
   parser.on('opentag', (tag) => {
     const start = parser.position;
     const presentationShape =
-      PRESENTATION_NAMESPACES.has(tag.uri) && tag.local === localName;
+      PRESENTATION_NAMESPACES.has(tag.uri) &&
+      PRESENTATION_SHAPE_OWNERS.has(tag.local);
+    const targetShape = presentationShape && tag.local === localName;
     if (PRESENTATION_NAMESPACES.has(tag.uri) && tag.local === 'cNvPr') {
       const value = (tag.attributes.id as { value?: string } | undefined)
         ?.value;
@@ -100,13 +111,14 @@ function shapeRange(
       parentPresentationShape: activePresentationShape,
       presentationShape,
       start,
+      targetShape,
     };
     stack.push(frame);
     if (presentationShape) activePresentationShape = frame;
   });
   parser.on('closetag', () => {
     const frame = stack.pop() as ShapeFrame;
-    if (frame.presentationShape && frame.matchesShapeId) {
+    if (frame.targetShape && frame.matchesShapeId) {
       ranges.push({ end: parser.position, start: frame.start });
     }
     activePresentationShape = frame.parentPresentationShape;
@@ -135,7 +147,7 @@ export function pptxShapeHasElement(xml: string, qualified: string): boolean {
 function resolvePptxEditableElementXml(
   xml: string,
   shapeId: string,
-  localName: 'graphicFrame' | 'pic' | 'sp',
+  localName: 'graphicFrame' | 'grpSp' | 'pic' | 'sp',
   description: string,
 ): PptxEditableShapeXml {
   const prefixes = namespacePrefixes(xml);
@@ -183,4 +195,11 @@ export function resolvePptxEditableGraphicFrameXml(
     'graphicFrame',
     'graphic frame',
   );
+}
+
+export function resolvePptxEditableGroupXml(
+  xml: string,
+  shapeId: string,
+): PptxEditableShapeXml {
+  return resolvePptxEditableElementXml(xml, shapeId, 'grpSp', 'group shape');
 }

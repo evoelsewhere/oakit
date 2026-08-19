@@ -6,10 +6,12 @@ import {
   pptxShapeHasElement,
   qualifiedPptxName,
   resolvePptxEditableGraphicFrameXml,
+  resolvePptxEditableGroupXml,
   resolvePptxEditablePictureXml,
   resolvePptxEditableShapeXml,
 } from './shape-range';
 import type { PptxRoundTripSetTransformOperation } from './types';
+import type { PptxSceneGroupTransform } from '../scene-types';
 
 function attributeValue(attributesText: string, name: string): string | null {
   const pattern = new RegExp(
@@ -295,4 +297,128 @@ export function patchPptxGraphicFrameTransformXml(
     'presentation',
   );
   return scalePptxTableGridXml(transformed, shapeId, operation);
+}
+
+function requiredGroupTransform(
+  value: PptxRoundTripSetTransformOperation['value'],
+): PptxSceneGroupTransform {
+  if (!('childSpace' in value)) {
+    unsupportedPptxEdit('PowerPoint group transform has no child space');
+  }
+  return value;
+}
+
+export function patchPptxGroupTransformXml(
+  xml: string,
+  shapeId: string,
+  operation: PptxRoundTripSetTransformOperation,
+): string {
+  const { drawingPrefix, markupPrefix, presentationPrefix, range, shape } =
+    resolvePptxEditableGroupXml(xml, shapeId);
+  if (
+    (markupPrefix !== undefined &&
+      pptxShapeHasElement(
+        shape,
+        qualifiedPptxName(markupPrefix, 'AlternateContent'),
+      )) ||
+    pptxShapeHasElement(
+      shape,
+      qualifiedPptxName(presentationPrefix, 'extLst'),
+    ) ||
+    pptxShapeHasElement(shape, qualifiedPptxName(drawingPrefix, 'extLst'))
+  ) {
+    unsupportedPptxEdit(
+      'PowerPoint group transform target contains unsupported compatibility markup',
+    );
+  }
+  const transformName = qualifiedPptxName(drawingPrefix, 'xfrm');
+  const groupPropertiesName = qualifiedPptxName(presentationPrefix, 'grpSpPr');
+  const offsetName = qualifiedPptxName(drawingPrefix, 'off');
+  const extentName = qualifiedPptxName(drawingPrefix, 'ext');
+  const childOffsetName = qualifiedPptxName(drawingPrefix, 'chOff');
+  const childExtentName = qualifiedPptxName(drawingPrefix, 'chExt');
+  const attributePattern =
+    '((?:\\s+[A-Za-z_][\\w.:-]*\\s*=\\s*(?:"[^"]*"|\'[^\']*\'))*)';
+  const transformPattern = new RegExp(
+    `<${escapePptxXmlPattern(transformName)}${attributePattern}\\s*>\\s*` +
+      `<${escapePptxXmlPattern(offsetName)}${attributePattern}\\s*\\/>\\s*` +
+      `<${escapePptxXmlPattern(extentName)}${attributePattern}\\s*\\/>\\s*` +
+      `<${escapePptxXmlPattern(childOffsetName)}${attributePattern}\\s*\\/>\\s*` +
+      `<${escapePptxXmlPattern(childExtentName)}${attributePattern}\\s*\\/>\\s*` +
+      `<\\/${escapePptxXmlPattern(transformName)}\\s*>`,
+    'g',
+  );
+  const groupPropertiesPattern = new RegExp(
+    `<${escapePptxXmlPattern(groupPropertiesName)}${attributePattern}\\s*>([\\s\\S]*?)<\\/${escapePptxXmlPattern(groupPropertiesName)}\\s*>`,
+    'g',
+  );
+  const groupPropertiesMatches = [...shape.matchAll(groupPropertiesPattern)];
+  if (groupPropertiesMatches.length === 0) {
+    unsupportedPptxEdit(
+      'PowerPoint group target must contain one direct group property block',
+    );
+  }
+  const groupPropertiesMatch = groupPropertiesMatches[0] as RegExpMatchArray;
+  const groupProperties = groupPropertiesMatch[2] as string;
+  const matches = [...groupProperties.matchAll(transformPattern)];
+  if (matches.length !== 1) {
+    unsupportedPptxEdit(
+      'PowerPoint group target must contain one simple group transform',
+    );
+  }
+  const match = matches[0] as RegExpMatchArray;
+  const source = {
+    childHeight: integerAttribute(match[5] as string, 'cy'),
+    childWidth: integerAttribute(match[5] as string, 'cx'),
+    childX: integerAttribute(match[4] as string, 'x'),
+    childY: integerAttribute(match[4] as string, 'y'),
+    flipHorizontal: booleanAttribute(match[1] as string, 'flipH'),
+    flipVertical: booleanAttribute(match[1] as string, 'flipV'),
+    height: integerAttribute(match[3] as string, 'cy'),
+    rotation: optionalIntegerAttribute(match[1] as string, 'rot'),
+    width: integerAttribute(match[3] as string, 'cx'),
+    x: integerAttribute(match[2] as string, 'x'),
+    y: integerAttribute(match[2] as string, 'y'),
+  };
+  const expected = requiredGroupTransform(operation.expectedTransform);
+  const expectedXml = {
+    childHeight: pointsToEmu(expected.childSpace.height),
+    childWidth: pointsToEmu(expected.childSpace.width),
+    childX: pointsToEmu(expected.childSpace.x),
+    childY: pointsToEmu(expected.childSpace.y),
+    flipHorizontal: expected.flipHorizontal ?? false,
+    flipVertical: expected.flipVertical ?? false,
+    height: pointsToEmu(expected.height),
+    rotation: degreesToAngle(expected.rotation ?? 0),
+    width: pointsToEmu(expected.width),
+    x: pointsToEmu(expected.x),
+    y: pointsToEmu(expected.y),
+  };
+  if (JSON.stringify(source) !== JSON.stringify(expectedXml)) {
+    unsupportedPptxEdit(
+      'PowerPoint group source XML does not match its preview precondition',
+    );
+  }
+  const replacement = requiredGroupTransform(operation.value);
+  const replacementAttributes = [
+    replacement.rotation === 0
+      ? ''
+      : ` rot="${degreesToAngle(replacement.rotation ?? 0)}"`,
+    replacement.flipHorizontal ? ' flipH="1"' : '',
+    replacement.flipVertical ? ' flipV="1"' : '',
+  ].join('');
+  const child = replacement.childSpace;
+  const replacementXml =
+    `<${transformName}${replacementAttributes}>` +
+    `<${offsetName} x="${pointsToEmu(replacement.x)}" y="${pointsToEmu(replacement.y)}"/>` +
+    `<${extentName} cx="${pointsToEmu(replacement.width)}" cy="${pointsToEmu(replacement.height)}"/>` +
+    `<${childOffsetName} x="${pointsToEmu(child.x)}" y="${pointsToEmu(child.y)}"/>` +
+    `<${childExtentName} cx="${pointsToEmu(child.width)}" cy="${pointsToEmu(child.height)}"/>` +
+    `</${transformName}>`;
+  const propertiesStart =
+    (groupPropertiesMatch.index ?? 0) +
+    groupPropertiesMatch[0].indexOf(groupProperties);
+  const matchStart = range.start + propertiesStart + (match.index ?? 0);
+  const matchEnd = matchStart + match[0].length;
+  return `${xml.slice(0, matchStart)}${replacementXml}${xml.slice(matchEnd)}`;
 }

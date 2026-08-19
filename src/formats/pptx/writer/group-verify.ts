@@ -15,6 +15,31 @@ export interface PptxGroupVerificationDependencies {
   ): void;
 }
 
+function scaledExpectedChild(
+  child: PptxSceneElement,
+  groupTransform: NonNullable<PptxSceneGroupElement['authored']['transform']>,
+): PptxSceneElement {
+  const result = structuredClone(child);
+  const transform = result.authored.transform;
+  if (transform === undefined) return result;
+  const widthScale = groupTransform.width / groupTransform.childSpace.width;
+  const heightScale = groupTransform.height / groupTransform.childSpace.height;
+  const centerX = transform.x + transform.width / 2;
+  const centerY = transform.y + transform.height / 2;
+  const rotation = (((transform.rotation ?? 0) % 360) + 360) % 360;
+  const swapped = rotation === 90 || rotation === 270;
+  const width = transform.width * (swapped ? heightScale : widthScale);
+  const height = transform.height * (swapped ? widthScale : heightScale);
+  result.authored.transform = {
+    ...transform,
+    height,
+    width,
+    x: (centerX - groupTransform.childSpace.x) * widthScale - width / 2,
+    y: (centerY - groupTransform.childSpace.y) * heightScale - height / 2,
+  };
+  return result;
+}
+
 export function verifyPowerPointGroupElement(
   generated: Element | undefined,
   expected: PptxSceneGroupElement,
@@ -25,12 +50,13 @@ export function verifyPowerPointGroupElement(
     throw new Error(`Generated PowerPoint group missing at ${location}`);
   }
   dependencies.verifyTransform(generated, expected, location);
-  const expectedChildSpace = expected.authored.transform?.childSpace;
-  if (expectedChildSpace === undefined) {
+  const groupTransform = expected.authored.transform;
+  if (groupTransform === undefined || groupTransform.childSpace === undefined) {
     throw new Error(
       `Expected PowerPoint group child space missing at ${location}`,
     );
   }
+  const expectedChildSpace = groupTransform.childSpace;
   const childSpace = generated.childSpace;
   const actual =
     childSpace === undefined
@@ -58,6 +84,10 @@ export function verifyPowerPointGroupElement(
     );
   }
   expected.elements.forEach((child, index) =>
-    dependencies.verifyChild(generated.elements[index], child, index),
+    dependencies.verifyChild(
+      generated.elements[index],
+      scaledExpectedChild(child, groupTransform),
+      index,
+    ),
   );
 }

@@ -70,6 +70,8 @@ const TRANSFORM_KEYS = [
   'x',
   'y',
 ] as const;
+const GROUP_TRANSFORM_KEYS = ['childSpace', ...TRANSFORM_KEYS] as const;
+const COORDINATE_SPACE_KEYS = ['height', 'width', 'x', 'y'] as const;
 const SHA256_PATTERN = /^[0-9a-f]{64}$/;
 
 function invalidSnapshot(message: string): never {
@@ -231,6 +233,7 @@ function editableTransforms(
     for (const element of slide.elements) {
       if (
         element.type !== 'image' &&
+        element.type !== 'group' &&
         element.type !== 'shape' &&
         element.type !== 'table' &&
         element.type !== 'text'
@@ -245,8 +248,13 @@ function editableTransforms(
 function validateTransform(
   value: unknown,
   message: string,
+  groupTransform = false,
 ): Record<string, unknown> {
-  const transform = exactRecord(value, TRANSFORM_KEYS, message);
+  const transform = exactRecord(
+    value,
+    groupTransform ? GROUP_TRANSFORM_KEYS : TRANSFORM_KEYS,
+    message,
+  );
   for (const key of ['x', 'y', 'width', 'height', 'rotation'] as const) {
     if (!Number.isFinite(transform[key])) {
       invalidSnapshot(message);
@@ -257,6 +265,19 @@ function validateTransform(
   }
   for (const key of ['flipHorizontal', 'flipVertical'] as const) {
     if (typeof transform[key] !== 'boolean') invalidSnapshot(message);
+  }
+  if (groupTransform) {
+    const childSpace = exactRecord(
+      transform.childSpace,
+      COORDINATE_SPACE_KEYS,
+      message,
+    );
+    for (const key of COORDINATE_SPACE_KEYS) {
+      if (!Number.isFinite(childSpace[key])) invalidSnapshot(message);
+    }
+    if (Number(childSpace.width) <= 0 || Number(childSpace.height) <= 0) {
+      invalidSnapshot(message);
+    }
   }
   return transform;
 }
@@ -309,20 +330,26 @@ function validateOperations(
     ids.add(id);
     targets.add(targetKey);
     if (kind === 'set-transform') {
-      const expectedTransform = validateTransform(
-        operation.expectedTransform,
-        `PowerPoint round-trip operation ${index + 1} expectedTransform is invalid`,
-      );
-      const replacement = validateTransform(
-        operation.value,
-        `PowerPoint round-trip operation ${index + 1} value is not a valid transform`,
-      );
       const sourceTransform = transforms.get(targetKey);
       if (sourceTransform === undefined) {
         invalidSnapshot(
           'PowerPoint round-trip transform target does not exist',
         );
       }
+      const groupTransform =
+        sourceTransform !== null &&
+        typeof sourceTransform === 'object' &&
+        Object.hasOwn(sourceTransform, 'childSpace');
+      const expectedTransform = validateTransform(
+        operation.expectedTransform,
+        `PowerPoint round-trip operation ${index + 1} expectedTransform is invalid`,
+        groupTransform,
+      );
+      const replacement = validateTransform(
+        operation.value,
+        `PowerPoint round-trip operation ${index + 1} value is not a valid transform`,
+        groupTransform,
+      );
       if (canonicalJson(sourceTransform) !== canonicalJson(expectedTransform)) {
         invalidSnapshot(
           'PowerPoint round-trip transform precondition does not match the preview',
@@ -432,6 +459,7 @@ function expectedSupportProfileId(
     for (const element of slide.elements) {
       if (
         element.type === 'image' ||
+        element.type === 'group' ||
         element.type === 'shape' ||
         element.type === 'table'
       ) {

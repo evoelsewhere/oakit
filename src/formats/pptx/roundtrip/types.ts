@@ -1,4 +1,8 @@
-import type { PptxSceneDocument, PptxSceneTransform } from '../scene-types';
+import type {
+  PptxSceneDocument,
+  PptxSceneGroupTransform,
+  PptxSceneTransform,
+} from '../scene-types';
 import type { PptxResourceLimits } from '../types';
 import type { PptxWriteSupportProfile } from '../write-types';
 
@@ -40,11 +44,11 @@ export interface PptxRoundTripReplaceTextOperation {
 }
 
 export interface PptxRoundTripSetTransformOperation {
-  expectedTransform: PptxSceneTransform;
+  expectedTransform: PptxSceneGroupTransform | PptxSceneTransform;
   id: string;
   kind: 'set-transform';
   targetKey: string;
-  value: PptxSceneTransform;
+  value: PptxSceneGroupTransform | PptxSceneTransform;
 }
 
 export type PptxRoundTripOperation =

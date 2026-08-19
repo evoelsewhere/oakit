@@ -16,6 +16,7 @@ import { resolvePptxSlideParts } from './relationships';
 import { patchPptxShapeTextXml } from './text-xml';
 import {
   patchPptxGraphicFrameTransformXml,
+  patchPptxGroupTransformXml,
   patchPptxPictureTransformXml,
   patchPptxShapeTransformXml,
 } from './transform-xml';
@@ -30,7 +31,7 @@ const TARGET_KEY_PATTERN = /^slide-([1-9]\d*)-element-([1-9]\d*)-run-1$/;
 const TRANSFORM_TARGET_KEY_PATTERN = /^slide-([1-9]\d*)-element-([1-9]\d*)$/;
 
 interface TextTarget {
-  elementType: 'image' | 'shape' | 'table' | 'text';
+  elementType: 'group' | 'image' | 'shape' | 'table' | 'text';
   elementIndex: number;
   shapeId: string;
   slideIndex: number;
@@ -95,12 +96,13 @@ function transformTarget(
   const element = document.slides[slideIndex]?.elements[elementIndex];
   if (
     element?.type !== 'image' &&
+    element?.type !== 'group' &&
     element?.type !== 'shape' &&
     element?.type !== 'table' &&
     element?.type !== 'text'
   ) {
     unsupportedPptxEdit(
-      'PowerPoint transform target is not a slide-owned text, shape, image, or table element',
+      'PowerPoint transform target is not a slide-owned text, shape, image, table, or group element',
     );
   }
   return {
@@ -146,13 +148,15 @@ export async function patchPptxOperations(
         ? patchPptxShapeTextXml(current, target.shapeId, operation)
         : target.elementType === 'image'
           ? patchPptxPictureTransformXml(current, target.shapeId, operation)
-          : target.elementType === 'table'
-            ? patchPptxGraphicFrameTransformXml(
-                current,
-                target.shapeId,
-                operation,
-              )
-            : patchPptxShapeTransformXml(current, target.shapeId, operation);
+          : target.elementType === 'group'
+            ? patchPptxGroupTransformXml(current, target.shapeId, operation)
+            : target.elementType === 'table'
+              ? patchPptxGraphicFrameTransformXml(
+                  current,
+                  target.shapeId,
+                  operation,
+                )
+              : patchPptxShapeTransformXml(current, target.shapeId, operation);
     editedXml.set(slidePart, patched);
     patchedParts.add(slidePart);
   }
