@@ -452,10 +452,22 @@ export interface XlsxWorkbookProtection {
 
 export interface XlsxWorkbookProperties {
   calculation: {
+    calculationCompleted: boolean;
+    calculationId?: number;
+    calculateOnSave: boolean;
     chain?: XlsxCalculationChainEntry[];
+    concurrentCalculation: boolean;
+    concurrentManualCount?: number;
     forceFullCalculation: boolean;
+    fullPrecision: boolean;
     fullCalculationOnLoad: boolean;
+    iteration: {
+      enabled: boolean;
+      maxChange: number;
+      maxIterations: number;
+    };
     mode: 'automatic' | 'automatic-except-tables' | 'manual';
+    referenceMode: 'A1' | 'R1C1';
   };
   commentPersons?: XlsxCommentPerson[];
   dateSystem: '1900' | '1904';

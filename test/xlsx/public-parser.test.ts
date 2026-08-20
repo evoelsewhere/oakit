@@ -135,9 +135,19 @@ describe('public XLSX parser', () => {
         styles: [{ font: { name: 'Calibri', size: 11 } }],
         workbook: {
           calculation: {
+            calculationCompleted: true,
+            calculateOnSave: true,
+            concurrentCalculation: true,
             forceFullCalculation: false,
             fullCalculationOnLoad: false,
+            fullPrecision: true,
+            iteration: {
+              enabled: false,
+              maxChange: 0.001,
+              maxIterations: 100,
+            },
             mode: 'automatic',
+            referenceMode: 'A1',
           },
           dateSystem: '1900',
           definedNames: [],

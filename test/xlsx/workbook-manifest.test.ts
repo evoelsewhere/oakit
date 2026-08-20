@@ -103,9 +103,19 @@ describe('XLSX workbook manifest', () => {
       pivotCaches: [],
       properties: {
         calculation: {
+          calculationCompleted: true,
+          calculateOnSave: true,
+          concurrentCalculation: true,
           forceFullCalculation: false,
           fullCalculationOnLoad: false,
+          fullPrecision: true,
+          iteration: {
+            enabled: false,
+            maxChange: 0.001,
+            maxIterations: 100,
+          },
           mode: 'automatic',
+          referenceMode: 'A1',
         },
         dateSystem: '1900',
         definedNames: [],
@@ -174,9 +184,19 @@ describe('XLSX workbook manifest', () => {
 
     expect(result.properties).toEqual({
       calculation: {
+        calculationCompleted: true,
+        calculateOnSave: true,
+        concurrentCalculation: true,
         forceFullCalculation: false,
         fullCalculationOnLoad: false,
+        fullPrecision: true,
+        iteration: {
+          enabled: false,
+          maxChange: 0.001,
+          maxIterations: 100,
+        },
         mode: 'automatic',
+        referenceMode: 'A1',
       },
       dateSystem: '1900',
       definedNames: [],
@@ -234,7 +254,7 @@ describe('XLSX workbook manifest', () => {
           <sheet name="Chart" sheetId="9" state="hidden" r:id="rId2"/>
           <sheet name="Archive" sheetId="12" state="veryHidden" r:id="rId3"/>
         </sheets>
-        <calcPr calcMode="manual" forceFullCalc="1" fullCalcOnLoad="true"/>
+        <calcPr calcId="4294967295" calcMode="manual" refMode="R1C1" iterate="1" iterateCount="250" iterateDelta="0.25" fullPrecision="0" calcCompleted="false" calcOnSave="0" concurrentCalc="false" concurrentManualCount="7" forceFullCalc="1" fullCalcOnLoad="true"/>
       </workbook>`;
     const relBase = XLSX_OFFICE_REL_TYPE;
     const result = await manifest({
@@ -255,9 +275,21 @@ describe('XLSX workbook manifest', () => {
 
     expect(result.properties).toEqual({
       calculation: {
+        calculationCompleted: false,
+        calculationId: 4294967295,
+        calculateOnSave: false,
+        concurrentCalculation: false,
+        concurrentManualCount: 7,
         forceFullCalculation: true,
         fullCalculationOnLoad: true,
+        fullPrecision: false,
+        iteration: {
+          enabled: true,
+          maxChange: 0.25,
+          maxIterations: 250,
+        },
         mode: 'manual',
+        referenceMode: 'R1C1',
       },
       dateSystem: '1904',
       definedNames: [],
@@ -705,4 +737,79 @@ describe('XLSX workbook manifest', () => {
       });
     },
   );
+
+  it.each([
+    ['calcId="-1"', 'Workbook calculation ID is invalid'],
+    ['calcId="4294967296"', 'Workbook calculation ID is invalid'],
+    [
+      'concurrentManualCount="4294967296"',
+      'Workbook concurrent manual count is invalid',
+    ],
+    ['iterateCount="bad"', 'Workbook iteration count is invalid'],
+    ['iterateCount="4294967296"', 'Workbook iteration count is invalid'],
+    ['iterateDelta="bad"', 'Workbook iteration delta is invalid'],
+    ['iterateDelta="1e999"', 'Workbook iteration delta is invalid'],
+    ['iterateDelta=" 1"', 'Workbook iteration delta is invalid'],
+    ['iterateDelta="1 "', 'Workbook iteration delta is invalid'],
+    ['refMode="bad"', 'Workbook calculation reference mode is invalid'],
+    ['calcCompleted="bad"', 'Workbook calculation-completed flag is invalid'],
+    ['calcOnSave="bad"', 'Workbook calculate-on-save flag is invalid'],
+    ['concurrentCalc="bad"', 'Workbook concurrent-calculation flag is invalid'],
+    ['fullPrecision="bad"', 'Workbook full-precision flag is invalid'],
+    ['iterate="bad"', 'Workbook iteration flag is invalid'],
+  ] as const)(
+    'rejects invalid calcPr attribute %s',
+    async (attribute, message) => {
+      const workbook = independentWorkbook(
+        '<sheet name="Data" sheetId="1" r:id="rIdSheet1"/>',
+      ).replace('<calcPr ', `<calcPr ${attribute} `);
+      const error = await captureManifestError({ 'xl/workbook.xml': workbook });
+      expect(error.diagnostic).toEqual({
+        code: 'invalid-document-structure',
+        message,
+        part: 'xl/workbook.xml',
+        severity: 'error',
+      });
+    },
+  );
+
+  it.each([
+    ['+1', 1],
+    ['12', 12],
+    ['1.', 1],
+    ['.55', 0.55],
+    ['1e3', 1000],
+    ['1e30', 1e30],
+    ['1e+3', 1000],
+    ['1E-3', 0.001],
+    ['-0', 0],
+  ] as const)(
+    'parses calculation iteration delta %s',
+    async (value, expected) => {
+      const workbook = independentWorkbook(
+        '<sheet name="Data" sheetId="1" r:id="rIdSheet1"/>',
+      ).replace('<calcPr ', `<calcPr iterateDelta="${value}" `);
+      const result = await manifest({ 'xl/workbook.xml': workbook });
+      expect(result.properties.calculation.iteration.maxChange).toBe(expected);
+      if (value === '-0') {
+        expect(
+          Object.is(result.properties.calculation.iteration.maxChange, -0),
+        ).toBe(false);
+      }
+    },
+  );
+
+  it('accepts UInt32 maxima for iteration and concurrent-manual counts', async () => {
+    const workbook = independentWorkbook(
+      '<sheet name="Data" sheetId="1" r:id="rIdSheet1"/>',
+    ).replace(
+      '<calcPr ',
+      '<calcPr iterateCount="4294967295" concurrentManualCount="4294967295" ',
+    );
+    const result = await manifest({ 'xl/workbook.xml': workbook });
+    expect(result.properties.calculation).toMatchObject({
+      concurrentManualCount: 4294967295,
+      iteration: { maxIterations: 4294967295 },
+    });
+  });
 });
