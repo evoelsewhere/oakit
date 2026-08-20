@@ -7,6 +7,8 @@ import { XlsxWriteError } from '../../src/formats/xlsx/roundtrip/errors';
 import {
   replayXlsxCellOperations,
   xlsxCellTargetState,
+  xlsxColumnTargetState,
+  xlsxRowTargetState,
 } from '../../src/formats/xlsx/roundtrip/operation-planner';
 import { validateXlsxCellOperations } from '../../src/formats/xlsx/roundtrip/operation-validation';
 import { readXlsxRoundTrip } from '../../src/formats/xlsx/roundtrip/read-snapshot';
@@ -51,8 +53,6 @@ const UNSUPPORTED_OPERATION_KINDS = [
   'insert-columns',
   'insert-rows',
   'rename-worksheet',
-  'set-column',
-  'set-row',
 ] as const;
 
 function capture(action: () => unknown): XlsxWriteError {
@@ -332,6 +332,124 @@ describe('XLSX cell operation validation', () => {
         message: `XLSX operation ${kind} is not supported by this profile`,
         operationId: 'one',
       });
+    },
+  );
+
+  it('validates and normalizes row and column property operations', () => {
+    const sheetKey = `xlsx:sheet:${'a'.repeat(32)}`;
+    expect(
+      validateXlsxCellOperations(
+        [
+          {
+            height: -0,
+            hidden: false,
+            ifMatch: 'b'.repeat(64),
+            kind: 'set-row',
+            operationId: 'row',
+            row: readerLimits.maxRowsPerWorksheet,
+            sheetKey,
+          },
+          {
+            end: readerLimits.maxColumnsPerWorksheet,
+            hidden: true,
+            kind: 'set-column',
+            operationId: 'column',
+            sheetKey,
+            start: 1,
+            width: 255,
+          },
+        ],
+        writeLimits,
+        readerLimits,
+      ),
+    ).toEqual([
+      {
+        height: 0,
+        hidden: false,
+        ifMatch: 'b'.repeat(64),
+        kind: 'set-row',
+        operationId: 'row',
+        row: readerLimits.maxRowsPerWorksheet,
+        sheetKey,
+      },
+      {
+        end: readerLimits.maxColumnsPerWorksheet,
+        hidden: true,
+        kind: 'set-column',
+        operationId: 'column',
+        sheetKey,
+        start: 1,
+        width: 255,
+      },
+    ]);
+  });
+
+  it.each([
+    [{ kind: 'set-row', row: 1 }, 'XLSX set-row operation shape is invalid'],
+    [
+      { hidden: 'yes', kind: 'set-row', row: 1 },
+      'XLSX set-row hidden value is invalid',
+    ],
+    [
+      { height: 410, kind: 'set-row', row: 1 },
+      'XLSX set-row height is invalid',
+    ],
+    [{ height: -1, kind: 'set-row', row: 1 }, 'XLSX set-row height is invalid'],
+    [
+      { hidden: true, kind: 'set-row', row: 0 },
+      'XLSX set-row index is invalid',
+    ],
+    [
+      { end: 2, kind: 'set-column', start: 1 },
+      'XLSX set-column operation shape is invalid',
+    ],
+    [
+      { end: 2, hidden: 'yes', kind: 'set-column', start: 1 },
+      'XLSX set-column hidden value is invalid',
+    ],
+    [
+      { end: 2, kind: 'set-column', start: 1, width: 256 },
+      'XLSX set-column width is invalid',
+    ],
+    [
+      { end: 2, kind: 'set-column', start: 1, width: -1 },
+      'XLSX set-column width is invalid',
+    ],
+    [
+      { end: 1, hidden: true, kind: 'set-column', start: 2 },
+      'XLSX set-column range is invalid',
+    ],
+    [
+      { end: 1, hidden: true, kind: 'set-column', start: 0 },
+      'XLSX set-column start is invalid',
+    ],
+    [
+      {
+        end: readerLimits.maxColumnsPerWorksheet + 1,
+        hidden: true,
+        kind: 'set-column',
+        start: 1,
+      },
+      'XLSX set-column end is invalid',
+    ],
+  ] as const)(
+    'rejects invalid row or column operation %#',
+    (fields, message) => {
+      expect(
+        capture(() =>
+          validateXlsxCellOperations(
+            [
+              {
+                ...fields,
+                operationId: 'property',
+                sheetKey: `xlsx:sheet:${'a'.repeat(32)}`,
+              },
+            ],
+            writeLimits,
+            readerLimits,
+          ),
+        ).diagnostic.message,
+      ).toBe(message);
     },
   );
 
@@ -1012,6 +1130,182 @@ describe('XLSX cell operation planner', () => {
     expect(plan.stateHash).toBe(await canonicalXlsxSha256(plan.document));
   });
 
+  it('replays row and column properties with target-specific preconditions', async () => {
+    const snapshot = await readXlsxRoundTrip(
+      await createIndependentXlsx({
+        'xl/worksheets/sheet1.xml': `<worksheet xmlns="${XLSX_SPREADSHEET_NS}"><cols><col min="1" max="2" width="10" customWidth="1"/></cols><sheetData><row r="1" ht="12" customHeight="1"><c r="A1"><v>1</v></c></row></sheetData></worksheet>`,
+      }),
+    );
+    const source = worksheet(snapshot.document);
+    const rowMatch = await canonicalXlsxSha256(
+      xlsxRowTargetState(source, source.rows[0]!),
+    );
+    const columnMatch = await canonicalXlsxSha256(
+      xlsxColumnTargetState(source, source.columns[0]!),
+    );
+    const plan = await replayXlsxCellOperations(
+      snapshot.document,
+      [
+        {
+          height: 20,
+          hidden: true,
+          ifMatch: rowMatch,
+          kind: 'set-row',
+          operationId: 'row',
+          row: 1,
+          sheetKey: source.key,
+        },
+        {
+          end: 2,
+          hidden: false,
+          ifMatch: columnMatch,
+          kind: 'set-column',
+          operationId: 'column',
+          sheetKey: source.key,
+          start: 1,
+          width: 25,
+        },
+      ],
+      writeLimits,
+      readerLimits,
+    );
+    expect(source.rows[0]).toMatchObject({ height: 12, index: 1 });
+    expect(source.columns[0]).toMatchObject({ start: 1, width: 10 });
+    expect(worksheet(plan.document).rows[0]).toMatchObject({
+      height: 20,
+      hidden: true,
+      index: 1,
+    });
+    expect(worksheet(plan.document).columns[0]).toMatchObject({
+      end: 2,
+      hidden: false,
+      start: 1,
+      width: 25,
+    });
+    expect(plan.impacts).toEqual([
+      {
+        kind: 'set-row',
+        operationId: 'row',
+        range: '1',
+        sheetKey: source.key,
+      },
+      {
+        kind: 'set-column',
+        operationId: 'column',
+        range: '1:2',
+        sheetKey: source.key,
+      },
+    ]);
+    expect(plan.stateHash).toBe(await canonicalXlsxSha256(plan.document));
+
+    for (const operation of [
+      {
+        hidden: true,
+        kind: 'set-row' as const,
+        operationId: 'missing-row',
+        row: 2,
+        sheetKey: source.key,
+      },
+      {
+        end: 1,
+        hidden: true,
+        kind: 'set-column' as const,
+        operationId: 'missing-column',
+        sheetKey: source.key,
+        start: 1,
+      },
+    ]) {
+      const error = await captureAsync(() =>
+        replayXlsxCellOperations(
+          snapshot.document,
+          [operation],
+          writeLimits,
+          readerLimits,
+        ),
+      );
+      expect(error.diagnostic).toMatchObject({
+        code: 'preservation-conflict',
+        featureClass:
+          operation.kind === 'set-row' ? 'missing-row' : 'missing-column-range',
+        message:
+          operation.kind === 'set-row'
+            ? 'XLSX set-row operation requires an existing explicit source row'
+            : 'XLSX set-column operation requires an existing exact source range',
+        operationId: operation.operationId,
+        range: operation.kind === 'set-row' ? '2' : '1:1',
+      });
+    }
+    const shiftedColumns = structuredClone(snapshot.document);
+    worksheet(shiftedColumns).columns = [{ end: 2, start: 2 }];
+    expect(
+      (
+        await captureAsync(() =>
+          replayXlsxCellOperations(
+            shiftedColumns,
+            [
+              {
+                end: 2,
+                hidden: true,
+                kind: 'set-column',
+                operationId: 'wrong-start',
+                sheetKey: source.key,
+                start: 1,
+              },
+            ],
+            writeLimits,
+            readerLimits,
+          ),
+        )
+      ).diagnostic.featureClass,
+    ).toBe('missing-column-range');
+    const mismatch = await captureAsync(() =>
+      replayXlsxCellOperations(
+        snapshot.document,
+        [
+          {
+            hidden: true,
+            ifMatch: '0'.repeat(64),
+            kind: 'set-row',
+            operationId: 'row-precondition',
+            row: 1,
+            sheetKey: source.key,
+          },
+        ],
+        writeLimits,
+        readerLimits,
+      ),
+    );
+    expect(mismatch.diagnostic).toMatchObject({
+      code: 'operation-precondition-failed',
+      message: 'XLSX operation precondition does not match the target row',
+      range: '1',
+    });
+    const columnMismatch = await captureAsync(() =>
+      replayXlsxCellOperations(
+        snapshot.document,
+        [
+          {
+            end: 2,
+            hidden: true,
+            ifMatch: '0'.repeat(64),
+            kind: 'set-column',
+            operationId: 'column-precondition',
+            sheetKey: source.key,
+            start: 1,
+          },
+        ],
+        writeLimits,
+        readerLimits,
+      ),
+    );
+    expect(columnMismatch.diagnostic).toMatchObject({
+      code: 'operation-precondition-failed',
+      message:
+        'XLSX operation precondition does not match the target column range',
+      range: '1:2',
+    });
+  });
+
   it('applies existing styles, appends deterministically, and bounds style growth', async () => {
     const styles = `<styleSheet xmlns="${XLSX_SPREADSHEET_NS}"><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts><fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>`;
     const snapshot = await readXlsxRoundTrip(
@@ -1391,6 +1685,27 @@ describe('XLSX cell operation planner', () => {
     expect(chartError.diagnostic.message).toBe(
       'XLSX cell operation cannot target a chart sheet',
     );
+    const chartRowError = await captureAsync(() =>
+      replayXlsxCellOperations(
+        chartDocument,
+        [
+          {
+            hidden: true,
+            kind: 'set-row',
+            operationId: 'chart-row',
+            row: 1,
+            sheetKey: chartDocument.sheets[0]!.key,
+          },
+        ],
+        writeLimits,
+        readerLimits,
+      ),
+    );
+    expect(chartRowError.diagnostic).toMatchObject({
+      featureClass: 'chart-sheet',
+      message: 'XLSX row or column operation cannot target a chart sheet',
+      range: '1',
+    });
 
     const duplicate: XlsxRoundTripDocument = {
       ...snapshot.document,

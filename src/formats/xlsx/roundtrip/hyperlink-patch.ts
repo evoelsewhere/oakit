@@ -13,7 +13,7 @@ import { writeLimitFailure } from './write-limits';
 export interface XlsxHyperlinkPatch {
   cell: string;
   operationId: string;
-  relationshipId?: string;
+  relationshipId?: string | undefined;
   target: XlsxHyperlinkTarget | null;
 }
 

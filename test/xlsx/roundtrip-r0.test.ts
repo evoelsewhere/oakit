@@ -294,6 +294,7 @@ describe('XLSX exact R0 round-trip', () => {
       { domain: 'cells', level: 'verified-R2' },
       { domain: 'formulas', level: 'verified-R2' },
       { domain: 'hyperlinks', level: 'verified-R2' },
+      { domain: 'rows-columns', level: 'verified-R2' },
       { domain: 'styles', level: 'verified-R2' },
     ]);
     expect(
@@ -302,7 +303,9 @@ describe('XLSX exact R0 round-trip', () => {
       expect.objectContaining({ operation: 'clear-cell' }),
       expect.objectContaining({ operation: 'set-cell' }),
       expect.objectContaining({ operation: 'set-cell-style' }),
+      expect.objectContaining({ operation: 'set-column' }),
       expect.objectContaining({ operation: 'set-hyperlink' }),
+      expect.objectContaining({ operation: 'set-row' }),
     ]);
     expect(
       manifest.operations
@@ -338,6 +341,17 @@ describe('XLSX exact R0 round-trip', () => {
       operation: 'set-cell-style',
     });
     expect(
+      manifest.operations.find((entry) => entry.operation === 'set-column'),
+    ).toEqual({
+      constraints: [
+        'existing-exact-column-range',
+        'size-and-visibility-only',
+        'clean-supported-package-closure',
+      ],
+      level: 'verified-R2',
+      operation: 'set-column',
+    });
+    expect(
       manifest.operations.find((entry) => entry.operation === 'set-hyperlink'),
     ).toEqual({
       constraints: [
@@ -351,6 +365,17 @@ describe('XLSX exact R0 round-trip', () => {
       ],
       level: 'verified-R2',
       operation: 'set-hyperlink',
+    });
+    expect(
+      manifest.operations.find((entry) => entry.operation === 'set-row'),
+    ).toEqual({
+      constraints: [
+        'existing-explicit-row',
+        'size-and-visibility-only',
+        'clean-supported-package-closure',
+      ],
+      level: 'verified-R2',
+      operation: 'set-row',
     });
     expect(new Set(manifest.domains.map((entry) => entry.domain)).size).toBe(
       manifest.domains.length,

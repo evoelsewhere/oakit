@@ -848,6 +848,9 @@ describe('XLSX verified cell edits', () => {
         code: 'resource-limit-exceeded',
         limit: 1,
         limitName,
+        ...(limitName === 'maxPatchCount'
+          ? { part: 'xl/worksheets/sheet2.xml' }
+          : {}),
       });
     }
     const patchedParts = successful.report.parts.filter(
@@ -874,6 +877,7 @@ describe('XLSX verified cell edits', () => {
       actual: generatedXmlBytes,
       limit: generatedXmlBytes - 1,
       limitName: 'maxGeneratedXmlBytes',
+      part: 'xl/worksheets/sheet2.xml',
     });
     const replacementBytes = new TextEncoder().encode(
       '<c r="A1"><v>10</v></c>',
@@ -895,6 +899,7 @@ describe('XLSX verified cell edits', () => {
       actual: replacementBytes * 2,
       limit: replacementBytes * 2 - 1,
       limitName: 'maxPatchBytes',
+      part: 'xl/worksheets/sheet2.xml',
     });
   });
 

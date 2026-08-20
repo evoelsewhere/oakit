@@ -64,6 +64,7 @@ export function createXlsxCapabilityManifest(): XlsxCapabilityManifest {
       domain === 'cells' ||
       domain === 'formulas' ||
       domain === 'hyperlinks' ||
+      domain === 'rows-columns' ||
       domain === 'styles'
         ? 'verified-R2'
         : 'preservation-only',
@@ -97,20 +98,31 @@ export function createXlsxCapabilityManifest(): XlsxCapabilityManifest {
               ],
               level: 'verified-R2' as const,
             }
-          : operation === 'set-hyperlink'
+          : operation === 'set-row' || operation === 'set-column'
             ? {
                 constraints: [
-                  'existing-explicit-cell',
-                  'safe-internal-or-external-target',
-                  'deterministic-relationship-allocation',
-                  'no-overlapping-multi-cell-hyperlink',
-                  'http-https-mailto-only',
-                  'no-url-credentials',
+                  operation === 'set-row'
+                    ? 'existing-explicit-row'
+                    : 'existing-exact-column-range',
+                  'size-and-visibility-only',
                   'clean-supported-package-closure',
                 ],
                 level: 'verified-R2' as const,
               }
-            : { level: 'unsupported' as const }),
+            : operation === 'set-hyperlink'
+              ? {
+                  constraints: [
+                    'existing-explicit-cell',
+                    'safe-internal-or-external-target',
+                    'deterministic-relationship-allocation',
+                    'no-overlapping-multi-cell-hyperlink',
+                    'http-https-mailto-only',
+                    'no-url-credentials',
+                    'clean-supported-package-closure',
+                  ],
+                  level: 'verified-R2' as const,
+                }
+              : { level: 'unsupported' as const }),
       operation,
     })),
     producerEvidence: [],

@@ -10,7 +10,15 @@ import { writeLimitFailure } from './write-limits';
 
 export type XlsxCellEditOperation = Extract<
   XlsxEditOperation,
-  { kind: 'clear-cell' | 'set-cell' | 'set-cell-style' | 'set-hyperlink' }
+  {
+    kind:
+      | 'clear-cell'
+      | 'set-cell'
+      | 'set-cell-style'
+      | 'set-column'
+      | 'set-hyperlink'
+      | 'set-row';
+  }
 >;
 
 const ERROR_CODES = new Set([
@@ -38,8 +46,6 @@ const KNOWN_OPERATIONS = new Set([
   'insert-columns',
   'insert-rows',
   'rename-worksheet',
-  'set-column',
-  'set-row',
 ]);
 const OPERATION_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u;
 const SHA256_PATTERN = /^[0-9a-f]{64}$/u;
@@ -92,24 +98,15 @@ function operationId(value: unknown): string {
   return value;
 }
 
-function validateCommon(
+function validateSheetCommon(
   operation: Record<string, unknown>,
   id: string,
-): { cell: string; operationId: string; sheetKey: string } {
+): { ifMatch?: string; operationId: string; sheetKey: string } {
   if (
     typeof operation.sheetKey !== 'string' ||
     !SHEET_KEY_PATTERN.test(operation.sheetKey)
   ) {
     invalid('XLSX operation sheet key is invalid', id);
-  }
-  const parsed = parseXlsxCellReference(operation.cell);
-  if (
-    !parsed ||
-    parsed.absoluteColumn ||
-    parsed.absoluteRow ||
-    operation.cell !== parsed.address
-  ) {
-    invalid('XLSX operation cell reference is invalid', id);
   }
   if (
     operation.ifMatch !== undefined &&
@@ -119,10 +116,60 @@ function validateCommon(
     invalid('XLSX operation precondition hash is invalid', id);
   }
   return {
-    cell: parsed.address,
+    ...(operation.ifMatch === undefined ? {} : { ifMatch: operation.ifMatch }),
     operationId: id,
     sheetKey: operation.sheetKey,
   };
+}
+
+function validateCommon(
+  operation: Record<string, unknown>,
+  id: string,
+): { cell: string; ifMatch?: string; operationId: string; sheetKey: string } {
+  const common = validateSheetCommon(operation, id);
+  const parsed = parseXlsxCellReference(operation.cell);
+  if (
+    !parsed ||
+    parsed.absoluteColumn ||
+    parsed.absoluteRow ||
+    operation.cell !== parsed.address
+  ) {
+    invalid('XLSX operation cell reference is invalid', id);
+  }
+  return { ...common, cell: parsed.address };
+}
+
+function boundedIndex(
+  value: unknown,
+  limit: number,
+  message: string,
+  id: string,
+): number {
+  if (
+    !Number.isSafeInteger(value) ||
+    (value as number) < 1 ||
+    (value as number) > limit
+  ) {
+    invalid(message, id);
+  }
+  return value as number;
+}
+
+function boundedDimension(
+  value: unknown,
+  maximum: number,
+  message: string,
+  id: string,
+): number {
+  if (
+    typeof value !== 'number' ||
+    !Number.isFinite(value) ||
+    value < 0 ||
+    value > maximum
+  ) {
+    invalid(message, id);
+  }
+  return value === 0 ? 0 : value;
 }
 
 function validateTextValue(
@@ -353,9 +400,6 @@ export function validateXlsxCellOperations(
       const common = validateCommon(operation, id);
       operations.push({
         ...common,
-        ...(operation.ifMatch === undefined
-          ? {}
-          : { ifMatch: operation.ifMatch as string }),
         kind: 'clear-cell',
       });
       continue;
@@ -375,9 +419,6 @@ export function validateXlsxCellOperations(
       operations.push({
         ...common,
         content,
-        ...(operation.ifMatch === undefined
-          ? {}
-          : { ifMatch: operation.ifMatch as string }),
         kind: 'set-cell',
       });
       continue;
@@ -395,9 +436,6 @@ export function validateXlsxCellOperations(
       const common = validateCommon(operation, id);
       operations.push({
         ...common,
-        ...(operation.ifMatch === undefined
-          ? {}
-          : { ifMatch: operation.ifMatch as string }),
         kind: 'set-cell-style',
         style: validateXlsxOperationStyle(operation.style, id),
       });
@@ -416,11 +454,97 @@ export function validateXlsxCellOperations(
       const common = validateCommon(operation, id);
       operations.push({
         ...common,
-        ...(operation.ifMatch === undefined
-          ? {}
-          : { ifMatch: operation.ifMatch as string }),
         kind: 'set-hyperlink',
         target: validateHyperlinkTarget(operation.target, id, readerLimits),
+      });
+      continue;
+    }
+    if (operation.kind === 'set-row') {
+      if (
+        !exactKeys(
+          operation,
+          ['kind', 'operationId', 'row', 'sheetKey'],
+          ['height', 'hidden', 'ifMatch'],
+        ) ||
+        (operation.height === undefined && operation.hidden === undefined)
+      ) {
+        invalid('XLSX set-row operation shape is invalid', id);
+      }
+      if (
+        operation.hidden !== undefined &&
+        typeof operation.hidden !== 'boolean'
+      ) {
+        invalid('XLSX set-row hidden value is invalid', id);
+      }
+      operations.push({
+        ...validateSheetCommon(operation, id),
+        ...(operation.height === undefined
+          ? {}
+          : {
+              height: boundedDimension(
+                operation.height,
+                409,
+                'XLSX set-row height is invalid',
+                id,
+              ),
+            }),
+        ...(operation.hidden === undefined ? {} : { hidden: operation.hidden }),
+        kind: 'set-row',
+        row: boundedIndex(
+          operation.row,
+          readerLimits.maxRowsPerWorksheet,
+          'XLSX set-row index is invalid',
+          id,
+        ),
+      });
+      continue;
+    }
+    if (operation.kind === 'set-column') {
+      if (
+        !exactKeys(
+          operation,
+          ['end', 'kind', 'operationId', 'sheetKey', 'start'],
+          ['hidden', 'ifMatch', 'width'],
+        ) ||
+        (operation.hidden === undefined && operation.width === undefined)
+      ) {
+        invalid('XLSX set-column operation shape is invalid', id);
+      }
+      if (
+        operation.hidden !== undefined &&
+        typeof operation.hidden !== 'boolean'
+      ) {
+        invalid('XLSX set-column hidden value is invalid', id);
+      }
+      const start = boundedIndex(
+        operation.start,
+        readerLimits.maxColumnsPerWorksheet,
+        'XLSX set-column start is invalid',
+        id,
+      );
+      const end = boundedIndex(
+        operation.end,
+        readerLimits.maxColumnsPerWorksheet,
+        'XLSX set-column end is invalid',
+        id,
+      );
+      if (start > end) invalid('XLSX set-column range is invalid', id);
+      operations.push({
+        ...validateSheetCommon(operation, id),
+        end,
+        ...(operation.hidden === undefined ? {} : { hidden: operation.hidden }),
+        kind: 'set-column',
+        start,
+        ...(operation.width === undefined
+          ? {}
+          : {
+              width: boundedDimension(
+                operation.width,
+                255,
+                'XLSX set-column width is invalid',
+                id,
+              ),
+            }),
       });
       continue;
     }

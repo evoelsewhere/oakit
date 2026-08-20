@@ -7,6 +7,7 @@ import type { ResolvedXlsxResourceLimits } from '../internal/resource-limits';
 import { discoverXlsxWorkbook } from '../internal/workbook-discovery';
 import { parseXlsxWorkbookManifest } from '../internal/workbook-manifest';
 import { loadXlsxStyles, type XlsxStyleTable } from '../internal/styles';
+import type { XlsxWorksheet } from '../types';
 import { XlsxWriteError } from './errors';
 import {
   inspectXlsxPackageGraph,
@@ -45,6 +46,10 @@ import {
   patchXlsxWorksheetPartWithReport,
   type XlsxWorksheetCellPatch,
 } from './worksheet-patch';
+import {
+  patchXlsxWorksheetProperties,
+  type XlsxWorksheetPropertyPatch,
+} from './worksheet-properties-patch';
 import { writeLimitFailure } from './write-limits';
 
 export interface XlsxCellEditPackage {
@@ -77,18 +82,23 @@ function finalPatches(
   appendedStyleXfs: ReadonlyMap<number, number>,
 ): Map<string, XlsxWorksheetCellPatch[]> {
   const bySheet = new Map<string, Map<string, XlsxWorksheetCellPatch>>();
-  const styleCells = new Set(
-    plan.impacts
-      .filter((impact) => impact.kind === 'set-cell-style')
-      .map((impact) => `${impact.sheetKey}\u0000${impact.cell}`),
-  );
-  const contentCells = new Set(
-    plan.impacts
-      .filter((impact) => impact.kind !== 'set-cell-style')
-      .map((impact) => `${impact.sheetKey}\u0000${impact.cell}`),
-  );
+  const styleCells = new Set<string>();
+  const contentCells = new Set<string>();
   for (const impact of plan.impacts) {
-    if (impact.kind === 'set-hyperlink') continue;
+    if (impact.kind === 'set-cell-style') {
+      styleCells.add(`${impact.sheetKey}\u0000${impact.cell}`);
+    } else if (impact.kind === 'clear-cell' || impact.kind === 'set-cell') {
+      contentCells.add(`${impact.sheetKey}\u0000${impact.cell}`);
+    }
+  }
+  for (const impact of plan.impacts) {
+    if (
+      impact.kind === 'set-column' ||
+      impact.kind === 'set-hyperlink' ||
+      impact.kind === 'set-row'
+    ) {
+      continue;
+    }
     let sheet = bySheet.get(impact.sheetKey);
     if (!sheet) {
       sheet = new Map();
@@ -136,6 +146,59 @@ function finalHyperlinkPatches(
       operationId: operation.operationId,
       target: operation.target,
     });
+  }
+  return new Map(
+    [...bySheet].map(([sheetKey, patches]) => [
+      sheetKey,
+      [...patches.values()],
+    ]),
+  );
+}
+
+function finalPropertyPatches(
+  plan: XlsxCellOperationPlan,
+): Map<string, XlsxWorksheetPropertyPatch[]> {
+  const bySheet = new Map<string, Map<string, XlsxWorksheetPropertyPatch>>();
+  for (const operation of plan.operations) {
+    if (operation.kind !== 'set-column' && operation.kind !== 'set-row') {
+      continue;
+    }
+    let sheet = bySheet.get(operation.sheetKey);
+    if (!sheet) {
+      sheet = new Map();
+      bySheet.set(operation.sheetKey, sheet);
+    }
+    const key =
+      operation.kind === 'set-row'
+        ? `row:${operation.row}`
+        : `column:${operation.start}:${operation.end}`;
+    const previous = sheet.get(key);
+    if (operation.kind === 'set-row') {
+      const next: Extract<XlsxWorksheetPropertyPatch, { kind: 'set-row' }> = {
+        ...(previous as
+          Extract<XlsxWorksheetPropertyPatch, { kind: 'set-row' }> | undefined),
+        kind: operation.kind,
+        operationId: operation.operationId,
+        row: operation.row,
+      };
+      if (operation.height !== undefined) next.height = operation.height;
+      if (operation.hidden !== undefined) next.hidden = operation.hidden;
+      sheet.set(key, next);
+    } else {
+      const next: Extract<XlsxWorksheetPropertyPatch, { kind: 'set-column' }> =
+        {
+          ...(previous as
+            | Extract<XlsxWorksheetPropertyPatch, { kind: 'set-column' }>
+            | undefined),
+          end: operation.end,
+          kind: operation.kind,
+          operationId: operation.operationId,
+          start: operation.start,
+        };
+      if (operation.hidden !== undefined) next.hidden = operation.hidden;
+      if (operation.width !== undefined) next.width = operation.width;
+      sheet.set(key, next);
+    }
   }
   return new Map(
     [...bySheet].map(([sheetKey, patches]) => [
@@ -208,7 +271,12 @@ export async function writeXlsxCellEditPackage(
   }
   const patches = finalPatches(plan, context.styles, appendedStyleXfs);
   const hyperlinkPatches = finalHyperlinkPatches(plan);
-  const sheetKeys = new Set([...patches.keys(), ...hyperlinkPatches.keys()]);
+  const propertyPatches = finalPropertyPatches(plan);
+  const sheetKeys = new Set([
+    ...patches.keys(),
+    ...hyperlinkPatches.keys(),
+    ...propertyPatches.keys(),
+  ]);
   for (const sheetKey of sheetKeys) {
     const sheetPatches = patches.get(sheetKey) ?? [];
     const sheet = baseDocument.sheets.find(
@@ -223,14 +291,17 @@ export async function writeXlsxCellEditPackage(
       writeLimits,
       part,
     );
+    const propertyPatched = patchXlsxWorksheetProperties(
+      cellPatched.data,
+      propertyPatches.get(sheetKey) ?? [],
+      writeLimits,
+      part,
+    );
     const finalSheet = plan.document.sheets.find(
       (candidate) => candidate.key === sheetKey,
-    )!;
-    if (finalSheet.kind !== 'worksheet') {
-      throw new TypeError('Expected XLSX worksheet hyperlink target');
-    }
+    ) as XlsxWorksheet & { key: string };
     const relationshipPlan = planXlsxExternalHyperlinkRelationships(
-      cellPatched.data,
+      propertyPatched.data,
       sourceGraph.relationships.filter(
         (relationship) => relationship.owner === part,
       ),
@@ -239,17 +310,16 @@ export async function writeXlsxCellEditPackage(
     );
     const requestedHyperlinks = (
       hyperlinkPatches.get(sheetKey) ?? []
-    ).map<XlsxHyperlinkPatch>((request) => {
-      if (request.target?.kind !== 'external') return request;
-      const relationshipId = relationshipPlan.idsByCell.get(request.cell)!;
-      return { ...request, relationshipId };
-    });
+    ).map<XlsxHyperlinkPatch>((request) => ({
+      ...request,
+      relationshipId: relationshipPlan.idsByCell.get(request.cell),
+    }));
     const officeRelationshipNamespace =
       sourceGraph.conformance === 'strict'
         ? 'http://purl.oclc.org/ooxml/officeDocument/relationships'
         : 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
     const hyperlinkPatched = patchXlsxHyperlinks(
-      cellPatched.data,
+      propertyPatched.data,
       requestedHyperlinks,
       writeLimits,
       part,
@@ -264,7 +334,10 @@ export async function writeXlsxCellEditPackage(
         part,
       );
     }
-    patchBytes += cellPatched.patchBytes + hyperlinkPatched.patchBytes;
+    patchBytes +=
+      cellPatched.patchBytes +
+      propertyPatched.patchBytes +
+      hyperlinkPatched.patchBytes;
     if (patchBytes > writeLimits.maxPatchBytes) {
       writeLimitFailure(
         'maxPatchBytes',
@@ -273,7 +346,10 @@ export async function writeXlsxCellEditPackage(
         part,
       );
     }
-    patchCount += cellPatched.patchCount + hyperlinkPatched.patchCount;
+    patchCount +=
+      cellPatched.patchCount +
+      propertyPatched.patchCount +
+      hyperlinkPatched.patchCount;
     if (patchCount > writeLimits.maxPatchCount) {
       writeLimitFailure(
         'maxPatchCount',

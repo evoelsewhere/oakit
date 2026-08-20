@@ -146,13 +146,12 @@ export function assertXlsxCellEditFormulaClosure(
       operation.kind === 'clear-cell' || operation.kind === 'set-cell',
   );
   if (contentOperations.length === 0) return;
-  const targets = new Set(
-    plan.impacts
-      .filter(
-        (impact) => impact.kind === 'clear-cell' || impact.kind === 'set-cell',
-      )
-      .map((impact) => `${impact.sheetKey}\u0000${impact.cell}`),
-  );
+  const targets = new Set<string>();
+  for (const impact of plan.impacts) {
+    if (impact.kind === 'clear-cell' || impact.kind === 'set-cell') {
+      targets.add(`${impact.sheetKey}\u0000${impact.cell}`);
+    }
+  }
   for (const sheet of baseDocument.sheets) {
     if (sheet.kind !== 'worksheet') continue;
     for (const row of sheet.rows) {
@@ -206,6 +205,7 @@ export function assertXlsxCellEditStyleClosure(
   plan: XlsxCellOperationPlan,
 ): void {
   for (const impact of plan.impacts) {
+    if (impact.kind === 'set-column' || impact.kind === 'set-row') continue;
     const cell = cellAt(plan.document, impact.sheetKey, impact.cell);
     const sourceCell = cellAt(baseDocument, impact.sheetKey, impact.cell);
     if (impact.kind === 'set-cell-style') {

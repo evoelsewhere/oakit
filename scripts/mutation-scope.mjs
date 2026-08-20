@@ -146,6 +146,7 @@ export const mutatedFiles = [
   'src/formats/xlsx/roundtrip/validate-json.ts',
   'src/formats/xlsx/roundtrip/verify.ts',
   'src/formats/xlsx/roundtrip/worksheet-patch.ts',
+  'src/formats/xlsx/roundtrip/worksheet-properties-patch.ts',
   'src/formats/xlsx/roundtrip/write.ts',
   'src/formats/xlsx/roundtrip/write-limits.ts',
   'src/formats/xlsx/roundtrip/write-options.ts',

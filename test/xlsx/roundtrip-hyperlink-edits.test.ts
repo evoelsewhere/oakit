@@ -255,13 +255,30 @@ describe('XLSX verified hyperlink edits', () => {
       '[Content_Types].xml': `<Types xmlns="${XLSX_CONTENT_TYPES_NS}"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/worksheets/sheet2.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/><Override PartName="/xl/sharedStrings.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sharedStrings+xml"/></Types>`,
       'xl/_rels/workbook.xml.rels': `<Relationships xmlns="${XLSX_PACKAGE_REL_NS}"><Relationship Id="sheet1" Type="${XLSX_OFFICE_REL_TYPE}worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="sheet2" Type="${XLSX_OFFICE_REL_TYPE}worksheet" Target="worksheets/sheet2.xml"/><Relationship Id="styles" Type="${XLSX_OFFICE_REL_TYPE}styles" Target="styles.xml"/><Relationship Id="strings" Type="${XLSX_OFFICE_REL_TYPE}sharedStrings" Target="sharedStrings.xml"/></Relationships>`,
       'xl/workbook.xml': `<workbook xmlns="${XLSX_SPREADSHEET_NS}" xmlns:r="${XLSX_OFFICE_REL_NS}"><sheets><sheet name="First" sheetId="1" r:id="sheet1"/><sheet name="Second" sheetId="2" r:id="sheet2"/></sheets></workbook>`,
+      'xl/worksheets/_rels/sheet1.xml.rels': `<Relationships xmlns="${XLSX_PACKAGE_REL_NS}"><Relationship Id="link" Type="${XLSX_OFFICE_REL_TYPE}hyperlink" Target="https://old-first.invalid/" TargetMode="External"/></Relationships>`,
       'xl/worksheets/_rels/sheet2.xml.rels': `<Relationships xmlns="${XLSX_PACKAGE_REL_NS}"><Relationship Id="link" Type="${XLSX_OFFICE_REL_TYPE}hyperlink" Target="https://example.invalid/" TargetMode="External"/></Relationships>`,
-      'xl/worksheets/sheet1.xml': independentWorksheet(
-        '<row r="1"><c r="A1"><v>1</v></c></row>',
-      ),
+      'xl/worksheets/sheet1.xml': `<worksheet xmlns="${XLSX_SPREADSHEET_NS}" xmlns:r="${XLSX_OFFICE_REL_NS}"><sheetData><row r="1"><c r="A1"><v>1</v></c></row></sheetData><hyperlinks><hyperlink ref="A1" r:id="link"/></hyperlinks></worksheet>`,
       'xl/worksheets/sheet2.xml': `<worksheet xmlns="${XLSX_SPREADSHEET_NS}" xmlns:r="${XLSX_OFFICE_REL_NS}"><sheetData><row r="1"><c r="A1"><v>1</v></c></row><row r="2"><c r="B2"><v>2</v></c></row></sheetData><hyperlinks><hyperlink ref="B2" location="Internal!A1"/><hyperlink ref="A1" r:id="link"/></hyperlinks></worksheet>`,
     });
     const existing = await readXlsxRoundTrip(source);
+    const ownerScoped = await applyXlsxEdits(existing, [
+      {
+        cell: 'A1',
+        kind: 'set-hyperlink',
+        operationId: 'owner-scoped-external',
+        sheetKey: existing.document.sheets[0]!.key,
+        target: { kind: 'external', url: 'https://example.invalid/' },
+      },
+    ]);
+    const ownerScopedResult = await writeXlsxRoundTrip(ownerScoped);
+    expect(
+      new TextDecoder().decode(
+        await zipPart(
+          ownerScopedResult.data,
+          'xl/worksheets/_rels/sheet1.xml.rels',
+        ),
+      ),
+    ).toContain('Target="https://example.invalid/"');
     const updated = await applyXlsxEdits(existing, [
       {
         cell: 'A1',

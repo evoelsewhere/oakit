@@ -1,6 +1,12 @@
 import { parseXlsxCellReference } from '../internal/cell-reference';
 import type { ResolvedXlsxResourceLimits } from '../internal/resource-limits';
-import type { XlsxCell, XlsxHyperlink, XlsxWorksheet } from '../types';
+import type {
+  XlsxCell,
+  XlsxColumnRange,
+  XlsxHyperlink,
+  XlsxRow,
+  XlsxWorksheet,
+} from '../types';
 import { canonicalXlsxJson } from './canonical-json';
 import { canonicalXlsxSha256 } from './digest';
 import { XlsxWriteError } from './errors';
@@ -14,12 +20,24 @@ import type {
   XlsxRoundTripSheet,
 } from './types';
 
-export interface XlsxCellOperationImpact {
-  cell: string;
-  kind: XlsxCellEditOperation['kind'];
+interface XlsxOperationImpactBase {
   operationId: string;
   sheetKey: string;
 }
+
+export type XlsxCellOperationImpact =
+  | (XlsxOperationImpactBase & {
+      cell: string;
+      kind: Extract<
+        XlsxCellEditOperation['kind'],
+        'clear-cell' | 'set-cell' | 'set-cell-style' | 'set-hyperlink'
+      >;
+    })
+  | (XlsxOperationImpactBase & {
+      kind: 'set-column';
+      range: string;
+    })
+  | (XlsxOperationImpactBase & { kind: 'set-row'; range: string });
 
 export interface XlsxCellOperationPlan {
   document: XlsxRoundTripDocument;
@@ -42,11 +60,22 @@ function operationFailure(
   featureClass?: string,
 ): never {
   throw new XlsxWriteError(code, message, {
-    cell: operation.cell,
+    ...('cell' in operation ? { cell: operation.cell } : {}),
     ...(featureClass === undefined ? {} : { featureClass }),
     operationId: operation.operationId,
+    ...('row' in operation
+      ? { range: String(operation.row) }
+      : 'start' in operation
+        ? { range: `${operation.start}:${operation.end}` }
+        : {}),
     sheetKey: operation.sheetKey,
   });
+}
+
+function isCellOperation(
+  operation: XlsxCellEditOperation,
+): operation is Extract<XlsxCellEditOperation, { cell: string }> {
+  return 'cell' in operation;
 }
 
 function resolveWorksheet(
@@ -67,7 +96,9 @@ function resolveWorksheet(
   if (sheet.kind !== 'worksheet') {
     operationFailure(
       'preservation-conflict',
-      'XLSX cell operation cannot target a chart sheet',
+      isCellOperation(operation)
+        ? 'XLSX cell operation cannot target a chart sheet'
+        : 'XLSX row or column operation cannot target a chart sheet',
       operation,
       'chart-sheet',
     );
@@ -75,9 +106,44 @@ function resolveWorksheet(
   return sheet;
 }
 
+function resolveRow(
+  sheet: XlsxWorksheet,
+  operation: Extract<XlsxCellEditOperation, { kind: 'set-row' }>,
+): XlsxRow {
+  const row = sheet.rows.find((candidate) => candidate.index === operation.row);
+  if (!row) {
+    operationFailure(
+      'preservation-conflict',
+      'XLSX set-row operation requires an existing explicit source row',
+      operation,
+      'missing-row',
+    );
+  }
+  return row;
+}
+
+function resolveColumn(
+  sheet: XlsxWorksheet,
+  operation: Extract<XlsxCellEditOperation, { kind: 'set-column' }>,
+): XlsxColumnRange {
+  const column = sheet.columns.find(
+    (candidate) =>
+      candidate.start === operation.start && candidate.end === operation.end,
+  );
+  if (!column) {
+    operationFailure(
+      'preservation-conflict',
+      'XLSX set-column operation requires an existing exact source range',
+      operation,
+      'missing-column-range',
+    );
+  }
+  return column;
+}
+
 function resolveCell(
   sheet: XlsxWorksheet,
-  operation: XlsxCellEditOperation,
+  operation: Extract<XlsxCellEditOperation, { cell: string }>,
 ): XlsxCell {
   const reference = parseXlsxCellReference(operation.cell)!;
   const row = sheet.rows.find((candidate) => candidate.index === reference.row);
@@ -131,11 +197,41 @@ export function xlsxCellTargetState(
   };
 }
 
+export function xlsxRowTargetState(
+  sheet: XlsxRoundTripSheet,
+  row: XlsxRow,
+): { row: XlsxRow; sheetKey: string } {
+  return { row, sheetKey: sheet.key };
+}
+
+export function xlsxColumnTargetState(
+  sheet: XlsxRoundTripSheet,
+  column: XlsxColumnRange,
+): { column: XlsxColumnRange; sheetKey: string } {
+  return { column, sheetKey: sheet.key };
+}
+
+function applyRowOperation(
+  row: XlsxRow,
+  operation: Extract<XlsxCellEditOperation, { kind: 'set-row' }>,
+): void {
+  if (operation.height !== undefined) row.height = operation.height;
+  if (operation.hidden !== undefined) row.hidden = operation.hidden;
+}
+
+function applyColumnOperation(
+  column: XlsxColumnRange,
+  operation: Extract<XlsxCellEditOperation, { kind: 'set-column' }>,
+): void {
+  if (operation.width !== undefined) column.width = operation.width;
+  if (operation.hidden !== undefined) column.hidden = operation.hidden;
+}
+
 function applyCellOperation(
   document: XlsxRoundTripDocument,
   sheet: XlsxWorksheet,
   cell: XlsxCell,
-  operation: XlsxCellEditOperation,
+  operation: Extract<XlsxCellEditOperation, { cell: string }>,
 ): void {
   if (operation.kind === 'set-hyperlink') {
     const reference = parseXlsxCellReference(operation.cell)!;
@@ -244,6 +340,50 @@ export async function replayXlsxCellOperations(
   const impacts: XlsxCellOperationImpact[] = [];
   for (const operation of operations) {
     const sheet = resolveWorksheet(document, operation);
+    if (operation.kind === 'set-row') {
+      const row = resolveRow(sheet, operation);
+      if (
+        operation.ifMatch !== undefined &&
+        operation.ifMatch !==
+          (await canonicalXlsxSha256(xlsxRowTargetState(sheet, row)))
+      ) {
+        operationFailure(
+          'operation-precondition-failed',
+          'XLSX operation precondition does not match the target row',
+          operation,
+        );
+      }
+      applyRowOperation(row, operation);
+      impacts.push({
+        kind: operation.kind,
+        operationId: operation.operationId,
+        range: String(operation.row),
+        sheetKey: operation.sheetKey,
+      });
+      continue;
+    }
+    if (operation.kind === 'set-column') {
+      const column = resolveColumn(sheet, operation);
+      if (
+        operation.ifMatch !== undefined &&
+        operation.ifMatch !==
+          (await canonicalXlsxSha256(xlsxColumnTargetState(sheet, column)))
+      ) {
+        operationFailure(
+          'operation-precondition-failed',
+          'XLSX operation precondition does not match the target column range',
+          operation,
+        );
+      }
+      applyColumnOperation(column, operation);
+      impacts.push({
+        kind: operation.kind,
+        operationId: operation.operationId,
+        range: `${operation.start}:${operation.end}`,
+        sheetKey: operation.sheetKey,
+      });
+      continue;
+    }
     const cell = resolveCell(sheet, operation);
     if (
       operation.ifMatch !== undefined &&
