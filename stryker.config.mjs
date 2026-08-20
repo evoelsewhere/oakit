@@ -1,4 +1,5 @@
 import { mutatedFiles } from './scripts/mutation-scope.mjs';
+import { focusedMutationTimeoutMs } from './scripts/mutation-timeouts.mjs';
 
 /** @type {import('@stryker-mutator/api/core').PartialStrykerOptions} */
 const config = {
@@ -12,7 +13,7 @@ const config = {
   coverageAnalysis: 'perTest',
   ignoreStatic: false,
   concurrency: 2,
-  timeoutMS: 10_000,
+  timeoutMS: focusedMutationTimeoutMs,
   dryRunTimeoutMinutes: 3,
   incremental: true,
   reporters: ['clear-text', 'progress', 'html', 'json'],

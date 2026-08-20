@@ -9,6 +9,10 @@ import {
   resolveMutationModule,
 } from '../../scripts/mutation-modules.mjs';
 import { mutatedFiles } from '../../scripts/mutation-scope.mjs';
+import {
+  fileMutationTimeoutMs,
+  focusedMutationTimeoutMs,
+} from '../../scripts/mutation-timeouts.mjs';
 import strykerConfig from '../../stryker.config.mjs';
 import vitestStrykerConfig from '../../vitest.stryker.config.ts';
 
@@ -18,12 +22,21 @@ const projectRoot = path.resolve(
 );
 
 describe('focused mutation modules', () => {
-  it('fails fast after a static mutant is killed without changing normal tests', () => {
+  it('bounds focused mutants tightly and gives static file mutants headroom', () => {
     expect(strykerConfig.vitest).toEqual({
       configFile: 'vitest.stryker.config.ts',
     });
     expect(vitestStrykerConfig.test?.bail).toBe(1);
     expect(vitestStrykerConfig.test?.exclude).toContain('**/test/browser/**');
+    expect(strykerConfig.timeoutMS).toBe(focusedMutationTimeoutMs);
+    expect(fileMutationTimeoutMs).toBeGreaterThan(focusedMutationTimeoutMs);
+    expect(fileMutationTimeoutMs).toBeLessThan(4 * 60_000);
+    expect(
+      fs.readFileSync(
+        path.join(projectRoot, 'stryker.shard.config.mjs'),
+        'utf8',
+      ),
+    ).toContain('timeoutMS: fileMutationTimeoutMs');
   });
 
   it('maps every patch responsibility to an independent source and test set', () => {

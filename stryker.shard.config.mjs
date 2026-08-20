@@ -1,6 +1,7 @@
 import process from 'node:process';
 
 import { mutationShardEnvironment } from './scripts/mutation-shard-environment.mjs';
+import { fileMutationTimeoutMs } from './scripts/mutation-timeouts.mjs';
 import baseConfig from './stryker.config.mjs';
 
 const { excludedMutations, mutate, reportPath } = mutationShardEnvironment(
@@ -20,6 +21,7 @@ export default {
     excludedMutations,
   },
   reporters: ['json'],
+  timeoutMS: fileMutationTimeoutMs,
   ...(focusedTests.length === 0
     ? {}
     : {
