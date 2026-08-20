@@ -267,6 +267,7 @@ describe('PowerPoint package part serialization', () => {
               type: 'image',
             },
             chartElement('chart'),
+            chartElement('chart-2'),
           ],
           key: 'slide',
         },
@@ -285,17 +286,29 @@ describe('PowerPoint package part serialization', () => {
     expect(parts.map(({ path }) => path).slice(9)).toEqual([
       'ppt/media/image1.png',
       'ppt/charts/chart1.xml',
+      'ppt/charts/chart2.xml',
       'ppt/slides/slide1.xml',
       'ppt/slides/_rels/slide1.xml.rels',
     ]);
     expect(xmlByPath(parts, '[Content_Types].xml')).toContain(
       'PartName="/ppt/charts/chart1.xml"',
     );
-    expect(xmlByPath(parts, 'ppt/slides/slide1.xml')).toContain('r:id="rId3"');
+    expect(xmlByPath(parts, '[Content_Types].xml')).toContain(
+      'PartName="/ppt/charts/chart2.xml"',
+    );
+    const slideXml = xmlByPath(parts, 'ppt/slides/slide1.xml');
+    expect(slideXml).toContain('r:id="rId3"');
+    expect(slideXml).toContain('r:id="rId4"');
     const relationships = xmlByPath(parts, 'ppt/slides/_rels/slide1.xml.rels');
     expect(relationships).toContain('Target="../media/image1.png"');
     expect(relationships).toContain('Target="../charts/chart1.xml"');
-    expect(xmlByPath(parts, 'ppt/charts/chart1.xml')).toContain('<c:barChart>');
+    expect(relationships).toContain('Target="../charts/chart2.xml"');
+    expect(xmlByPath(parts, 'ppt/charts/chart1.xml')).toContain(
+      '<c:axId val="10000002"/>',
+    );
+    expect(xmlByPath(parts, 'ppt/charts/chart2.xml')).toContain(
+      '<c:axId val="10000004"/>',
+    );
   });
 
   it('rejects an image reference missing from the media inventory', () => {

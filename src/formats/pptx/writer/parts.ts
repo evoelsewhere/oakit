@@ -159,12 +159,7 @@ export function serializePowerPointParts(
       (element): element is PptxSceneChartElement => element.type === 'chart',
     );
     const chartTargets = chartElements.map((element) => {
-      const item = chartByKey.get(element.key);
-      if (item === undefined) {
-        throw new TypeError(
-          `PowerPoint chart element ${element.key} has no serialized chart part`,
-        );
-      }
+      const item = chartByKey.get(element.key) as SerializedChart;
       return `../charts/${item.path.slice('ppt/charts/'.length)}`;
     });
     const chartRelationships = new Map(
