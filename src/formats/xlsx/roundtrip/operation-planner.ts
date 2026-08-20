@@ -299,7 +299,6 @@ function assertStructuralClosure(
     ['conditional-format-reference', sheet.conditionalFormattings.length !== 0],
     ['data-validation-reference', sheet.dataValidations.length !== 0],
     ['drawing-reference', sheet.drawings.length !== 0],
-    ['hyperlink-reference', sheet.hyperlinks.length !== 0],
     ['print-reference', sheet.print !== undefined],
     ['protected-range-reference', sheet.protectedRanges.length !== 0],
     ['protection-reference', sheet.protection !== undefined],
@@ -347,6 +346,13 @@ function transformStructuralLayoutReferences(
   sheet.mergedRanges = sheet.mergedRanges.flatMap((range) => {
     const transformed = transformXlsxStructuralRange(range, operation);
     return transformed === null ? [] : [transformed];
+  });
+  sheet.hyperlinks = sheet.hyperlinks.flatMap((hyperlink) => {
+    const transformed = transformXlsxStructuralRange(
+      hyperlink.range,
+      operation,
+    );
+    return transformed === null ? [] : [{ ...hyperlink, range: transformed }];
   });
 }
 
@@ -592,7 +598,8 @@ export async function replayXlsxCellOperations(
       }
       referenceUpdates +=
         (sheet.declaredDimension === undefined ? 0 : 1) +
-        sheet.mergedRanges.length;
+        sheet.mergedRanges.length +
+        sheet.hyperlinks.length;
       transformStructuralLayoutReferences(sheet, operation);
       referenceUpdates += operation.kind.endsWith('-rows')
         ? transformRows(sheet, operation, readerLimits)

@@ -128,7 +128,7 @@ describe('XLSX worksheet structural patching', () => {
   });
 
   it('transforms declared dimensions and merged ranges with exact counts', () => {
-    const xml = `<worksheet xmlns="${XLSX_SPREADSHEET_NS}"><dimension ref="A1:C5"/><sheetData><row r="1"><c r="A1"/></row></sheetData><mergeCells count="2"><mergeCell ref="A2:B3"/><mergeCell ref="C1:C5"/></mergeCells></worksheet>`;
+    const xml = `<worksheet xmlns="${XLSX_SPREADSHEET_NS}"><dimension ref="A1:C5"/><sheetData><row r="1"><c r="A1"/></row></sheetData><mergeCells count="2"><mergeCell ref="A2:B3"/><mergeCell ref="C1:C5"/></mergeCells><hyperlinks><hyperlink ref="A2:B3" location="Removed!A1"/><hyperlink ref="C1:C5" location="Kept!A1"/></hyperlinks></worksheet>`;
     const deleted = patchXlsxWorksheetStructure(
       bytes(xml),
       [{ count: 2, index: 2, kind: 'delete-rows', operationId: 'layout' }],
@@ -136,11 +136,11 @@ describe('XLSX worksheet structural patching', () => {
       PART,
     );
     expect(new TextDecoder().decode(deleted.data)).toBe(
-      `<worksheet xmlns="${XLSX_SPREADSHEET_NS}"><dimension ref="A1:C3"/><sheetData><row r="1"><c r="A1"/></row></sheetData><mergeCells count="1"><mergeCell ref="C1:C3"/></mergeCells></worksheet>`,
+      `<worksheet xmlns="${XLSX_SPREADSHEET_NS}"><dimension ref="A1:C3"/><sheetData><row r="1"><c r="A1"/></row></sheetData><mergeCells count="1"><mergeCell ref="C1:C3"/></mergeCells><hyperlinks><hyperlink ref="C1:C3" location="Kept!A1"/></hyperlinks></worksheet>`,
     );
     const removed = patchXlsxWorksheetStructure(
       bytes(
-        `<worksheet xmlns="${XLSX_SPREADSHEET_NS}"><dimension ref="A2:B3"/><sheetData/><mergeCells count="1"><mergeCell ref="A2:B3"/></mergeCells></worksheet>`,
+        `<worksheet xmlns="${XLSX_SPREADSHEET_NS}"><dimension ref="A2:B3"/><sheetData/><mergeCells count="1"><mergeCell ref="A2:B3"/></mergeCells><hyperlinks><hyperlink ref="A2:B3" location="Removed!A1"/></hyperlinks></worksheet>`,
       ),
       [
         {
@@ -159,7 +159,7 @@ describe('XLSX worksheet structural patching', () => {
   });
 
   it('selects only direct layout nodes and avoids no-op patches', () => {
-    const xml = `<s:worksheet xmlns:s="${XLSX_SPREADSHEET_NS}" xmlns:x="urn:foreign"><wrapper><s:dimension ref="Z9"/></wrapper><x:dimension ref="Z9"/><s:dimension ref="A1:B2"/><s:sheetData/><wrapper><s:mergeCells count="1"><s:mergeCell ref="Z9"/></s:mergeCells><s:mergeCell ref="Z9"/></wrapper><s:mergeCells count="1"><other ref="Z9"/><wrapper><s:mergeCell ref="Z9"/></wrapper><x:mergeCell ref="Z9"/><s:mergeCell ref="A1:B2"/></s:mergeCells><wrapper><s:mergeCell ref="Z9"/></wrapper></s:worksheet>`;
+    const xml = `<s:worksheet xmlns:s="${XLSX_SPREADSHEET_NS}" xmlns:x="urn:foreign"><wrapper><s:dimension ref="Z9"/></wrapper><x:dimension ref="Z9"/><s:dimension ref="A1:B2"/><s:sheetData/><wrapper><s:hyperlinks><s:hyperlink ref="Z9" location="Nested!A1"/></s:hyperlinks><s:hyperlink ref="Z8"/></wrapper><x:hyperlinks><x:hyperlink ref="Z9"/></x:hyperlinks><s:hyperlinks><other ref="Z9"/><wrapper><s:hyperlink ref="Z9"/></wrapper><x:hyperlink ref="Z9"/><s:hyperlink ref="A1:B2" location="Real!A1"/></s:hyperlinks><wrapper><s:hyperlink ref="Z9"/></wrapper><wrapper><s:mergeCells count="1"><s:mergeCell ref="Z9"/></s:mergeCells><s:mergeCell ref="Z9"/></wrapper><s:mergeCells count="1"><other ref="Z9"/><wrapper><s:mergeCell ref="Z9"/></wrapper><x:mergeCell ref="Z9"/><s:mergeCell ref="A1:B2"/></s:mergeCells><wrapper><s:mergeCell ref="Z9"/></wrapper></s:worksheet>`;
     const unchanged = patchXlsxWorksheetStructure(
       bytes(xml),
       [{ count: 1, index: 5, kind: 'insert-rows', operationId: 'unchanged' }],
@@ -177,6 +177,11 @@ describe('XLSX worksheet structural patching', () => {
     const output = new TextDecoder().decode(changed.data);
     expect(output).toContain('<s:dimension ref="A2:B3"/>');
     expect(output).toContain('<s:mergeCell ref="A2:B3"/>');
+    expect(output).toContain('<s:hyperlink ref="A2:B3" location="Real!A1"/>');
+    expect(output).toContain(
+      '<wrapper><s:hyperlinks><s:hyperlink ref="Z9" location="Nested!A1"/></s:hyperlinks><s:hyperlink ref="Z8"/></wrapper>',
+    );
+    expect(output).toContain('<x:hyperlink ref="Z9"/>');
     expect(output).toContain('<wrapper><s:dimension ref="Z9"/></wrapper>');
     expect(output).toContain('<wrapper><s:mergeCell ref="Z9"/></wrapper>');
     expect(output).toContain(
@@ -194,6 +199,10 @@ describe('XLSX worksheet structural patching', () => {
       [
         `<worksheet xmlns="${XLSX_SPREADSHEET_NS}"><sheetData/><mergeCells><mergeCell ref="bad"/></mergeCells></worksheet>`,
         'XLSX structural merged range is invalid',
+      ],
+      [
+        `<worksheet xmlns="${XLSX_SPREADSHEET_NS}"><sheetData/><hyperlinks><hyperlink ref="bad"/></hyperlinks></worksheet>`,
+        'XLSX structural hyperlink range is invalid',
       ],
     ] as const) {
       expect(

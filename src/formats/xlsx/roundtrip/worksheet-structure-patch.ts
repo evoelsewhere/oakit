@@ -140,6 +140,64 @@ function layoutPatches(
       patches.push(attributePatch(reference, transformed.reference));
     }
   }
+  const hyperlinks = tokens.find(
+    (token) =>
+      !token.closing &&
+      token.depth === root.depth + 1 &&
+      token.name === `${prefix}hyperlinks`,
+  );
+  if (hyperlinks) {
+    const close = xlsxMatchingCloseToken(tokens, tokens.indexOf(hyperlinks));
+    const entries = tokens.filter(
+      (token) =>
+        !token.closing &&
+        token.depth === hyperlinks.depth + 1 &&
+        token.name === `${prefix}hyperlink` &&
+        token.start >= hyperlinks.end &&
+        token.end <= close.start,
+    );
+    const transformedEntries = entries.map((entry) => {
+      const reference = attribute(entry, 'ref');
+      const range = parseXlsxRangeReference(reference?.value);
+      if (!reference || !range) {
+        failure('XLSX structural hyperlink range is invalid', part, request);
+      }
+      return {
+        entry,
+        range,
+        reference,
+        transformed: transformXlsxStructuralRange(range, request),
+      };
+    });
+    const remaining = transformedEntries.filter(
+      (entry) => entry.transformed !== null,
+    );
+    if (remaining.length === 0) {
+      patches.push({
+        end: close.end,
+        replacement: '',
+        start: hyperlinks.start,
+      });
+    } else {
+      for (const item of transformedEntries) {
+        if (item.transformed === null) {
+          const itemClose = xlsxMatchingCloseToken(
+            tokens,
+            tokens.indexOf(item.entry),
+          );
+          patches.push({
+            end: itemClose.end,
+            replacement: '',
+            start: item.entry.start,
+          });
+        } else if (item.transformed.reference !== item.range.reference) {
+          patches.push(
+            attributePatch(item.reference, item.transformed.reference),
+          );
+        }
+      }
+    }
+  }
   const mergeCells = tokens.find(
     (token) =>
       !token.closing &&

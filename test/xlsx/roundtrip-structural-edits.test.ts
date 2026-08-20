@@ -123,7 +123,7 @@ describe('XLSX verified structural row and column edits', () => {
 
   it('keeps declared dimensions and merged ranges aligned', async () => {
     const source = await createIndependentXlsx({
-      'xl/worksheets/sheet1.xml': `<worksheet xmlns="${XLSX_SPREADSHEET_NS}"><dimension ref="A1:B2"/><sheetData><row r="1"><c r="A1"><v>1</v></c><c r="B1"><v>2</v></c></row><row r="2"><c r="A2"><v>3</v></c></row></sheetData><mergeCells count="1"><mergeCell ref="A1:B1"/></mergeCells></worksheet>`,
+      'xl/worksheets/sheet1.xml': `<worksheet xmlns="${XLSX_SPREADSHEET_NS}"><dimension ref="A1:B2"/><sheetData><row r="1"><c r="A1"><v>1</v></c><c r="B1"><v>2</v></c></row><row r="2"><c r="A2"><v>3</v></c></row></sheetData><mergeCells count="1"><mergeCell ref="A1:B1"/></mergeCells><hyperlinks><hyperlink ref="A1:B1" location="Sheet1!A1"/></hyperlinks></worksheet>`,
     });
     const snapshot = await readXlsxRoundTrip(source);
     const edited = await applyXlsxEdits(snapshot, [
@@ -142,6 +142,9 @@ describe('XLSX verified structural row and column edits', () => {
     if (sheet.kind !== 'worksheet') throw new Error('Expected worksheet');
     expect(sheet.declaredDimension?.reference).toBe('A2:B3');
     expect(sheet.mergedRanges.map((range) => range.reference)).toEqual([
+      'A2:B2',
+    ]);
+    expect(sheet.hyperlinks.map((link) => link.range.reference)).toEqual([
       'A2:B2',
     ]);
     expect(result.report.level).toBe('R2');

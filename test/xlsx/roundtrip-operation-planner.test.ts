@@ -1493,6 +1493,17 @@ describe('XLSX cell operation planner', () => {
               start: { column: 1, row: 1 },
             },
           ],
+          hyperlinks: [
+            {
+              range: {
+                end: { column: 2, row: 3 },
+                reference: 'A1:B3',
+                start: { column: 1, row: 1 },
+              },
+              selectionRelation: 'full-sheet',
+              target: { kind: 'internal', location: 'Sheet1!A1' },
+            },
+          ],
         },
       ],
     };
@@ -1527,11 +1538,23 @@ describe('XLSX cell operation planner', () => {
         ).document,
       ).mergedRanges[0]?.reference,
     ).toBe('A1:B5');
+    expect(
+      worksheet(
+        (
+          await replayXlsxCellOperations(
+            referencedDocument,
+            [layoutOperation],
+            writeLimits,
+            readerLimits,
+          )
+        ).document,
+      ).hyperlinks[0]?.range.reference,
+    ).toBe('A1:B5');
     await expect(
       replayXlsxCellOperations(
         referencedDocument,
         [layoutOperation],
-        { ...writeLimits, maxReferenceUpdates: 4 },
+        { ...writeLimits, maxReferenceUpdates: 5 },
         readerLimits,
       ),
     ).resolves.toBeDefined();
@@ -1541,12 +1564,12 @@ describe('XLSX cell operation planner', () => {
           replayXlsxCellOperations(
             referencedDocument,
             [layoutOperation],
-            { ...writeLimits, maxReferenceUpdates: 3 },
+            { ...writeLimits, maxReferenceUpdates: 4 },
             readerLimits,
           ),
         )
       ).diagnostic,
-    ).toMatchObject({ actual: 4, limit: 3, limitName: 'maxReferenceUpdates' });
+    ).toMatchObject({ actual: 5, limit: 4, limitName: 'maxReferenceUpdates' });
     expect(
       (
         await captureAsync(() =>
@@ -1939,10 +1962,6 @@ describe('XLSX cell operation planner', () => {
       [
         'drawing-reference',
         (document) => void setSheetField(document, 'drawings', [{}]),
-      ],
-      [
-        'hyperlink-reference',
-        (document) => void setSheetField(document, 'hyperlinks', [{}]),
       ],
       [
         'print-reference',
