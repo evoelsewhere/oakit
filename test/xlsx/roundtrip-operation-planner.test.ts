@@ -1504,6 +1504,36 @@ describe('XLSX cell operation planner', () => {
               target: { kind: 'internal', location: 'Sheet1!A1' },
             },
           ],
+          autoFilter: {
+            columns: [],
+            range: {
+              end: { column: 3, row: 3 },
+              reference: 'A1:C3',
+              start: { column: 1, row: 1 },
+            },
+            selectionRelation: 'full-sheet',
+            sort: {
+              caseSensitive: false,
+              columnSort: false,
+              conditions: [
+                {
+                  descending: false,
+                  range: {
+                    end: { column: 2, row: 3 },
+                    reference: 'B2:B3',
+                    start: { column: 2, row: 2 },
+                  },
+                  sortBy: 'value',
+                },
+              ],
+              range: {
+                end: { column: 3, row: 3 },
+                reference: 'A1:C3',
+                start: { column: 1, row: 1 },
+              },
+              sortMethod: 'none',
+            },
+          },
         },
       ],
     };
@@ -1538,6 +1568,66 @@ describe('XLSX cell operation planner', () => {
         ).document,
       ).mergedRanges[0]?.reference,
     ).toBe('A1:B5');
+    const transformedLayout = worksheet(
+      (
+        await replayXlsxCellOperations(
+          referencedDocument,
+          [layoutOperation],
+          writeLimits,
+          readerLimits,
+        )
+      ).document,
+    );
+    expect(transformedLayout.autoFilter?.range.reference).toBe('A1:C5');
+    expect(transformedLayout.autoFilter?.sort?.range.reference).toBe('A1:C5');
+    expect(
+      transformedLayout.autoFilter?.sort?.conditions[0]?.range.reference,
+    ).toBe('B4:B5');
+    const deletedSortDocument = structuredClone(referencedDocument);
+    const deletedSortSheet = worksheet(deletedSortDocument);
+    deletedSortSheet.autoFilter!.sort!.range = {
+      end: { column: 3, row: 3 },
+      reference: 'A2:C3',
+      start: { column: 1, row: 2 },
+    };
+    const deletedSort = await replayXlsxCellOperations(
+      deletedSortDocument,
+      [
+        {
+          count: 2,
+          index: 2,
+          kind: 'delete-rows',
+          operationId: 'delete-sort-range',
+          sheetKey: source.key,
+        },
+      ],
+      writeLimits,
+      readerLimits,
+    );
+    expect(worksheet(deletedSort.document).autoFilter).not.toHaveProperty(
+      'sort',
+    );
+    const deletedFilterDocument = structuredClone(referencedDocument);
+    worksheet(deletedFilterDocument).autoFilter!.range = {
+      end: { column: 3, row: 3 },
+      reference: 'A2:C3',
+      start: { column: 1, row: 2 },
+    };
+    const deletedFilter = await replayXlsxCellOperations(
+      deletedFilterDocument,
+      [
+        {
+          count: 2,
+          index: 2,
+          kind: 'delete-rows',
+          operationId: 'delete-filter-range',
+          sheetKey: source.key,
+        },
+      ],
+      writeLimits,
+      readerLimits,
+    );
+    expect(worksheet(deletedFilter.document)).not.toHaveProperty('autoFilter');
     expect(
       worksheet(
         (
@@ -1554,7 +1644,7 @@ describe('XLSX cell operation planner', () => {
       replayXlsxCellOperations(
         referencedDocument,
         [layoutOperation],
-        { ...writeLimits, maxReferenceUpdates: 5 },
+        { ...writeLimits, maxReferenceUpdates: 8 },
         readerLimits,
       ),
     ).resolves.toBeDefined();
@@ -1564,12 +1654,12 @@ describe('XLSX cell operation planner', () => {
           replayXlsxCellOperations(
             referencedDocument,
             [layoutOperation],
-            { ...writeLimits, maxReferenceUpdates: 4 },
+            { ...writeLimits, maxReferenceUpdates: 7 },
             readerLimits,
           ),
         )
       ).diagnostic,
-    ).toMatchObject({ actual: 5, limit: 4, limitName: 'maxReferenceUpdates' });
+    ).toMatchObject({ actual: 8, limit: 7, limitName: 'maxReferenceUpdates' });
     expect(
       (
         await captureAsync(() =>
@@ -1941,10 +2031,6 @@ describe('XLSX cell operation planner', () => {
             kind: 'formula',
           };
         },
-      ],
-      [
-        'auto-filter-reference',
-        (document) => void setSheetField(document, 'autoFilter', {}),
       ],
       [
         'comment-reference',

@@ -156,6 +156,104 @@ describe('XLSX worksheet structural patching', () => {
     expect(new TextDecoder().decode(removed.data)).toBe(
       `<worksheet xmlns="${XLSX_SPREADSHEET_NS}"><sheetData/></worksheet>`,
     );
+    const removedSort = patchXlsxWorksheetStructure(
+      bytes(
+        `<worksheet xmlns="${XLSX_SPREADSHEET_NS}"><sheetData/><autoFilter ref="A1:C5"><sortState ref="A2:C3"><sortCondition ref="A2:A3"/></sortState></autoFilter></worksheet>`,
+      ),
+      [{ count: 2, index: 2, kind: 'delete-rows', operationId: 'sort' }],
+      defaultXlsxWriteLimits(),
+      PART,
+    );
+    expect(new TextDecoder().decode(removedSort.data)).toBe(
+      `<worksheet xmlns="${XLSX_SPREADSHEET_NS}"><sheetData/><autoFilter ref="A1:C3"></autoFilter></worksheet>`,
+    );
+  });
+
+  it('selects only direct filter and sort nodes and avoids no-op patches', () => {
+    const xml = `<s:worksheet xmlns:s="${XLSX_SPREADSHEET_NS}" xmlns:x="urn:foreign"><s:sheetData/><wrapper><s:autoFilter ref="Z9"><s:sortState ref="Z9"><s:sortCondition ref="Z9"/></s:sortState></s:autoFilter><s:sortState ref="Z8"/></wrapper><x:autoFilter ref="Z9"/><s:autoFilter ref="A1:C3"><wrapper><s:sortState ref="Z9"/></wrapper><wrapper><s:sortCondition ref="Z8"/></wrapper><x:sortState ref="Z9"/><s:sortState ref="A1:C3"><other ref="Z9"/><wrapper><s:sortCondition ref="Z9"/></wrapper><x:sortCondition ref="Z9"/><s:sortCondition ref="A1:A3"/></s:sortState><wrapper><s:sortCondition ref="Z9"/></wrapper></s:autoFilter><wrapper><s:sortState ref="Z9"/></wrapper></s:worksheet>`;
+    const unchanged = patchXlsxWorksheetStructure(
+      bytes(xml),
+      [
+        {
+          count: 1,
+          index: 5,
+          kind: 'insert-rows',
+          operationId: 'unchanged-filter',
+        },
+      ],
+      defaultXlsxWriteLimits(),
+      PART,
+    );
+    expect(new TextDecoder().decode(unchanged.data)).toBe(xml);
+    expect(unchanged.patchCount).toBe(0);
+    const changed = patchXlsxWorksheetStructure(
+      bytes(xml),
+      [
+        {
+          count: 1,
+          index: 1,
+          kind: 'insert-rows',
+          operationId: 'changed-filter',
+        },
+      ],
+      defaultXlsxWriteLimits(),
+      PART,
+    );
+    const output = new TextDecoder().decode(changed.data);
+    expect(output).toContain('<s:autoFilter ref="A2:C4">');
+    expect(output).toContain('<s:sortState ref="A2:C4">');
+    expect(output).toContain('<s:sortCondition ref="A2:A4"/>');
+    expect(output).toContain(
+      '<wrapper><s:autoFilter ref="Z9"><s:sortState ref="Z9"><s:sortCondition ref="Z9"/></s:sortState></s:autoFilter><s:sortState ref="Z8"/></wrapper>',
+    );
+    expect(output).toContain('<wrapper><s:sortState ref="Z9"/></wrapper>');
+    expect(output).toContain('<wrapper><s:sortCondition ref="Z9"/></wrapper>');
+    expect(output).toContain('<wrapper><s:sortCondition ref="Z8"/></wrapper>');
+  });
+
+  it('does not treat a following worksheet sort state as part of an auto-filter', () => {
+    const xml = `<s:worksheet xmlns:s="${XLSX_SPREADSHEET_NS}"><s:sheetData/><s:autoFilter ref="A1:C3"/><wrapper><s:sortState ref="Z7"/></wrapper></s:worksheet>`;
+    const result = patchXlsxWorksheetStructure(
+      bytes(xml),
+      [
+        {
+          count: 1,
+          index: 0,
+          kind: 'insert-rows',
+          operationId: 'filter-ownership',
+        },
+      ],
+      defaultXlsxWriteLimits(),
+      PART,
+    );
+
+    expect(new TextDecoder().decode(result.data)).toBe(
+      `<s:worksheet xmlns:s="${XLSX_SPREADSHEET_NS}"><s:sheetData/><s:autoFilter ref="A2:C4"/><wrapper><s:sortState ref="Z7"/></wrapper></s:worksheet>`,
+    );
+  });
+
+  it('transforms worksheet filter and sort ranges', () => {
+    const xml = `<worksheet xmlns="${XLSX_SPREADSHEET_NS}"><sheetData/><autoFilter ref="A1:C5"><filterColumn colId="0"/><sortState ref="A1:C5"><sortCondition ref="A2:A3"/><sortCondition ref="B1:B5" descending="1"/></sortState></autoFilter></worksheet>`;
+    const result = patchXlsxWorksheetStructure(
+      bytes(xml),
+      [{ count: 2, index: 2, kind: 'delete-rows', operationId: 'filter' }],
+      defaultXlsxWriteLimits(),
+      PART,
+    );
+    expect(new TextDecoder().decode(result.data)).toBe(
+      `<worksheet xmlns="${XLSX_SPREADSHEET_NS}"><sheetData/><autoFilter ref="A1:C3"><filterColumn colId="0"/><sortState ref="A1:C3"><sortCondition ref="B1:B3" descending="1"/></sortState></autoFilter></worksheet>`,
+    );
+    const removed = patchXlsxWorksheetStructure(
+      bytes(
+        `<worksheet xmlns="${XLSX_SPREADSHEET_NS}"><sheetData/><autoFilter ref="A2:C3"/></worksheet>`,
+      ),
+      [{ count: 2, index: 2, kind: 'delete-rows', operationId: 'filter' }],
+      defaultXlsxWriteLimits(),
+      PART,
+    );
+    expect(new TextDecoder().decode(removed.data)).toBe(
+      `<worksheet xmlns="${XLSX_SPREADSHEET_NS}"><sheetData/></worksheet>`,
+    );
   });
 
   it('selects only direct layout nodes and avoids no-op patches', () => {
@@ -203,6 +301,18 @@ describe('XLSX worksheet structural patching', () => {
       [
         `<worksheet xmlns="${XLSX_SPREADSHEET_NS}"><sheetData/><hyperlinks><hyperlink ref="bad"/></hyperlinks></worksheet>`,
         'XLSX structural hyperlink range is invalid',
+      ],
+      [
+        `<worksheet xmlns="${XLSX_SPREADSHEET_NS}"><sheetData/><autoFilter ref="bad"/></worksheet>`,
+        'XLSX structural auto-filter range is invalid',
+      ],
+      [
+        `<worksheet xmlns="${XLSX_SPREADSHEET_NS}"><sheetData/><autoFilter ref="A1"><sortState ref="bad"/></autoFilter></worksheet>`,
+        'XLSX structural sort range is invalid',
+      ],
+      [
+        `<worksheet xmlns="${XLSX_SPREADSHEET_NS}"><sheetData/><autoFilter ref="A1"><sortState ref="A1"><sortCondition ref="bad"/></sortState></autoFilter></worksheet>`,
+        'XLSX structural sort-condition range is invalid',
       ],
     ] as const) {
       expect(

@@ -140,6 +140,113 @@ function layoutPatches(
       patches.push(attributePatch(reference, transformed.reference));
     }
   }
+  const autoFilter = tokens.find(
+    (token) =>
+      !token.closing &&
+      token.depth === root.depth + 1 &&
+      token.name === `${prefix}autoFilter`,
+  );
+  if (autoFilter) {
+    const close = xlsxMatchingCloseToken(tokens, tokens.indexOf(autoFilter));
+    const reference = attribute(autoFilter, 'ref');
+    const range = parseXlsxRangeReference(reference?.value);
+    if (!reference || !range) {
+      failure('XLSX structural auto-filter range is invalid', part, request);
+    }
+    const transformed = transformXlsxStructuralRange(range, request);
+    if (transformed === null) {
+      patches.push({
+        end: close.end,
+        replacement: '',
+        start: autoFilter.start,
+      });
+    } else {
+      if (transformed.reference !== range.reference) {
+        patches.push(attributePatch(reference, transformed.reference));
+      }
+      const sortState = tokens.find(
+        (token) =>
+          !token.closing &&
+          token.depth === autoFilter.depth + 1 &&
+          token.name === `${prefix}sortState` &&
+          token.start >= autoFilter.end &&
+          token.end <= close.start,
+      );
+      if (sortState) {
+        const sortClose = xlsxMatchingCloseToken(
+          tokens,
+          tokens.indexOf(sortState),
+        );
+        const sortReference = attribute(sortState, 'ref');
+        const sortRange = parseXlsxRangeReference(sortReference?.value);
+        if (!sortReference || !sortRange) {
+          failure('XLSX structural sort range is invalid', part, request);
+        }
+        const transformedSort = transformXlsxStructuralRange(
+          sortRange,
+          request,
+        );
+        if (transformedSort === null) {
+          patches.push({
+            end: sortClose.end,
+            replacement: '',
+            start: sortState.start,
+          });
+        } else {
+          if (transformedSort.reference !== sortRange.reference) {
+            patches.push(
+              attributePatch(sortReference, transformedSort.reference),
+            );
+          }
+          const conditions = tokens.filter(
+            (token) =>
+              !token.closing &&
+              token.depth === sortState.depth + 1 &&
+              token.name === `${prefix}sortCondition` &&
+              token.start >= sortState.end &&
+              token.end <= sortClose.start,
+          );
+          for (const condition of conditions) {
+            const conditionReference = attribute(condition, 'ref');
+            const conditionRange = parseXlsxRangeReference(
+              conditionReference?.value,
+            );
+            if (!conditionReference || !conditionRange) {
+              failure(
+                'XLSX structural sort-condition range is invalid',
+                part,
+                request,
+              );
+            }
+            const transformedCondition = transformXlsxStructuralRange(
+              conditionRange,
+              request,
+            );
+            if (transformedCondition === null) {
+              const conditionClose = xlsxMatchingCloseToken(
+                tokens,
+                tokens.indexOf(condition),
+              );
+              patches.push({
+                end: conditionClose.end,
+                replacement: '',
+                start: condition.start,
+              });
+            } else if (
+              transformedCondition.reference !== conditionRange.reference
+            ) {
+              patches.push(
+                attributePatch(
+                  conditionReference,
+                  transformedCondition.reference,
+                ),
+              );
+            }
+          }
+        }
+      }
+    }
+  }
   const hyperlinks = tokens.find(
     (token) =>
       !token.closing &&

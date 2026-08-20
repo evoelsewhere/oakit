@@ -294,7 +294,6 @@ function assertStructuralClosure(
     }
   }
   const featureBlockers: Array<readonly [string, boolean]> = [
-    ['auto-filter-reference', sheet.autoFilter !== undefined],
     ['comment-reference', sheet.comments.length !== 0],
     ['conditional-format-reference', sheet.conditionalFormattings.length !== 0],
     ['data-validation-reference', sheet.dataValidations.length !== 0],
@@ -354,6 +353,36 @@ function transformStructuralLayoutReferences(
     );
     return transformed === null ? [] : [{ ...hyperlink, range: transformed }];
   });
+  if (sheet.autoFilter !== undefined) {
+    const filterRange = transformXlsxStructuralRange(
+      sheet.autoFilter.range,
+      operation,
+    );
+    if (filterRange === null) {
+      delete sheet.autoFilter;
+    } else {
+      sheet.autoFilter.range = filterRange;
+      if (sheet.autoFilter.sort !== undefined) {
+        const sortRange = transformXlsxStructuralRange(
+          sheet.autoFilter.sort.range,
+          operation,
+        );
+        if (sortRange === null) {
+          delete sheet.autoFilter.sort;
+        } else {
+          sheet.autoFilter.sort.range = sortRange;
+          sheet.autoFilter.sort.conditions =
+            sheet.autoFilter.sort.conditions.flatMap((condition) => {
+              const range = transformXlsxStructuralRange(
+                condition.range,
+                operation,
+              );
+              return range === null ? [] : [{ ...condition, range }];
+            });
+        }
+      }
+    }
+  }
 }
 
 function structuralRange(operation: XlsxStructuralOperation): string {
@@ -599,7 +628,13 @@ export async function replayXlsxCellOperations(
       referenceUpdates +=
         (sheet.declaredDimension === undefined ? 0 : 1) +
         sheet.mergedRanges.length +
-        sheet.hyperlinks.length;
+        sheet.hyperlinks.length +
+        (sheet.autoFilter === undefined
+          ? 0
+          : 1 +
+            (sheet.autoFilter.sort === undefined
+              ? 0
+              : 1 + sheet.autoFilter.sort.conditions.length));
       transformStructuralLayoutReferences(sheet, operation);
       referenceUpdates += operation.kind.endsWith('-rows')
         ? transformRows(sheet, operation, readerLimits)
