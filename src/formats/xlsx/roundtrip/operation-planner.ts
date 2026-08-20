@@ -1,6 +1,7 @@
 import { parseXlsxCellReference } from '../internal/cell-reference';
 import type { ResolvedXlsxResourceLimits } from '../internal/resource-limits';
 import type { XlsxCell, XlsxWorksheet } from '../types';
+import { canonicalXlsxJson } from './canonical-json';
 import { canonicalXlsxSha256 } from './digest';
 import { XlsxWriteError } from './errors';
 import {
@@ -15,6 +16,7 @@ import type {
 
 export interface XlsxCellOperationImpact {
   cell: string;
+  kind: XlsxCellEditOperation['kind'];
   operationId: string;
   sheetKey: string;
 }
@@ -31,7 +33,10 @@ function cloneDocument(document: XlsxRoundTripDocument): XlsxRoundTripDocument {
 }
 
 function operationFailure(
-  code: 'operation-precondition-failed' | 'preservation-conflict',
+  code:
+    | 'operation-precondition-failed'
+    | 'preservation-conflict'
+    | 'unsupported-edit-operation',
   message: string,
   operation: XlsxCellEditOperation,
   featureClass?: string,
@@ -117,10 +122,27 @@ export function xlsxCellTargetState(
 }
 
 function applyCellOperation(
+  document: XlsxRoundTripDocument,
   cell: XlsxCell,
   operation: XlsxCellEditOperation,
 ): void {
   delete cell.displayText;
+  if (operation.kind === 'set-cell-style') {
+    const styleKey = canonicalXlsxJson(operation.style);
+    const style = document.styles.findIndex(
+      (candidate) => canonicalXlsxJson(candidate) === styleKey,
+    );
+    if (style < 0) {
+      operationFailure(
+        'unsupported-edit-operation',
+        'XLSX set-cell-style currently requires an existing normalized style',
+        operation,
+        'append-style',
+      );
+    }
+    cell.style = style;
+    return;
+  }
   if (operation.kind === 'clear-cell') {
     cell.content = { kind: 'blank' };
     return;
@@ -176,9 +198,10 @@ export async function replayXlsxCellOperations(
         operation,
       );
     }
-    applyCellOperation(cell, operation);
+    applyCellOperation(document, cell, operation);
     impacts.push({
       cell: operation.cell,
+      kind: operation.kind,
       operationId: operation.operationId,
       sheetKey: operation.sheetKey,
     });

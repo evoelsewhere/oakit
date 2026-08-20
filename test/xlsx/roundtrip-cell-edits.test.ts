@@ -24,6 +24,8 @@ import {
   XLSX_SPREADSHEET_NS,
 } from '../black-box/xlsx-package';
 
+const TWO_STYLE_XML = `<styleSheet xmlns="${XLSX_SPREADSHEET_NS}"><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts><fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>`;
+
 function portable<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
 }
@@ -182,6 +184,195 @@ describe('XLSX verified cell edits', () => {
       sheet.kind === 'worksheet' ? sheet.rows[0]!.cells[0]!.content : null,
     ).toEqual({
       kind: 'blank',
+    });
+  });
+
+  it('applies an existing normalized style with exact copied style bytes and R2 evidence', async () => {
+    const source = await createIndependentXlsx({
+      'xl/styles.xml': TWO_STYLE_XML,
+      'xl/worksheets/sheet1.xml': independentWorksheet(
+        '<row r="1"><c r="A1" s="0" t="s"><v>0</v></c></row>',
+      ),
+    });
+    const snapshot = await readXlsxRoundTrip(source);
+    const targetStyle = snapshot.document.styles[1]!;
+    const edited = await applyXlsxEdits(snapshot, [
+      {
+        cell: 'A1',
+        kind: 'set-cell-style',
+        operationId: 'style-1',
+        sheetKey: snapshot.document.sheets[0]!.key,
+        style: targetStyle,
+      },
+    ]);
+    expect(edited.document.sheets[0]!.kind).toBe('worksheet');
+    if (edited.document.sheets[0]!.kind !== 'worksheet') {
+      throw new Error('Expected worksheet');
+    }
+    expect(edited.document.sheets[0]!.rows[0]!.cells[0]!.style).toBe(1);
+    const validated = await validateXlsxRoundTripJson(portable(edited));
+    const result = await writeXlsxRoundTrip(validated);
+    expect(result.report.level).toBe('R2');
+    expect(
+      result.report.parts.filter((part) => part.disposition === 'patch'),
+    ).toEqual([expect.objectContaining({ name: 'xl/worksheets/sheet1.xml' })]);
+    const stylePart = result.report.parts.find(
+      (part) => part.name === 'xl/styles.xml',
+    )!;
+    expect(stylePart.disposition).toBe('copy');
+    expect(stylePart.sha256).toBe(stylePart.sourceSha256);
+    expect(await zipPart(result.data, 'xl/styles.xml')).toEqual(
+      await zipPart(source, 'xl/styles.xml'),
+    );
+    const worksheetXml = new TextDecoder().decode(
+      await zipPart(result.data, 'xl/worksheets/sheet1.xml'),
+    );
+    expect(worksheetXml).toContain('<c r="A1" t="s" s="1">');
+    expect(worksheetXml).not.toContain('s="0"');
+    const parsed = await parseXlsx(result.data, { errorMode: 'strict' });
+    const sheet = parsed.sheets[0]!;
+    expect(sheet.kind).toBe('worksheet');
+    if (sheet.kind !== 'worksheet') throw new Error('Expected worksheet');
+    expect(sheet.rows[0]!.cells[0]!.style).toBe(1);
+    expect(parsed.styles[1]).toEqual(targetStyle);
+    expect(result.report.diagnostics).toEqual([]);
+  });
+
+  it('applies an existing style to an explicit self-closing blank cell', async () => {
+    const source = await createIndependentXlsx({
+      'xl/styles.xml': TWO_STYLE_XML,
+      'xl/worksheets/sheet1.xml': independentWorksheet(
+        '<row r="1"><c r="A1"/></row>',
+      ),
+    });
+    const snapshot = await readXlsxRoundTrip(source);
+    const edited = await applyXlsxEdits(snapshot, [
+      {
+        cell: 'A1',
+        kind: 'set-cell-style',
+        operationId: 'style-blank',
+        sheetKey: snapshot.document.sheets[0]!.key,
+        style: snapshot.document.styles[1]!,
+      },
+    ]);
+    const result = await writeXlsxRoundTrip(edited);
+    expect(
+      new TextDecoder().decode(
+        await zipPart(result.data, 'xl/worksheets/sheet1.xml'),
+      ),
+    ).toContain('<c r="A1" s="1"/>');
+    expect(result.report.level).toBe('R2');
+  });
+
+  it('keeps style-only formula content independent and blocks date interpretation changes', async () => {
+    const formulaSource = await createIndependentXlsx({
+      'xl/styles.xml': TWO_STYLE_XML,
+      'xl/worksheets/sheet1.xml': independentWorksheet(
+        '<row r="1"><c r="A1"><f t="array" ref="A1">1+1</f><v>2</v></c></row>',
+      ),
+    });
+    const formulaSnapshot = await readXlsxRoundTrip(formulaSource);
+    const formulaEdited = await applyXlsxEdits(formulaSnapshot, [
+      {
+        cell: 'A1',
+        kind: 'set-cell-style',
+        operationId: 'style-formula',
+        sheetKey: formulaSnapshot.document.sheets[0]!.key,
+        style: formulaSnapshot.document.styles[1]!,
+      },
+    ]);
+    await expect(writeXlsxRoundTrip(formulaEdited)).resolves.toMatchObject({
+      report: { diagnostics: [], level: 'R2' },
+    });
+
+    const dateStyles = TWO_STYLE_XML.replace(
+      '<cellXfs count="2">',
+      '<numFmts count="1"><numFmt numFmtId="164" formatCode="yyyy-mm-dd"/></numFmts><cellXfs count="2">',
+    ).replace('<xf numFmtId="0" fontId="1"', '<xf numFmtId="164" fontId="1"');
+    const dateSource = await createIndependentXlsx({
+      'xl/styles.xml': dateStyles,
+      'xl/worksheets/sheet1.xml': independentWorksheet(
+        '<row r="1"><c r="A1" s="1"><v>2</v></c></row>',
+      ),
+    });
+    const dateSnapshot = await readXlsxRoundTrip(dateSource);
+    const dateEdited = await applyXlsxEdits(dateSnapshot, [
+      {
+        cell: 'A1',
+        kind: 'set-cell-style',
+        operationId: 'style-date',
+        sheetKey: dateSnapshot.document.sheets[0]!.key,
+        style: dateSnapshot.document.styles[0]!,
+      },
+    ]);
+    expect(
+      (await capture(() => writeXlsxRoundTrip(dateEdited))).diagnostic,
+    ).toMatchObject({
+      cell: 'A1',
+      code: 'preservation-conflict',
+      featureClass: 'date-style-conversion',
+      message: 'XLSX style edit changes the cell date-value interpretation',
+      operationId: 'style-date',
+    });
+
+    const sameDateStyles = dateStyles
+      .replace('<fonts count="2">', '<fonts count="3">')
+      .replace(
+        '</fonts>',
+        '<font><i/><sz val="11"/><name val="Calibri"/></font></fonts>',
+      )
+      .replace('<cellXfs count="2">', '<cellXfs count="3">')
+      .replace(
+        '</cellXfs>',
+        '<xf numFmtId="164" fontId="2" fillId="0" borderId="0" xfId="0" applyFont="1" applyNumberFormat="1"/></cellXfs>',
+      );
+    const sameDateSource = await createIndependentXlsx({
+      'xl/styles.xml': sameDateStyles,
+      'xl/worksheets/sheet1.xml': independentWorksheet(
+        '<row r="1"><c r="A1" s="1"><v>2</v></c></row>',
+      ),
+    });
+    const sameDateSnapshot = await readXlsxRoundTrip(sameDateSource);
+    const sameDateEdited = await applyXlsxEdits(sameDateSnapshot, [
+      {
+        cell: 'A1',
+        kind: 'set-cell-style',
+        operationId: 'style-date-font',
+        sheetKey: sameDateSnapshot.document.sheets[0]!.key,
+        style: sameDateSnapshot.document.styles[2]!,
+      },
+    ]);
+    await expect(writeXlsxRoundTrip(sameDateEdited)).resolves.toMatchObject({
+      report: { level: 'R2' },
+    });
+  });
+
+  it('does not treat a style target as a content formula-closure target', async () => {
+    const source = await createIndependentXlsx({
+      'xl/styles.xml': TWO_STYLE_XML,
+      'xl/worksheets/sheet1.xml': independentWorksheet(
+        '<row r="1"><c r="A1"><v>1</v></c><c r="B1"><f>1+1</f><v>2</v></c></row>',
+      ),
+    });
+    const snapshot = await readXlsxRoundTrip(source);
+    const edited = await applyXlsxEdits(snapshot, [
+      operation(snapshot, {
+        content: { kind: 'value', value: { kind: 'number', value: 3 } },
+      }),
+      {
+        cell: 'B1',
+        kind: 'set-cell-style',
+        operationId: 'style-formula',
+        sheetKey: snapshot.document.sheets[0]!.key,
+        style: snapshot.document.styles[1]!,
+      },
+    ]);
+    expect(
+      (await capture(() => writeXlsxRoundTrip(edited))).diagnostic,
+    ).toMatchObject({
+      cell: 'B1',
+      code: 'formula-rewrite-unsupported',
+      featureClass: 'formula-dependency',
     });
   });
 

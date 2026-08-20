@@ -1,6 +1,6 @@
 import type { ResolvedXlsxResourceLimits } from '../internal/resource-limits';
 import { parseXlsxCellReference } from '../internal/cell-reference';
-import type { XlsxCellValue } from '../types';
+import type { XlsxCellValue, XlsxStyle } from '../types';
 import { canonicalXlsxJson } from './canonical-json';
 import { XlsxWriteError } from './errors';
 import type { ResolvedXlsxWriteLimits, XlsxEditOperation } from './types';
@@ -8,7 +8,7 @@ import { writeLimitFailure } from './write-limits';
 
 export type XlsxCellEditOperation = Extract<
   XlsxEditOperation,
-  { kind: 'clear-cell' | 'set-cell' }
+  { kind: 'clear-cell' | 'set-cell' | 'set-cell-style' }
 >;
 
 const ERROR_CODES = new Set([
@@ -36,7 +36,6 @@ const KNOWN_OPERATIONS = new Set([
   'insert-columns',
   'insert-rows',
   'rename-worksheet',
-  'set-cell-style',
   'set-column',
   'set-hyperlink',
   'set-row',
@@ -44,6 +43,15 @@ const KNOWN_OPERATIONS = new Set([
 const OPERATION_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u;
 const SHA256_PATTERN = /^[0-9a-f]{64}$/u;
 const SHEET_KEY_PATTERN = /^xlsx:sheet:[0-9a-f]{32}$/u;
+const STYLE_KEYS = [
+  'alignment',
+  'border',
+  'checkbox',
+  'fill',
+  'font',
+  'numberFormat',
+  'protection',
+] as const;
 
 function invalid(message: string, operationId?: string): never {
   throw new XlsxWriteError('invalid-roundtrip-json', message, {
@@ -231,6 +239,13 @@ function validateContent(
   invalid('XLSX set-cell content kind is invalid', id);
 }
 
+function validateExistingStyle(value: unknown, id: string): XlsxStyle {
+  if (!plainRecord(value) || !exactKeys(value, [], STYLE_KEYS)) {
+    invalid('XLSX set-cell-style style shape is invalid', id);
+  }
+  return structuredClone(value);
+}
+
 function operationBytes(operation: unknown): number {
   return new TextEncoder().encode(canonicalXlsxJson(operation)).byteLength;
 }
@@ -297,6 +312,27 @@ export function validateXlsxCellOperations(
           ? {}
           : { ifMatch: operation.ifMatch as string }),
         kind: 'set-cell',
+      });
+      continue;
+    }
+    if (operation.kind === 'set-cell-style') {
+      if (
+        !exactKeys(
+          operation,
+          ['cell', 'kind', 'operationId', 'sheetKey', 'style'],
+          ['ifMatch'],
+        )
+      ) {
+        invalid('XLSX set-cell-style operation shape is invalid', id);
+      }
+      const common = validateCommon(operation, id);
+      operations.push({
+        ...common,
+        ...(operation.ifMatch === undefined
+          ? {}
+          : { ifMatch: operation.ifMatch as string }),
+        kind: 'set-cell-style',
+        style: validateExistingStyle(operation.style, id),
       });
       continue;
     }

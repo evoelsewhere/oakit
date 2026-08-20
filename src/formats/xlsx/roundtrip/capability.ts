@@ -61,7 +61,7 @@ export function createXlsxCapabilityManifest(): XlsxCapabilityManifest {
   const domains: XlsxCapabilityEntry[] = capabilityDomains().map((domain) => ({
     domain,
     level:
-      domain === 'cells' || domain === 'formulas'
+      domain === 'cells' || domain === 'formulas' || domain === 'styles'
         ? 'verified-R2'
         : 'preservation-only',
   }));
@@ -82,7 +82,17 @@ export function createXlsxCapabilityManifest(): XlsxCapabilityManifest {
             ],
             level: 'verified-R2' as const,
           }
-        : { level: 'unsupported' as const }),
+        : operation === 'set-cell-style'
+          ? {
+              constraints: [
+                'existing-explicit-cell',
+                'existing-normalized-style',
+                'clean-supported-package-closure',
+                'no-non-anchor-merged-cell',
+              ],
+              level: 'verified-R2' as const,
+            }
+          : { level: 'unsupported' as const }),
       operation,
     })),
     producerEvidence: [],

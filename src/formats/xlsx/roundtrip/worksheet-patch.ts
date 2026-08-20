@@ -30,7 +30,9 @@ interface XlsxXmlTagToken {
 
 export interface XlsxWorksheetCellPatch {
   cell: XlsxCell;
+  contentChanged?: boolean;
   operationId: string;
+  xmlStyleIndex?: number;
 }
 
 export interface XlsxWorksheetPatchResult {
@@ -407,6 +409,7 @@ function serializedContent(
 function cellReplacement(
   text: string,
   token: XlsxXmlTagToken,
+  close: XlsxXmlTagToken,
   patch: XlsxWorksheetCellPatch,
   part: string,
 ): string {
@@ -420,16 +423,28 @@ function cellReplacement(
       );
     }
   }
+  const contentChanged = patch.contentChanged !== false;
   const authored = token.attributes
-    .filter((attribute) => attribute.name !== 't')
+    .filter(
+      (attribute) =>
+        (!contentChanged || attribute.name !== 't') &&
+        (patch.xmlStyleIndex === undefined || attribute.name !== 's'),
+    )
     .map((attribute) => text.slice(attribute.start, attribute.end))
     .join('');
+  const style =
+    patch.xmlStyleIndex === undefined ? '' : ` s="${patch.xmlStyleIndex}"`;
+  if (!contentChanged) {
+    return token.selfClosing
+      ? `<${token.name}${authored}${style}/>`
+      : `<${token.name}${authored}${style}>${text.slice(token.end, close.end)}`;
+  }
   const prefix = token.name.slice(0, -localName(token.name).length);
   const serialized = serializedContent(patch, prefix);
   const type = serialized.type === undefined ? '' : ` t="${serialized.type}"`;
   return serialized.content
-    ? `<${token.name}${authored}${type}>${serialized.content}</${token.name}>`
-    : `<${token.name}${authored}${type}/>`;
+    ? `<${token.name}${authored}${style}${type}>${serialized.content}</${token.name}>`
+    : `<${token.name}${authored}${style}${type}/>`;
 }
 
 function matchingClose(
@@ -451,6 +466,7 @@ function assertCellChildrenSafe(
   patch: XlsxWorksheetCellPatch,
   part: string,
 ): void {
+  if (patch.contentChanged === false) return;
   const directDepth = tokens[openIndex]!.depth + 1;
   const open = tokens[openIndex]!;
   const close = tokens[closeIndex]!;
@@ -552,7 +568,13 @@ export function patchXlsxWorksheetPartWithReport(
     assertCellChildrenSafe(tokens, index, closeIndex, patch, part);
     textPatches.push({
       end: tokens[closeIndex]!.end,
-      replacement: cellReplacement(decoded.text, token, patch, part),
+      replacement: cellReplacement(
+        decoded.text,
+        token,
+        tokens[closeIndex]!,
+        patch,
+        part,
+      ),
       start: token.start,
     });
   }

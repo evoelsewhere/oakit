@@ -141,8 +141,14 @@ export function assertXlsxCellEditFormulaClosure(
   baseDocument: XlsxRoundTripDocument,
   plan: XlsxCellOperationPlan,
 ): void {
+  const contentOperations = plan.operations.filter(
+    (operation) => operation.kind !== 'set-cell-style',
+  );
+  if (contentOperations.length === 0) return;
   const targets = new Set(
-    plan.impacts.map((impact) => `${impact.sheetKey}\u0000${impact.cell}`),
+    plan.impacts
+      .filter((impact) => impact.kind !== 'set-cell-style')
+      .map((impact) => `${impact.sheetKey}\u0000${impact.cell}`),
   );
   for (const sheet of baseDocument.sheets) {
     if (sheet.kind !== 'worksheet') continue;
@@ -172,7 +178,7 @@ export function assertXlsxCellEditFormulaClosure(
       { featureClass: 'defined-name' },
     );
   }
-  for (const operation of plan.operations) {
+  for (const operation of contentOperations) {
     if (
       operation.kind === 'set-cell' &&
       operation.content.kind === 'formula' &&
@@ -198,10 +204,47 @@ export function assertXlsxCellEditStyleClosure(
 ): void {
   for (const impact of plan.impacts) {
     const cell = cellAt(plan.document, impact.sheetKey, impact.cell);
+    const sourceCell = cellAt(baseDocument, impact.sheetKey, impact.cell);
+    if (impact.kind === 'set-cell-style') {
+      const sourceValue =
+        sourceCell.content.kind === 'value'
+          ? sourceCell.content.value
+          : undefined;
+      const numericValue =
+        sourceValue?.kind === 'number'
+          ? sourceValue.value
+          : sourceValue?.kind === 'date' && sourceValue.source.kind === 'serial'
+            ? sourceValue.source.value
+            : undefined;
+      if (numericValue !== undefined) {
+        const targetFormat =
+          cell.style === undefined
+            ? undefined
+            : plan.document.styles[cell.style]?.numberFormat;
+        const targetPrecision =
+          targetFormat === undefined
+            ? undefined
+            : xlsxNumberFormatDatePrecision(targetFormat, numericValue);
+        const sourcePrecision =
+          sourceValue?.kind === 'date' ? sourceValue.precision : undefined;
+        if (sourcePrecision !== targetPrecision) {
+          editFailure(
+            'preservation-conflict',
+            'XLSX style edit changes the cell date-value interpretation',
+            {
+              cell: impact.cell,
+              featureClass: 'date-style-conversion',
+              operationId: impact.operationId,
+              sheetKey: impact.sheetKey,
+            },
+          );
+        }
+      }
+      continue;
+    }
     if (cell.content.kind !== 'value' || cell.content.value.kind !== 'number') {
       continue;
     }
-    const sourceCell = cellAt(baseDocument, impact.sheetKey, impact.cell);
     const format =
       sourceCell.style === undefined
         ? undefined

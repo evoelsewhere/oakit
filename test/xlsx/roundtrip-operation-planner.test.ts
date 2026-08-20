@@ -51,7 +51,6 @@ const UNSUPPORTED_OPERATION_KINDS = [
   'insert-columns',
   'insert-rows',
   'rename-worksheet',
-  'set-cell-style',
   'set-column',
   'set-hyperlink',
   'set-row',
@@ -328,6 +327,16 @@ describe('XLSX cell operation validation', () => {
         ).diagnostic.message,
       ).toBe('XLSX set-cell operation shape is invalid');
     }
+    const style = { ...clear, kind: 'set-cell-style', style: {} };
+    for (const key of ['cell', 'sheetKey', 'style']) {
+      const operation = { ...style } as Record<string, unknown>;
+      delete operation[key];
+      expect(
+        capture(() =>
+          validateXlsxCellOperations([operation], writeLimits, readerLimits),
+        ).diagnostic.message,
+      ).toBe('XLSX set-cell-style operation shape is invalid');
+    }
     const withMatch = validateXlsxCellOperations(
       [{ ...clear, ifMatch: 'b'.repeat(64) }],
       writeLimits,
@@ -340,6 +349,13 @@ describe('XLSX cell operation validation', () => {
     )[0];
     expect(withMatch).toHaveProperty('ifMatch', 'b'.repeat(64));
     expect(withoutMatch).not.toHaveProperty('ifMatch');
+    expect(
+      validateXlsxCellOperations(
+        [{ ...style, ifMatch: 'c'.repeat(64) }],
+        writeLimits,
+        readerLimits,
+      )[0],
+    ).toHaveProperty('ifMatch', 'c'.repeat(64));
   });
 
   it.each([
@@ -390,7 +406,7 @@ describe('XLSX cell operation validation', () => {
     },
   );
 
-  it('distinguishes malformed payloads from recognized unsupported operations', () => {
+  it('distinguishes malformed cell and style payloads', () => {
     const base = {
       cell: 'A1',
       kind: 'set-cell',
@@ -414,7 +430,30 @@ describe('XLSX cell operation validation', () => {
         ).diagnostic.code,
       ).toBe('invalid-roundtrip-json');
     }
-    const unsupported = capture(() =>
+    for (const style of [null, [], { extra: true }]) {
+      expect(
+        capture(() =>
+          validateXlsxCellOperations(
+            [
+              {
+                cell: 'A1',
+                kind: 'set-cell-style',
+                operationId: 'one',
+                sheetKey: base.sheetKey,
+                style,
+              },
+            ],
+            writeLimits,
+            readerLimits,
+          ),
+        ).diagnostic,
+      ).toMatchObject({
+        code: 'invalid-roundtrip-json',
+        message: 'XLSX set-cell-style style shape is invalid',
+        operationId: 'one',
+      });
+    }
+    expect(
       validateXlsxCellOperations(
         [
           {
@@ -428,12 +467,15 @@ describe('XLSX cell operation validation', () => {
         writeLimits,
         readerLimits,
       ),
-    );
-    expect(unsupported.diagnostic).toMatchObject({
-      code: 'unsupported-edit-operation',
-      featureClass: 'set-cell-style',
-      operationId: 'one',
-    });
+    ).toEqual([
+      {
+        cell: 'A1',
+        kind: 'set-cell-style',
+        operationId: 'one',
+        sheetKey: base.sheetKey,
+        style: {},
+      },
+    ]);
   });
 
   it.each([
@@ -732,16 +774,19 @@ describe('XLSX cell operation planner', () => {
     expect(plan.impacts).toEqual([
       {
         cell: 'A1',
+        kind: 'set-cell',
         operationId: 'edit-1',
         sheetKey: worksheet(snapshot.document).key,
       },
       {
         cell: 'A1',
+        kind: 'clear-cell',
         operationId: 'edit-2',
         sheetKey: worksheet(snapshot.document).key,
       },
       {
         cell: 'A1',
+        kind: 'set-cell',
         operationId: 'edit-3',
         sheetKey: worksheet(snapshot.document).key,
       },
@@ -752,6 +797,68 @@ describe('XLSX cell operation planner', () => {
       kind: 'formula',
     });
     expect(plan.stateHash).toBe(await canonicalXlsxSha256(plan.document));
+  });
+
+  it('applies existing normalized styles and rejects append requests', async () => {
+    const styles = `<styleSheet xmlns="${XLSX_SPREADSHEET_NS}"><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts><fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>`;
+    const snapshot = await readXlsxRoundTrip(
+      await createIndependentXlsx({ 'xl/styles.xml': styles }),
+    );
+    const sheet = worksheet(snapshot.document);
+    const targetStyle = snapshot.document.styles[1]!;
+    const operation = {
+      cell: 'A1',
+      kind: 'set-cell-style' as const,
+      operationId: 'style-1',
+      sheetKey: sheet.key,
+      style: targetStyle,
+    };
+    const plan = await replayXlsxCellOperations(
+      snapshot.document,
+      [operation],
+      writeLimits,
+      readerLimits,
+    );
+    expect(sheet.rows[0]!.cells[0]!.style).toBeUndefined();
+    expect(worksheet(plan.document).rows[0]!.cells[0]!.style).toBe(1);
+    expect(plan.impacts).toEqual([
+      {
+        cell: 'A1',
+        kind: 'set-cell-style',
+        operationId: 'style-1',
+        sheetKey: sheet.key,
+      },
+    ]);
+    const defaultPlan = await replayXlsxCellOperations(
+      snapshot.document,
+      [
+        {
+          ...operation,
+          operationId: 'style-0',
+          style: snapshot.document.styles[0]!,
+        },
+      ],
+      writeLimits,
+      readerLimits,
+    );
+    expect(worksheet(defaultPlan.document).rows[0]!.cells[0]!.style).toBe(0);
+    const error = await captureAsync(() =>
+      replayXlsxCellOperations(
+        snapshot.document,
+        [{ ...operation, style: { font: { italic: true } } }],
+        writeLimits,
+        readerLimits,
+      ),
+    );
+    expect(error.diagnostic).toMatchObject({
+      cell: 'A1',
+      code: 'unsupported-edit-operation',
+      featureClass: 'append-style',
+      message:
+        'XLSX set-cell-style currently requires an existing normalized style',
+      operationId: 'style-1',
+      sheetKey: sheet.key,
+    });
   });
 
   it('checks ifMatch against the sequential target state', async () => {

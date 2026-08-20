@@ -293,16 +293,21 @@ describe('XLSX exact R0 round-trip', () => {
     ).toEqual([
       { domain: 'cells', level: 'verified-R2' },
       { domain: 'formulas', level: 'verified-R2' },
+      { domain: 'styles', level: 'verified-R2' },
     ]);
     expect(
       manifest.operations.filter((entry) => entry.level === 'verified-R2'),
     ).toEqual([
       expect.objectContaining({ operation: 'clear-cell' }),
       expect.objectContaining({ operation: 'set-cell' }),
+      expect.objectContaining({ operation: 'set-cell-style' }),
     ]);
     expect(
       manifest.operations
-        .filter((entry) => entry.level === 'verified-R2')
+        .filter(
+          (entry) =>
+            entry.operation === 'clear-cell' || entry.operation === 'set-cell',
+        )
         .every(
           (entry) =>
             JSON.stringify(entry.constraints) ===
@@ -316,6 +321,18 @@ describe('XLSX exact R0 round-trip', () => {
             ]),
         ),
     ).toBe(true);
+    expect(
+      manifest.operations.find((entry) => entry.operation === 'set-cell-style'),
+    ).toEqual({
+      constraints: [
+        'existing-explicit-cell',
+        'existing-normalized-style',
+        'clean-supported-package-closure',
+        'no-non-anchor-merged-cell',
+      ],
+      level: 'verified-R2',
+      operation: 'set-cell-style',
+    });
     expect(new Set(manifest.domains.map((entry) => entry.domain)).size).toBe(
       manifest.domains.length,
     );

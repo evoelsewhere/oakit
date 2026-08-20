@@ -5,6 +5,7 @@ import { XlsxPartReader } from '../internal/part-reader';
 import type { ResolvedXlsxResourceLimits } from '../internal/resource-limits';
 import { discoverXlsxWorkbook } from '../internal/workbook-discovery';
 import { parseXlsxWorkbookManifest } from '../internal/workbook-manifest';
+import { loadXlsxStyles, type XlsxStyleTable } from '../internal/styles';
 import {
   inspectXlsxPackageGraph,
   type XlsxPackageGraph,
@@ -38,30 +39,59 @@ export interface XlsxCellEditPackage {
   parts: XlsxPartFidelity[];
 }
 
-async function worksheetParts(
+async function packageContext(
   bytes: Uint8Array,
   readerLimits: ResolvedXlsxResourceLimits,
-): Promise<string[]> {
+): Promise<{ sheetParts: string[]; styles: XlsxStyleTable }> {
   const archive = await JSZip.loadAsync(bytes);
   const reader = new XlsxPartReader(archive, [], readerLimits);
   const discovery = await discoverXlsxWorkbook(reader, readerLimits);
-  return (await parseXlsxWorkbookManifest(discovery, reader, readerLimits))
-    .sheetParts;
+  const manifest = await parseXlsxWorkbookManifest(
+    discovery,
+    reader,
+    readerLimits,
+  );
+  return {
+    sheetParts: manifest.sheetParts,
+    styles: await loadXlsxStyles(discovery, reader, readerLimits),
+  };
 }
 
 function finalPatches(
   plan: XlsxCellOperationPlan,
+  styles: XlsxStyleTable,
 ): Map<string, XlsxWorksheetCellPatch[]> {
   const bySheet = new Map<string, Map<string, XlsxWorksheetCellPatch>>();
+  const styleCells = new Set(
+    plan.impacts
+      .filter((impact) => impact.kind === 'set-cell-style')
+      .map((impact) => `${impact.sheetKey}\u0000${impact.cell}`),
+  );
+  const contentCells = new Set(
+    plan.impacts
+      .filter((impact) => impact.kind !== 'set-cell-style')
+      .map((impact) => `${impact.sheetKey}\u0000${impact.cell}`),
+  );
   for (const impact of plan.impacts) {
     let sheet = bySheet.get(impact.sheetKey);
     if (!sheet) {
       sheet = new Map();
       bySheet.set(impact.sheetKey, sheet);
     }
+    const cell = xlsxPlannedCell(plan.document, impact.sheetKey, impact.cell);
+    const styleCell = styleCells.has(`${impact.sheetKey}\u0000${impact.cell}`);
+    const xmlStyleIndex = styleCell
+      ? styles.cellXfs.findIndex(
+          (candidate) => candidate.normalizedStyle === cell.style,
+        )
+      : undefined;
     sheet.set(impact.cell, {
-      cell: xlsxPlannedCell(plan.document, impact.sheetKey, impact.cell),
+      cell,
+      contentChanged: contentCells.has(
+        `${impact.sheetKey}\u0000${impact.cell}`,
+      ),
       operationId: impact.operationId,
+      ...(xmlStyleIndex === undefined ? {} : { xmlStyleIndex }),
     });
   }
   return new Map(
@@ -84,7 +114,8 @@ export async function writeXlsxCellEditPackage(
   assertXlsxSafeCellEditSource(sourceGraph, options);
   assertXlsxCellEditFormulaClosure(baseDocument, plan);
   assertXlsxCellEditStyleClosure(baseDocument, plan);
-  const patches = finalPatches(plan);
+  const context = await packageContext(sourceBytes, readerLimits);
+  const patches = finalPatches(plan, context.styles);
   if (patches.size > writeLimits.maxDirtyParts) {
     writeLimitFailure('maxDirtyParts', patches.size, writeLimits.maxDirtyParts);
   }
@@ -111,7 +142,6 @@ export async function writeXlsxCellEditPackage(
   }
 
   const archive = await JSZip.loadAsync(sourceBytes);
-  const parts = await worksheetParts(sourceBytes, readerLimits);
   const dirtyParts = new Set<string>();
   let generatedXmlBytes = 0;
   let patchBytes = 0;
@@ -119,7 +149,7 @@ export async function writeXlsxCellEditPackage(
     const sheet = baseDocument.sheets.find(
       (candidate) => candidate.key === sheetKey,
     )!;
-    const part = parts[sheet.index]!;
+    const part = context.sheetParts[sheet.index]!;
     const entry = archive.file(part)!;
     const source = await readZipEntryBytes(entry, readerLimits.maxPartBytes);
     const patched = patchXlsxWorksheetPartWithReport(
