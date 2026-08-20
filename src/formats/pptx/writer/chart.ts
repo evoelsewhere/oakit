@@ -19,13 +19,19 @@ function booleanAttribute(value: boolean): string {
   return value ? '1' : '0';
 }
 
-function spreadsheetColumn(index: number): string {
+export function powerPointChartSpreadsheetColumn(index: number): string {
+  if (!Number.isSafeInteger(index) || index <= 0) {
+    throw new RangeError('PowerPoint chart series column is out of range');
+  }
   let value = index;
   let result = '';
-  while (value > 0) {
+  for (let step = 0; step < 8 && value > 0; step += 1) {
     value -= 1;
     result = String.fromCharCode(65 + (value % 26)) + result;
     value = Math.floor(value / 26);
+  }
+  if (value !== 0) {
+    throw new RangeError('PowerPoint chart series column is out of range');
   }
   return result;
 }
@@ -58,7 +64,7 @@ function serializeSeries(
   chartType: PptxSceneChartElement['chartType'],
   marker: boolean,
 ): string {
-  const valueColumn = spreadsheetColumn(seriesIndex + 2);
+  const valueColumn = powerPointChartSpreadsheetColumn(seriesIndex + 2);
   const lastRow = series.values.length + 1;
   const title =
     `<c:tx><c:strRef><c:f>Sheet1!$${valueColumn}$1</c:f>` +

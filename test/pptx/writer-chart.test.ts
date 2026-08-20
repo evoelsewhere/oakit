@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { PptxSceneChartElement } from '../../src/formats/pptx/scene-types';
 import {
+  powerPointChartSpreadsheetColumn,
   serializeChartFrame,
   serializeChartPart,
 } from '../../src/formats/pptx/writer/chart';
@@ -34,6 +35,24 @@ function chart(
 }
 
 describe('native PowerPoint chart serialization', () => {
+  it('encodes bounded spreadsheet columns and rejects unsafe indices', () => {
+    expect(powerPointChartSpreadsheetColumn(1)).toBe('A');
+    expect(powerPointChartSpreadsheetColumn(26)).toBe('Z');
+    expect(powerPointChartSpreadsheetColumn(27)).toBe('AA');
+    expect(powerPointChartSpreadsheetColumn(65)).toBe('BM');
+    for (const value of [
+      0,
+      -1,
+      1.5,
+      217_180_147_159,
+      Number.MAX_SAFE_INTEGER,
+    ]) {
+      expect(() => powerPointChartSpreadsheetColumn(value)).toThrow(
+        new RangeError('PowerPoint chart series column is out of range'),
+      );
+    }
+  });
+
   it('serializes a deterministic cache-backed bar chart', () => {
     const element = chart();
     element.barDirection = 'col';
