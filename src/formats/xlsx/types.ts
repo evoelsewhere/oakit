@@ -40,6 +40,7 @@ export interface XlsxSelection {
 }
 
 export interface XlsxResourceLimits {
+  maxCalculationChainEntries?: number;
   maxCharts?: number;
   maxColumnsPerWorksheet?: number;
   maxComments?: number;
@@ -451,6 +452,7 @@ export interface XlsxWorkbookProtection {
 
 export interface XlsxWorkbookProperties {
   calculation: {
+    chain?: XlsxCalculationChainEntry[];
     forceFullCalculation: boolean;
     fullCalculationOnLoad: boolean;
     mode: 'automatic' | 'automatic-except-tables' | 'manual';
@@ -460,6 +462,15 @@ export interface XlsxWorkbookProperties {
   definedNames: XlsxDefinedName[];
   protection?: XlsxWorkbookProtection;
   views: XlsxWorkbookView[];
+}
+
+export interface XlsxCalculationChainEntry {
+  address: string;
+  arrayFormula: boolean;
+  childChain: boolean;
+  newDependencyLevel: boolean;
+  newThread: boolean;
+  sheetIndex: number;
 }
 
 export interface XlsxCoreDocumentProperties {

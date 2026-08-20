@@ -36,6 +36,7 @@ export interface XlsxWorkbookManifest {
   pivotCaches: XlsxPivotCacheDeclaration[];
   properties: XlsxWorkbookProperties;
   protectionTextCharacters: number;
+  sheetIdIndexes: ReadonlyMap<number, number>;
   sheetParts: string[];
   sheets: XlsxSheet[];
   workbookRelationships: ReadonlyMap<string, XlsxRelationship>;
@@ -230,6 +231,7 @@ export async function parseXlsxWorkbookManifest(
 
   const names = new Set<string>();
   const sheetIds = new Set<number>();
+  const sheetIdIndexes = new Map<number, number>();
   const sheetParts: string[] = [];
   const sheets: XlsxSheet[] = [];
   const relationshipBase = RELATIONSHIP_BASE[discovery.dialect];
@@ -252,6 +254,7 @@ export async function parseXlsxWorkbookManifest(
       fail('Workbook contains duplicate sheetId values', discovery.part);
     }
     sheetIds.add(sheetId);
+    sheetIdIndexes.set(sheetId, index);
 
     if (typeof attrs['r:id'] !== 'string' || attrs['r:id'].length === 0) {
       fail(
@@ -391,7 +394,7 @@ export async function parseXlsxWorkbookManifest(
     }
     pivotCaches.push({ cacheId, target: relationship.target });
   }
-  return {
+  const manifest = {
     pivotCaches,
     properties: parseProperties(
       root,
@@ -405,5 +408,10 @@ export async function parseXlsxWorkbookManifest(
     sheetParts,
     sheets,
     workbookRelationships: relationships,
-  };
+  } as XlsxWorkbookManifest;
+  Object.defineProperty(manifest, 'sheetIdIndexes', {
+    enumerable: false,
+    value: sheetIdIndexes,
+  });
+  return manifest;
 }

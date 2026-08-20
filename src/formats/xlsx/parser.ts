@@ -6,6 +6,7 @@ import {
   assertXlsxInputWithinLimits,
   copyXlsxInputBytes,
 } from './internal/archive';
+import { loadXlsxCalculationChain } from './internal/calculation-chain';
 import { validateXlsxChartSheetPart } from './internal/chart-sheet';
 import {
   EMPTY_XLSX_CELL_METADATA,
@@ -277,6 +278,21 @@ async function parseXlsxCore(
     externalLinks: [],
   };
   let documentProperties: XlsxDocumentProperties | undefined;
+  try {
+    const chain = await loadXlsxCalculationChain(
+      manifest.workbookRelationships,
+      discovery,
+      reader,
+      manifest.sheetIdIndexes,
+      limits,
+    );
+    if (chain.length !== 0) manifest.properties.calculation.chain = chain;
+  } catch (error) {
+    if (error instanceof XlsxResourceLimitError) {
+      failResource(error, diagnostics);
+    }
+    if (!recoverOptionalFeature(error, options, diagnostics)) throw error;
+  }
   try {
     richValues = await loadXlsxRichValues(
       manifest.workbookRelationships,

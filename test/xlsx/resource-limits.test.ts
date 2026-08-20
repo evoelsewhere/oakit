@@ -9,6 +9,7 @@ import {
 import type { XlsxResourceLimits } from '../../src/formats/xlsx/types';
 
 const EXPECTED_DEFAULTS: Required<XlsxResourceLimits> = {
+  maxCalculationChainEntries: 250_000,
   maxCharts: 10_000,
   maxColumnsPerWorksheet: 16_384,
   maxComments: 100_000,

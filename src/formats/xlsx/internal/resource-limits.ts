@@ -8,6 +8,7 @@ export type ResolvedXlsxResourceLimits = Required<XlsxResourceLimits>;
 export function defaultXlsxResourceLimits(): ResolvedXlsxResourceLimits {
   const mebibyte = 1024 * 1024;
   return {
+    maxCalculationChainEntries: 250_000,
     maxCharts: 10_000,
     maxColumnsPerWorksheet: XLSX_MAX_COLUMNS,
     maxComments: 100_000,

@@ -196,6 +196,28 @@ The feature-matrix row remains Partial until web-image and remaining legacy
 cell-image variants, the remaining linked-data companion forms, and
 cross-producer corpus evidence are complete.
 
+### Calculation-chain milestone
+
+`internal/calculation-chain.ts` now follows the workbook-owned `calcChain`
+relationship with exact content-type and Strict/Transitional namespace checks.
+It preserves authored dependency order, resolves inherited authored sheet IDs
+through a non-public manifest index, canonicalizes cell references, and exposes
+array/child/dependency-level/thread flags without evaluating formulas or
+claiming that cached values are fresh. Missing chains remain absent; stale
+entries that point to currently absent formulas remain metadata. Duplicate
+cells, malformed ownership/references/flags, foreign namespaces, and collection
+shapes fail with structured diagnostics; tolerant recovery omits only the
+optional chain. `maxCalculationChainEntries` has exact and one-over evidence.
+Public two-sheet, Strict, selection-independent, standalone JSON, exact R0, and
+normalized boundary tests pass. Full-module mutation is 100%
+(`calculation-chain.ts`: 129 killed, 77 compile errors), and the changed
+workbook-manifest/parser/resource ranges keep aggregate mutation at 100% with
+zero survivor, no-coverage, or timeout.
+
+The calculation-metadata row remains Partial until the remaining authored
+calculation version, reference mode, iteration, precision, concurrency, and
+save/completion properties are normalized and producer evidence exists.
+
 ## Reader contract audit
 
 ### Public boundary and core behavior
@@ -235,7 +257,7 @@ Every row below retains the class assigned by the reader plan.
 | OPC package                  | Required   | Canonical discovery, ownership, relocated roots, malformed and adversarial packages             | Missing  |
 | Namespaces and compatibility | Required   | Strict/Transitional aliases and complete Markup Compatibility behavior                          | Missing  |
 | Workbook                     | Required   | Ordered sheets, properties, active sheet, visibility, date system, calculation state            | Missing  |
-| Calculation metadata         | Metadata   | Modes, versions, iteration/full-calc flags, chain metadata without execution                    | Missing  |
+| Calculation metadata         | Metadata   | Modes, versions, iteration/full-calc flags, chain metadata without execution                    | Partial  |
 | Sheet kinds                  | Required   | Worksheet/chart-sheet public union and fixtures                                                 | Missing  |
 | Sheet metadata               | Required   | Colors, dimensions, defaults, views, scenarios, selected/active state                           | Missing  |
 | Cells                        | Required   | Sparse authored cells, inferred refs, all value kinds, duplicates/order/bounds                  | Missing  |
