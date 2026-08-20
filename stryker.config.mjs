@@ -27,6 +27,9 @@ const config = {
     low: 100,
     break: 100,
   },
+  vitest: {
+    configFile: 'vitest.stryker.config.ts',
+  },
 };
 
 export default config;

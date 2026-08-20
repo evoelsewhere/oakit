@@ -9,6 +9,8 @@ import {
   resolveMutationModule,
 } from '../../scripts/mutation-modules.mjs';
 import { mutatedFiles } from '../../scripts/mutation-scope.mjs';
+import strykerConfig from '../../stryker.config.mjs';
+import vitestStrykerConfig from '../../vitest.stryker.config.ts';
 
 const projectRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -16,6 +18,14 @@ const projectRoot = path.resolve(
 );
 
 describe('focused mutation modules', () => {
+  it('fails fast after a static mutant is killed without changing normal tests', () => {
+    expect(strykerConfig.vitest).toEqual({
+      configFile: 'vitest.stryker.config.ts',
+    });
+    expect(vitestStrykerConfig.test?.bail).toBe(1);
+    expect(vitestStrykerConfig.test?.exclude).toContain('**/test/browser/**');
+  });
+
   it('maps every patch responsibility to an independent source and test set', () => {
     expect(mutationModules.map(({ name }) => name)).toEqual([
       'orchestration',
