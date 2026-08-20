@@ -13,6 +13,7 @@ import type {
 import { canonicalXlsxJson } from './canonical-json';
 import { canonicalXlsxSha256 } from './digest';
 import { XlsxWriteError } from './errors';
+import { transformXlsxStructuralRange } from './structural-reference';
 import {
   type XlsxCellEditOperation,
   validateXlsxCellOperations,
@@ -297,10 +298,8 @@ function assertStructuralClosure(
     ['comment-reference', sheet.comments.length !== 0],
     ['conditional-format-reference', sheet.conditionalFormattings.length !== 0],
     ['data-validation-reference', sheet.dataValidations.length !== 0],
-    ['declared-dimension-reference', sheet.declaredDimension !== undefined],
     ['drawing-reference', sheet.drawings.length !== 0],
     ['hyperlink-reference', sheet.hyperlinks.length !== 0],
-    ['merge-reference', sheet.mergedRanges.length !== 0],
     ['print-reference', sheet.print !== undefined],
     ['protected-range-reference', sheet.protectedRanges.length !== 0],
     ['protection-reference', sheet.protection !== undefined],
@@ -331,6 +330,24 @@ function assertStructuralClosure(
     'column-definition',
     columnOperation && sheet.columns.length !== 0,
   );
+}
+
+function transformStructuralLayoutReferences(
+  sheet: XlsxWorksheet,
+  operation: XlsxStructuralOperation,
+): void {
+  if (sheet.declaredDimension !== undefined) {
+    const dimension = transformXlsxStructuralRange(
+      sheet.declaredDimension,
+      operation,
+    );
+    if (dimension === null) delete sheet.declaredDimension;
+    else sheet.declaredDimension = dimension;
+  }
+  sheet.mergedRanges = sheet.mergedRanges.flatMap((range) => {
+    const transformed = transformXlsxStructuralRange(range, operation);
+    return transformed === null ? [] : [transformed];
+  });
 }
 
 function structuralRange(operation: XlsxStructuralOperation): string {
@@ -573,6 +590,10 @@ export async function replayXlsxCellOperations(
           operation,
         );
       }
+      referenceUpdates +=
+        (sheet.declaredDimension === undefined ? 0 : 1) +
+        sheet.mergedRanges.length;
+      transformStructuralLayoutReferences(sheet, operation);
       referenceUpdates += operation.kind.endsWith('-rows')
         ? transformRows(sheet, operation, readerLimits)
         : transformColumns(sheet, operation, readerLimits);

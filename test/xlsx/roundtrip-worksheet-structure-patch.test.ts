@@ -127,6 +127,95 @@ describe('XLSX worksheet structural patching', () => {
     );
   });
 
+  it('transforms declared dimensions and merged ranges with exact counts', () => {
+    const xml = `<worksheet xmlns="${XLSX_SPREADSHEET_NS}"><dimension ref="A1:C5"/><sheetData><row r="1"><c r="A1"/></row></sheetData><mergeCells count="2"><mergeCell ref="A2:B3"/><mergeCell ref="C1:C5"/></mergeCells></worksheet>`;
+    const deleted = patchXlsxWorksheetStructure(
+      bytes(xml),
+      [{ count: 2, index: 2, kind: 'delete-rows', operationId: 'layout' }],
+      defaultXlsxWriteLimits(),
+      PART,
+    );
+    expect(new TextDecoder().decode(deleted.data)).toBe(
+      `<worksheet xmlns="${XLSX_SPREADSHEET_NS}"><dimension ref="A1:C3"/><sheetData><row r="1"><c r="A1"/></row></sheetData><mergeCells count="1"><mergeCell ref="C1:C3"/></mergeCells></worksheet>`,
+    );
+    const removed = patchXlsxWorksheetStructure(
+      bytes(
+        `<worksheet xmlns="${XLSX_SPREADSHEET_NS}"><dimension ref="A2:B3"/><sheetData/><mergeCells count="1"><mergeCell ref="A2:B3"/></mergeCells></worksheet>`,
+      ),
+      [
+        {
+          count: 2,
+          index: 2,
+          kind: 'delete-rows',
+          operationId: 'remove-layout',
+        },
+      ],
+      defaultXlsxWriteLimits(),
+      PART,
+    );
+    expect(new TextDecoder().decode(removed.data)).toBe(
+      `<worksheet xmlns="${XLSX_SPREADSHEET_NS}"><sheetData/></worksheet>`,
+    );
+  });
+
+  it('selects only direct layout nodes and avoids no-op patches', () => {
+    const xml = `<s:worksheet xmlns:s="${XLSX_SPREADSHEET_NS}" xmlns:x="urn:foreign"><wrapper><s:dimension ref="Z9"/></wrapper><x:dimension ref="Z9"/><s:dimension ref="A1:B2"/><s:sheetData/><wrapper><s:mergeCells count="1"><s:mergeCell ref="Z9"/></s:mergeCells><s:mergeCell ref="Z9"/></wrapper><s:mergeCells count="1"><other ref="Z9"/><wrapper><s:mergeCell ref="Z9"/></wrapper><x:mergeCell ref="Z9"/><s:mergeCell ref="A1:B2"/></s:mergeCells><wrapper><s:mergeCell ref="Z9"/></wrapper></s:worksheet>`;
+    const unchanged = patchXlsxWorksheetStructure(
+      bytes(xml),
+      [{ count: 1, index: 5, kind: 'insert-rows', operationId: 'unchanged' }],
+      defaultXlsxWriteLimits(),
+      PART,
+    );
+    expect(new TextDecoder().decode(unchanged.data)).toBe(xml);
+    expect(unchanged.patchCount).toBe(0);
+    const changed = patchXlsxWorksheetStructure(
+      bytes(xml),
+      [{ count: 1, index: 1, kind: 'insert-rows', operationId: 'changed' }],
+      defaultXlsxWriteLimits(),
+      PART,
+    );
+    const output = new TextDecoder().decode(changed.data);
+    expect(output).toContain('<s:dimension ref="A2:B3"/>');
+    expect(output).toContain('<s:mergeCell ref="A2:B3"/>');
+    expect(output).toContain('<wrapper><s:dimension ref="Z9"/></wrapper>');
+    expect(output).toContain('<wrapper><s:mergeCell ref="Z9"/></wrapper>');
+    expect(output).toContain(
+      '<wrapper><s:mergeCells count="1"><s:mergeCell ref="Z9"/></s:mergeCells><s:mergeCell ref="Z9"/></wrapper>',
+    );
+    expect(output).toContain('<x:mergeCell ref="Z9"/>');
+  });
+
+  it('rejects malformed dimension and merge references exactly', () => {
+    for (const [xml, message] of [
+      [
+        `<worksheet xmlns="${XLSX_SPREADSHEET_NS}"><dimension ref="bad"/><sheetData/></worksheet>`,
+        'XLSX structural dimension reference is invalid',
+      ],
+      [
+        `<worksheet xmlns="${XLSX_SPREADSHEET_NS}"><sheetData/><mergeCells><mergeCell ref="bad"/></mergeCells></worksheet>`,
+        'XLSX structural merged range is invalid',
+      ],
+    ] as const) {
+      expect(
+        capture(() =>
+          patchXlsxWorksheetStructure(
+            bytes(xml),
+            [
+              {
+                count: 1,
+                index: 1,
+                kind: 'insert-rows',
+                operationId: 'bad-layout',
+              },
+            ],
+            defaultXlsxWriteLimits(),
+            PART,
+          ),
+        ).diagnostic.message,
+      ).toBe(message);
+    }
+  });
+
   it('rejects unsafe roots, missing sheetData, and malformed references', () => {
     for (const [xml, message] of [
       [

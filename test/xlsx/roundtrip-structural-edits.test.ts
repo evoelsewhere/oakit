@@ -120,4 +120,30 @@ describe('XLSX verified structural row and column edits', () => {
       index: 2,
     });
   });
+
+  it('keeps declared dimensions and merged ranges aligned', async () => {
+    const source = await createIndependentXlsx({
+      'xl/worksheets/sheet1.xml': `<worksheet xmlns="${XLSX_SPREADSHEET_NS}"><dimension ref="A1:B2"/><sheetData><row r="1"><c r="A1"><v>1</v></c><c r="B1"><v>2</v></c></row><row r="2"><c r="A2"><v>3</v></c></row></sheetData><mergeCells count="1"><mergeCell ref="A1:B1"/></mergeCells></worksheet>`,
+    });
+    const snapshot = await readXlsxRoundTrip(source);
+    const edited = await applyXlsxEdits(snapshot, [
+      {
+        count: 1,
+        index: 1,
+        kind: 'insert-rows',
+        operationId: 'insert-layout-row',
+        sheetKey: snapshot.document.sheets[0]!.key,
+      },
+    ]);
+    const result = await writeXlsxRoundTrip(edited);
+    const parsed = await parseXlsx(result.data, { errorMode: 'strict' });
+    const sheet = parsed.sheets[0]!;
+    expect(sheet.kind).toBe('worksheet');
+    if (sheet.kind !== 'worksheet') throw new Error('Expected worksheet');
+    expect(sheet.declaredDimension?.reference).toBe('A2:B3');
+    expect(sheet.mergedRanges.map((range) => range.reference)).toEqual([
+      'A2:B2',
+    ]);
+    expect(result.report.level).toBe('R2');
+  });
 });

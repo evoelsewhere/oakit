@@ -1,9 +1,11 @@
 import {
   parseXlsxCellReference,
+  parseXlsxRangeReference,
   xlsxColumnName,
 } from '../internal/cell-reference';
 import { XlsxWriteError } from './errors';
 import { xlsxMatchingCloseToken } from './hyperlink-patch';
+import { transformXlsxStructuralRange } from './structural-reference';
 import type { ResolvedXlsxWriteLimits } from './types';
 import {
   decodeXlsxXml,
@@ -110,6 +112,93 @@ function shiftedIndex(
   return value - request.count;
 }
 
+function layoutPatches(
+  tokens: readonly XlsxXmlTagToken[],
+  root: XlsxXmlTagToken,
+  prefix: string,
+  request: XlsxWorksheetStructurePatch,
+  part: string,
+): TextPatch[] {
+  const patches: TextPatch[] = [];
+  const dimension = tokens.find(
+    (token) =>
+      !token.closing &&
+      token.depth === root.depth + 1 &&
+      token.name === `${prefix}dimension`,
+  );
+  if (dimension) {
+    const reference = attribute(dimension, 'ref');
+    const range = parseXlsxRangeReference(reference?.value);
+    if (!reference || !range) {
+      failure('XLSX structural dimension reference is invalid', part, request);
+    }
+    const transformed = transformXlsxStructuralRange(range, request);
+    if (transformed === null) {
+      const close = xlsxMatchingCloseToken(tokens, tokens.indexOf(dimension));
+      patches.push({ end: close.end, replacement: '', start: dimension.start });
+    } else if (transformed.reference !== range.reference) {
+      patches.push(attributePatch(reference, transformed.reference));
+    }
+  }
+  const mergeCells = tokens.find(
+    (token) =>
+      !token.closing &&
+      token.depth === root.depth + 1 &&
+      token.name === `${prefix}mergeCells`,
+  );
+  if (!mergeCells) return patches;
+  const mergeClose = xlsxMatchingCloseToken(tokens, tokens.indexOf(mergeCells));
+  const entries = tokens.filter(
+    (token) =>
+      !token.closing &&
+      token.depth === mergeCells.depth + 1 &&
+      token.name === `${prefix}mergeCell` &&
+      token.start >= mergeCells.end &&
+      token.end <= mergeClose.start,
+  );
+  const transformedEntries = entries.map((entry) => {
+    const reference = attribute(entry, 'ref');
+    const range = parseXlsxRangeReference(reference?.value);
+    if (!reference || !range) {
+      failure('XLSX structural merged range is invalid', part, request);
+    }
+    return {
+      entry,
+      range,
+      reference,
+      transformed: transformXlsxStructuralRange(range, request),
+    };
+  });
+  const remaining = transformedEntries.filter(
+    (entry) => entry.transformed !== null,
+  );
+  if (remaining.length === 0) {
+    patches.push({
+      end: mergeClose.end,
+      replacement: '',
+      start: mergeCells.start,
+    });
+    return patches;
+  }
+  for (const item of transformedEntries) {
+    if (item.transformed === null) {
+      const close = xlsxMatchingCloseToken(tokens, tokens.indexOf(item.entry));
+      patches.push({
+        end: close.end,
+        replacement: '',
+        start: item.entry.start,
+      });
+    } else if (item.transformed.reference !== item.range.reference) {
+      patches.push(attributePatch(item.reference, item.transformed.reference));
+    }
+  }
+  const count = attribute(mergeCells, 'count');
+  if (count && count.value !== String(remaining.length)) {
+    patches.push(attributePatch(count, String(remaining.length)));
+  }
+  return patches;
+}
+
 function patchOne(
   bytes: Uint8Array,
   request: XlsxWorksheetStructurePatch,
@@ -126,7 +215,7 @@ function patchOne(
     failure('XLSX worksheet root cannot patch structure', part, request);
   const { rows } = directRows(tokens, root, part);
   const prefix = root.name.slice(0, -'worksheet'.length);
-  const patches: TextPatch[] = [];
+  const patches = layoutPatches(tokens, root, prefix, request, part);
   for (const row of rows) {
     const rowReference = attribute(row, 'r');
     const rowIndex = Number(rowReference?.value);

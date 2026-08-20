@@ -1486,21 +1486,67 @@ describe('XLSX cell operation planner', () => {
             reference: 'A1:C3',
             start: { column: 1, row: 1 },
           },
+          mergedRanges: [
+            {
+              end: { column: 2, row: 3 },
+              reference: 'A1:B3',
+              start: { column: 1, row: 1 },
+            },
+          ],
         },
       ],
     };
+    const layoutOperation: XlsxEditOperation = {
+      count: 2,
+      index: 2,
+      kind: 'insert-rows',
+      operationId: 'insert-layout-rows',
+      sheetKey: source.key,
+    };
+    expect(
+      worksheet(
+        (
+          await replayXlsxCellOperations(
+            referencedDocument,
+            [layoutOperation],
+            writeLimits,
+            readerLimits,
+          )
+        ).document,
+      ).declaredDimension?.reference,
+    ).toBe('A1:C5');
+    expect(
+      worksheet(
+        (
+          await replayXlsxCellOperations(
+            referencedDocument,
+            [layoutOperation],
+            writeLimits,
+            readerLimits,
+          )
+        ).document,
+      ).mergedRanges[0]?.reference,
+    ).toBe('A1:B5');
+    await expect(
+      replayXlsxCellOperations(
+        referencedDocument,
+        [layoutOperation],
+        { ...writeLimits, maxReferenceUpdates: 4 },
+        readerLimits,
+      ),
+    ).resolves.toBeDefined();
     expect(
       (
         await captureAsync(() =>
           replayXlsxCellOperations(
             referencedDocument,
-            [operations[0]!],
-            writeLimits,
+            [layoutOperation],
+            { ...writeLimits, maxReferenceUpdates: 3 },
             readerLimits,
           ),
         )
-      ).diagnostic.featureClass,
-    ).toBe('declared-dimension-reference');
+      ).diagnostic,
+    ).toMatchObject({ actual: 4, limit: 3, limitName: 'maxReferenceUpdates' });
     expect(
       (
         await captureAsync(() =>
@@ -1891,20 +1937,12 @@ describe('XLSX cell operation planner', () => {
         (document) => void setSheetField(document, 'dataValidations', [{}]),
       ],
       [
-        'declared-dimension-reference',
-        (document) => void setSheetField(document, 'declaredDimension', {}),
-      ],
-      [
         'drawing-reference',
         (document) => void setSheetField(document, 'drawings', [{}]),
       ],
       [
         'hyperlink-reference',
         (document) => void setSheetField(document, 'hyperlinks', [{}]),
-      ],
-      [
-        'merge-reference',
-        (document) => void setSheetField(document, 'mergedRanges', [{}]),
       ],
       [
         'print-reference',
