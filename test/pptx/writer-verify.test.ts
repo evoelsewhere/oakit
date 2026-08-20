@@ -188,6 +188,30 @@ function chartSlide(key: string): PptxSceneSlide {
   };
 }
 
+function nestedChartSlide(key: string): PptxSceneSlide {
+  const chartElement = chartSlide(key).elements[0]!;
+  return {
+    elements: [
+      {
+        authored: {
+          transform: {
+            childSpace: { height: 200, width: 400, x: 0, y: 0 },
+            height: 200,
+            width: 400,
+            x: 10,
+            y: 20,
+          },
+        },
+        elements: [chartElement],
+        key: `${key}-group`,
+        resolved: { hidden: false },
+        type: 'group',
+      },
+    ],
+    key,
+  };
+}
+
 function scene(slides: PptxSceneSlide[]): PptxSceneDocument {
   return {
     layouts: [],
@@ -404,6 +428,48 @@ describe('PowerPoint creation verification', () => {
     });
     expect(renderedDocument).toBe(parsed);
   });
+
+  it('does not count ordinary elements as owned chart parts', async () => {
+    const input = scene([textSlide('slide-1')]);
+    const output = document(1);
+    output.slides[0]?.elements.push(generatedText());
+    let receivedOptions: PptxParseOptions | undefined;
+
+    await verifyPowerPointCreationWithParser(
+      new Uint8Array(),
+      input,
+      (_data, options) => {
+        receivedOptions = options;
+        return Promise.resolve(output);
+      },
+      rendered,
+    );
+
+    expect(receivedOptions?.limits?.maxEntries).toBe(11);
+  });
+
+  it.each([
+    ['top-level', chartSlide('slide-1')],
+    ['nested', nestedChartSlide('slide-1')],
+  ] as const)(
+    'counts one %s chart part in parser limits',
+    async (_name, inputSlide) => {
+      let receivedOptions: PptxParseOptions | undefined;
+      await expect(
+        verifyPowerPointCreationWithParser(
+          new Uint8Array(),
+          scene([inputSlide]),
+          (_data, options) => {
+            receivedOptions = options;
+            return Promise.reject(new Error('stop after parser options'));
+          },
+          rendered,
+        ),
+      ).rejects.toThrow('stop after parser options');
+
+      expect(receivedOptions?.limits?.maxEntries).toBe(12);
+    },
+  );
 
   it('verifies text and transform semantics before accepting a render', async () => {
     const output = document(1);
