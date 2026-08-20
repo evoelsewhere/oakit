@@ -142,12 +142,15 @@ export function assertXlsxCellEditFormulaClosure(
   plan: XlsxCellOperationPlan,
 ): void {
   const contentOperations = plan.operations.filter(
-    (operation) => operation.kind !== 'set-cell-style',
+    (operation) =>
+      operation.kind === 'clear-cell' || operation.kind === 'set-cell',
   );
   if (contentOperations.length === 0) return;
   const targets = new Set(
     plan.impacts
-      .filter((impact) => impact.kind !== 'set-cell-style')
+      .filter(
+        (impact) => impact.kind === 'clear-cell' || impact.kind === 'set-cell',
+      )
       .map((impact) => `${impact.sheetKey}\u0000${impact.cell}`),
   );
   for (const sheet of baseDocument.sheets) {
@@ -262,6 +265,48 @@ export function assertXlsxCellEditStyleClosure(
           featureClass: 'date-formatted-cell',
           operationId: impact.operationId,
           sheetKey: impact.sheetKey,
+        },
+      );
+    }
+  }
+}
+
+export function assertXlsxInternalHyperlinkEditClosure(
+  baseDocument: XlsxRoundTripDocument,
+  plan: XlsxCellOperationPlan,
+): void {
+  for (const operation of plan.operations) {
+    if (operation.kind !== 'set-hyperlink') continue;
+    if (operation.target?.kind === 'external') {
+      throw new XlsxWriteError(
+        'unsupported-edit-operation',
+        'XLSX external hyperlink edits require relationship-part allocation',
+        {
+          cell: operation.cell,
+          featureClass: 'external-hyperlink-edit',
+          operationId: operation.operationId,
+          sheetKey: operation.sheetKey,
+        },
+      );
+    }
+    const sheet = baseDocument.sheets.find(
+      (candidate) => candidate.key === operation.sheetKey,
+    );
+    const source =
+      sheet?.kind === 'worksheet'
+        ? sheet.hyperlinks.find(
+            (hyperlink) => hyperlink.range.reference === operation.cell,
+          )
+        : undefined;
+    if (source?.target.kind === 'external') {
+      throw new XlsxWriteError(
+        'preservation-conflict',
+        'XLSX internal hyperlink edit cannot orphan an external relationship',
+        {
+          cell: operation.cell,
+          featureClass: 'external-hyperlink',
+          operationId: operation.operationId,
+          sheetKey: operation.sheetKey,
         },
       );
     }

@@ -1,6 +1,7 @@
+import { sanitizeHyperlink } from '../../../common/text/html';
 import type { ResolvedXlsxResourceLimits } from '../internal/resource-limits';
 import { parseXlsxCellReference } from '../internal/cell-reference';
-import type { XlsxCellValue } from '../types';
+import type { XlsxCellValue, XlsxHyperlinkTarget } from '../types';
 import { canonicalXlsxJson } from './canonical-json';
 import { XlsxWriteError } from './errors';
 import type { ResolvedXlsxWriteLimits, XlsxEditOperation } from './types';
@@ -9,7 +10,7 @@ import { writeLimitFailure } from './write-limits';
 
 export type XlsxCellEditOperation = Extract<
   XlsxEditOperation,
-  { kind: 'clear-cell' | 'set-cell' | 'set-cell-style' }
+  { kind: 'clear-cell' | 'set-cell' | 'set-cell-style' | 'set-hyperlink' }
 >;
 
 const ERROR_CODES = new Set([
@@ -38,7 +39,6 @@ const KNOWN_OPERATIONS = new Set([
   'insert-rows',
   'rename-worksheet',
   'set-column',
-  'set-hyperlink',
   'set-row',
 ]);
 const OPERATION_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u;
@@ -231,6 +231,88 @@ function validateContent(
   invalid('XLSX set-cell content kind is invalid', id);
 }
 
+function validateHyperlinkTarget(
+  value: unknown,
+  id: string,
+  readerLimits: ResolvedXlsxResourceLimits,
+): XlsxHyperlinkTarget | null {
+  if (value === null) return null;
+  if (!plainRecord(value)) {
+    invalid('XLSX set-hyperlink target shape is invalid', id);
+  }
+  if (value.kind === 'internal') {
+    if (
+      !exactKeys(value, ['kind', 'location']) ||
+      typeof value.location !== 'string' ||
+      value.location.length === 0
+    ) {
+      invalid('XLSX internal hyperlink target is invalid', id);
+    }
+    if (value.location.length > readerLimits.maxTextCharacters) {
+      throw new XlsxWriteError(
+        'resource-limit-exceeded',
+        'XLSX hyperlink location exceeds its text limit',
+        {
+          actual: value.location.length,
+          limit: readerLimits.maxTextCharacters,
+          limitName: 'maxTextCharacters',
+          operationId: id,
+        },
+      );
+    }
+    return { kind: 'internal', location: value.location };
+  }
+  if (value.kind === 'external') {
+    if (
+      !exactKeys(value, ['kind', 'url'], ['location']) ||
+      typeof value.url !== 'string' ||
+      (value.location !== undefined && typeof value.location !== 'string')
+    ) {
+      invalid('XLSX external hyperlink target is invalid', id);
+    }
+    const safe = sanitizeHyperlink(value.url);
+    if (!safe || safe !== value.url) {
+      throw new XlsxWriteError(
+        'preservation-conflict',
+        'XLSX external hyperlink protocol or lexical form is unsafe',
+        { featureClass: 'hyperlink-protocol', operationId: id },
+      );
+    }
+    const url = new URL(safe);
+    if (url.username !== '' || url.password !== '') {
+      throw new XlsxWriteError(
+        'preservation-conflict',
+        'XLSX external hyperlink credentials are not allowed',
+        { featureClass: 'hyperlink-credentials', operationId: id },
+      );
+    }
+    if (url.toString() !== value.url) {
+      invalid('XLSX external hyperlink URL must be canonical', id);
+    }
+    const textCharacters =
+      value.url.length +
+      (value.location === undefined ? 0 : value.location.length);
+    if (textCharacters > readerLimits.maxTextCharacters) {
+      throw new XlsxWriteError(
+        'resource-limit-exceeded',
+        'XLSX hyperlink target exceeds its text limit',
+        {
+          actual: textCharacters,
+          limit: readerLimits.maxTextCharacters,
+          limitName: 'maxTextCharacters',
+          operationId: id,
+        },
+      );
+    }
+    return {
+      kind: 'external',
+      ...(value.location === undefined ? {} : { location: value.location }),
+      url: value.url,
+    };
+  }
+  invalid('XLSX hyperlink target kind is invalid', id);
+}
+
 function operationBytes(operation: unknown): number {
   return new TextEncoder().encode(canonicalXlsxJson(operation)).byteLength;
 }
@@ -321,6 +403,27 @@ export function validateXlsxCellOperations(
       });
       continue;
     }
+    if (operation.kind === 'set-hyperlink') {
+      if (
+        !exactKeys(
+          operation,
+          ['cell', 'kind', 'operationId', 'sheetKey', 'target'],
+          ['ifMatch'],
+        )
+      ) {
+        invalid('XLSX set-hyperlink operation shape is invalid', id);
+      }
+      const common = validateCommon(operation, id);
+      operations.push({
+        ...common,
+        ...(operation.ifMatch === undefined
+          ? {}
+          : { ifMatch: operation.ifMatch as string }),
+        kind: 'set-hyperlink',
+        target: validateHyperlinkTarget(operation.target, id, readerLimits),
+      });
+      continue;
+    }
     if (
       typeof operation.kind === 'string' &&
       KNOWN_OPERATIONS.has(operation.kind)
@@ -384,6 +487,25 @@ export function validateXlsxCellOperations(
       operation.content.value.kind === 'text'
     ) {
       totalTextCharacters += operation.content.value.text.length;
+      if (totalTextCharacters > readerLimits.maxTextCharacters) {
+        throw new XlsxWriteError(
+          'resource-limit-exceeded',
+          'XLSX operations exceed their text character limit',
+          {
+            actual: totalTextCharacters,
+            limit: readerLimits.maxTextCharacters,
+            limitName: 'maxTextCharacters',
+            operationId: operation.operationId,
+          },
+        );
+      }
+    }
+    if (operation.kind === 'set-hyperlink' && operation.target !== null) {
+      totalTextCharacters +=
+        operation.target.kind === 'internal'
+          ? operation.target.location.length
+          : operation.target.url.length +
+            (operation.target.location?.length ?? 0);
       if (totalTextCharacters > readerLimits.maxTextCharacters) {
         throw new XlsxWriteError(
           'resource-limit-exceeded',

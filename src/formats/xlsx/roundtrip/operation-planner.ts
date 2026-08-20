@@ -1,6 +1,6 @@
 import { parseXlsxCellReference } from '../internal/cell-reference';
 import type { ResolvedXlsxResourceLimits } from '../internal/resource-limits';
-import type { XlsxCell, XlsxWorksheet } from '../types';
+import type { XlsxCell, XlsxHyperlink, XlsxWorksheet } from '../types';
 import { canonicalXlsxJson } from './canonical-json';
 import { canonicalXlsxSha256 } from './digest';
 import { XlsxWriteError } from './errors';
@@ -117,15 +117,69 @@ function resolveCell(
 export function xlsxCellTargetState(
   sheet: XlsxRoundTripSheet,
   cell: XlsxCell,
-): { cell: XlsxCell; sheetKey: string } {
-  return { cell, sheetKey: sheet.key };
+): { cell: XlsxCell; hyperlink?: XlsxHyperlink; sheetKey: string } {
+  const hyperlink =
+    sheet.kind === 'worksheet'
+      ? sheet.hyperlinks.find(
+          (candidate) => candidate.range.reference === cell.address,
+        )
+      : undefined;
+  return {
+    cell,
+    ...(hyperlink === undefined ? {} : { hyperlink }),
+    sheetKey: sheet.key,
+  };
 }
 
 function applyCellOperation(
   document: XlsxRoundTripDocument,
+  sheet: XlsxWorksheet,
   cell: XlsxCell,
   operation: XlsxCellEditOperation,
 ): void {
+  if (operation.kind === 'set-hyperlink') {
+    const reference = parseXlsxCellReference(operation.cell)!;
+    const conflict = sheet.hyperlinks.find(
+      (candidate) =>
+        candidate.range.reference !== operation.cell &&
+        reference.row >= candidate.range.start.row &&
+        reference.row <= candidate.range.end.row &&
+        reference.column >= candidate.range.start.column &&
+        reference.column <= candidate.range.end.column,
+    );
+    if (conflict) {
+      operationFailure(
+        'preservation-conflict',
+        'XLSX hyperlink operation overlaps a multi-cell hyperlink range',
+        operation,
+        'hyperlink-range',
+      );
+    }
+    const index = sheet.hyperlinks.findIndex(
+      (candidate) => candidate.range.reference === operation.cell,
+    );
+    if (operation.target === null) {
+      if (index >= 0) sheet.hyperlinks.splice(index, 1);
+      return;
+    }
+    if (index >= 0) {
+      sheet.hyperlinks[index] = {
+        ...sheet.hyperlinks[index]!,
+        target: structuredClone(operation.target),
+      };
+      return;
+    }
+    sheet.hyperlinks.push({
+      range: {
+        end: { column: reference.column, row: reference.row },
+        reference: reference.address,
+        start: { column: reference.column, row: reference.row },
+      },
+      selectionRelation: 'full-sheet',
+      target: structuredClone(operation.target),
+    });
+    return;
+  }
   delete cell.displayText;
   if (operation.kind === 'set-cell-style') {
     const styleKey = canonicalXlsxJson(operation.style);
@@ -202,7 +256,7 @@ export async function replayXlsxCellOperations(
         operation,
       );
     }
-    applyCellOperation(document, cell, operation);
+    applyCellOperation(document, sheet, cell, operation);
     if (document.styles.length > readerLimits.maxStyles) {
       throw new XlsxWriteError(
         'resource-limit-exceeded',

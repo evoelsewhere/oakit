@@ -52,7 +52,6 @@ const UNSUPPORTED_OPERATION_KINDS = [
   'insert-rows',
   'rename-worksheet',
   'set-column',
-  'set-hyperlink',
   'set-row',
 ] as const;
 
@@ -134,11 +133,34 @@ describe('XLSX cell operation validation', () => {
           operationId: 'formula',
         },
         { ...common, kind: 'clear-cell', operationId: 'clear' },
+        {
+          ...common,
+          ifMatch: 'c'.repeat(64),
+          kind: 'set-hyperlink',
+          operationId: 'internal-link',
+          target: { kind: 'internal', location: "'Sheet 2'!A1" },
+        },
+        {
+          ...common,
+          kind: 'set-hyperlink',
+          operationId: 'external-link',
+          target: {
+            kind: 'external',
+            location: 'Section',
+            url: 'https://example.invalid/path',
+          },
+        },
+        {
+          ...common,
+          kind: 'set-hyperlink',
+          operationId: 'remove-link',
+          target: null,
+        },
       ],
       writeLimits,
       readerLimits,
     );
-    expect(operations).toHaveLength(5);
+    expect(operations).toHaveLength(8);
     expect(operations[0]).toMatchObject({
       content: { value: { kind: 'number', value: 0 } },
     });
@@ -153,6 +175,22 @@ describe('XLSX cell operation validation', () => {
       content: { expression: 'SUM(A2:A3)', kind: 'formula' },
       ifMatch: 'b'.repeat(64),
     });
+    expect(operations.slice(5)).toEqual([
+      expect.objectContaining({
+        ifMatch: 'c'.repeat(64),
+        kind: 'set-hyperlink',
+        target: { kind: 'internal', location: "'Sheet 2'!A1" },
+      }),
+      expect.objectContaining({
+        kind: 'set-hyperlink',
+        target: {
+          kind: 'external',
+          location: 'Section',
+          url: 'https://example.invalid/path',
+        },
+      }),
+      expect.objectContaining({ kind: 'set-hyperlink', target: null }),
+    ]);
   });
 
   it.each([
@@ -479,6 +517,99 @@ describe('XLSX cell operation validation', () => {
   });
 
   it.each([
+    [undefined, 'XLSX set-hyperlink target shape is invalid'],
+    [{}, 'XLSX hyperlink target kind is invalid'],
+    [
+      { kind: 'internal', location: '' },
+      'XLSX internal hyperlink target is invalid',
+    ],
+    [
+      { extra: true, kind: 'internal', location: 'A1' },
+      'XLSX internal hyperlink target is invalid',
+    ],
+    [
+      { kind: 'external', url: 'javascript:alert(1)' },
+      'XLSX external hyperlink protocol or lexical form is unsafe',
+    ],
+    [
+      { kind: 'external', url: ' https://example.invalid/' },
+      'XLSX external hyperlink protocol or lexical form is unsafe',
+    ],
+    [
+      { kind: 'external', url: 'https://user:secret@example.invalid/' },
+      'XLSX external hyperlink credentials are not allowed',
+    ],
+    [
+      { kind: 'external', url: 'https://user@example.invalid/' },
+      'XLSX external hyperlink credentials are not allowed',
+    ],
+    [
+      { kind: 'external', url: 'https://:secret@example.invalid/' },
+      'XLSX external hyperlink credentials are not allowed',
+    ],
+    [
+      { kind: 'external', url: 'https://example.invalid' },
+      'XLSX external hyperlink URL must be canonical',
+    ],
+    [
+      { kind: 'external', location: 1, url: 'https://example.invalid/' },
+      'XLSX external hyperlink target is invalid',
+    ],
+  ] as const)('rejects invalid hyperlink target %#', (target, message) => {
+    const error = capture(() =>
+      validateXlsxCellOperations(
+        [
+          {
+            cell: 'A1',
+            kind: 'set-hyperlink',
+            operationId: 'link',
+            sheetKey: `xlsx:sheet:${'a'.repeat(32)}`,
+            target,
+          },
+        ],
+        writeLimits,
+        readerLimits,
+      ),
+    );
+    expect(error.diagnostic).toMatchObject({
+      message,
+      operationId: 'link',
+      ...(message.includes('protocol')
+        ? { featureClass: 'hyperlink-protocol' }
+        : message.includes('credentials')
+          ? { featureClass: 'hyperlink-credentials' }
+          : {}),
+    });
+  });
+
+  it.each([
+    [
+      {
+        cell: 'A1',
+        kind: 'set-hyperlink',
+        operationId: 'link',
+        sheetKey: `xlsx:sheet:${'a'.repeat(32)}`,
+      },
+    ],
+    [
+      {
+        cell: 'A1',
+        extra: true,
+        kind: 'set-hyperlink',
+        operationId: 'link',
+        sheetKey: `xlsx:sheet:${'a'.repeat(32)}`,
+        target: null,
+      },
+    ],
+  ])('rejects invalid set-hyperlink operation shape %#', (operation) => {
+    expect(
+      capture(() =>
+        validateXlsxCellOperations([operation], writeLimits, readerLimits),
+      ).diagnostic.message,
+    ).toBe('XLSX set-hyperlink operation shape is invalid');
+  });
+
+  it.each([
     [null, 'XLSX cell value shape is invalid'],
     [undefined, 'XLSX cell value shape is invalid'],
     [1, 'XLSX cell value shape is invalid'],
@@ -741,6 +872,88 @@ describe('XLSX cell operation validation', () => {
       message: 'XLSX operations exceed their text character limit',
       operationId: 'two',
     });
+    const hyperlink = {
+      ...clear,
+      kind: 'set-hyperlink',
+      target: { kind: 'internal', location: 'ab' },
+    };
+    expect(() =>
+      validateXlsxCellOperations([hyperlink], writeLimits, {
+        ...readerLimits,
+        maxTextCharacters: 2,
+      }),
+    ).not.toThrow();
+    expect(
+      capture(() =>
+        validateXlsxCellOperations([hyperlink], writeLimits, {
+          ...readerLimits,
+          maxTextCharacters: 1,
+        }),
+      ).diagnostic,
+    ).toMatchObject({
+      actual: 2,
+      limit: 1,
+      limitName: 'maxTextCharacters',
+      message: 'XLSX hyperlink location exceeds its text limit',
+    });
+    const firstLink = {
+      ...hyperlink,
+      target: { kind: 'internal', location: 'x' },
+    };
+    const secondLink = { ...firstLink, operationId: 'two' };
+    expect(
+      capture(() =>
+        validateXlsxCellOperations([firstLink, secondLink], writeLimits, {
+          ...readerLimits,
+          maxTextCharacters: 1,
+        }),
+      ).diagnostic,
+    ).toMatchObject({
+      actual: 2,
+      limit: 1,
+      message: 'XLSX operations exceed their text character limit',
+      operationId: 'two',
+    });
+    const externalLink = {
+      ...hyperlink,
+      target: {
+        kind: 'external',
+        location: 'xy',
+        url: 'https://e.co/',
+      },
+    };
+    const externalCharacters = 'https://e.co/'.length + 2;
+    expect(() =>
+      validateXlsxCellOperations([externalLink], writeLimits, {
+        ...readerLimits,
+        maxTextCharacters: externalCharacters,
+      }),
+    ).not.toThrow();
+    expect(
+      capture(() =>
+        validateXlsxCellOperations([externalLink], writeLimits, {
+          ...readerLimits,
+          maxTextCharacters: externalCharacters - 1,
+        }),
+      ).diagnostic,
+    ).toMatchObject({
+      actual: externalCharacters,
+      limit: externalCharacters - 1,
+      message: 'XLSX hyperlink target exceeds its text limit',
+    });
+    const externalTwo = { ...externalLink, operationId: 'two' };
+    expect(
+      capture(() =>
+        validateXlsxCellOperations([externalLink, externalTwo], writeLimits, {
+          ...readerLimits,
+          maxTextCharacters: externalCharacters,
+        }),
+      ).diagnostic,
+    ).toMatchObject({
+      actual: externalCharacters * 2,
+      limit: externalCharacters,
+      operationId: 'two',
+    });
   });
 });
 
@@ -901,6 +1114,113 @@ describe('XLSX cell operation planner', () => {
       message: 'XLSX edited normalized styles exceed their reader limit',
       operationId: 'style-1',
     });
+  });
+
+  it('replays internal hyperlink targets with sequential preconditions and range guards', async () => {
+    const snapshot = await readXlsxRoundTrip(
+      await createIndependentXlsx({
+        'xl/worksheets/sheet1.xml': `<worksheet xmlns="${XLSX_SPREADSHEET_NS}"><sheetData><row r="1"><c r="A1"><v>1</v></c><c r="B1"><v>1</v></c></row><row r="2"><c r="A2"><v>2</v></c><c r="B2"><v>2</v></c><c r="D2"><v>2</v></c></row><row r="3"><c r="C3"><v>3</v></c></row><row r="4"><c r="B4"><v>4</v></c></row></sheetData><hyperlinks><hyperlink ref="A1" location="Old!A1" display="Old" tooltip="Tip"/><hyperlink ref="B2:C3" location="Range!A1"/></hyperlinks></worksheet>`,
+      }),
+    );
+    const sourceSheet = worksheet(snapshot.document);
+    const sourceCell = sourceSheet.rows[0]!.cells[0]!;
+    const sourceMatch = await canonicalXlsxSha256(
+      xlsxCellTargetState(sourceSheet, sourceCell),
+    );
+    expect(xlsxCellTargetState(sourceSheet, sourceCell)).toMatchObject({
+      hyperlink: {
+        display: 'Old',
+        target: { kind: 'internal', location: 'Old!A1' },
+      },
+    });
+    const noExactLinkCell = sourceSheet.rows
+      .flatMap((row) => row.cells)
+      .find((cell) => cell.address === 'B2')!;
+    expect(
+      xlsxCellTargetState(sourceSheet, noExactLinkCell),
+    ).not.toHaveProperty('hyperlink');
+    const update = {
+      cell: 'A1',
+      ifMatch: sourceMatch,
+      kind: 'set-hyperlink' as const,
+      operationId: 'update-link',
+      sheetKey: sourceSheet.key,
+      target: { kind: 'internal' as const, location: 'New!B2' },
+    };
+    const updated = await replayXlsxCellOperations(
+      snapshot.document,
+      [update],
+      writeLimits,
+      readerLimits,
+    );
+    expect(worksheet(updated.document).hyperlinks[0]).toMatchObject({
+      display: 'Old',
+      target: { kind: 'internal', location: 'New!B2' },
+      tooltip: 'Tip',
+    });
+    const updatedSheet = worksheet(updated.document);
+    const updatedMatch = await canonicalXlsxSha256(
+      xlsxCellTargetState(updatedSheet, updatedSheet.rows[0]!.cells[0]!),
+    );
+    const removed = await replayXlsxCellOperations(
+      snapshot.document,
+      [
+        update,
+        {
+          cell: 'A1',
+          ifMatch: updatedMatch,
+          kind: 'set-hyperlink',
+          operationId: 'remove-link',
+          sheetKey: sourceSheet.key,
+          target: null,
+        },
+      ],
+      writeLimits,
+      readerLimits,
+    );
+    expect(worksheet(removed.document).hyperlinks).toHaveLength(1);
+    expect(worksheet(removed.document).hyperlinks[0]!.range.reference).toBe(
+      'B2:C3',
+    );
+    const outside = await replayXlsxCellOperations(
+      snapshot.document,
+      ['B1', 'A2', 'D2', 'B4'].map((cell, index) => ({
+        cell,
+        kind: 'set-hyperlink' as const,
+        operationId: `outside-${index}`,
+        sheetKey: sourceSheet.key,
+        target: null,
+      })),
+      writeLimits,
+      readerLimits,
+    );
+    expect(worksheet(outside.document).hyperlinks).toHaveLength(2);
+    for (const cell of ['B2', 'C3']) {
+      const conflict = await captureAsync(() =>
+        replayXlsxCellOperations(
+          snapshot.document,
+          [
+            {
+              cell,
+              kind: 'set-hyperlink',
+              operationId: `overlap-${cell}`,
+              sheetKey: sourceSheet.key,
+              target: { kind: 'internal', location: 'Other!A1' },
+            },
+          ],
+          writeLimits,
+          readerLimits,
+        ),
+      );
+      expect(conflict.diagnostic).toMatchObject({
+        cell,
+        code: 'preservation-conflict',
+        featureClass: 'hyperlink-range',
+        message:
+          'XLSX hyperlink operation overlaps a multi-cell hyperlink range',
+        operationId: `overlap-${cell}`,
+      });
+    }
   });
 
   it('checks ifMatch against the sequential target state', async () => {

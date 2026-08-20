@@ -133,6 +133,7 @@ export const mutatedFiles = [
   'src/formats/xlsx/roundtrip/data-tree.ts',
   'src/formats/xlsx/roundtrip/digest.ts',
   'src/formats/xlsx/roundtrip/errors.ts',
+  'src/formats/xlsx/roundtrip/hyperlink-patch.ts',
   'src/formats/xlsx/roundtrip/keys.ts',
   'src/formats/xlsx/roundtrip/operation-planner.ts',
   'src/formats/xlsx/roundtrip/operation-validation.ts',

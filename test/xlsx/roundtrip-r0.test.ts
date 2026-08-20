@@ -301,6 +301,7 @@ describe('XLSX exact R0 round-trip', () => {
       expect.objectContaining({ operation: 'clear-cell' }),
       expect.objectContaining({ operation: 'set-cell' }),
       expect.objectContaining({ operation: 'set-cell-style' }),
+      expect.objectContaining({ operation: 'set-hyperlink' }),
     ]);
     expect(
       manifest.operations
@@ -334,6 +335,19 @@ describe('XLSX exact R0 round-trip', () => {
       ],
       level: 'verified-R2',
       operation: 'set-cell-style',
+    });
+    expect(
+      manifest.operations.find((entry) => entry.operation === 'set-hyperlink'),
+    ).toEqual({
+      constraints: [
+        'existing-explicit-cell',
+        'internal-target-only',
+        'no-overlapping-multi-cell-hyperlink',
+        'no-external-relationship-rewrite',
+        'clean-supported-package-closure',
+      ],
+      level: 'verified-R2',
+      operation: 'set-hyperlink',
     });
     expect(new Set(manifest.domains.map((entry) => entry.domain)).size).toBe(
       manifest.domains.length,

@@ -190,6 +190,49 @@ describe('XLSX verified cell edits', () => {
     });
   });
 
+  it('clears a normal formula as an explicit content-closure target', async () => {
+    const snapshot = await readXlsxRoundTrip(
+      await createIndependentXlsx({
+        'xl/worksheets/sheet1.xml': independentWorksheet(
+          '<row r="1"><c r="A1"><f>1+1</f><v>2</v></c></row>',
+        ),
+      }),
+    );
+    const edited = await applyXlsxEdits(snapshot, [
+      {
+        cell: 'A1',
+        kind: 'clear-cell',
+        operationId: 'clear-formula',
+        sheetKey: snapshot.document.sheets[0]!.key,
+      },
+    ]);
+    await expect(writeXlsxRoundTrip(edited)).resolves.toMatchObject({
+      report: { level: 'R2' },
+    });
+    const dependentSnapshot = await readXlsxRoundTrip(
+      await createIndependentXlsx({
+        'xl/worksheets/sheet1.xml': independentWorksheet(
+          '<row r="1"><c r="A1"><f>1+1</f><v>2</v></c><c r="B1"><f>A1+1</f><v>3</v></c></row>',
+        ),
+      }),
+    );
+    const dependentEdited = await applyXlsxEdits(dependentSnapshot, [
+      {
+        cell: 'A1',
+        kind: 'clear-cell',
+        operationId: 'clear-formula',
+        sheetKey: dependentSnapshot.document.sheets[0]!.key,
+      },
+    ]);
+    expect(
+      (await capture(() => writeXlsxRoundTrip(dependentEdited))).diagnostic,
+    ).toMatchObject({
+      cell: 'B1',
+      code: 'formula-rewrite-unsupported',
+      featureClass: 'formula-dependency',
+    });
+  });
+
   it('applies an existing normalized style with exact copied style bytes and R2 evidence', async () => {
     const source = await createIndependentXlsx({
       'xl/styles.xml': TWO_STYLE_XML,

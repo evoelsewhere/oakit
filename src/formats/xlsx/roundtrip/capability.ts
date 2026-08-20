@@ -94,7 +94,18 @@ export function createXlsxCapabilityManifest(): XlsxCapabilityManifest {
               ],
               level: 'verified-R2' as const,
             }
-          : { level: 'unsupported' as const }),
+          : operation === 'set-hyperlink'
+            ? {
+                constraints: [
+                  'existing-explicit-cell',
+                  'internal-target-only',
+                  'no-overlapping-multi-cell-hyperlink',
+                  'no-external-relationship-rewrite',
+                  'clean-supported-package-closure',
+                ],
+                level: 'verified-R2' as const,
+              }
+            : { level: 'unsupported' as const }),
       operation,
     })),
     producerEvidence: [],

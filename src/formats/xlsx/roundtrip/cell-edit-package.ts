@@ -14,6 +14,7 @@ import {
 import {
   assertXlsxCellEditFormulaClosure,
   assertXlsxCellEditStyleClosure,
+  assertXlsxInternalHyperlinkEditClosure,
   assertXlsxSafeCellEditSource,
   xlsxPlannedCell,
 } from './cell-edit-policy';
@@ -32,6 +33,10 @@ import {
   appendXlsxStylesPart,
   xlsxAppendedStyleRecordCount,
 } from './style-append';
+import {
+  patchXlsxInternalHyperlinks,
+  type XlsxInternalHyperlinkPatch,
+} from './hyperlink-patch';
 import {
   patchXlsxWorksheetPartWithReport,
   type XlsxWorksheetCellPatch,
@@ -79,6 +84,7 @@ function finalPatches(
       .map((impact) => `${impact.sheetKey}\u0000${impact.cell}`),
   );
   for (const impact of plan.impacts) {
+    if (impact.kind === 'set-hyperlink') continue;
     let sheet = bySheet.get(impact.sheetKey);
     if (!sheet) {
       sheet = new Map();
@@ -110,6 +116,31 @@ function finalPatches(
   );
 }
 
+function finalHyperlinkPatches(
+  plan: XlsxCellOperationPlan,
+): Map<string, XlsxInternalHyperlinkPatch[]> {
+  const bySheet = new Map<string, Map<string, XlsxInternalHyperlinkPatch>>();
+  for (const operation of plan.operations) {
+    if (operation.kind !== 'set-hyperlink') continue;
+    let sheet = bySheet.get(operation.sheetKey);
+    if (!sheet) {
+      sheet = new Map();
+      bySheet.set(operation.sheetKey, sheet);
+    }
+    sheet.set(operation.cell, {
+      cell: operation.cell,
+      operationId: operation.operationId,
+      target: operation.target as XlsxInternalHyperlinkPatch['target'],
+    });
+  }
+  return new Map(
+    [...bySheet].map(([sheetKey, patches]) => [
+      sheetKey,
+      [...patches.values()],
+    ]),
+  );
+}
+
 export async function writeXlsxCellEditPackage(
   sourceBytes: Uint8Array,
   sourceGraph: XlsxPackageGraph,
@@ -122,6 +153,7 @@ export async function writeXlsxCellEditPackage(
   assertXlsxSafeCellEditSource(sourceGraph, options);
   assertXlsxCellEditFormulaClosure(baseDocument, plan);
   assertXlsxCellEditStyleClosure(baseDocument, plan);
+  assertXlsxInternalHyperlinkEditClosure(baseDocument, plan);
   const context = await packageContext(sourceBytes, readerLimits);
   const appendedStyles = plan.document.styles.slice(baseDocument.styles.length);
   const outputStyleRecords =
@@ -196,20 +228,29 @@ export async function writeXlsxCellEditPackage(
     }
   }
   const patches = finalPatches(plan, context.styles, appendedStyleXfs);
-  for (const [sheetKey, sheetPatches] of patches) {
+  const hyperlinkPatches = finalHyperlinkPatches(plan);
+  const sheetKeys = new Set([...patches.keys(), ...hyperlinkPatches.keys()]);
+  for (const sheetKey of sheetKeys) {
+    const sheetPatches = patches.get(sheetKey) ?? [];
     const sheet = baseDocument.sheets.find(
       (candidate) => candidate.key === sheetKey,
     )!;
     const part = context.sheetParts[sheet.index]!;
     const entry = archive.file(part)!;
     const source = await readZipEntryBytes(entry, readerLimits.maxPartBytes);
-    const patched = patchXlsxWorksheetPartWithReport(
+    const cellPatched = patchXlsxWorksheetPartWithReport(
       source,
       sheetPatches,
       writeLimits,
       part,
     );
-    generatedXmlBytes += patched.data.byteLength;
+    const hyperlinkPatched = patchXlsxInternalHyperlinks(
+      cellPatched.data,
+      hyperlinkPatches.get(sheetKey) ?? [],
+      writeLimits,
+      part,
+    );
+    generatedXmlBytes += hyperlinkPatched.data.byteLength;
     if (generatedXmlBytes > writeLimits.maxGeneratedXmlBytes) {
       writeLimitFailure(
         'maxGeneratedXmlBytes',
@@ -218,7 +259,7 @@ export async function writeXlsxCellEditPackage(
         part,
       );
     }
-    patchBytes += patched.patchBytes;
+    patchBytes += cellPatched.patchBytes + hyperlinkPatched.patchBytes;
     if (patchBytes > writeLimits.maxPatchBytes) {
       writeLimitFailure(
         'maxPatchBytes',
@@ -227,7 +268,7 @@ export async function writeXlsxCellEditPackage(
         part,
       );
     }
-    patchCount += patched.patchCount;
+    patchCount += cellPatched.patchCount + hyperlinkPatched.patchCount;
     if (patchCount > writeLimits.maxPatchCount) {
       writeLimitFailure(
         'maxPatchCount',
@@ -236,7 +277,7 @@ export async function writeXlsxCellEditPackage(
         part,
       );
     }
-    archive.file(part, patched.data, { date: entry.date });
+    archive.file(part, hyperlinkPatched.data, { date: entry.date });
     dirtyParts.add(part);
   }
   const data = await generateBoundedXlsxZip(
