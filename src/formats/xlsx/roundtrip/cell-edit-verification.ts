@@ -87,12 +87,24 @@ export function verifyXlsxCellEditR1Parts(
   source: XlsxPackageGraph,
   output: XlsxPackageGraph,
   dirtyParts: ReadonlySet<string>,
+  addedParts: ReadonlySet<string> = new Set(),
+  changedRelationshipOwners: ReadonlySet<string> = new Set(),
 ): XlsxPartFidelity[] {
+  const sourceRelationships = source.relationships.filter(
+    (relationship) =>
+      relationship.owner === null ||
+      !changedRelationshipOwners.has(relationship.owner),
+  );
+  const outputRelationships = output.relationships.filter(
+    (relationship) =>
+      relationship.owner === null ||
+      !changedRelationshipOwners.has(relationship.owner),
+  );
   if (
     source.conformance !== output.conformance ||
-    source.parts.length !== output.parts.length ||
-    canonicalXlsxJson(source.relationships) !==
-      canonicalXlsxJson(output.relationships)
+    source.parts.length + addedParts.size !== output.parts.length ||
+    canonicalXlsxJson(sourceRelationships) !==
+      canonicalXlsxJson(outputRelationships)
   ) {
     throw new XlsxWriteError(
       'generated-package-invalid',
@@ -100,10 +112,36 @@ export function verifyXlsxCellEditR1Parts(
     );
   }
   const sourceByName = new Map(source.parts.map((part) => [part.name, part]));
+  const outputNames = new Set(output.parts.map((part) => part.name));
+  for (const sourcePart of source.parts) {
+    if (!outputNames.has(sourcePart.name)) {
+      throw new XlsxWriteError(
+        'generated-package-invalid',
+        'XLSX edited package removed a source part unexpectedly',
+        { part: sourcePart.name },
+      );
+    }
+  }
   const parts: XlsxPartFidelity[] = [];
   for (const outputPart of output.parts) {
     const sourcePart = sourceByName.get(outputPart.name);
-    if (!sourcePart || !xlsxCellEditPartTopologyEqual(sourcePart, outputPart)) {
+    if (!sourcePart) {
+      if (!addedParts.has(outputPart.name)) {
+        throw new XlsxWriteError(
+          'generated-package-invalid',
+          'XLSX edited package contains an unexpected part',
+          { part: outputPart.name },
+        );
+      }
+      parts.push({
+        byteLength: outputPart.byteLength,
+        disposition: 'add',
+        name: outputPart.name,
+        sha256: outputPart.sha256,
+      });
+      continue;
+    }
+    if (!xlsxCellEditPartTopologyEqual(sourcePart, outputPart)) {
       throw new XlsxWriteError(
         'generated-package-invalid',
         'XLSX edited package contains an unexpected part',

@@ -353,6 +353,119 @@ describe('XLSX cell-edit package verification', () => {
     ]);
   });
 
+  it('creates literal R1 add evidence for an allowed relationship closure', () => {
+    const source = graph({
+      relationships: [
+        {
+          id: 'link',
+          mode: 'external',
+          owner: 'two.xml',
+          target: 'https://old.invalid/',
+          type: 'hyperlink',
+        },
+      ],
+    });
+    const addedPart = {
+      byteLength: 4,
+      contentType: 'application/vnd.openxmlformats-package.relationships+xml',
+      name: '_rels/two.xml.rels',
+      relationshipPart: true,
+      sha256: '4'.repeat(64),
+    };
+    const output = graph({
+      parts: [
+        source.parts[0]!,
+        {
+          ...source.parts[1]!,
+          byteLength: 3,
+          sha256: '3'.repeat(64),
+        },
+        addedPart,
+      ],
+      relationships: [
+        {
+          id: 'link',
+          mode: 'external',
+          owner: 'two.xml',
+          target: 'https://new.invalid/',
+          type: 'hyperlink',
+        },
+      ],
+    });
+    expect(
+      verifyXlsxCellEditR1Parts(
+        source,
+        output,
+        new Set(['two.xml']),
+        new Set([addedPart.name]),
+        new Set(['two.xml']),
+      ),
+    ).toEqual([
+      {
+        byteLength: 1,
+        disposition: 'copy',
+        name: 'one.xml',
+        sha256: '1'.repeat(64),
+        sourceByteLength: 1,
+        sourceSha256: '1'.repeat(64),
+      },
+      {
+        byteLength: 3,
+        disposition: 'patch',
+        name: 'two.xml',
+        sha256: '3'.repeat(64),
+        sourceByteLength: 2,
+        sourceSha256: '2'.repeat(64),
+      },
+      {
+        byteLength: 4,
+        disposition: 'add',
+        name: addedPart.name,
+        sha256: '4'.repeat(64),
+      },
+    ]);
+  });
+
+  it('never classifies a source part as added evidence', () => {
+    const source = graph();
+    const output = graph({
+      parts: [...source.parts, { ...source.parts[0]! }],
+    });
+    expect(
+      verifyXlsxCellEditR1Parts(
+        source,
+        output,
+        new Set(),
+        new Set(['one.xml']),
+      ).map((part) => part.disposition),
+    ).toEqual(['copy', 'copy', 'copy']);
+  });
+
+  it('rejects an undeclared added R1 part with exact provenance', () => {
+    const source = graph();
+    const unexpected = {
+      byteLength: 3,
+      contentType: 'application/xml',
+      name: 'three.xml',
+      relationshipPart: false,
+      sha256: '3'.repeat(64),
+    };
+    const output = graph({ parts: [...source.parts, unexpected] });
+    expect(
+      capture(() =>
+        verifyXlsxCellEditR1Parts(
+          source,
+          output,
+          new Set(),
+          new Set(['different.xml']),
+        ),
+      ).diagnostic,
+    ).toMatchObject({
+      message: 'XLSX edited package contains an unexpected part',
+      part: unexpected.name,
+    });
+  });
+
   it('rejects every R1 topology and copy mismatch', () => {
     const source = graph();
     const mismatches: Array<
@@ -379,8 +492,8 @@ describe('XLSX cell-edit package verification', () => {
         graph({
           parts: [source.parts[0]!, { ...source.parts[1]!, name: 'other.xml' }],
         }),
-        'unexpected part',
-        'other.xml',
+        'removed a source part',
+        'two.xml',
       ],
       [
         graph({

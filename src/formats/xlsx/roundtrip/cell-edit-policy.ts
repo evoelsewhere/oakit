@@ -271,48 +271,6 @@ export function assertXlsxCellEditStyleClosure(
   }
 }
 
-export function assertXlsxInternalHyperlinkEditClosure(
-  baseDocument: XlsxRoundTripDocument,
-  plan: XlsxCellOperationPlan,
-): void {
-  for (const operation of plan.operations) {
-    if (operation.kind !== 'set-hyperlink') continue;
-    if (operation.target?.kind === 'external') {
-      throw new XlsxWriteError(
-        'unsupported-edit-operation',
-        'XLSX external hyperlink edits require relationship-part allocation',
-        {
-          cell: operation.cell,
-          featureClass: 'external-hyperlink-edit',
-          operationId: operation.operationId,
-          sheetKey: operation.sheetKey,
-        },
-      );
-    }
-    const sheet = baseDocument.sheets.find(
-      (candidate) => candidate.key === operation.sheetKey,
-    );
-    const source =
-      sheet?.kind === 'worksheet'
-        ? sheet.hyperlinks.find(
-            (hyperlink) => hyperlink.range.reference === operation.cell,
-          )
-        : undefined;
-    if (source?.target.kind === 'external') {
-      throw new XlsxWriteError(
-        'preservation-conflict',
-        'XLSX internal hyperlink edit cannot orphan an external relationship',
-        {
-          cell: operation.cell,
-          featureClass: 'external-hyperlink',
-          operationId: operation.operationId,
-          sheetKey: operation.sheetKey,
-        },
-      );
-    }
-  }
-}
-
 export function xlsxPlannedCell(
   document: XlsxRoundTripDocument,
   sheetKey: string,

@@ -2,7 +2,10 @@ import { describe, expect, it } from 'vitest';
 
 import { parseXlsx } from '../../src/formats/xlsx/parser';
 import { XlsxWriteError } from '../../src/formats/xlsx/roundtrip/errors';
-import { patchXlsxInternalHyperlinks } from '../../src/formats/xlsx/roundtrip/hyperlink-patch';
+import {
+  patchXlsxInternalHyperlinks,
+  readXlsxHyperlinkRelationshipIds,
+} from '../../src/formats/xlsx/roundtrip/hyperlink-patch';
 import { defaultXlsxWriteLimits } from '../../src/formats/xlsx/roundtrip/write-limits';
 import {
   createIndependentXlsx,
@@ -30,6 +33,38 @@ function worksheet(hyperlinks = ''): string {
 }
 
 describe('XLSX internal hyperlink patching', () => {
+  it('reads only direct relationship IDs from the worksheet hyperlink collection', () => {
+    const source = bytes(
+      `<worksheet xmlns="${XLSX_SPREADSHEET_NS}" xmlns:r="urn:relationships" xmlns:x="urn:foreign"><wrapper><hyperlink ref="BEFORE" r:id="before"/></wrapper><hyperlinks><other ref="OTHER" r:id="other"/><wrapper><hyperlink ref="NESTED" r:id="nested"/></wrapper><x:hyperlink ref="FOREIGN" r:id="foreign"/><hyperlink bogus="wrong" ref="REAL" r:id="real"/></hyperlinks><wrapper><hyperlink ref="AFTER" r:id="after"/></wrapper></worksheet>`,
+    );
+    expect(readXlsxHyperlinkRelationshipIds(source, PART)).toEqual(
+      new Map([['REAL', 'real']]),
+    );
+
+    const prefixed = bytes(
+      `<s:worksheet xmlns:s="${XLSX_SPREADSHEET_NS}" xmlns:r="urn:relationships"><s:hyperlinks><s:hyperlink ref="A1" r:id="rId1"/></s:hyperlinks></s:worksheet>`,
+    );
+    expect(readXlsxHyperlinkRelationshipIds(prefixed, PART)).toEqual(
+      new Map([['A1', 'rId1']]),
+    );
+  });
+
+  it('requires a depth-zero worksheet root when reading relationship IDs', () => {
+    for (const source of [
+      '<outer/>',
+      `<outer><worksheet xmlns="${XLSX_SPREADSHEET_NS}"><hyperlinks/></worksheet></outer>`,
+      '<notWorksheet><hyperlinks/></notWorksheet>',
+    ]) {
+      expect(
+        capture(() => readXlsxHyperlinkRelationshipIds(bytes(source), PART))
+          .diagnostic,
+      ).toMatchObject({
+        message: 'XLSX worksheet root cannot read hyperlinks',
+        part: PART,
+      });
+    }
+  });
+
   it('updates authored metadata and appends a new internal hyperlink', async () => {
     const result = patchXlsxInternalHyperlinks(
       bytes(

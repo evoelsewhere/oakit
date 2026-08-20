@@ -168,11 +168,11 @@ export interface XlsxWriteOptions {
 
 export interface XlsxPartFidelity {
   byteLength: number;
-  disposition: 'copy' | 'patch';
+  disposition: 'add' | 'copy' | 'patch';
   name: string;
   sha256: string;
-  sourceByteLength: number;
-  sourceSha256: string;
+  sourceByteLength?: number;
+  sourceSha256?: string;
 }
 
 export interface XlsxWriteReport {

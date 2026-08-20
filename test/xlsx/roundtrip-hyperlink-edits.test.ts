@@ -41,7 +41,7 @@ async function zipPart(data: Uint8Array, name: string): Promise<Uint8Array> {
   return (await JSZip.loadAsync(data)).file(name)!.async('uint8array');
 }
 
-describe('XLSX verified internal hyperlink edits', () => {
+describe('XLSX verified hyperlink edits', () => {
   it('updates, appends, and removes internal targets with R1/R2 evidence', async () => {
     const source = await createIndependentXlsx({
       'xl/worksheets/sheet1.xml': `<worksheet xmlns="${XLSX_SPREADSHEET_NS}"><sheetData><row r="1"><c r="A1" t="s"><v>0</v></c></row><row r="2"><c r="B2"><v>42</v></c></row></sheetData><hyperlinks><hyperlink ref="A1" location="Old!A1" display="Display" tooltip="Tooltip"/></hyperlinks></worksheet>`,
@@ -218,7 +218,7 @@ describe('XLSX verified internal hyperlink edits', () => {
     });
   });
 
-  it('blocks external target creation and external relationship orphaning honestly', async () => {
+  it('creates, updates, and removes external hyperlink relationships deterministically', async () => {
     const snapshot = await readXlsxRoundTrip(await createIndependentXlsx());
     const external = await applyXlsxEdits(snapshot, [
       {
@@ -226,17 +226,29 @@ describe('XLSX verified internal hyperlink edits', () => {
         kind: 'set-hyperlink',
         operationId: 'external-link',
         sheetKey: snapshot.document.sheets[0]!.key,
-        target: { kind: 'external', url: 'https://example.invalid/' },
+        target: {
+          kind: 'external',
+          location: 'Section',
+          url: 'https://example.invalid/',
+        },
       },
     ]);
+    const externalResult = await writeXlsxRoundTrip(external);
+    expect(externalResult.report.level).toBe('R2');
     expect(
-      (await capture(() => writeXlsxRoundTrip(external))).diagnostic,
-    ).toMatchObject({
-      code: 'unsupported-edit-operation',
-      featureClass: 'external-hyperlink-edit',
-      message:
-        'XLSX external hyperlink edits require relationship-part allocation',
-      operationId: 'external-link',
+      externalResult.report.parts.find(
+        (part) => part.name === 'xl/worksheets/_rels/sheet1.xml.rels',
+      )?.disposition,
+    ).toBe('add');
+    const createdSheet = (await parseXlsx(externalResult.data)).sheets[0]!;
+    expect(
+      createdSheet.kind === 'worksheet'
+        ? createdSheet.hyperlinks[0]!.target
+        : null,
+    ).toEqual({
+      kind: 'external',
+      location: 'Section',
+      url: 'https://example.invalid/',
     });
 
     const source = await createIndependentXlsx({
@@ -250,23 +262,90 @@ describe('XLSX verified internal hyperlink edits', () => {
       'xl/worksheets/sheet2.xml': `<worksheet xmlns="${XLSX_SPREADSHEET_NS}" xmlns:r="${XLSX_OFFICE_REL_NS}"><sheetData><row r="1"><c r="A1"><v>1</v></c></row><row r="2"><c r="B2"><v>2</v></c></row></sheetData><hyperlinks><hyperlink ref="B2" location="Internal!A1"/><hyperlink ref="A1" r:id="link"/></hyperlinks></worksheet>`,
     });
     const existing = await readXlsxRoundTrip(source);
-    const removed = await applyXlsxEdits(existing, [
+    const updated = await applyXlsxEdits(existing, [
+      {
+        cell: 'A1',
+        kind: 'set-hyperlink',
+        operationId: 'update-external',
+        sheetKey: existing.document.sheets[1]!.key,
+        target: {
+          kind: 'external',
+          location: 'Updated',
+          url: 'mailto:updated@example.invalid',
+        },
+      },
+    ]);
+    const updatedResult = await writeXlsxRoundTrip(updated);
+    const updatedRelationships = new TextDecoder().decode(
+      await zipPart(updatedResult.data, 'xl/worksheets/_rels/sheet2.xml.rels'),
+    );
+    expect(updatedRelationships).toContain('Id="link"');
+    expect(updatedRelationships).toContain(
+      'Target="mailto:updated@example.invalid"',
+    );
+    const updatedSnapshot = await readXlsxRoundTrip(updatedResult.data);
+    const removed = await applyXlsxEdits(updatedSnapshot, [
       {
         cell: 'A1',
         kind: 'set-hyperlink',
         operationId: 'remove-external',
-        sheetKey: existing.document.sheets[1]!.key,
+        sheetKey: updatedSnapshot.document.sheets[1]!.key,
         target: null,
       },
     ]);
+    const removedResult = await writeXlsxRoundTrip(removed);
+    const removedRelationships = new TextDecoder().decode(
+      await zipPart(removedResult.data, 'xl/worksheets/_rels/sheet2.xml.rels'),
+    );
+    expect(removedRelationships).not.toContain('Id="link"');
+    expect(removedRelationships).toContain('<Relationships');
+    const removedSheet = (await parseXlsx(removedResult.data)).sheets[1]!;
     expect(
-      (await capture(() => writeXlsxRoundTrip(removed))).diagnostic,
-    ).toMatchObject({
-      code: 'preservation-conflict',
-      featureClass: 'external-hyperlink',
-      message:
-        'XLSX internal hyperlink edit cannot orphan an external relationship',
-      operationId: 'remove-external',
+      removedSheet.kind === 'worksheet' ? removedSheet.hyperlinks : null,
+    ).toEqual([
+      expect.objectContaining({
+        target: { kind: 'internal', location: 'Internal!A1' },
+      }),
+    ]);
+  });
+
+  it('creates a Strict external hyperlink relationship with R2 evidence', async () => {
+    const strictSheetNs = 'http://purl.oclc.org/ooxml/spreadsheetml/main';
+    const strictRelNs =
+      'http://purl.oclc.org/ooxml/officeDocument/relationships';
+    const source = await createIndependentXlsx({
+      '[Content_Types].xml': `<Types xmlns="${XLSX_CONTENT_TYPES_NS}"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/></Types>`,
+      '_rels/.rels': `<Relationships xmlns="${XLSX_PACKAGE_REL_NS}"><Relationship Id="root" Type="${strictRelNs}/officeDocument" Target="xl/workbook.xml"/></Relationships>`,
+      'xl/_rels/workbook.xml.rels': `<Relationships xmlns="${XLSX_PACKAGE_REL_NS}"><Relationship Id="sheet" Type="${strictRelNs}/worksheet" Target="worksheets/sheet1.xml"/></Relationships>`,
+      'xl/sharedStrings.xml': null,
+      'xl/styles.xml': null,
+      'xl/workbook.xml': `<s:workbook xmlns:s="${strictSheetNs}" xmlns:r="${strictRelNs}"><s:sheets><s:sheet name="Strict" sheetId="1" r:id="sheet"/></s:sheets></s:workbook>`,
+      'xl/worksheets/sheet1.xml': `<s:worksheet xmlns:s="${strictSheetNs}"><s:sheetData><s:row r="1"><s:c r="A1"><s:v>1</s:v></s:c></s:row></s:sheetData></s:worksheet>`,
     });
+    const snapshot = await readXlsxRoundTrip(source);
+    const edited = await applyXlsxEdits(snapshot, [
+      {
+        cell: 'A1',
+        kind: 'set-hyperlink',
+        operationId: 'strict-external-link',
+        sheetKey: snapshot.document.sheets[0]!.key,
+        target: { kind: 'external', url: 'https://strict.invalid/' },
+      },
+    ]);
+    const result = await writeXlsxRoundTrip(edited);
+    expect(result.report.level).toBe('R2');
+    expect((await readXlsxRoundTrip(result.data)).source.conformance).toBe(
+      'strict',
+    );
+    expect(
+      new TextDecoder().decode(
+        await zipPart(result.data, 'xl/worksheets/_rels/sheet1.xml.rels'),
+      ),
+    ).toContain(`Type="${strictRelNs}/hyperlink"`);
+    const parsed = await parseXlsx(result.data, { errorMode: 'strict' });
+    const sheet = parsed.sheets[0]!;
+    expect(
+      sheet.kind === 'worksheet' ? sheet.hyperlinks[0]!.target : null,
+    ).toEqual({ kind: 'external', url: 'https://strict.invalid/' });
   });
 });

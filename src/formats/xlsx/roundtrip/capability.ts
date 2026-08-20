@@ -61,7 +61,10 @@ export function createXlsxCapabilityManifest(): XlsxCapabilityManifest {
   const domains: XlsxCapabilityEntry[] = capabilityDomains().map((domain) => ({
     domain,
     level:
-      domain === 'cells' || domain === 'formulas' || domain === 'styles'
+      domain === 'cells' ||
+      domain === 'formulas' ||
+      domain === 'hyperlinks' ||
+      domain === 'styles'
         ? 'verified-R2'
         : 'preservation-only',
   }));
@@ -98,9 +101,11 @@ export function createXlsxCapabilityManifest(): XlsxCapabilityManifest {
             ? {
                 constraints: [
                   'existing-explicit-cell',
-                  'internal-target-only',
+                  'safe-internal-or-external-target',
+                  'deterministic-relationship-allocation',
                   'no-overlapping-multi-cell-hyperlink',
-                  'no-external-relationship-rewrite',
+                  'http-https-mailto-only',
+                  'no-url-credentials',
                   'clean-supported-package-closure',
                 ],
                 level: 'verified-R2' as const,

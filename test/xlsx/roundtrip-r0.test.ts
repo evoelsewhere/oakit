@@ -293,6 +293,7 @@ describe('XLSX exact R0 round-trip', () => {
     ).toEqual([
       { domain: 'cells', level: 'verified-R2' },
       { domain: 'formulas', level: 'verified-R2' },
+      { domain: 'hyperlinks', level: 'verified-R2' },
       { domain: 'styles', level: 'verified-R2' },
     ]);
     expect(
@@ -341,9 +342,11 @@ describe('XLSX exact R0 round-trip', () => {
     ).toEqual({
       constraints: [
         'existing-explicit-cell',
-        'internal-target-only',
+        'safe-internal-or-external-target',
+        'deterministic-relationship-allocation',
         'no-overlapping-multi-cell-hyperlink',
-        'no-external-relationship-rewrite',
+        'http-https-mailto-only',
+        'no-url-credentials',
         'clean-supported-package-closure',
       ],
       level: 'verified-R2',

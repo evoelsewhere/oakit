@@ -2,6 +2,7 @@ import { readZipEntryBytes } from '../../../common/archive/read-entry';
 import JSZip from 'jszip';
 
 import { XlsxPartReader } from '../internal/part-reader';
+import { getXlsxRelationshipPartName } from '../internal/package-identity';
 import type { ResolvedXlsxResourceLimits } from '../internal/resource-limits';
 import { discoverXlsxWorkbook } from '../internal/workbook-discovery';
 import { parseXlsxWorkbookManifest } from '../internal/workbook-manifest';
@@ -14,7 +15,6 @@ import {
 import {
   assertXlsxCellEditFormulaClosure,
   assertXlsxCellEditStyleClosure,
-  assertXlsxInternalHyperlinkEditClosure,
   assertXlsxSafeCellEditSource,
   xlsxPlannedCell,
 } from './cell-edit-policy';
@@ -34,9 +34,13 @@ import {
   xlsxAppendedStyleRecordCount,
 } from './style-append';
 import {
-  patchXlsxInternalHyperlinks,
-  type XlsxInternalHyperlinkPatch,
+  patchXlsxHyperlinks,
+  type XlsxHyperlinkPatch,
 } from './hyperlink-patch';
+import {
+  patchXlsxHyperlinkRelationships,
+  planXlsxExternalHyperlinkRelationships,
+} from './hyperlink-relationships';
 import {
   patchXlsxWorksheetPartWithReport,
   type XlsxWorksheetCellPatch,
@@ -118,8 +122,8 @@ function finalPatches(
 
 function finalHyperlinkPatches(
   plan: XlsxCellOperationPlan,
-): Map<string, XlsxInternalHyperlinkPatch[]> {
-  const bySheet = new Map<string, Map<string, XlsxInternalHyperlinkPatch>>();
+): Map<string, XlsxHyperlinkPatch[]> {
+  const bySheet = new Map<string, Map<string, XlsxHyperlinkPatch>>();
   for (const operation of plan.operations) {
     if (operation.kind !== 'set-hyperlink') continue;
     let sheet = bySheet.get(operation.sheetKey);
@@ -130,7 +134,7 @@ function finalHyperlinkPatches(
     sheet.set(operation.cell, {
       cell: operation.cell,
       operationId: operation.operationId,
-      target: operation.target as XlsxInternalHyperlinkPatch['target'],
+      target: operation.target,
     });
   }
   return new Map(
@@ -153,7 +157,6 @@ export async function writeXlsxCellEditPackage(
   assertXlsxSafeCellEditSource(sourceGraph, options);
   assertXlsxCellEditFormulaClosure(baseDocument, plan);
   assertXlsxCellEditStyleClosure(baseDocument, plan);
-  assertXlsxInternalHyperlinkEditClosure(baseDocument, plan);
   const context = await packageContext(sourceBytes, readerLimits);
   const appendedStyles = plan.document.styles.slice(baseDocument.styles.length);
   const outputStyleRecords =
@@ -176,35 +179,11 @@ export async function writeXlsxCellEditPackage(
       { featureClass: 'missing-styles-part' },
     );
   }
-  const dirtyPartCount =
-    new Set(plan.impacts.map((impact) => impact.sheetKey)).size +
-    (appendedStyles.length === 0 ? 0 : 1);
-  if (dirtyPartCount > writeLimits.maxDirtyParts) {
-    writeLimitFailure(
-      'maxDirtyParts',
-      dirtyPartCount,
-      writeLimits.maxDirtyParts,
-    );
-  }
-  if (dirtyPartCount > writeLimits.maxPatchedParts) {
-    writeLimitFailure(
-      'maxPatchedParts',
-      dirtyPartCount,
-      writeLimits.maxPatchedParts,
-    );
-  }
-  const dependencyEdges = plan.impacts.length + appendedStyles.length;
-  if (dependencyEdges > writeLimits.maxDependencyEdges) {
-    writeLimitFailure(
-      'maxDependencyEdges',
-      dependencyEdges,
-      writeLimits.maxDependencyEdges,
-    );
-  }
-
   const archive = await JSZip.loadAsync(sourceBytes);
   const appendedStyleXfs = new Map<number, number>();
   const dirtyParts = new Set<string>();
+  const addedParts = new Set<string>();
+  const changedRelationshipOwners = new Set<string>();
   let generatedXmlBytes = 0;
   let patchBytes = 0;
   let patchCount = 0;
@@ -244,11 +223,37 @@ export async function writeXlsxCellEditPackage(
       writeLimits,
       part,
     );
-    const hyperlinkPatched = patchXlsxInternalHyperlinks(
+    const finalSheet = plan.document.sheets.find(
+      (candidate) => candidate.key === sheetKey,
+    )!;
+    if (finalSheet.kind !== 'worksheet') {
+      throw new TypeError('Expected XLSX worksheet hyperlink target');
+    }
+    const relationshipPlan = planXlsxExternalHyperlinkRelationships(
       cellPatched.data,
-      hyperlinkPatches.get(sheetKey) ?? [],
+      sourceGraph.relationships.filter(
+        (relationship) => relationship.owner === part,
+      ),
+      finalSheet.hyperlinks,
+      part,
+    );
+    const requestedHyperlinks = (
+      hyperlinkPatches.get(sheetKey) ?? []
+    ).map<XlsxHyperlinkPatch>((request) => {
+      if (request.target?.kind !== 'external') return request;
+      const relationshipId = relationshipPlan.idsByCell.get(request.cell)!;
+      return { ...request, relationshipId };
+    });
+    const officeRelationshipNamespace =
+      sourceGraph.conformance === 'strict'
+        ? 'http://purl.oclc.org/ooxml/officeDocument/relationships'
+        : 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
+    const hyperlinkPatched = patchXlsxHyperlinks(
+      cellPatched.data,
+      requestedHyperlinks,
       writeLimits,
       part,
+      officeRelationshipNamespace,
     );
     generatedXmlBytes += hyperlinkPatched.data.byteLength;
     if (generatedXmlBytes > writeLimits.maxGeneratedXmlBytes) {
@@ -279,6 +284,69 @@ export async function writeXlsxCellEditPackage(
     }
     archive.file(part, hyperlinkPatched.data, { date: entry.date });
     dirtyParts.add(part);
+    if (relationshipPlan.changed) {
+      const relationshipPart = getXlsxRelationshipPartName(part);
+      const relationshipEntry = archive.file(relationshipPart);
+      const relationshipBytes = relationshipEntry
+        ? await readZipEntryBytes(relationshipEntry, readerLimits.maxPartBytes)
+        : null;
+      const relationshipPatched = patchXlsxHyperlinkRelationships(
+        relationshipBytes,
+        relationshipPlan,
+        `${officeRelationshipNamespace}/hyperlink`,
+        writeLimits,
+        readerLimits,
+        relationshipPart,
+      );
+      generatedXmlBytes += relationshipPatched.data.byteLength;
+      patchBytes += relationshipPatched.patchBytes;
+      patchCount += relationshipPatched.patchCount;
+      archive.file(relationshipPart, relationshipPatched.data, {
+        date: relationshipEntry?.date ?? entry.date,
+      });
+      if (relationshipEntry) dirtyParts.add(relationshipPart);
+      else addedParts.add(relationshipPart);
+      changedRelationshipOwners.add(part);
+    }
+  }
+  const dirtyPartCount = dirtyParts.size + addedParts.size;
+  if (dirtyPartCount > writeLimits.maxDirtyParts) {
+    writeLimitFailure(
+      'maxDirtyParts',
+      dirtyPartCount,
+      writeLimits.maxDirtyParts,
+    );
+  }
+  if (dirtyParts.size > writeLimits.maxPatchedParts) {
+    writeLimitFailure(
+      'maxPatchedParts',
+      dirtyParts.size,
+      writeLimits.maxPatchedParts,
+    );
+  }
+  const dependencyEdges =
+    plan.impacts.length +
+    appendedStyles.length +
+    changedRelationshipOwners.size;
+  if (dependencyEdges > writeLimits.maxDependencyEdges) {
+    writeLimitFailure(
+      'maxDependencyEdges',
+      dependencyEdges,
+      writeLimits.maxDependencyEdges,
+    );
+  }
+  if (generatedXmlBytes > writeLimits.maxGeneratedXmlBytes) {
+    writeLimitFailure(
+      'maxGeneratedXmlBytes',
+      generatedXmlBytes,
+      writeLimits.maxGeneratedXmlBytes,
+    );
+  }
+  if (patchBytes > writeLimits.maxPatchBytes) {
+    writeLimitFailure('maxPatchBytes', patchBytes, writeLimits.maxPatchBytes);
+  }
+  if (patchCount > writeLimits.maxPatchCount) {
+    writeLimitFailure('maxPatchCount', patchCount, writeLimits.maxPatchCount);
   }
   const data = await generateBoundedXlsxZip(
     archive,
@@ -289,6 +357,8 @@ export async function writeXlsxCellEditPackage(
     sourceGraph,
     graph,
     dirtyParts,
+    addedParts,
+    changedRelationshipOwners,
   );
   return { data, graph, parts: fidelityParts };
 }
