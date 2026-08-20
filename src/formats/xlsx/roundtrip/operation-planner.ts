@@ -129,16 +129,20 @@ function applyCellOperation(
   delete cell.displayText;
   if (operation.kind === 'set-cell-style') {
     const styleKey = canonicalXlsxJson(operation.style);
-    const style = document.styles.findIndex(
+    let style = document.styles.findIndex(
       (candidate) => canonicalXlsxJson(candidate) === styleKey,
     );
     if (style < 0) {
-      operationFailure(
-        'unsupported-edit-operation',
-        'XLSX set-cell-style currently requires an existing normalized style',
-        operation,
-        'append-style',
-      );
+      if (operation.style.checkbox === true) {
+        operationFailure(
+          'unsupported-edit-operation',
+          'XLSX cannot append a checkbox style without a feature-property-bag edit',
+          operation,
+          'append-checkbox-style',
+        );
+      }
+      document.styles.push(structuredClone(operation.style));
+      style = document.styles.length - 1;
     }
     cell.style = style;
     return;
@@ -199,6 +203,18 @@ export async function replayXlsxCellOperations(
       );
     }
     applyCellOperation(document, cell, operation);
+    if (document.styles.length > readerLimits.maxStyles) {
+      throw new XlsxWriteError(
+        'resource-limit-exceeded',
+        'XLSX edited normalized styles exceed their reader limit',
+        {
+          actual: document.styles.length,
+          limit: readerLimits.maxStyles,
+          limitName: 'maxStyles',
+          operationId: operation.operationId,
+        },
+      );
+    }
     impacts.push({
       cell: operation.cell,
       kind: operation.kind,

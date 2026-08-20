@@ -1,3 +1,4 @@
+import { decodeXmlEntities } from '../../../common/text/html';
 import { XlsxParseError } from '../errors';
 import type { XlsxFont } from '../types';
 import { parseXlsxStyleColor } from './style-color';
@@ -87,7 +88,7 @@ function stringProperty(
   if (typeof value !== 'string' || value.length === 0) {
     valueFailure(`Font ${localName} value is invalid`, part);
   }
-  return value;
+  return decodeXmlEntities(value);
 }
 
 function unsignedProperty(

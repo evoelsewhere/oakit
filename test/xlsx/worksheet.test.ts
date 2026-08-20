@@ -45,6 +45,7 @@ const TEST_STYLES: XlsxStyleTable = {
   differentialStyles: [],
   namedStyles: [],
   part: 'xl/styles.xml',
+  recordCount: 0,
   styles: [
     {},
     { numberFormat: '0' },
@@ -854,6 +855,7 @@ describe('XLSX worksheet streaming', () => {
       differentialStyles: [],
       namedStyles: [],
       part: 'xl/styles.xml',
+      recordCount: 0,
       styles: [
         {},
         { numberFormat: 'mm-dd-yy' },
@@ -951,6 +953,7 @@ describe('XLSX worksheet streaming', () => {
       differentialStyles: [],
       namedStyles: [],
       part: 'xl/styles.xml',
+      recordCount: 0,
       styles: [{ numberFormat: 'mm-dd-yy' }],
     };
     const result = await parse(

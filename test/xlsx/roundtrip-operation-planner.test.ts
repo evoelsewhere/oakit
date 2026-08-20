@@ -799,7 +799,7 @@ describe('XLSX cell operation planner', () => {
     expect(plan.stateHash).toBe(await canonicalXlsxSha256(plan.document));
   });
 
-  it('applies existing normalized styles and rejects append requests', async () => {
+  it('applies existing styles, appends deterministically, and bounds style growth', async () => {
     const styles = `<styleSheet xmlns="${XLSX_SPREADSHEET_NS}"><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts><fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>`;
     const snapshot = await readXlsxRoundTrip(
       await createIndependentXlsx({ 'xl/styles.xml': styles }),
@@ -842,10 +842,21 @@ describe('XLSX cell operation planner', () => {
       readerLimits,
     );
     expect(worksheet(defaultPlan.document).rows[0]!.cells[0]!.style).toBe(0);
+    const appended = await replayXlsxCellOperations(
+      snapshot.document,
+      [{ ...operation, style: { font: { italic: true } } }],
+      writeLimits,
+      readerLimits,
+    );
+    expect(appended.document.styles).toEqual([
+      ...snapshot.document.styles,
+      { font: { italic: true } },
+    ]);
+    expect(worksheet(appended.document).rows[0]!.cells[0]!.style).toBe(2);
     const error = await captureAsync(() =>
       replayXlsxCellOperations(
         snapshot.document,
-        [{ ...operation, style: { font: { italic: true } } }],
+        [{ ...operation, style: { checkbox: true } }],
         writeLimits,
         readerLimits,
       ),
@@ -853,11 +864,42 @@ describe('XLSX cell operation planner', () => {
     expect(error.diagnostic).toMatchObject({
       cell: 'A1',
       code: 'unsupported-edit-operation',
-      featureClass: 'append-style',
+      featureClass: 'append-checkbox-style',
       message:
-        'XLSX set-cell-style currently requires an existing normalized style',
+        'XLSX cannot append a checkbox style without a feature-property-bag edit',
       operationId: 'style-1',
       sheetKey: sheet.key,
+    });
+    await expect(
+      replayXlsxCellOperations(
+        snapshot.document,
+        [{ ...operation, style: { font: { italic: true } } }],
+        writeLimits,
+        {
+          ...readerLimits,
+          maxStyles: snapshot.document.styles.length + 1,
+        },
+      ),
+    ).resolves.toMatchObject({
+      document: {
+        styles: [...snapshot.document.styles, { font: { italic: true } }],
+      },
+    });
+    const limitError = await captureAsync(() =>
+      replayXlsxCellOperations(
+        snapshot.document,
+        [{ ...operation, style: { font: { italic: true } } }],
+        writeLimits,
+        { ...readerLimits, maxStyles: snapshot.document.styles.length },
+      ),
+    );
+    expect(limitError.diagnostic).toMatchObject({
+      actual: snapshot.document.styles.length + 1,
+      code: 'resource-limit-exceeded',
+      limit: snapshot.document.styles.length,
+      limitName: 'maxStyles',
+      message: 'XLSX edited normalized styles exceed their reader limit',
+      operationId: 'style-1',
     });
   });
 

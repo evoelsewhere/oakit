@@ -6,6 +6,7 @@ import type { ResolvedXlsxResourceLimits } from '../internal/resource-limits';
 import { discoverXlsxWorkbook } from '../internal/workbook-discovery';
 import { parseXlsxWorkbookManifest } from '../internal/workbook-manifest';
 import { loadXlsxStyles, type XlsxStyleTable } from '../internal/styles';
+import { XlsxWriteError } from './errors';
 import {
   inspectXlsxPackageGraph,
   type XlsxPackageGraph,
@@ -27,6 +28,10 @@ import type {
   XlsxRoundTripDocument,
   XlsxWriteOptions,
 } from './types';
+import {
+  appendXlsxStylesPart,
+  xlsxAppendedStyleRecordCount,
+} from './style-append';
 import {
   patchXlsxWorksheetPartWithReport,
   type XlsxWorksheetCellPatch,
@@ -60,6 +65,7 @@ async function packageContext(
 function finalPatches(
   plan: XlsxCellOperationPlan,
   styles: XlsxStyleTable,
+  appendedStyleXfs: ReadonlyMap<number, number>,
 ): Map<string, XlsxWorksheetCellPatch[]> {
   const bySheet = new Map<string, Map<string, XlsxWorksheetCellPatch>>();
   const styleCells = new Set(
@@ -81,9 +87,11 @@ function finalPatches(
     const cell = xlsxPlannedCell(plan.document, impact.sheetKey, impact.cell);
     const styleCell = styleCells.has(`${impact.sheetKey}\u0000${impact.cell}`);
     const xmlStyleIndex = styleCell
-      ? styles.cellXfs.findIndex(
-          (candidate) => candidate.normalizedStyle === cell.style,
-        )
+      ? cell.style !== undefined && appendedStyleXfs.has(cell.style)
+        ? appendedStyleXfs.get(cell.style)
+        : styles.cellXfs.findIndex(
+            (candidate) => candidate.normalizedStyle === cell.style,
+          )
       : undefined;
     sheet.set(impact.cell, {
       cell,
@@ -115,36 +123,79 @@ export async function writeXlsxCellEditPackage(
   assertXlsxCellEditFormulaClosure(baseDocument, plan);
   assertXlsxCellEditStyleClosure(baseDocument, plan);
   const context = await packageContext(sourceBytes, readerLimits);
-  const patches = finalPatches(plan, context.styles);
-  if (patches.size > writeLimits.maxDirtyParts) {
-    writeLimitFailure('maxDirtyParts', patches.size, writeLimits.maxDirtyParts);
+  const appendedStyles = plan.document.styles.slice(baseDocument.styles.length);
+  const outputStyleRecords =
+    context.styles.recordCount + xlsxAppendedStyleRecordCount(appendedStyles);
+  if (outputStyleRecords > readerLimits.maxStyles) {
+    throw new XlsxWriteError(
+      'resource-limit-exceeded',
+      'XLSX appended style records exceed the reader limit',
+      {
+        actual: outputStyleRecords,
+        limit: readerLimits.maxStyles,
+        limitName: 'maxStyles',
+      },
+    );
   }
-  if (patches.size > writeLimits.maxPatchedParts) {
+  if (appendedStyles.length !== 0 && context.styles.part === null) {
+    throw new XlsxWriteError(
+      'preservation-conflict',
+      'XLSX cannot append styles without an existing styles part',
+      { featureClass: 'missing-styles-part' },
+    );
+  }
+  const dirtyPartCount =
+    new Set(plan.impacts.map((impact) => impact.sheetKey)).size +
+    (appendedStyles.length === 0 ? 0 : 1);
+  if (dirtyPartCount > writeLimits.maxDirtyParts) {
+    writeLimitFailure(
+      'maxDirtyParts',
+      dirtyPartCount,
+      writeLimits.maxDirtyParts,
+    );
+  }
+  if (dirtyPartCount > writeLimits.maxPatchedParts) {
     writeLimitFailure(
       'maxPatchedParts',
-      patches.size,
+      dirtyPartCount,
       writeLimits.maxPatchedParts,
     );
   }
-  if (plan.impacts.length > writeLimits.maxDependencyEdges) {
+  const dependencyEdges = plan.impacts.length + appendedStyles.length;
+  if (dependencyEdges > writeLimits.maxDependencyEdges) {
     writeLimitFailure(
       'maxDependencyEdges',
-      plan.impacts.length,
+      dependencyEdges,
       writeLimits.maxDependencyEdges,
     );
   }
-  const patchCount = [...patches.values()].reduce(
-    (total, sheetPatches) => total + sheetPatches.length,
-    0,
-  );
-  if (patchCount > writeLimits.maxPatchCount) {
-    writeLimitFailure('maxPatchCount', patchCount, writeLimits.maxPatchCount);
-  }
 
   const archive = await JSZip.loadAsync(sourceBytes);
+  const appendedStyleXfs = new Map<number, number>();
   const dirtyParts = new Set<string>();
   let generatedXmlBytes = 0;
   let patchBytes = 0;
+  let patchCount = 0;
+  if (appendedStyles.length !== 0) {
+    const part = context.styles.part!;
+    const entry = archive.file(part)!;
+    const source = await readZipEntryBytes(entry, readerLimits.maxPartBytes);
+    const appended = appendXlsxStylesPart(
+      source,
+      appendedStyles,
+      writeLimits,
+      part,
+    );
+    generatedXmlBytes += appended.data.byteLength;
+    patchBytes += appended.patchBytes;
+    patchCount += appended.patchCount;
+    archive.file(part, appended.data, { date: entry.date });
+    dirtyParts.add(part);
+    for (const [offset, xmlStyleIndex] of appended.cellXfIndexes.entries()) {
+      appendedStyleXfs.set(baseDocument.styles.length + offset, xmlStyleIndex);
+    }
+  }
+  const patches = finalPatches(plan, context.styles, appendedStyleXfs);
   for (const [sheetKey, sheetPatches] of patches) {
     const sheet = baseDocument.sheets.find(
       (candidate) => candidate.key === sheetKey,
@@ -173,6 +224,15 @@ export async function writeXlsxCellEditPackage(
         'maxPatchBytes',
         patchBytes,
         writeLimits.maxPatchBytes,
+        part,
+      );
+    }
+    patchCount += patched.patchCount;
+    if (patchCount > writeLimits.maxPatchCount) {
+      writeLimitFailure(
+        'maxPatchCount',
+        patchCount,
+        writeLimits.maxPatchCount,
         part,
       );
     }

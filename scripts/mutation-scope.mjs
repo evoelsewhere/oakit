@@ -138,6 +138,8 @@ export const mutatedFiles = [
   'src/formats/xlsx/roundtrip/operation-validation.ts',
   'src/formats/xlsx/roundtrip/read-snapshot.ts',
   'src/formats/xlsx/roundtrip/source.ts',
+  'src/formats/xlsx/roundtrip/style-append.ts',
+  'src/formats/xlsx/roundtrip/style-validation.ts',
   'src/formats/xlsx/roundtrip/validate-snapshot.ts',
   'src/formats/xlsx/roundtrip/validate-json.ts',
   'src/formats/xlsx/roundtrip/verify.ts',

@@ -3,22 +3,22 @@ import { XlsxWriteError } from './errors';
 import type { ResolvedXlsxWriteLimits } from './types';
 import { writeLimitFailure } from './write-limits';
 
-type XlsxXmlEncoding = 'utf-16be' | 'utf-16le' | 'utf-8';
+export type XlsxXmlEncoding = 'utf-16be' | 'utf-16le' | 'utf-8';
 
-interface DecodedXlsxXml {
+export interface DecodedXlsxXml {
   bom: boolean;
   encoding: XlsxXmlEncoding;
   text: string;
 }
 
-interface XlsxXmlAttributeSpan {
+export interface XlsxXmlAttributeSpan {
   end: number;
   name: string;
   start: number;
   value: string;
 }
 
-interface XlsxXmlTagToken {
+export interface XlsxXmlTagToken {
   attributes: XlsxXmlAttributeSpan[];
   closing: boolean;
   depth: number;
@@ -72,7 +72,7 @@ function formulaFailure(
   });
 }
 
-function decodeXlsxXml(bytes: Uint8Array, part: string): DecodedXlsxXml {
+export function decodeXlsxXml(bytes: Uint8Array, part: string): DecodedXlsxXml {
   let bom = false;
   let encoding: XlsxXmlEncoding;
   let offset = 0;
@@ -130,7 +130,7 @@ function encodeUtf16(text: string, littleEndian: boolean): Uint8Array {
   return bytes;
 }
 
-function encodeXlsxXml(value: DecodedXlsxXml): Uint8Array {
+export function encodeXlsxXml(value: DecodedXlsxXml): Uint8Array {
   if (value.encoding === 'utf-8') {
     const bytes = new TextEncoder().encode(value.text);
     return value.bom ? prepend([0xef, 0xbb, 0xbf], bytes) : bytes;
@@ -260,7 +260,7 @@ function attributes(
   return output;
 }
 
-function tokenizeXlsxXml(text: string, part: string): XlsxXmlTagToken[] {
+export function tokenizeXlsxXml(text: string, part: string): XlsxXmlTagToken[] {
   const tokens: XlsxXmlTagToken[] = [];
   const stack: string[] = [];
   let cursor = 0;
@@ -313,7 +313,7 @@ function tokenizeXlsxXml(text: string, part: string): XlsxXmlTagToken[] {
   return tokens;
 }
 
-function localName(name: string): string {
+export function xlsxXmlLocalName(name: string): string {
   return name.slice(name.lastIndexOf(':') + 1);
 }
 
@@ -439,7 +439,7 @@ function cellReplacement(
       ? `<${token.name}${authored}${style}/>`
       : `<${token.name}${authored}${style}>${text.slice(token.end, close.end)}`;
   }
-  const prefix = token.name.slice(0, -localName(token.name).length);
+  const prefix = token.name.slice(0, -xlsxXmlLocalName(token.name).length);
   const serialized = serializedContent(patch, prefix);
   const type = serialized.type === undefined ? '' : ` t="${serialized.type}"`;
   return serialized.content
@@ -478,7 +478,7 @@ function assertCellChildrenSafe(
       token.end <= close.start,
   );
   for (const token of directChildren) {
-    const child = localName(token.name);
+    const child = xlsxXmlLocalName(token.name);
     if (child !== 'f' && child !== 'is' && child !== 'v') {
       patchFailure(
         'XLSX target cell contains unsupported child content',
@@ -546,7 +546,7 @@ export function patchXlsxWorksheetPartWithReport(
   const decoded = decodeXlsxXml(bytes, part);
   const tokens = tokenizeXlsxXml(decoded.text, part);
   const root = tokens.find((token) => !token.closing);
-  if (!root || localName(root.name) !== 'worksheet') {
+  if (!root || xlsxXmlLocalName(root.name) !== 'worksheet') {
     patchFailure('XLSX worksheet root cannot be patched safely', part);
   }
   const qualifiedCell = `${root.name.slice(0, -'worksheet'.length)}c`;

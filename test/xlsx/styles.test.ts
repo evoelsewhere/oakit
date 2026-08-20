@@ -102,6 +102,21 @@ function contentTypes(stylesType: string): string {
 }
 
 describe('XLSX styles table', () => {
+  it('decodes XML entities in normalized font names and number formats', async () => {
+    const result = await load({
+      'xl/styles.xml': styleSheet(`
+        <numFmts count="1"><numFmt numFmtId="164" formatCode="0.00 &quot;kg&quot; &amp;"/></numFmts>
+        <fonts count="1"><font><name val="A &amp; &quot;B&quot;"/></font></fonts>
+        <fills count="1"><fill/></fills>
+        <borders count="1"><border/></borders>
+        <cellStyleXfs count="1"><xf/></cellStyleXfs>
+        <cellXfs count="1"><xf fontId="0" numFmtId="164"/></cellXfs>`),
+    });
+    expect(result.styles).toEqual([
+      { font: { name: 'A & "B"' }, numberFormat: '0.00 "kg" &' },
+    ]);
+  });
+
   it('parses built-in and custom number formats in authored XF order', async () => {
     const result = await load({
       'xl/styles.xml': styleSheet(`${CORE}
@@ -129,6 +144,7 @@ describe('XLSX styles table', () => {
       differentialStyles: [],
       namedStyles: [],
       part: 'xl/styles.xml',
+      recordCount: 11,
       styles: [
         {},
         { numberFormat: 'mm-dd-yy' },
@@ -212,6 +228,7 @@ describe('XLSX styles table', () => {
       differentialStyles: [],
       namedStyles: [],
       part: 'xl/styles.xml',
+      recordCount: 9,
       styles: [
         {},
         {

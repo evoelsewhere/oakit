@@ -1,9 +1,10 @@
 import type { ResolvedXlsxResourceLimits } from '../internal/resource-limits';
 import { parseXlsxCellReference } from '../internal/cell-reference';
-import type { XlsxCellValue, XlsxStyle } from '../types';
+import type { XlsxCellValue } from '../types';
 import { canonicalXlsxJson } from './canonical-json';
 import { XlsxWriteError } from './errors';
 import type { ResolvedXlsxWriteLimits, XlsxEditOperation } from './types';
+import { validateXlsxOperationStyle } from './style-validation';
 import { writeLimitFailure } from './write-limits';
 
 export type XlsxCellEditOperation = Extract<
@@ -43,15 +44,6 @@ const KNOWN_OPERATIONS = new Set([
 const OPERATION_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u;
 const SHA256_PATTERN = /^[0-9a-f]{64}$/u;
 const SHEET_KEY_PATTERN = /^xlsx:sheet:[0-9a-f]{32}$/u;
-const STYLE_KEYS = [
-  'alignment',
-  'border',
-  'checkbox',
-  'fill',
-  'font',
-  'numberFormat',
-  'protection',
-] as const;
 
 function invalid(message: string, operationId?: string): never {
   throw new XlsxWriteError('invalid-roundtrip-json', message, {
@@ -239,13 +231,6 @@ function validateContent(
   invalid('XLSX set-cell content kind is invalid', id);
 }
 
-function validateExistingStyle(value: unknown, id: string): XlsxStyle {
-  if (!plainRecord(value) || !exactKeys(value, [], STYLE_KEYS)) {
-    invalid('XLSX set-cell-style style shape is invalid', id);
-  }
-  return structuredClone(value);
-}
-
 function operationBytes(operation: unknown): number {
   return new TextEncoder().encode(canonicalXlsxJson(operation)).byteLength;
 }
@@ -332,7 +317,7 @@ export function validateXlsxCellOperations(
           ? {}
           : { ifMatch: operation.ifMatch as string }),
         kind: 'set-cell-style',
-        style: validateExistingStyle(operation.style, id),
+        style: validateXlsxOperationStyle(operation.style, id),
       });
       continue;
     }

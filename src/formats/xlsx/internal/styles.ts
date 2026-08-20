@@ -1,4 +1,5 @@
 import type { XmlLookupValue } from '../../../common/xml/tree';
+import { decodeXmlEntities } from '../../../common/text/html';
 import { XlsxParseError } from '../errors';
 import type { XlsxNamedStyle, XlsxStyle } from '../types';
 import { xlsxBuiltinNumberFormatCode } from './number-format';
@@ -55,6 +56,7 @@ export interface XlsxStyleTable {
   differentialStyles: readonly XlsxStyle[];
   namedStyles: readonly XlsxNamedStyle[];
   part: string | null;
+  recordCount: number;
   styles: readonly XlsxStyle[];
 }
 
@@ -63,6 +65,7 @@ export const EMPTY_XLSX_STYLE_TABLE: XlsxStyleTable = Object.freeze({
   differentialStyles: Object.freeze([]),
   namedStyles: Object.freeze([]),
   part: null,
+  recordCount: 0,
   styles: Object.freeze([]),
 });
 
@@ -296,7 +299,7 @@ function customNumberFormats(
     if (values.has(id)) {
       structureFailure('Styles contain a duplicate number-format ID', part);
     }
-    values.set(id, attrs.formatCode);
+    values.set(id, decodeXmlEntities(attrs.formatCode));
   }
   return values;
 }
@@ -672,6 +675,7 @@ export function parseXlsxStylePart(
     differentialStyles: Object.freeze(differentialStyles),
     namedStyles: Object.freeze(namedStyles),
     part,
+    recordCount: aggregateStyles,
     styles: Object.freeze(styles),
   });
 }

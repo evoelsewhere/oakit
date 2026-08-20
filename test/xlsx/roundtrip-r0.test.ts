@@ -326,7 +326,9 @@ describe('XLSX exact R0 round-trip', () => {
     ).toEqual({
       constraints: [
         'existing-explicit-cell',
-        'existing-normalized-style',
+        'existing-or-append-normalized-style',
+        'existing-styles-part-for-append',
+        'no-new-checkbox-style',
         'clean-supported-package-closure',
         'no-non-anchor-merged-cell',
       ],

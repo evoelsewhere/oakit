@@ -13,7 +13,10 @@ import type {
   XlsxEditOperation,
   XlsxRoundTripSnapshot,
 } from '../../src/formats/xlsx/roundtrip';
+import type { XlsxStyle } from '../../src/formats/xlsx/types';
 import { sha256XlsxBytes } from '../../src/formats/xlsx/roundtrip/digest';
+import { appendXlsxStylesPart } from '../../src/formats/xlsx/roundtrip/style-append';
+import { defaultXlsxWriteLimits } from '../../src/formats/xlsx/roundtrip/write-limits';
 import {
   createIndependentXlsx,
   independentWorksheet,
@@ -262,6 +265,245 @@ describe('XLSX verified cell edits', () => {
       ),
     ).toContain('<c r="A1" s="1"/>');
     expect(result.report.level).toBe('R2');
+  });
+
+  it('appends one normalized style deterministically and verifies both dirty parts', async () => {
+    const source = await createIndependentXlsx({
+      'xl/styles.xml': TWO_STYLE_XML,
+    });
+    const snapshot = await readXlsxRoundTrip(source);
+    const target: XlsxStyle = {
+      alignment: {
+        horizontal: 'center',
+        indent: 2,
+        justifyLastLine: true,
+        readingOrder: 'right-to-left',
+        relativeIndent: -3,
+        shrinkToFit: true,
+        textRotation: 180,
+        vertical: 'top',
+        wrapText: true,
+      },
+      border: {
+        bottom: {
+          color: { argb: 'FF112233', kind: 'rgb' },
+          style: 'thin',
+        },
+        diagonal: { style: 'dashDot' },
+        diagonalDown: true,
+        diagonalUp: true,
+        end: { style: 'dashDotDot' },
+        horizontal: { style: 'dashed' },
+        left: { style: 'dotted' },
+        outline: false,
+        right: { style: 'double' },
+        start: { style: 'hair' },
+        top: { style: 'medium' },
+        vertical: { style: 'mediumDashDot' },
+      },
+      fill: {
+        backgroundColor: { kind: 'automatic' },
+        foregroundColor: { index: 4, kind: 'theme', tint: 0.25 },
+        kind: 'pattern',
+        pattern: 'solid',
+      },
+      font: {
+        bold: true,
+        charset: 255,
+        color: { index: 3, kind: 'indexed', tint: -0.2 },
+        condense: true,
+        extend: true,
+        family: 5,
+        italic: true,
+        name: 'Agent & "Style"',
+        outline: true,
+        scheme: 'minor',
+        shadow: true,
+        size: 12.5,
+        strike: true,
+        underline: 'double-accounting',
+        verticalAlignment: 'superscript',
+      },
+      numberFormat: '0.0000 "kg" &',
+      protection: { hidden: true, locked: false },
+    };
+    const secondTarget: XlsxStyle = { font: { italic: true } };
+    const edited = await applyXlsxEdits(snapshot, [
+      {
+        cell: 'A1',
+        kind: 'set-cell-style',
+        operationId: 'append-style-a1',
+        sheetKey: snapshot.document.sheets[0]!.key,
+        style: target,
+      },
+      {
+        cell: 'B2',
+        kind: 'set-cell-style',
+        operationId: 'reuse-style-b2',
+        sheetKey: snapshot.document.sheets[0]!.key,
+        style: structuredClone(target),
+      },
+      {
+        cell: 'C3',
+        kind: 'set-cell-style',
+        operationId: 'append-second-style-c3',
+        sheetKey: snapshot.document.sheets[0]!.key,
+        style: secondTarget,
+      },
+    ]);
+    expect(edited.document.styles).toEqual([
+      ...snapshot.document.styles,
+      target,
+      secondTarget,
+    ]);
+    const [first, second] = await Promise.all([
+      writeXlsxRoundTrip(portable(edited)),
+      writeXlsxRoundTrip(portable(edited)),
+    ]);
+    expect(second).toEqual(first);
+    expect(
+      first.report.parts
+        .filter((part) => part.disposition === 'patch')
+        .map((part) => part.name),
+    ).toEqual(['xl/styles.xml', 'xl/worksheets/sheet1.xml']);
+    const styleXml = new TextDecoder().decode(
+      await zipPart(first.data, 'xl/styles.xml'),
+    );
+    expect(styleXml).toContain('<numFmts count="1">');
+    expect(styleXml).toContain('<fonts count="4">');
+    expect(styleXml).toContain('<fills count="4">');
+    expect(styleXml).toContain('<borders count="3">');
+    expect(styleXml).toContain('<cellXfs count="4">');
+    expect(styleXml).toContain('formatCode="0.0000 &quot;kg&quot; &amp;"');
+    const parsed = await parseXlsx(first.data, { errorMode: 'strict' });
+    expect(parsed.styles[2]).toEqual(target);
+    expect(parsed.styles[3]).toEqual(secondTarget);
+    const sheet = parsed.sheets[0]!;
+    expect(sheet.kind).toBe('worksheet');
+    if (sheet.kind !== 'worksheet') throw new Error('Expected worksheet');
+    expect(sheet.rows[0]!.cells[0]!.style).toBe(2);
+    expect(sheet.rows[1]!.cells[0]!.style).toBe(2);
+    expect(sheet.rows[2]!.cells[0]!.style).toBe(3);
+    expect(first.report.level).toBe('R2');
+    const generatedXmlBytes = first.report.parts
+      .filter((part) => part.disposition === 'patch')
+      .reduce((total, part) => total + part.byteLength, 0);
+    await expect(
+      writeXlsxRoundTrip(edited, {
+        limits: { maxGeneratedXmlBytes: generatedXmlBytes },
+      }),
+    ).resolves.toMatchObject({ report: { level: 'R2' } });
+    expect(
+      (
+        await capture(() =>
+          writeXlsxRoundTrip(edited, {
+            limits: { maxGeneratedXmlBytes: generatedXmlBytes - 1 },
+          }),
+        )
+      ).diagnostic,
+    ).toMatchObject({
+      actual: generatedXmlBytes,
+      limit: generatedXmlBytes - 1,
+      limitName: 'maxGeneratedXmlBytes',
+    });
+    const stylePatchBytes = appendXlsxStylesPart(
+      await zipPart(source, 'xl/styles.xml'),
+      [target, secondTarget],
+      defaultXlsxWriteLimits(),
+      'xl/styles.xml',
+    ).patchBytes;
+    const aggregatePatchError = await capture(() =>
+      writeXlsxRoundTrip(edited, {
+        limits: { maxPatchBytes: stylePatchBytes },
+      }),
+    );
+    expect(aggregatePatchError.diagnostic).toMatchObject({
+      code: 'resource-limit-exceeded',
+      limit: stylePatchBytes,
+      limitName: 'maxPatchBytes',
+    });
+    expect(aggregatePatchError.diagnostic.actual).toBeGreaterThan(
+      stylePatchBytes,
+    );
+    await expect(
+      writeXlsxRoundTrip(edited, {
+        limits: {
+          maxDependencyEdges: 5,
+          maxDirtyParts: 2,
+          maxPatchCount: 12,
+          maxPatchedParts: 2,
+        },
+      }),
+    ).resolves.toMatchObject({ report: { level: 'R2' } });
+    for (const [limitName, actual] of [
+      ['maxDependencyEdges', 5],
+      ['maxDirtyParts', 2],
+      ['maxPatchCount', 12],
+      ['maxPatchedParts', 2],
+    ] as const) {
+      expect(
+        (
+          await capture(() =>
+            writeXlsxRoundTrip(edited, {
+              limits: { [limitName]: actual - 1 },
+            }),
+          )
+        ).diagnostic,
+      ).toMatchObject({
+        actual,
+        code: 'resource-limit-exceeded',
+        limit: actual - 1,
+        limitName,
+      });
+    }
+    await expect(
+      writeXlsxRoundTrip(edited, { readerLimits: { maxStyles: 18 } }),
+    ).resolves.toMatchObject({ report: { level: 'R2' } });
+    expect(
+      (
+        await capture(() =>
+          writeXlsxRoundTrip(edited, { readerLimits: { maxStyles: 17 } }),
+        )
+      ).diagnostic,
+    ).toMatchObject({
+      actual: 18,
+      code: 'resource-limit-exceeded',
+      limit: 17,
+      limitName: 'maxStyles',
+      message: 'XLSX appended style records exceed the reader limit',
+    });
+  });
+
+  it('preserves the authored ZIP timestamp when patching the styles part', async () => {
+    const original = await createIndependentXlsx({
+      'xl/styles.xml': TWO_STYLE_XML,
+    });
+    const archive = await JSZip.loadAsync(original);
+    const entry = archive.file('xl/styles.xml')!;
+    const authoredDate = new Date('2002-03-04T05:06:08.000Z');
+    archive.file('xl/styles.xml', await entry.async('uint8array'), {
+      date: authoredDate,
+    });
+    const source = await archive.generateAsync({
+      compression: 'DEFLATE',
+      type: 'uint8array',
+    });
+    const snapshot = await readXlsxRoundTrip(source);
+    const edited = await applyXlsxEdits(snapshot, [
+      {
+        cell: 'A1',
+        kind: 'set-cell-style',
+        operationId: 'append-timestamp-style',
+        sheetKey: snapshot.document.sheets[0]!.key,
+        style: { font: { italic: true } },
+      },
+    ]);
+    const result = await writeXlsxRoundTrip(edited);
+    expect(
+      (await JSZip.loadAsync(result.data))
+        .file('xl/styles.xml')!
+        .date.toISOString(),
+    ).toBe(authoredDate.toISOString());
   });
 
   it('keeps style-only formula content independent and blocks date interpretation changes', async () => {
@@ -726,6 +968,46 @@ describe('XLSX verified cell edits', () => {
     expect(strictResult.report.level).toBe('R2');
     expect(
       (await readXlsxRoundTrip(strictResult.data)).source.conformance,
+    ).toBe('strict');
+    const missingStylePart = await applyXlsxEdits(strictSnapshot, [
+      {
+        cell: 'A1',
+        kind: 'set-cell-style',
+        operationId: 'append-without-styles',
+        sheetKey: strictSnapshot.document.sheets[0]!.key,
+        style: { font: { bold: true } },
+      },
+    ]);
+    expect(
+      (await capture(() => writeXlsxRoundTrip(missingStylePart))).diagnostic,
+    ).toMatchObject({
+      code: 'preservation-conflict',
+      featureClass: 'missing-styles-part',
+      message: 'XLSX cannot append styles without an existing styles part',
+    });
+    const strictWithStyles = await createIndependentXlsx({
+      '[Content_Types].xml': `<Types xmlns="${XLSX_CONTENT_TYPES_NS}"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>`,
+      '_rels/.rels': `<Relationships xmlns="${XLSX_PACKAGE_REL_NS}"><Relationship Id="root" Type="${strictRelNs}/officeDocument" Target="xl/workbook.xml"/></Relationships>`,
+      'xl/_rels/workbook.xml.rels': `<Relationships xmlns="${XLSX_PACKAGE_REL_NS}"><Relationship Id="sheet" Type="${strictRelNs}/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="styles" Type="${strictRelNs}/styles" Target="styles.xml"/></Relationships>`,
+      'xl/sharedStrings.xml': null,
+      'xl/styles.xml': `<s:styleSheet xmlns:s="${strictSheetNs}"><s:fonts count="1"><s:font/></s:fonts><s:fills count="1"><s:fill><s:patternFill patternType="none"/></s:fill></s:fills><s:borders count="1"><s:border/></s:borders><s:cellStyleXfs count="1"><s:xf/></s:cellStyleXfs><s:cellXfs count="1"><s:xf/></s:cellXfs></s:styleSheet>`,
+      'xl/workbook.xml': `<s:workbook xmlns:s="${strictSheetNs}" xmlns:r="${strictRelNs}"><s:sheets><s:sheet name="Strict" sheetId="1" r:id="sheet"/></s:sheets></s:workbook>`,
+      'xl/worksheets/sheet1.xml': `<s:worksheet xmlns:s="${strictSheetNs}"><s:sheetData><s:row r="1"><s:c r="A1"><s:v>1</s:v></s:c></s:row></s:sheetData></s:worksheet>`,
+    });
+    const strictStyleSnapshot = await readXlsxRoundTrip(strictWithStyles);
+    const strictStyleEdited = await applyXlsxEdits(strictStyleSnapshot, [
+      {
+        cell: 'A1',
+        kind: 'set-cell-style',
+        operationId: 'strict-append-style',
+        sheetKey: strictStyleSnapshot.document.sheets[0]!.key,
+        style: { font: { bold: true } },
+      },
+    ]);
+    const strictStyleResult = await writeXlsxRoundTrip(strictStyleEdited);
+    expect(strictStyleResult.report.level).toBe('R2');
+    expect(
+      (await readXlsxRoundTrip(strictStyleResult.data)).source.conformance,
     ).toBe('strict');
 
     const external = await createIndependentXlsx({
