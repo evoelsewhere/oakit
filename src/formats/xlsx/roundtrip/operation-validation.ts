@@ -13,6 +13,10 @@ export type XlsxCellEditOperation = Extract<
   {
     kind:
       | 'clear-cell'
+      | 'delete-columns'
+      | 'delete-rows'
+      | 'insert-columns'
+      | 'insert-rows'
       | 'set-cell'
       | 'set-cell-style'
       | 'set-column'
@@ -40,11 +44,7 @@ const ERROR_CODES = new Set([
 ]);
 const KNOWN_OPERATIONS = new Set([
   'add-worksheet',
-  'delete-columns',
-  'delete-rows',
   'delete-worksheet',
-  'insert-columns',
-  'insert-rows',
   'rename-worksheet',
 ]);
 const OPERATION_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u;
@@ -545,6 +545,49 @@ export function validateXlsxCellOperations(
                 id,
               ),
             }),
+      });
+      continue;
+    }
+    if (
+      operation.kind === 'delete-columns' ||
+      operation.kind === 'delete-rows' ||
+      operation.kind === 'insert-columns' ||
+      operation.kind === 'insert-rows'
+    ) {
+      if (
+        !exactKeys(
+          operation,
+          ['count', 'index', 'kind', 'operationId', 'sheetKey'],
+          ['ifMatch'],
+        )
+      ) {
+        invalid('XLSX structural operation shape is invalid', id);
+      }
+      const rowOperation =
+        operation.kind === 'delete-rows' || operation.kind === 'insert-rows';
+      const limit = rowOperation
+        ? readerLimits.maxRowsPerWorksheet
+        : readerLimits.maxColumnsPerWorksheet;
+      const index = boundedIndex(
+        operation.index,
+        limit,
+        'XLSX structural operation index is invalid',
+        id,
+      );
+      const count = boundedIndex(
+        operation.count,
+        limit,
+        'XLSX structural operation count is invalid',
+        id,
+      );
+      if (count > limit - index + 1) {
+        invalid('XLSX structural operation range is invalid', id);
+      }
+      operations.push({
+        ...validateSheetCommon(operation, id),
+        count,
+        index,
+        kind: operation.kind,
       });
       continue;
     }

@@ -205,7 +205,7 @@ export function assertXlsxCellEditStyleClosure(
   plan: XlsxCellOperationPlan,
 ): void {
   for (const impact of plan.impacts) {
-    if (impact.kind === 'set-column' || impact.kind === 'set-row') continue;
+    if (!('cell' in impact)) continue;
     const cell = cellAt(plan.document, impact.sheetKey, impact.cell);
     const sourceCell = cellAt(baseDocument, impact.sheetKey, impact.cell);
     if (impact.kind === 'set-cell-style') {

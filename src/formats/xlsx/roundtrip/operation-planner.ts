@@ -1,4 +1,7 @@
-import { parseXlsxCellReference } from '../internal/cell-reference';
+import {
+  parseXlsxCellReference,
+  xlsxColumnName,
+} from '../internal/cell-reference';
 import type { ResolvedXlsxResourceLimits } from '../internal/resource-limits';
 import type {
   XlsxCell,
@@ -19,6 +22,7 @@ import type {
   XlsxRoundTripDocument,
   XlsxRoundTripSheet,
 } from './types';
+import { writeLimitFailure } from './write-limits';
 
 interface XlsxOperationImpactBase {
   operationId: string;
@@ -37,7 +41,11 @@ export type XlsxCellOperationImpact =
       kind: 'set-column';
       range: string;
     })
-  | (XlsxOperationImpactBase & { kind: 'set-row'; range: string });
+  | (XlsxOperationImpactBase & { kind: 'set-row'; range: string })
+  | (XlsxOperationImpactBase & {
+      kind: 'delete-columns' | 'delete-rows' | 'insert-columns' | 'insert-rows';
+      range: string;
+    });
 
 export interface XlsxCellOperationPlan {
   document: XlsxRoundTripDocument;
@@ -211,6 +219,207 @@ export function xlsxColumnTargetState(
   return { column, sheetKey: sheet.key };
 }
 
+type XlsxStructuralOperation = Extract<
+  XlsxCellEditOperation,
+  { count: number }
+>;
+
+const STRUCTURAL_OPERATION_KINDS = new Set<XlsxCellEditOperation['kind']>([
+  'delete-columns',
+  'delete-rows',
+  'insert-columns',
+  'insert-rows',
+]);
+
+function isStructuralOperation(
+  operation: XlsxCellEditOperation,
+): operation is XlsxStructuralOperation {
+  return STRUCTURAL_OPERATION_KINDS.has(operation.kind);
+}
+
+export function xlsxStructuralTargetState(sheet: XlsxRoundTripSheet): {
+  sheet: XlsxRoundTripSheet;
+  sheetKey: string;
+} {
+  return { sheet, sheetKey: sheet.key };
+}
+
+function structuralClosureFailure(
+  operation: XlsxStructuralOperation,
+  featureClass: string,
+): never {
+  operationFailure(
+    'unsupported-edit-operation',
+    'XLSX structural edit requires a reference-free worksheet closure',
+    operation,
+    featureClass,
+  );
+}
+
+function blockStructuralFeature(
+  operation: XlsxStructuralOperation,
+  featureClass: string,
+  blocked: boolean,
+): void {
+  if (blocked) structuralClosureFailure(operation, featureClass);
+}
+
+function assertStructuralClosure(
+  document: XlsxRoundTripDocument,
+  sheet: XlsxWorksheet,
+  operation: XlsxStructuralOperation,
+): void {
+  const workbook = document.workbook;
+  blockStructuralFeature(
+    operation,
+    'defined-name-reference',
+    workbook.definedNames.length !== 0,
+  );
+  blockStructuralFeature(
+    operation,
+    'calculation-chain-reference',
+    workbook.calculation.chain !== undefined,
+  );
+  for (const candidate of document.sheets) {
+    if (candidate.kind !== 'worksheet') continue;
+    for (const row of candidate.rows) {
+      for (const cell of row.cells) {
+        blockStructuralFeature(
+          operation,
+          'formula-reference',
+          cell.content.kind === 'formula',
+        );
+      }
+    }
+  }
+  const featureBlockers: Array<readonly [string, boolean]> = [
+    ['auto-filter-reference', sheet.autoFilter !== undefined],
+    ['comment-reference', sheet.comments.length !== 0],
+    ['conditional-format-reference', sheet.conditionalFormattings.length !== 0],
+    ['data-validation-reference', sheet.dataValidations.length !== 0],
+    ['declared-dimension-reference', sheet.declaredDimension !== undefined],
+    ['drawing-reference', sheet.drawings.length !== 0],
+    ['hyperlink-reference', sheet.hyperlinks.length !== 0],
+    ['merge-reference', sheet.mergedRanges.length !== 0],
+    ['print-reference', sheet.print !== undefined],
+    ['protected-range-reference', sheet.protectedRanges.length !== 0],
+    ['protection-reference', sheet.protection !== undefined],
+    ['pivot-reference', sheet.pivotTables !== undefined],
+    ['query-table-reference', sheet.queryTables !== undefined],
+    ['slicer-reference', sheet.slicers !== undefined],
+    ['sparkline-reference', sheet.sparklineGroups !== undefined],
+    ['table-reference', sheet.tables.length !== 0],
+    ['timeline-reference', sheet.timelines !== undefined],
+    ['view-reference', sheet.views.length !== 0],
+  ];
+  for (const [featureClass, blocked] of featureBlockers) {
+    blockStructuralFeature(operation, featureClass, blocked);
+  }
+  for (const row of sheet.rows) {
+    for (const cell of row.cells) {
+      blockStructuralFeature(
+        operation,
+        'cell-metadata-reference',
+        cell.metadata !== undefined,
+      );
+    }
+  }
+  const columnOperation =
+    operation.kind === 'delete-columns' || operation.kind === 'insert-columns';
+  blockStructuralFeature(
+    operation,
+    'column-definition',
+    columnOperation && sheet.columns.length !== 0,
+  );
+}
+
+function structuralRange(operation: XlsxStructuralOperation): string {
+  const end = operation.index + operation.count - 1;
+  return `${operation.index}:${end}`;
+}
+
+function transformRows(
+  sheet: XlsxWorksheet,
+  operation: XlsxStructuralOperation,
+  readerLimits: ResolvedXlsxResourceLimits,
+): number {
+  const end = operation.index + operation.count - 1;
+  const updates = sheet.rows
+    .filter((row) => row.index >= operation.index)
+    .reduce((total, row) => total + 1 + row.cells.length, 0);
+  if (operation.kind === 'insert-rows') {
+    for (const row of sheet.rows) {
+      if (row.index < operation.index) continue;
+      if (row.index + operation.count > readerLimits.maxRowsPerWorksheet) {
+        operationFailure(
+          'preservation-conflict',
+          'XLSX row insertion would move an authored row outside the grid',
+          operation,
+          'grid-overflow',
+        );
+      }
+      row.index += operation.count;
+      for (const cell of row.cells) {
+        cell.address = `${xlsxColumnName(cell.column)!}${row.index}`;
+      }
+    }
+    return updates;
+  }
+  const precedingRows = sheet.rows.filter((row) => row.index < operation.index);
+  const shiftedRows = sheet.rows.filter((row) => row.index > end);
+  for (const row of shiftedRows) {
+    row.index -= operation.count;
+    for (const cell of row.cells) {
+      cell.address = `${xlsxColumnName(cell.column)!}${row.index}`;
+    }
+  }
+  sheet.rows = [...precedingRows, ...shiftedRows];
+  return updates;
+}
+
+function transformColumns(
+  sheet: XlsxWorksheet,
+  operation: XlsxStructuralOperation,
+  readerLimits: ResolvedXlsxResourceLimits,
+): number {
+  const end = operation.index + operation.count - 1;
+  let updates = 0;
+  for (const row of sheet.rows) {
+    updates += row.cells.filter(
+      (cell) => cell.column >= operation.index,
+    ).length;
+    if (operation.kind === 'insert-columns') {
+      for (const cell of row.cells) {
+        if (cell.column < operation.index) continue;
+        if (
+          cell.column + operation.count >
+          readerLimits.maxColumnsPerWorksheet
+        ) {
+          operationFailure(
+            'preservation-conflict',
+            'XLSX column insertion would move an authored cell outside the grid',
+            operation,
+            'grid-overflow',
+          );
+        }
+        cell.column += operation.count;
+        cell.address = `${xlsxColumnName(cell.column)!}${row.index}`;
+      }
+      continue;
+    }
+    const precedingCells = row.cells.filter(
+      (cell) => cell.column < operation.index,
+    );
+    const shiftedCells = row.cells.filter((cell) => cell.column > end);
+    for (const cell of shiftedCells) {
+      cell.column -= operation.count;
+      cell.address = `${xlsxColumnName(cell.column)!}${row.index}`;
+    }
+    row.cells = [...precedingCells, ...shiftedCells];
+  }
+  return updates;
+}
+
 function applyRowOperation(
   row: XlsxRow,
   operation: Extract<XlsxCellEditOperation, { kind: 'set-row' }>,
@@ -325,6 +534,16 @@ export async function replayXlsxCellOperations(
     writeLimits,
     readerLimits,
   );
+  const structuralOperation = operations.find(
+    (operation): operation is XlsxStructuralOperation =>
+      isStructuralOperation(operation),
+  );
+  if (
+    structuralOperation &&
+    operations.some((operation) => !isStructuralOperation(operation))
+  ) {
+    structuralClosureFailure(structuralOperation, 'mixed-operation-closure');
+  }
   const document = cloneDocument(baseDocument);
   const sheetKeys = new Set<string>();
   for (const sheet of document.sheets) {
@@ -338,8 +557,40 @@ export async function replayXlsxCellOperations(
     sheetKeys.add(sheet.key);
   }
   const impacts: XlsxCellOperationImpact[] = [];
+  let referenceUpdates = 0;
   for (const operation of operations) {
     const sheet = resolveWorksheet(document, operation);
+    if (isStructuralOperation(operation)) {
+      assertStructuralClosure(document, sheet, operation);
+      if (
+        operation.ifMatch !== undefined &&
+        operation.ifMatch !==
+          (await canonicalXlsxSha256(xlsxStructuralTargetState(sheet)))
+      ) {
+        operationFailure(
+          'operation-precondition-failed',
+          'XLSX operation precondition does not match the target worksheet',
+          operation,
+        );
+      }
+      referenceUpdates += operation.kind.endsWith('-rows')
+        ? transformRows(sheet, operation, readerLimits)
+        : transformColumns(sheet, operation, readerLimits);
+      if (referenceUpdates > writeLimits.maxReferenceUpdates) {
+        writeLimitFailure(
+          'maxReferenceUpdates',
+          referenceUpdates,
+          writeLimits.maxReferenceUpdates,
+        );
+      }
+      impacts.push({
+        kind: operation.kind,
+        operationId: operation.operationId,
+        range: structuralRange(operation),
+        sheetKey: operation.sheetKey,
+      });
+      continue;
+    }
     if (operation.kind === 'set-row') {
       const row = resolveRow(sheet, operation);
       if (
@@ -384,19 +635,20 @@ export async function replayXlsxCellOperations(
       });
       continue;
     }
-    const cell = resolveCell(sheet, operation);
+    const cellOperation = operation;
+    const cell = resolveCell(sheet, cellOperation);
     if (
-      operation.ifMatch !== undefined &&
-      operation.ifMatch !==
+      cellOperation.ifMatch !== undefined &&
+      cellOperation.ifMatch !==
         (await canonicalXlsxSha256(xlsxCellTargetState(sheet, cell)))
     ) {
       operationFailure(
         'operation-precondition-failed',
         'XLSX operation precondition does not match the target cell',
-        operation,
+        cellOperation,
       );
     }
-    applyCellOperation(document, sheet, cell, operation);
+    applyCellOperation(document, sheet, cell, cellOperation);
     if (document.styles.length > readerLimits.maxStyles) {
       throw new XlsxWriteError(
         'resource-limit-exceeded',
@@ -405,15 +657,15 @@ export async function replayXlsxCellOperations(
           actual: document.styles.length,
           limit: readerLimits.maxStyles,
           limitName: 'maxStyles',
-          operationId: operation.operationId,
+          operationId: cellOperation.operationId,
         },
       );
     }
     impacts.push({
-      cell: operation.cell,
-      kind: operation.kind,
-      operationId: operation.operationId,
-      sheetKey: operation.sheetKey,
+      cell: cellOperation.cell,
+      kind: cellOperation.kind,
+      operationId: cellOperation.operationId,
+      sheetKey: cellOperation.sheetKey,
     });
   }
   return {

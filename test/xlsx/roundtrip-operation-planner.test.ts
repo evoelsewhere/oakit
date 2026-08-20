@@ -9,6 +9,7 @@ import {
   xlsxCellTargetState,
   xlsxColumnTargetState,
   xlsxRowTargetState,
+  xlsxStructuralTargetState,
 } from '../../src/formats/xlsx/roundtrip/operation-planner';
 import { validateXlsxCellOperations } from '../../src/formats/xlsx/roundtrip/operation-validation';
 import { readXlsxRoundTrip } from '../../src/formats/xlsx/roundtrip/read-snapshot';
@@ -47,11 +48,7 @@ const ERROR_CODES = [
 ] as const;
 const UNSUPPORTED_OPERATION_KINDS = [
   'add-worksheet',
-  'delete-columns',
-  'delete-rows',
   'delete-worksheet',
-  'insert-columns',
-  'insert-rows',
   'rename-worksheet',
 ] as const;
 
@@ -289,6 +286,89 @@ describe('XLSX cell operation validation', () => {
       ).toBe(message);
     },
   );
+
+  it('validates structural row and column operations at exact grid bounds', () => {
+    const sheetKey = `xlsx:sheet:${'a'.repeat(32)}`;
+    expect(
+      validateXlsxCellOperations(
+        [
+          {
+            count: 1,
+            ifMatch: 'b'.repeat(64),
+            index: readerLimits.maxRowsPerWorksheet,
+            kind: 'delete-rows',
+            operationId: 'rows',
+            sheetKey,
+          },
+          {
+            count: readerLimits.maxColumnsPerWorksheet,
+            index: 1,
+            kind: 'insert-columns',
+            operationId: 'columns',
+            sheetKey,
+          },
+        ],
+        writeLimits,
+        readerLimits,
+      ),
+    ).toEqual([
+      {
+        count: 1,
+        ifMatch: 'b'.repeat(64),
+        index: readerLimits.maxRowsPerWorksheet,
+        kind: 'delete-rows',
+        operationId: 'rows',
+        sheetKey,
+      },
+      {
+        count: readerLimits.maxColumnsPerWorksheet,
+        index: 1,
+        kind: 'insert-columns',
+        operationId: 'columns',
+        sheetKey,
+      },
+    ]);
+    for (const [fields, message] of [
+      [
+        { count: 1, kind: 'insert-rows' },
+        'XLSX structural operation shape is invalid',
+      ],
+      [
+        { count: 1, index: 0, kind: 'insert-rows' },
+        'XLSX structural operation index is invalid',
+      ],
+      [
+        { count: 0, index: 1, kind: 'delete-columns' },
+        'XLSX structural operation count is invalid',
+      ],
+      [
+        {
+          count: readerLimits.maxColumnsPerWorksheet + 1,
+          index: 1,
+          kind: 'insert-columns',
+        },
+        'XLSX structural operation count is invalid',
+      ],
+      [
+        {
+          count: 2,
+          index: readerLimits.maxRowsPerWorksheet,
+          kind: 'delete-rows',
+        },
+        'XLSX structural operation range is invalid',
+      ],
+    ] as const) {
+      expect(
+        capture(() =>
+          validateXlsxCellOperations(
+            [{ ...fields, operationId: 'structural', sheetKey }],
+            writeLimits,
+            readerLimits,
+          ),
+        ).diagnostic.message,
+      ).toBe(message);
+    }
+  });
 
   it.each(ERROR_CODES)('accepts typed error value %s', (code) => {
     const operation = validateXlsxCellOperations(
@@ -1303,6 +1383,641 @@ describe('XLSX cell operation planner', () => {
       message:
         'XLSX operation precondition does not match the target column range',
       range: '1:2',
+    });
+  });
+
+  it('replays structural shifts only for a reference-free worksheet', async () => {
+    const snapshot = await readXlsxRoundTrip(
+      await createIndependentXlsx({
+        'xl/worksheets/sheet1.xml': `<worksheet xmlns="${XLSX_SPREADSHEET_NS}"><sheetData><row r="1"><c r="A1"><v>1</v></c><c r="B1"><v>2</v></c></row><row r="3"><c r="C3"><v>3</v></c></row></sheetData></worksheet>`,
+      }),
+    );
+    const source = worksheet(snapshot.document);
+    const ifMatch = await canonicalXlsxSha256(
+      xlsxStructuralTargetState(source),
+    );
+    const operations: XlsxEditOperation[] = [
+      {
+        count: 2,
+        ifMatch,
+        index: 2,
+        kind: 'insert-rows',
+        operationId: 'insert-rows',
+        sheetKey: source.key,
+      },
+      {
+        count: 1,
+        index: 1,
+        kind: 'delete-rows',
+        operationId: 'delete-rows',
+        sheetKey: source.key,
+      },
+      {
+        count: 1,
+        index: 2,
+        kind: 'insert-columns',
+        operationId: 'insert-columns',
+        sheetKey: source.key,
+      },
+      {
+        count: 1,
+        index: 1,
+        kind: 'delete-columns',
+        operationId: 'delete-columns',
+        sheetKey: source.key,
+      },
+    ];
+    const plan = await replayXlsxCellOperations(
+      snapshot.document,
+      operations,
+      writeLimits,
+      readerLimits,
+    );
+    expect(source.rows.map((row) => row.index)).toEqual([1, 3]);
+    expect(worksheet(plan.document).rows).toEqual([
+      expect.objectContaining({
+        cells: [expect.objectContaining({ address: 'C4', column: 3 })],
+        index: 4,
+      }),
+    ]);
+    expect(
+      plan.impacts.map((impact) => [
+        impact.kind,
+        'range' in impact ? impact.range : impact.cell,
+      ]),
+    ).toEqual([
+      ['insert-rows', '2:3'],
+      ['delete-rows', '1:1'],
+      ['insert-columns', '2:2'],
+      ['delete-columns', '1:1'],
+    ]);
+    await expect(
+      replayXlsxCellOperations(
+        snapshot.document,
+        operations,
+        { ...writeLimits, maxReferenceUpdates: 9 },
+        readerLimits,
+      ),
+    ).resolves.toMatchObject({ impacts: plan.impacts });
+    expect(
+      (
+        await captureAsync(() =>
+          replayXlsxCellOperations(
+            snapshot.document,
+            operations,
+            { ...writeLimits, maxReferenceUpdates: 8 },
+            readerLimits,
+          ),
+        )
+      ).diagnostic,
+    ).toMatchObject({
+      actual: 9,
+      limit: 8,
+      limitName: 'maxReferenceUpdates',
+    });
+
+    const referencedDocument: XlsxRoundTripDocument = {
+      ...snapshot.document,
+      sheets: [
+        {
+          ...source,
+          declaredDimension: {
+            end: { column: 3, row: 3 },
+            reference: 'A1:C3',
+            start: { column: 1, row: 1 },
+          },
+        },
+      ],
+    };
+    expect(
+      (
+        await captureAsync(() =>
+          replayXlsxCellOperations(
+            referencedDocument,
+            [operations[0]!],
+            writeLimits,
+            readerLimits,
+          ),
+        )
+      ).diagnostic.featureClass,
+    ).toBe('declared-dimension-reference');
+    expect(
+      (
+        await captureAsync(() =>
+          replayXlsxCellOperations(
+            snapshot.document,
+            [{ ...operations[0]!, ifMatch: '0'.repeat(64) }],
+            writeLimits,
+            readerLimits,
+          ),
+        )
+      ).diagnostic,
+    ).toMatchObject({
+      code: 'operation-precondition-failed',
+      message:
+        'XLSX operation precondition does not match the target worksheet',
+    });
+    expect(
+      (
+        await captureAsync(() =>
+          replayXlsxCellOperations(
+            snapshot.document,
+            [
+              operations[0]!,
+              {
+                hidden: true,
+                kind: 'set-row',
+                operationId: 'mixed-row',
+                row: 1,
+                sheetKey: source.key,
+              },
+            ],
+            writeLimits,
+            readerLimits,
+          ),
+        )
+      ).diagnostic.featureClass,
+    ).toBe('mixed-operation-closure');
+  });
+
+  it('keeps every structural transform boundary distinct in preview state', async () => {
+    const snapshot = await readXlsxRoundTrip(
+      await createIndependentXlsx({
+        'xl/worksheets/sheet1.xml': `<worksheet xmlns="${XLSX_SPREADSHEET_NS}"><sheetData><row r="1"><c r="A1"><v>1</v></c><c r="B1"><v>2</v></c></row><row r="3"><c r="C3"><v>3</v></c></row></sheetData></worksheet>`,
+      }),
+    );
+    const sheetKey = snapshot.document.sheets[0]!.key;
+    const replay = (operation: XlsxEditOperation) =>
+      replayXlsxCellOperations(
+        snapshot.document,
+        [operation],
+        writeLimits,
+        readerLimits,
+      );
+    const rowsAndCells = (document: XlsxRoundTripDocument) =>
+      worksheet(document).rows.map((row) => [
+        row.index,
+        row.cells.map((cell) => [
+          cell.address,
+          cell.content.kind === 'value' && cell.content.value.kind === 'number'
+            ? cell.content.value.value
+            : null,
+        ]),
+      ]);
+    expect(
+      rowsAndCells(
+        (
+          await replay({
+            count: 2,
+            index: 2,
+            kind: 'insert-rows',
+            operationId: 'insert-rows',
+            sheetKey,
+          })
+        ).document,
+      ),
+    ).toEqual([
+      [
+        1,
+        [
+          ['A1', 1],
+          ['B1', 2],
+        ],
+      ],
+      [5, [['C5', 3]]],
+    ]);
+    expect(
+      rowsAndCells(
+        (
+          await replay({
+            count: 1,
+            index: 1,
+            kind: 'delete-rows',
+            operationId: 'delete-rows',
+            sheetKey,
+          })
+        ).document,
+      ),
+    ).toEqual([[2, [['C2', 3]]]]);
+    expect(
+      rowsAndCells(
+        (
+          await replay({
+            count: 1,
+            index: 2,
+            kind: 'insert-columns',
+            operationId: 'insert-columns',
+            sheetKey,
+          })
+        ).document,
+      ),
+    ).toEqual([
+      [
+        1,
+        [
+          ['A1', 1],
+          ['C1', 2],
+        ],
+      ],
+      [3, [['D3', 3]]],
+    ]);
+    expect(
+      rowsAndCells(
+        (
+          await replay({
+            count: 1,
+            index: 1,
+            kind: 'delete-columns',
+            operationId: 'delete-columns',
+            sheetKey,
+          })
+        ).document,
+      ),
+    ).toEqual([
+      [1, [['A1', 2]]],
+      [3, [['B3', 3]]],
+    ]);
+    expect(
+      rowsAndCells(
+        (
+          await replay({
+            count: 1,
+            index: 2,
+            kind: 'delete-rows',
+            operationId: 'delete-empty-row',
+            sheetKey,
+          })
+        ).document,
+      ),
+    ).toEqual([
+      [
+        1,
+        [
+          ['A1', 1],
+          ['B1', 2],
+        ],
+      ],
+      [2, [['C2', 3]]],
+    ]);
+    expect(
+      rowsAndCells(
+        (
+          await replay({
+            count: 1,
+            index: 2,
+            kind: 'delete-columns',
+            operationId: 'delete-middle-column',
+            sheetKey,
+          })
+        ).document,
+      ),
+    ).toEqual([
+      [1, [['A1', 1]]],
+      [3, [['B3', 3]]],
+    ]);
+    await expect(
+      replayXlsxCellOperations(
+        snapshot.document,
+        [
+          {
+            count: 2,
+            index: 2,
+            kind: 'insert-rows',
+            operationId: 'row-reference-limit',
+            sheetKey,
+          },
+        ],
+        { ...writeLimits, maxReferenceUpdates: 2 },
+        readerLimits,
+      ),
+    ).resolves.toBeDefined();
+    expect(
+      (
+        await captureAsync(() =>
+          replayXlsxCellOperations(
+            snapshot.document,
+            [
+              {
+                count: 1,
+                index: 2,
+                kind: 'insert-columns',
+                operationId: 'column-reference-limit',
+                sheetKey,
+              },
+            ],
+            { ...writeLimits, maxReferenceUpdates: 1 },
+            readerLimits,
+          ),
+        )
+      ).diagnostic,
+    ).toMatchObject({ actual: 2, limit: 1, limitName: 'maxReferenceUpdates' });
+
+    const rowOverflow = structuredClone(snapshot.document);
+    const row = worksheet(rowOverflow).rows[1]!;
+    row.index = readerLimits.maxRowsPerWorksheet;
+    row.cells[0]!.address = `C${readerLimits.maxRowsPerWorksheet}`;
+    expect(
+      (
+        await captureAsync(() =>
+          replayXlsxCellOperations(
+            rowOverflow,
+            [
+              {
+                count: 1,
+                index: readerLimits.maxRowsPerWorksheet,
+                kind: 'insert-rows',
+                operationId: 'row-overflow',
+                sheetKey,
+              },
+            ],
+            writeLimits,
+            readerLimits,
+          ),
+        )
+      ).diagnostic,
+    ).toMatchObject({
+      featureClass: 'grid-overflow',
+      message: 'XLSX row insertion would move an authored row outside the grid',
+    });
+    row.index = readerLimits.maxRowsPerWorksheet - 1;
+    row.cells[0]!.address = `C${readerLimits.maxRowsPerWorksheet - 1}`;
+    await expect(
+      replayXlsxCellOperations(
+        rowOverflow,
+        [
+          {
+            count: 1,
+            index: readerLimits.maxRowsPerWorksheet - 1,
+            kind: 'insert-rows',
+            operationId: 'row-boundary',
+            sheetKey,
+          },
+        ],
+        writeLimits,
+        readerLimits,
+      ),
+    ).resolves.toBeDefined();
+    row.index = readerLimits.maxRowsPerWorksheet;
+    row.cells[0]!.address = `C${readerLimits.maxRowsPerWorksheet}`;
+    await expect(
+      replayXlsxCellOperations(
+        rowOverflow,
+        [
+          {
+            count: 1,
+            index: readerLimits.maxRowsPerWorksheet,
+            kind: 'delete-rows',
+            operationId: 'delete-row-boundary',
+            sheetKey,
+          },
+        ],
+        writeLimits,
+        readerLimits,
+      ),
+    ).resolves.toBeDefined();
+    const columnOverflow = structuredClone(snapshot.document);
+    const cell = worksheet(columnOverflow).rows[1]!.cells[0]!;
+    cell.column = readerLimits.maxColumnsPerWorksheet;
+    cell.address = `XFD3`;
+    expect(
+      (
+        await captureAsync(() =>
+          replayXlsxCellOperations(
+            columnOverflow,
+            [
+              {
+                count: 1,
+                index: readerLimits.maxColumnsPerWorksheet,
+                kind: 'insert-columns',
+                operationId: 'column-overflow',
+                sheetKey,
+              },
+            ],
+            writeLimits,
+            readerLimits,
+          ),
+        )
+      ).diagnostic,
+    ).toMatchObject({
+      featureClass: 'grid-overflow',
+      message:
+        'XLSX column insertion would move an authored cell outside the grid',
+    });
+    cell.column = readerLimits.maxColumnsPerWorksheet - 1;
+    cell.address = 'XFC3';
+    await expect(
+      replayXlsxCellOperations(
+        columnOverflow,
+        [
+          {
+            count: 1,
+            index: readerLimits.maxColumnsPerWorksheet - 1,
+            kind: 'insert-columns',
+            operationId: 'column-boundary',
+            sheetKey,
+          },
+        ],
+        writeLimits,
+        readerLimits,
+      ),
+    ).resolves.toBeDefined();
+    cell.column = readerLimits.maxColumnsPerWorksheet;
+    cell.address = 'XFD3';
+    await expect(
+      replayXlsxCellOperations(
+        columnOverflow,
+        [
+          {
+            count: 1,
+            index: readerLimits.maxColumnsPerWorksheet,
+            kind: 'delete-columns',
+            operationId: 'delete-column-boundary',
+            sheetKey,
+          },
+        ],
+        writeLimits,
+        readerLimits,
+      ),
+    ).resolves.toBeDefined();
+  });
+
+  it('blocks every reference-bearing structural closure domain', async () => {
+    const snapshot = await readXlsxRoundTrip(
+      await createIndependentXlsx({
+        'xl/worksheets/sheet1.xml': `<worksheet xmlns="${XLSX_SPREADSHEET_NS}"><sheetData><row r="1"><c r="A1"><v>1</v></c></row></sheetData></worksheet>`,
+      }),
+    );
+    const sheetKey = snapshot.document.sheets[0]!.key;
+    const cases: Array<
+      readonly [
+        string,
+        (document: XlsxRoundTripDocument) => void,
+        ('delete-columns' | 'delete-rows' | 'insert-columns' | 'insert-rows')?,
+      ]
+    > = [
+      [
+        'defined-name-reference',
+        (document) => void document.workbook.definedNames.push({} as never),
+      ],
+      [
+        'calculation-chain-reference',
+        (document) => void (document.workbook.calculation.chain = []),
+      ],
+      [
+        'formula-reference',
+        (document) => {
+          worksheet(document).rows[0]!.cells[0]!.content = {
+            cached: { kind: 'missing' },
+            formula: { expression: '1+1', kind: 'normal' },
+            kind: 'formula',
+          };
+        },
+      ],
+      [
+        'auto-filter-reference',
+        (document) => void setSheetField(document, 'autoFilter', {}),
+      ],
+      [
+        'comment-reference',
+        (document) => void setSheetField(document, 'comments', [{}]),
+      ],
+      [
+        'conditional-format-reference',
+        (document) =>
+          void setSheetField(document, 'conditionalFormattings', [{}]),
+      ],
+      [
+        'data-validation-reference',
+        (document) => void setSheetField(document, 'dataValidations', [{}]),
+      ],
+      [
+        'declared-dimension-reference',
+        (document) => void setSheetField(document, 'declaredDimension', {}),
+      ],
+      [
+        'drawing-reference',
+        (document) => void setSheetField(document, 'drawings', [{}]),
+      ],
+      [
+        'hyperlink-reference',
+        (document) => void setSheetField(document, 'hyperlinks', [{}]),
+      ],
+      [
+        'merge-reference',
+        (document) => void setSheetField(document, 'mergedRanges', [{}]),
+      ],
+      [
+        'print-reference',
+        (document) => void setSheetField(document, 'print', {}),
+      ],
+      [
+        'protected-range-reference',
+        (document) => void setSheetField(document, 'protectedRanges', [{}]),
+      ],
+      [
+        'protection-reference',
+        (document) => void setSheetField(document, 'protection', {}),
+      ],
+      [
+        'pivot-reference',
+        (document) => void setSheetField(document, 'pivotTables', []),
+      ],
+      [
+        'query-table-reference',
+        (document) => void setSheetField(document, 'queryTables', []),
+      ],
+      [
+        'slicer-reference',
+        (document) => void setSheetField(document, 'slicers', []),
+      ],
+      [
+        'sparkline-reference',
+        (document) => void setSheetField(document, 'sparklineGroups', []),
+      ],
+      [
+        'table-reference',
+        (document) => void setSheetField(document, 'tables', [{}]),
+      ],
+      [
+        'timeline-reference',
+        (document) => void setSheetField(document, 'timelines', []),
+      ],
+      [
+        'view-reference',
+        (document) => void setSheetField(document, 'views', [{}]),
+      ],
+      [
+        'cell-metadata-reference',
+        (document) => {
+          worksheet(document).rows[0]!.cells[0]!.metadata = {};
+        },
+      ],
+      [
+        'column-definition',
+        (document) =>
+          void worksheet(document).columns.push({ end: 1, start: 1 }),
+        'insert-columns',
+      ],
+      [
+        'column-definition',
+        (document) =>
+          void worksheet(document).columns.push({ end: 1, start: 1 }),
+        'delete-columns',
+      ],
+    ];
+    function setSheetField(
+      document: XlsxRoundTripDocument,
+      field: string,
+      value: unknown,
+    ): void {
+      (worksheet(document) as unknown as Record<string, unknown>)[field] =
+        value;
+    }
+    for (const [featureClass, mutate, kind = 'insert-rows'] of cases) {
+      const document = structuredClone(snapshot.document);
+      mutate(document);
+      const error = await captureAsync(() =>
+        replayXlsxCellOperations(
+          document,
+          [
+            {
+              count: 1,
+              index: 1,
+              kind,
+              operationId: `block-${featureClass}`,
+              sheetKey,
+            },
+          ],
+          writeLimits,
+          readerLimits,
+        ),
+      );
+      expect(error.diagnostic).toMatchObject({
+        code: 'unsupported-edit-operation',
+        featureClass,
+        message:
+          'XLSX structural edit requires a reference-free worksheet closure',
+      });
+    }
+    const rowWithColumns = structuredClone(snapshot.document);
+    worksheet(rowWithColumns).columns.push({ end: 1, start: 1 });
+    await expect(
+      replayXlsxCellOperations(
+        rowWithColumns,
+        [
+          {
+            count: 1,
+            index: 1,
+            kind: 'insert-rows',
+            operationId: 'row-with-columns',
+            sheetKey,
+          },
+        ],
+        writeLimits,
+        readerLimits,
+      ),
+    ).resolves.toMatchObject({
+      impacts: [expect.objectContaining({ kind: 'insert-rows' })],
     });
   });
 

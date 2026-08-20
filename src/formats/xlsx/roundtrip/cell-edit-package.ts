@@ -51,6 +51,10 @@ import {
   type XlsxWorksheetPropertyPatch,
 } from './worksheet-properties-patch';
 import { writeLimitFailure } from './write-limits';
+import {
+  patchXlsxWorksheetStructure,
+  type XlsxWorksheetStructurePatch,
+} from './worksheet-structure-patch';
 
 export interface XlsxCellEditPackage {
   data: Uint8Array;
@@ -92,13 +96,7 @@ function finalPatches(
     }
   }
   for (const impact of plan.impacts) {
-    if (
-      impact.kind === 'set-column' ||
-      impact.kind === 'set-hyperlink' ||
-      impact.kind === 'set-row'
-    ) {
-      continue;
-    }
+    if (!('cell' in impact) || impact.kind === 'set-hyperlink') continue;
     let sheet = bySheet.get(impact.sheetKey);
     if (!sheet) {
       sheet = new Map();
@@ -208,6 +206,31 @@ function finalPropertyPatches(
   );
 }
 
+function finalStructuralPatches(
+  plan: XlsxCellOperationPlan,
+): Map<string, XlsxWorksheetStructurePatch[]> {
+  const bySheet = new Map<string, XlsxWorksheetStructurePatch[]>();
+  for (const operation of plan.operations) {
+    if (
+      operation.kind !== 'delete-columns' &&
+      operation.kind !== 'delete-rows' &&
+      operation.kind !== 'insert-columns' &&
+      operation.kind !== 'insert-rows'
+    ) {
+      continue;
+    }
+    const patches = bySheet.get(operation.sheetKey) ?? [];
+    patches.push({
+      count: operation.count,
+      index: operation.index,
+      kind: operation.kind,
+      operationId: operation.operationId,
+    });
+    bySheet.set(operation.sheetKey, patches);
+  }
+  return bySheet;
+}
+
 export async function writeXlsxCellEditPackage(
   sourceBytes: Uint8Array,
   sourceGraph: XlsxPackageGraph,
@@ -272,10 +295,12 @@ export async function writeXlsxCellEditPackage(
   const patches = finalPatches(plan, context.styles, appendedStyleXfs);
   const hyperlinkPatches = finalHyperlinkPatches(plan);
   const propertyPatches = finalPropertyPatches(plan);
+  const structuralPatches = finalStructuralPatches(plan);
   const sheetKeys = new Set([
     ...patches.keys(),
     ...hyperlinkPatches.keys(),
     ...propertyPatches.keys(),
+    ...structuralPatches.keys(),
   ]);
   for (const sheetKey of sheetKeys) {
     const sheetPatches = patches.get(sheetKey) ?? [];
@@ -285,8 +310,14 @@ export async function writeXlsxCellEditPackage(
     const part = context.sheetParts[sheet.index]!;
     const entry = archive.file(part)!;
     const source = await readZipEntryBytes(entry, readerLimits.maxPartBytes);
-    const cellPatched = patchXlsxWorksheetPartWithReport(
+    const structuralPatched = patchXlsxWorksheetStructure(
       source,
+      structuralPatches.get(sheetKey) ?? [],
+      writeLimits,
+      part,
+    );
+    const cellPatched = patchXlsxWorksheetPartWithReport(
+      structuralPatched.data,
       sheetPatches,
       writeLimits,
       part,
@@ -335,6 +366,7 @@ export async function writeXlsxCellEditPackage(
       );
     }
     patchBytes +=
+      structuralPatched.patchBytes +
       cellPatched.patchBytes +
       propertyPatched.patchBytes +
       hyperlinkPatched.patchBytes;
@@ -347,6 +379,7 @@ export async function writeXlsxCellEditPackage(
       );
     }
     patchCount +=
+      structuralPatched.patchCount +
       cellPatched.patchCount +
       propertyPatched.patchCount +
       hyperlinkPatched.patchCount;

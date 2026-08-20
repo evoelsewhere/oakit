@@ -109,20 +109,35 @@ export function createXlsxCapabilityManifest(): XlsxCapabilityManifest {
                 ],
                 level: 'verified-R2' as const,
               }
-            : operation === 'set-hyperlink'
+            : operation === 'delete-columns' ||
+                operation === 'delete-rows' ||
+                operation === 'insert-columns' ||
+                operation === 'insert-rows'
               ? {
                   constraints: [
-                    'existing-explicit-cell',
-                    'safe-internal-or-external-target',
-                    'deterministic-relationship-allocation',
-                    'no-overlapping-multi-cell-hyperlink',
-                    'http-https-mailto-only',
-                    'no-url-credentials',
+                    'reference-free-simple-worksheet',
+                    'explicit-row-and-cell-references',
+                    'structural-operations-only-batch',
+                    'no-explicit-column-definitions-for-column-shifts',
+                    'no-grid-overflow',
                     'clean-supported-package-closure',
                   ],
                   level: 'verified-R2' as const,
                 }
-              : { level: 'unsupported' as const }),
+              : operation === 'set-hyperlink'
+                ? {
+                    constraints: [
+                      'existing-explicit-cell',
+                      'safe-internal-or-external-target',
+                      'deterministic-relationship-allocation',
+                      'no-overlapping-multi-cell-hyperlink',
+                      'http-https-mailto-only',
+                      'no-url-credentials',
+                      'clean-supported-package-closure',
+                    ],
+                    level: 'verified-R2' as const,
+                  }
+                : { level: 'unsupported' as const }),
       operation,
     })),
     producerEvidence: [],

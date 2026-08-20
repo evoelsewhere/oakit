@@ -301,6 +301,10 @@ describe('XLSX exact R0 round-trip', () => {
       manifest.operations.filter((entry) => entry.level === 'verified-R2'),
     ).toEqual([
       expect.objectContaining({ operation: 'clear-cell' }),
+      expect.objectContaining({ operation: 'delete-columns' }),
+      expect.objectContaining({ operation: 'delete-rows' }),
+      expect.objectContaining({ operation: 'insert-columns' }),
+      expect.objectContaining({ operation: 'insert-rows' }),
       expect.objectContaining({ operation: 'set-cell' }),
       expect.objectContaining({ operation: 'set-cell-style' }),
       expect.objectContaining({ operation: 'set-column' }),
@@ -340,6 +344,29 @@ describe('XLSX exact R0 round-trip', () => {
       level: 'verified-R2',
       operation: 'set-cell-style',
     });
+    expect(
+      manifest.operations
+        .filter((entry) =>
+          [
+            'delete-columns',
+            'delete-rows',
+            'insert-columns',
+            'insert-rows',
+          ].includes(entry.operation),
+        )
+        .every(
+          (entry) =>
+            JSON.stringify(entry.constraints) ===
+            JSON.stringify([
+              'reference-free-simple-worksheet',
+              'explicit-row-and-cell-references',
+              'structural-operations-only-batch',
+              'no-explicit-column-definitions-for-column-shifts',
+              'no-grid-overflow',
+              'clean-supported-package-closure',
+            ]),
+        ),
+    ).toBe(true);
     expect(
       manifest.operations.find((entry) => entry.operation === 'set-column'),
     ).toEqual({
