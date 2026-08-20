@@ -9,6 +9,25 @@ OAKit processes PPTX bytes in the current process. Microsoft Office,
 LibreOffice, Google Slides, a headless browser, and an external conversion
 service are not runtime dependencies.
 
+## Contents
+
+- [Choose the right workflow](#choose-the-right-workflow)
+- [Install](#install)
+- [Five-minute verified workflow](#five-minute-verified-workflow)
+- [Understand the three document models](#understand-the-three-document-models)
+- [Read and inspect a PPTX in Node.js](#read-and-inspect-a-pptx-in-nodejs)
+- [Read a PPTX in a browser](#read-a-pptx-in-a-browser)
+- [Render slides without Office](#render-slides-without-office)
+- [Create a byte-exact portable JSON hand-off](#create-a-byte-exact-portable-json-hand-off)
+- [Edit existing presentations](#replace-supported-text-safely)
+- [Create native presentations](#create-a-new-native-presentation)
+- [Complete agent workflow](#complete-agent-workflow)
+- [Command-line workflows](#command-line-workflows)
+- [Errors, security, and limits](#errors-and-reports)
+- [Capability boundaries](#capability-boundaries)
+- [Troubleshooting](#troubleshooting)
+- [Production checklist](#production-checklist)
+
 ## Choose the right workflow
 
 | Goal                                         | API                                        | Main result                                     |
@@ -65,6 +84,161 @@ PNG rendering is Node-specific:
 ```ts
 import { renderPptxToPng } from '@evoelsewhere/oakit/pptx/node';
 ```
+
+## Five-minute verified workflow
+
+The following complete Node.js example creates a native presentation, writes
+it to disk, opens it in strict mode, renders a PNG preview, schedules a safe
+text edit, writes the edited package, and verifies the result again. It is a
+good starting point for a service, CLI, or agent tool.
+
+```ts
+import { mkdir, writeFile } from 'node:fs/promises';
+import {
+  createPptx,
+  parsePptx,
+  readPptxRoundTrip,
+  replacePptxRoundTripText,
+  validatePptxScene,
+  writePptxRoundTrip,
+  type PptxSceneDocument,
+} from '@evoelsewhere/oakit';
+import { renderPptxToPng } from '@evoelsewhere/oakit/pptx/node';
+
+const scene: PptxSceneDocument = {
+  schemaVersion: 2,
+  size: { width: 960, height: 540 },
+  themes: [],
+  masters: [],
+  layouts: [],
+  media: [],
+  slides: [
+    {
+      key: 'overview-slide',
+      backgroundColor: '#F8FAFC',
+      elements: [
+        {
+          type: 'text',
+          key: 'overview-title',
+          authored: {
+            transform: { x: 56, y: 42, width: 848, height: 72 },
+          },
+          resolved: { hidden: false },
+          text: {
+            body: { anchor: 'center', wrap: true },
+            paragraphs: [
+              {
+                key: 'overview-title-paragraph',
+                children: [
+                  {
+                    type: 'run',
+                    key: 'overview-title-run',
+                    text: 'Quarterly review',
+                    properties: {
+                      bold: true,
+                      color: '#0F172A',
+                      fontFamily: 'Aptos Display',
+                      fontSize: 30,
+                    },
+                  },
+                ],
+                properties: { alignment: 'center' },
+              },
+            ],
+          },
+        },
+        {
+          type: 'shape',
+          key: 'accent',
+          authored: {
+            fillColor: '#4F46E5',
+            geometry: 'roundRect',
+            transform: { x: 56, y: 132, width: 240, height: 286 },
+          },
+          resolved: { hidden: false },
+        },
+        {
+          type: 'chart',
+          key: 'revenue-chart',
+          authored: {
+            transform: { x: 328, y: 132, width: 576, height: 286 },
+          },
+          resolved: { hidden: false },
+          chartType: 'barChart',
+          barDirection: 'col',
+          grouping: 'clustered',
+          series: [
+            {
+              key: 'revenue-series',
+              name: 'Revenue',
+              categories: ['Q1', 'Q2', 'Q3', 'Q4'],
+              values: [18, 24, 31, 43],
+              color: '#4F46E5',
+            },
+          ],
+        },
+      ],
+    },
+  ],
+};
+
+const validation = validatePptxScene(scene, {
+  profile: 'create-native-v1',
+});
+if (!validation.valid) {
+  throw new Error(JSON.stringify(validation.issues, null, 2));
+}
+
+await mkdir('./output', { recursive: true });
+const created = await createPptx(scene);
+await writeFile('./output/quarterly-review.pptx', created.data);
+
+const parsed = await parsePptx(created.data, {
+  errorMode: 'strict',
+  imageMode: 'none',
+});
+if (parsed.slides.length !== scene.slides.length) {
+  throw new Error('Strict verification returned an unexpected slide count');
+}
+
+const preview = await renderPptxToPng(created.data, {
+  slideNumbers: [1],
+  scale: 1.5,
+});
+const firstPreview = preview.slides[0];
+if (!firstPreview) throw new Error('The first slide did not render');
+await writeFile('./output/quarterly-review-slide-1.png', firstPreview.data);
+
+const snapshot = await readPptxRoundTrip(created.data);
+const titleRun = snapshot.document.slides
+  .flatMap((slide) => slide.elements)
+  .filter((element) => element.type === 'text')
+  .flatMap((element) => element.text.paragraphs)
+  .flatMap((paragraph) => paragraph.children)
+  .find((child) => child.type === 'run' && child.text === 'Quarterly review');
+if (!titleRun) throw new Error('The editable title run was not found');
+
+const edited = await replacePptxRoundTripText(snapshot, {
+  targetKey: titleRun.key,
+  value: 'Quarterly review — approved',
+});
+const written = await writePptxRoundTrip(edited);
+await writeFile('./output/quarterly-review-edited.pptx', written.data);
+
+if (
+  written.report.level !== 'R2' ||
+  written.report.operations.some((operation) => operation.status !== 'verified')
+) {
+  throw new Error(`Unexpected write report: ${JSON.stringify(written.report)}`);
+}
+
+await parsePptx(written.data, { errorMode: 'strict', imageMode: 'none' });
+```
+
+The example intentionally checks the creation scene, strict parser, rendered
+preview, stable edit target, operation evidence, and final package. Keep those
+checks when adapting it; a successful `writeFile` alone does not prove that a
+presentation is structurally or semantically valid.
 
 ## Understand the three document models
 
@@ -223,6 +397,36 @@ if (file) {
 When blob modes are enabled, the caller owns the generated object URLs. Revoke
 them with `URL.revokeObjectURL` when the preview or document is discarded.
 
+### Create and download a PPTX in a browser
+
+`createPptx`, strict parsing, round-trip snapshots, verified edits, and SVG
+rendering are browser-compatible. Only PNG rendering uses the Node-specific
+entry point.
+
+```ts
+import { createPptx, type PptxSceneDocument } from '@evoelsewhere/oakit/pptx';
+
+async function downloadPresentation(scene: PptxSceneDocument): Promise<void> {
+  const result = await createPptx(scene);
+  const blob = new Blob([result.data], {
+    type: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  });
+  const url = URL.createObjectURL(blob);
+
+  try {
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'presentation.pptx';
+    link.click();
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+```
+
+For large documents, run parse, render, and write operations in a Web Worker so
+ZIP and XML processing do not block the page's main thread.
+
 ## Render slides without Office
 
 SVG rendering works in Node.js and browsers. PNG rendering uses the Node entry
@@ -339,6 +543,42 @@ const portable = await serializePptxRoundTripJson(runtimeSnapshot, {
   maxBase64Characters: 35 * 1024 * 1024,
 });
 ```
+
+### Find stable edit targets, including nested groups
+
+Edit APIs target keys from the bound round-trip snapshot, not array positions
+guessed by the caller. Traverse groups recursively when a target may be nested.
+Do not cache a key for use with a different snapshot: the key and its expected
+value are preconditions bound to one source package.
+
+```ts
+import type { PptxSceneElement } from '@evoelsewhere/oakit';
+
+function* walkElements(
+  elements: readonly PptxSceneElement[],
+): Generator<PptxSceneElement> {
+  for (const element of elements) {
+    yield element;
+    if (element.type === 'group') {
+      yield* walkElements(element.elements);
+    }
+  }
+}
+
+const allElements = snapshot.document.slides.flatMap((slide) => [
+  ...walkElements(slide.elements),
+]);
+
+const chartTarget = allElements.find(
+  (element) =>
+    element.type === 'chart' && element.resolved.transform !== undefined,
+);
+```
+
+Use `name`, `title`, `description`, element type, current content, and slide
+context to choose among candidates. Require exactly one match before mutating;
+silently choosing the first of several similar elements makes automation
+fragile.
 
 ## Replace supported text safely
 
@@ -670,13 +910,80 @@ explicit `childSpace` containing `x`, `y`, `width`, and `height`. OAKit assigns
 shape IDs in deterministic preorder and resolves images nested at any depth.
 
 ```ts
+import { writeFile } from 'node:fs/promises';
 import {
+  createPptx,
   readPptxRoundTrip,
   setPptxRoundTripGroupTransform,
   writePptxRoundTrip,
+  type PptxSceneDocument,
 } from '@evoelsewhere/oakit';
 
-const snapshot = await readPptxRoundTrip(input);
+const groupScene: PptxSceneDocument = {
+  schemaVersion: 2,
+  size: { width: 960, height: 540 },
+  themes: [],
+  masters: [],
+  layouts: [],
+  media: [],
+  slides: [
+    {
+      key: 'group-slide',
+      elements: [
+        {
+          type: 'group',
+          key: 'metrics-group',
+          authored: {
+            transform: {
+              x: 60,
+              y: 100,
+              width: 840,
+              height: 320,
+              childSpace: { x: 0, y: 0, width: 840, height: 320 },
+            },
+          },
+          resolved: { hidden: false },
+          elements: [
+            {
+              type: 'shape',
+              key: 'group-accent',
+              authored: {
+                fillColor: '#0EA5E9',
+                geometry: 'roundRect',
+                transform: { x: 0, y: 0, width: 240, height: 320 },
+              },
+              resolved: { hidden: false },
+            },
+            {
+              type: 'chart',
+              key: 'group-chart',
+              authored: {
+                transform: { x: 272, y: 0, width: 568, height: 320 },
+              },
+              resolved: { hidden: false },
+              chartType: 'lineChart',
+              marker: true,
+              series: [
+                {
+                  key: 'growth-series',
+                  name: 'Growth',
+                  categories: ['Jan', 'Feb', 'Mar'],
+                  values: [10, 16, 25],
+                  color: '#0EA5E9',
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    },
+  ],
+};
+
+const createdGroup = await createPptx(groupScene);
+await writeFile('./native-group.pptx', createdGroup.data);
+
+const snapshot = await readPptxRoundTrip(createdGroup.data);
 const group = snapshot.document.slides
   .flatMap((slide) => slide.elements)
   .find(
@@ -698,6 +1005,7 @@ const edited = await setPptxRoundTripGroupTransform(snapshot, {
   },
 });
 const output = await writePptxRoundTrip(edited);
+await writeFile('./native-group-resized.pptx', output.data);
 ```
 
 The operation patches only the matching group transform in its owning slide:
@@ -720,46 +1028,77 @@ deterministic ChartML caches, so creation and rendering do not require Excel or
 another Office runtime.
 
 ```ts
+import { writeFile } from 'node:fs/promises';
 import {
+  createPptx,
   readPptxRoundTrip,
   setPptxRoundTripChartTransform,
   writePptxRoundTrip,
-  type PptxSceneChartElement,
+  type PptxSceneDocument,
 } from '@evoelsewhere/oakit';
 
-const chart: PptxSceneChartElement = {
-  authored: { transform: { x: 40, y: 60, width: 420, height: 220 } },
-  barDirection: 'col',
-  chartType: 'barChart',
-  grouping: 'clustered',
-  key: 'revenue-chart',
-  resolved: { hidden: false },
-  series: [
+const chartScene: PptxSceneDocument = {
+  schemaVersion: 2,
+  size: { width: 960, height: 540 },
+  themes: [],
+  masters: [],
+  layouts: [],
+  media: [],
+  slides: [
     {
-      categories: ['Q1', 'Q2', 'Q3'],
-      color: '#4F46E5',
-      key: 'revenue-series',
-      name: 'Revenue',
-      values: [12, 18, 27],
+      key: 'chart-slide',
+      elements: [
+        {
+          authored: {
+            transform: { x: 40, y: 60, width: 420, height: 220 },
+          },
+          barDirection: 'col',
+          chartType: 'barChart',
+          grouping: 'clustered',
+          key: 'revenue-chart',
+          resolved: { hidden: false },
+          series: [
+            {
+              categories: ['Q1', 'Q2', 'Q3'],
+              color: '#4F46E5',
+              key: 'revenue-series',
+              name: 'Revenue',
+              values: [12, 18, 27],
+            },
+          ],
+          type: 'chart',
+        },
+      ],
     },
   ],
-  type: 'chart',
 };
 
-const snapshot = await readPptxRoundTrip(input);
+const createdChart = await createPptx(chartScene);
+await writeFile('./revenue-chart.pptx', createdChart.data);
+
+const snapshot = await readPptxRoundTrip(createdChart.data);
+const chart = snapshot.document.slides
+  .flatMap((slide) => slide.elements)
+  .find(
+    (element) =>
+      element.type === 'chart' && element.resolved.transform !== undefined,
+  );
+if (chart?.type !== 'chart' || !chart.resolved.transform) {
+  throw new Error('No editable native chart');
+}
+
 const edited = await setPptxRoundTripChartTransform(snapshot, {
-  targetKey: 'slide-1-element-1',
+  targetKey: chart.key,
   value: {
-    x: 80,
-    y: 90,
+    ...chart.resolved.transform,
     width: 500,
     height: 260,
-    rotation: 0,
-    flipHorizontal: false,
-    flipVertical: false,
+    x: 80,
+    y: 90,
   },
 });
 const output = await writePptxRoundTrip(edited);
+await writeFile('./revenue-chart-resized.pptx', output.data);
 ```
 
 Chart editing patches only the owning `p:graphicFrame` transform. The related
@@ -767,10 +1106,40 @@ Chart editing patches only the owning `p:graphicFrame` transform. The related
 byte-exact. Scatter, bubble, 3D, radar, surface, stock, and chart data/style
 editing remain preservation-only.
 
+Chart creation options are type-specific:
+
+| Chart type      | Supported options                                              |
+| --------------- | -------------------------------------------------------------- |
+| `barChart`      | `barDirection`; clustered, stacked, percent, or standard group |
+| `lineChart`     | `marker`; clustered, stacked, percent, or standard grouping    |
+| `pieChart`      | Exactly one series                                             |
+| `doughnutChart` | Exactly one series; integer `holeSize` from 10 through 90      |
+
+Every series needs a non-empty name, a stable key, equally sized category and
+value arrays, finite numeric values, and at most 10,000 points. A chart accepts
+at most 64 series, and one presentation accepts at most 100,000 aggregate chart
+points. Source-free chart rotation and flipping are rejected by the native
+creation profile; apply a verified chart-frame transform after creation when
+that presentation structure is supported.
+
 ## Create a new native presentation
 
 Creation uses `PptxSceneDocument` schema version 2. Dimensions and transforms
 are in points. Colors use `#RRGGBB`.
+
+Use these authoring conventions consistently:
+
+| Concern             | Rule                                                                  |
+| ------------------- | --------------------------------------------------------------------- |
+| Slide size          | Points; `960 × 540` is 16:9 and `720 × 540` is 4:3                    |
+| Position and size   | Points from the slide's top-left; width and height must be positive   |
+| Element order       | Array order is back-to-front z-order                                  |
+| Public keys         | Unique across the scene; 1–128 safe identifier characters             |
+| Colors              | Six-digit `#RRGGBB`; opacity is not part of the native creation model |
+| Text                | Paragraphs contain ordered run, field, or break nodes                 |
+| Media               | Signature-checked PNG or JPEG bytes referenced by `mediaKey`          |
+| Groups              | Child geometry uses the group's explicit `childSpace`                 |
+| Unsupported content | Validation fails closed; it is never silently approximated on write   |
 
 ```ts
 import { writeFile } from 'node:fs/promises';
