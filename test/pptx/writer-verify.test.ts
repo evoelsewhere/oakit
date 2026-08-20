@@ -4,6 +4,7 @@ import type {
   Image,
   Group,
   Chart,
+  CommonChart,
   PptxDocument,
   PptxParseOptions,
   Shape,
@@ -328,7 +329,7 @@ function generatedGroup(): Group {
   };
 }
 
-function generatedChart(): Chart {
+function generatedChart(): CommonChart {
   return {
     barDir: 'col',
     chartType: 'barChart',
@@ -617,6 +618,175 @@ describe('PowerPoint creation verification', () => {
         ),
       ).rejects.toThrow(
         `Generated PowerPoint ${message} at slide 1, element 1`,
+      );
+    },
+  );
+
+  it.each([
+    ['x', { left: 11 }],
+    ['y', { top: 21 }],
+    ['width', { width: 401 }],
+    ['height', { height: 201 }],
+  ] as const)(
+    'rejects a native chart transform %s mismatch',
+    async (_key, replacement) => {
+      const output = document(1);
+      output.slides[0]?.elements.push({
+        ...generatedChart(),
+        ...replacement,
+      });
+
+      await expect(
+        verifyPowerPointCreationWithParser(
+          new Uint8Array(),
+          scene([chartSlide('slide-1')]),
+          () => Promise.resolve(output),
+          rendered,
+        ),
+      ).rejects.toThrow(
+        'Generated PowerPoint chart transform mismatch at slide 1, element 1',
+      );
+    },
+  );
+
+  it('requires an authored chart transform at its exact location', async () => {
+    const input = chartSlide('slide-1');
+    const expected = input.elements[0];
+    if (expected?.type !== 'chart') throw new Error('Expected chart');
+    delete expected.authored.transform;
+    const output = document(1);
+    output.slides[0]?.elements.push(generatedChart());
+
+    await expect(
+      verifyPowerPointCreationWithParser(
+        new Uint8Array(),
+        scene([input]),
+        () => Promise.resolve(output),
+        rendered,
+      ),
+    ).rejects.toThrow(
+      'Expected PowerPoint authored transform missing at slide 1, element 1',
+    );
+  });
+
+  it('verifies an authored chart without a series color', async () => {
+    const input = chartSlide('slide-1');
+    const expected = input.elements[0];
+    if (expected?.type !== 'chart') throw new Error('Expected chart');
+    delete expected.series[0]!.color;
+    const generated = generatedChart();
+    generated.colors = [''];
+    const output = document(1);
+    output.slides[0]?.elements.push(generated);
+
+    await expect(
+      verifyPowerPointCreationWithParser(
+        new Uint8Array(),
+        scene([input]),
+        () => Promise.resolve(output),
+        rendered,
+      ),
+    ).resolves.toBeUndefined();
+  });
+
+  it('verifies line chart color independently from bar charts', async () => {
+    const input = chartSlide('slide-1');
+    const expected = input.elements[0];
+    if (expected?.type !== 'chart') throw new Error('Expected chart');
+    expected.chartType = 'lineChart';
+    expected.grouping = 'standard';
+    delete expected.barDirection;
+    const generated = generatedChart();
+    generated.chartType = 'lineChart';
+    generated.grouping = 'standard';
+    delete generated.barDir;
+    generated.colors = ['#FFFFFF'];
+    const output = document(1);
+    output.slides[0]?.elements.push(generated);
+
+    await expect(
+      verifyPowerPointCreationWithParser(
+        new Uint8Array(),
+        scene([input]),
+        () => Promise.resolve(output),
+        rendered,
+      ),
+    ).rejects.toThrow(
+      'Generated PowerPoint chart color mismatch at slide 1, element 1',
+    );
+  });
+
+  it.each(['pieChart', 'doughnutChart'] as const)(
+    'verifies native %s options without series-color matching',
+    async (chartType) => {
+      const input = chartSlide('slide-1');
+      const expected = input.elements[0];
+      if (expected?.type !== 'chart') throw new Error('Expected chart');
+      expected.chartType = chartType;
+      delete expected.barDirection;
+      delete expected.grouping;
+      if (chartType === 'doughnutChart') expected.holeSize = 50;
+      const generated = generatedChart();
+      generated.chartType = chartType;
+      generated.colors = [];
+      delete generated.barDir;
+      delete generated.grouping;
+      if (chartType === 'doughnutChart') generated.holeSize = '50';
+      const output = document(1);
+      output.slides[0]?.elements.push(generated);
+
+      await expect(
+        verifyPowerPointCreationWithParser(
+          new Uint8Array(),
+          scene([input]),
+          () => Promise.resolve(output),
+          rendered,
+        ),
+      ).resolves.toBeUndefined();
+    },
+  );
+
+  it.each(['barDir', 'grouping', 'holeSize', 'marker'] as const)(
+    'rejects chart option mismatch %s independently',
+    async (option) => {
+      const input = chartSlide('slide-1');
+      const expected = input.elements[0];
+      if (expected?.type !== 'chart') throw new Error('Expected chart');
+      const generated = generatedChart();
+      if (option === 'barDir') generated.barDir = 'bar';
+      if (option === 'grouping') generated.grouping = 'stacked';
+      if (option === 'holeSize') {
+        expected.chartType = 'doughnutChart';
+        expected.holeSize = 50;
+        delete expected.barDirection;
+        delete expected.grouping;
+        generated.chartType = 'doughnutChart';
+        generated.holeSize = '51';
+        delete generated.barDir;
+        delete generated.grouping;
+      }
+      if (option === 'marker') {
+        expected.chartType = 'lineChart';
+        expected.grouping = 'standard';
+        expected.marker = true;
+        delete expected.barDirection;
+        generated.chartType = 'lineChart';
+        generated.grouping = 'standard';
+        generated.marker = false;
+        delete generated.barDir;
+      }
+      const output = document(1);
+      output.slides[0]?.elements.push(generated);
+
+      await expect(
+        verifyPowerPointCreationWithParser(
+          new Uint8Array(),
+          scene([input]),
+          () => Promise.resolve(output),
+          rendered,
+        ),
+      ).rejects.toThrow(
+        'Generated PowerPoint chart option mismatch at slide 1, element 1',
       );
     },
   );
