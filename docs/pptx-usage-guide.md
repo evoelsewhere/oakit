@@ -784,6 +784,7 @@ grid column, and the sum of row heights must equal the transform height.
 import {
   createPptx,
   readPptxRoundTrip,
+  replacePptxRoundTripText,
   setPptxRoundTripTableTransform,
   writePptxRoundTrip,
   type PptxSceneDocument,
@@ -876,7 +877,16 @@ const table = tableSnapshot.document.slides[0]?.elements.find(
 );
 if (!table?.resolved.transform) throw new Error('No editable native table');
 
-const editedTable = await setPptxRoundTripTableTransform(tableSnapshot, {
+const revenueRun = table.rows[1]?.cells[1]?.text.paragraphs
+  .flatMap((paragraph) => paragraph.children)
+  .find((child) => child.type === 'run');
+if (!revenueRun) throw new Error('No editable native table cell run');
+
+const editedCell = await replacePptxRoundTripText(tableSnapshot, {
+  targetKey: revenueRun.key,
+  value: '$140K',
+});
+const editedTable = await setPptxRoundTripTableTransform(editedCell, {
   targetKey: table.key,
   value: {
     ...table.resolved.transform,
@@ -895,7 +905,11 @@ the native `a:gridCol` widths and `a:tr` heights proportionally using exact
 integer EMUs. Only the owning slide XML is dirty; every other package payload
 remains byte-exact. Table frames with zero, inconsistent, non-rectangular, or
 otherwise unsafe grids stay preservation-only and are not exposed as transform
-targets. Cell-content editing is not yet a separate public operation.
+targets. A cell with one plain source text node can be replaced through its
+stable `row-N-cell-N-run-1` key. Fields, breaks, multiple source text nodes,
+stale preconditions, compatibility extensions, and ambiguous table ownership
+fail closed. Cell formatting, merge/unmerge, and arbitrary rich-text range
+editing remain separate operations.
 
 For merged cells, the origin uses `colSpan` and/or `rowSpan`. Continuation cells
 must set `hMerge`, `vMerge`, or both to match the occupied grid rectangle. Scene
@@ -1453,16 +1467,16 @@ safe value.
 
 ## Capability boundaries
 
-| Capability                      | Current release claim                                                               |
-| ------------------------------- | ----------------------------------------------------------------------------------- |
-| Read PPTX                       | Bounded structured parsing with strict/tolerant diagnostics                         |
-| Create PPTX                     | Text C3 producer profile; native shape/image/table/group/chart C2 runtime profile   |
-| Edit PPTX                       | Text R3 producer profile; native shape/image/table/group/chart transform R2 profile |
-| Preserve unchanged PPTX         | Byte-exact R0                                                                       |
-| Render SVG                      | Node.js and browser, no Office runtime                                              |
-| Render PNG                      | Node.js, no Office runtime                                                          |
-| Arbitrary PPTX creation/editing | Not claimed                                                                         |
-| Pixel-identical rendering       | Not claimed                                                                         |
+| Capability                      | Current release claim                                                             |
+| ------------------------------- | --------------------------------------------------------------------------------- |
+| Read PPTX                       | Bounded structured parsing with strict/tolerant diagnostics                       |
+| Create PPTX                     | Text C3 producer profile; native shape/image/table/group/chart C2 runtime profile |
+| Edit PPTX                       | Text R3; native transforms plus table/nested-group plain text R2                  |
+| Preserve unchanged PPTX         | Byte-exact R0                                                                     |
+| Render SVG                      | Node.js and browser, no Office runtime                                            |
+| Render PNG                      | Node.js, no Office runtime                                                        |
+| Arbitrary PPTX creation/editing | Not claimed                                                                       |
+| Pixel-identical rendering       | Not claimed                                                                       |
 
 The current real-world evidence covers 30 transient SlidesMania templates, 733
 slides, and 9,285 elements before and after controlled Google Slides
