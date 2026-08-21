@@ -135,7 +135,6 @@ function textTarget(
   const columnIndex = tableMatch === null ? undefined : Number(match[4]) - 1;
   if (
     !Number.isSafeInteger(slideIndex) ||
-    elementIndexes.length === 0 ||
     elementIndexes.some((index) => !Number.isSafeInteger(index)) ||
     (rowIndex !== undefined && !Number.isSafeInteger(rowIndex)) ||
     (columnIndex !== undefined && !Number.isSafeInteger(columnIndex))

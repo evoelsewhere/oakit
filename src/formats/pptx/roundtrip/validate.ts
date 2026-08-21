@@ -208,29 +208,40 @@ function validateSupportProfile(
   }
 }
 
+interface EditableRun {
+  nativeOwner: boolean;
+  text: string;
+}
+
 function editableRuns(
   value: PptxRoundTripSnapshot['document'],
-): Map<string, string> {
-  const runs = new Map<string, string>();
+): Map<string, EditableRun> {
+  const runs = new Map<string, EditableRun>();
   const collectText = (
     text: Extract<PptxSceneElement, { type: 'text' }>['text'],
+    nativeOwner: boolean,
   ): void => {
     for (const paragraph of text.paragraphs) {
       for (const child of paragraph.children) {
-        if (child.type === 'run') runs.set(child.key, child.text);
+        if (child.type === 'run') {
+          runs.set(child.key, { nativeOwner, text: child.text });
+        }
       }
     }
   };
-  const collect = (elements: readonly PptxSceneElement[]): void => {
+  const collect = (
+    elements: readonly PptxSceneElement[],
+    nestedInGroup = false,
+  ): void => {
     for (const element of elements) {
       if (element.type === 'text') {
-        collectText(element.text);
+        collectText(element.text, nestedInGroup);
       } else if (element.type === 'table') {
         for (const row of element.rows) {
-          for (const cell of row.cells) collectText(cell.text);
+          for (const cell of row.cells) collectText(cell.text, true);
         }
       } else if (element.type === 'group') {
-        collect(element.elements);
+        collect(element.elements, true);
       }
     }
   };
@@ -391,11 +402,11 @@ function validateOperations(
     }
     const expectedText = operation.expectedText as string;
     const replacement = operation.value as string;
-    const sourceText = runs.get(targetKey);
-    if (sourceText === undefined) {
+    const sourceRun = runs.get(targetKey);
+    if (sourceRun === undefined) {
       invalidSnapshot('PowerPoint round-trip text edit target does not exist');
     }
-    if (sourceText !== expectedText) {
+    if (sourceRun.text !== expectedText) {
       invalidSnapshot(
         'PowerPoint round-trip text edit precondition does not match the preview',
       );
@@ -475,19 +486,7 @@ function expectedSupportProfileId(
 ): PptxRoundTripSupportProfileId {
   if (operations.length === 0) return 'pptx-roundtrip-r0';
   const nativeKeys = new Set<string>();
-  const collectTextRunKeys = (
-    text: Extract<PptxSceneElement, { type: 'text' }>['text'],
-  ): void => {
-    for (const paragraph of text.paragraphs) {
-      for (const child of paragraph.children) {
-        if (child.type === 'run') nativeKeys.add(child.key);
-      }
-    }
-  };
-  const collectNativeKeys = (
-    elements: readonly PptxSceneElement[],
-    nestedInGroup = false,
-  ): void => {
+  const collectNativeKeys = (elements: readonly PptxSceneElement[]): void => {
     for (const element of elements) {
       if (
         element.type === 'chart' ||
@@ -498,20 +497,18 @@ function expectedSupportProfileId(
       ) {
         nativeKeys.add(element.key);
       }
-      if (element.type === 'text' && nestedInGroup) {
-        collectTextRunKeys(element.text);
-      } else if (element.type === 'table') {
-        for (const row of element.rows) {
-          for (const cell of row.cells) collectTextRunKeys(cell.text);
-        }
-      }
-      if (element.type === 'group') collectNativeKeys(element.elements, true);
+      if (element.type === 'group') collectNativeKeys(element.elements);
     }
   };
   for (const slide of document.slides) {
     collectNativeKeys(slide.elements);
   }
-  return operations.some((operation) => nativeKeys.has(operation.targetKey))
+  const runs = editableRuns(document);
+  return operations.some(
+    (operation) =>
+      nativeKeys.has(operation.targetKey) ||
+      runs.get(operation.targetKey)?.nativeOwner === true,
+  )
     ? 'pptx-roundtrip-native-v1'
     : 'pptx-roundtrip-text-v1';
 }

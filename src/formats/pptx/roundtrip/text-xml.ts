@@ -20,7 +20,6 @@ interface PptxTextPatchOwner {
 }
 
 interface PptxXmlRange {
-  end: number;
   start: number;
   xml: string;
 }
@@ -104,7 +103,7 @@ function xmlElementRanges(xml: string, qualifiedName: string): PptxXmlRange[] {
   );
   return [...xml.matchAll(pattern)].map((match) => {
     const start = match.index ?? 0;
-    return { end: start + match[0].length, start, xml: match[0] };
+    return { start, xml: match[0] };
   });
 }
 

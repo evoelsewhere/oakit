@@ -2,10 +2,12 @@ import JSZip from 'jszip';
 import { describe, expect, it } from 'vitest';
 
 import {
+  createPptx,
   readPptxRoundTrip,
   renderPptxToSvg,
   replacePptxRoundTripText,
   writePptxRoundTrip,
+  type PptxSceneDocument,
 } from '../../src';
 import {
   createIndependentPptx,
@@ -163,6 +165,88 @@ describe('native PowerPoint table cell text editing', () => {
       supportProfile: { id: 'pptx-roundtrip-native-v1' },
     });
     expect(JSON.stringify(verified.document)).toContain('Nested updated');
+  });
+
+  it('patches a table cell nested inside a native group', async () => {
+    const scene: PptxSceneDocument = {
+      layouts: [],
+      masters: [],
+      media: [],
+      schemaVersion: 2,
+      size: { height: 540, width: 960 },
+      slides: [
+        {
+          elements: [
+            {
+              authored: {
+                transform: {
+                  childSpace: { height: 100, width: 300, x: 0, y: 0 },
+                  height: 100,
+                  width: 300,
+                  x: 72,
+                  y: 90,
+                },
+              },
+              elements: [
+                {
+                  authored: {
+                    transform: { height: 100, width: 300, x: 0, y: 0 },
+                  },
+                  columns: [300],
+                  key: 'nested-table',
+                  resolved: { hidden: false },
+                  rows: [
+                    {
+                      cells: [
+                        {
+                          text: {
+                            body: {},
+                            paragraphs: [
+                              {
+                                children: [
+                                  {
+                                    key: 'nested-cell-run',
+                                    text: 'Nested cell',
+                                    type: 'run',
+                                  },
+                                ],
+                                key: 'nested-cell-paragraph',
+                              },
+                            ],
+                          },
+                        },
+                      ],
+                      height: 100,
+                    },
+                  ],
+                  type: 'table',
+                },
+              ],
+              key: 'table-group',
+              resolved: { hidden: false },
+              type: 'group',
+            },
+          ],
+          key: 'slide',
+        },
+      ],
+      themes: [],
+    };
+    const created = await createPptx(scene);
+    const snapshot = await readPptxRoundTrip(created.data);
+    const edited = await replacePptxRoundTripText(snapshot, {
+      targetKey: 'slide-1-element-1-element-1-row-1-cell-1-run-1',
+      value: 'Nested table updated',
+    });
+    const output = await writePptxRoundTrip(edited);
+
+    expect(output.report).toMatchObject({
+      patchedPartCount: 1,
+      supportProfile: { id: 'pptx-roundtrip-native-v1' },
+    });
+    expect(
+      JSON.stringify((await readPptxRoundTrip(output.data)).document),
+    ).toContain('Nested table updated');
   });
 
   it('rejects a stale cell precondition without returning a partial package', async () => {

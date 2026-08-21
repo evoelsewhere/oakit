@@ -135,8 +135,50 @@ describe('PowerPoint patch orchestration', () => {
     }
 
     for (const targetKey of [
+      'xslide-1-element-1-row-1-cell-1-run-1',
+      'slide-1-element-1-row-1-cell-1-run-1x',
+      'slide-a-element-1-row-1-cell-1-run-1',
+      'slide-1-element-a-row-1-cell-1-run-1',
+      'slide-1-element-1-row-a-cell-1-run-1',
+      'slide-1-element-1-row-1-cell-a-run-1',
+      'slide-1-element-1-row-0-cell-1-run-1',
+      'slide-1-element-1-row-1-cell-0-run-1',
+    ]) {
+      await expect(
+        patchPptxOperations(
+          data,
+          document,
+          [{ ...replaceOperation, targetKey }],
+          resolvePptxResourceLimits(),
+        ),
+      ).rejects.toThrow(
+        'PowerPoint text edit target is not a supported native text run key',
+      );
+    }
+
+    for (const targetKey of [
+      'slide-10-element-1-row-1-cell-1-run-1',
+      'slide-1-element-10-row-1-cell-1-run-1',
+      'slide-1-element-1-row-10-cell-1-run-1',
+      'slide-1-element-1-row-1-cell-10-run-1',
+    ]) {
+      await expect(
+        patchPptxOperations(
+          data,
+          document,
+          [{ ...replaceOperation, targetKey }],
+          resolvePptxResourceLimits(),
+        ),
+      ).rejects.toThrow(
+        'PowerPoint table text edit target is not a native table element',
+      );
+    }
+
+    for (const targetKey of [
       `slide-${'9'.repeat(20)}-element-1-run-1`,
       `slide-1-element-${'9'.repeat(20)}-run-1`,
+      `slide-1-element-1-row-${'9'.repeat(20)}-cell-1-run-1`,
+      `slide-1-element-1-row-1-cell-${'9'.repeat(20)}-run-1`,
     ]) {
       await expect(
         patchPptxOperations(
@@ -240,5 +282,33 @@ describe('PowerPoint patch orchestration', () => {
         resolvePptxResourceLimits(),
       ),
     ).rejects.toThrow('PowerPoint transform target index is unsafe');
+
+    const textOperation: PptxRoundTripOperation = {
+      expectedText: 'Before',
+      id: 'replace-text-1',
+      kind: 'replace-text',
+      targetKey: `slide-1-element-1-element-${'9'.repeat(20)}-run-1`,
+      value: 'After',
+    };
+    await expect(
+      patchPptxOperations(
+        data,
+        document,
+        [textOperation],
+        resolvePptxResourceLimits(),
+      ),
+    ).rejects.toThrow('PowerPoint text edit target index is unsafe');
+
+    textOperation.targetKey = 'slide-1-element-1-element-1-element-1-run-1';
+    await expect(
+      patchPptxOperations(
+        data,
+        document,
+        [textOperation],
+        resolvePptxResourceLimits(),
+      ),
+    ).rejects.toThrow(
+      'PowerPoint text edit target path crosses a non-group element',
+    );
   });
 });
