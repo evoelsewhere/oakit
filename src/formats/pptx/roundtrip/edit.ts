@@ -151,17 +151,12 @@ export function applyPptxRoundTripOperationsToPreview(
     }
     let applied = false;
     for (const slide of document.slides) {
-      for (const element of slide.elements) {
-        if (element.type !== 'text') continue;
-        for (const paragraph of element.text.paragraphs) {
-          for (const child of paragraph.children) {
-            if (child.type === 'run' && child.key === operation.targetKey) {
-              child.text = operation.value;
-              applied = true;
-            }
-          }
+      visitEditableTextRuns(slide.elements, (run) => {
+        if (run.key === operation.targetKey) {
+          run.text = operation.value;
+          applied = true;
         }
-      }
+      });
     }
     if (!applied) {
       throw new PptxWriteError(
@@ -180,6 +175,42 @@ type PptxTransformElement =
   | PptxSceneShapeElement
   | PptxSceneTableElement
   | PptxSceneTextElement;
+
+type PptxEditableTextRun = Extract<
+  PptxSceneTextElement['text']['paragraphs'][number]['children'][number],
+  { type: 'run' }
+>;
+
+function visitTextBodyRuns(
+  text: PptxSceneTextElement['text'],
+  visitor: (run: PptxEditableTextRun) => void,
+): void {
+  for (const paragraph of text.paragraphs) {
+    for (const child of paragraph.children) {
+      if (child.type === 'run') visitor(child);
+    }
+  }
+}
+
+function visitEditableTextRuns(
+  elements: readonly PptxSceneElement[],
+  visitor: (run: PptxEditableTextRun, nativeOwner: boolean) => void,
+  nestedInGroup = false,
+): void {
+  for (const element of elements) {
+    if (element.type === 'text') {
+      visitTextBodyRuns(element.text, (run) => visitor(run, nestedInGroup));
+    } else if (element.type === 'table') {
+      for (const row of element.rows) {
+        for (const cell of row.cells) {
+          visitTextBodyRuns(cell.text, (run) => visitor(run, true));
+        }
+      }
+    } else if (element.type === 'group') {
+      visitEditableTextRuns(element.elements, visitor, true);
+    }
+  }
+}
 
 function visitTransformElements(
   elements: readonly PptxSceneElement[],
@@ -348,18 +379,14 @@ function invalidEdit(message: string): never {
 function findRunText(
   snapshot: PptxRoundTripSnapshot,
   targetKey: string,
-): string {
-  let matched: string | undefined;
+): { nativeOwner: boolean; text: string } {
+  let matched: { nativeOwner: boolean; text: string } | undefined;
   for (const slide of snapshot.document.slides) {
-    for (const element of slide.elements) {
-      if (element.type !== 'text') continue;
-      for (const paragraph of element.text.paragraphs) {
-        for (const child of paragraph.children) {
-          if (child.key !== targetKey || child.type !== 'run') continue;
-          matched = child.text;
-        }
+    visitEditableTextRuns(slide.elements, (run, nativeOwner) => {
+      if (run.key === targetKey) {
+        matched = { nativeOwner, text: run.text };
       }
-    }
+    });
   }
   if (matched === undefined) {
     invalidEdit('PowerPoint text edit target key does not exist');
@@ -393,7 +420,8 @@ export async function replacePptxRoundTripText(
   const validated = validatePptxRoundTripSnapshot(value, limits);
   validatePptxRoundTripReplaceTextRequest(request, limits.maxXmlBytes);
   const snapshot = structuredClone(validated);
-  const expectedText = findRunText(snapshot, request.targetKey);
+  const target = findRunText(snapshot, request.targetKey);
+  const expectedText = target.text;
   if (expectedText === request.value) {
     invalidEdit('PowerPoint text edit must change the target value');
   }
@@ -414,6 +442,7 @@ export async function replacePptxRoundTripText(
   };
   snapshot.operations.push(operation);
   snapshot.supportProfile =
+    target.nativeOwner ||
     snapshot.supportProfile.id === 'pptx-roundtrip-native-v1'
       ? createPptxRoundTripNativeEditSupportProfile()
       : createPptxRoundTripTextEditSupportProfile();

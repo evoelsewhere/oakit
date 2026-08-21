@@ -54,6 +54,81 @@ async function snapshot() {
   return readPptxRoundTrip(created.data);
 }
 
+function nativeTextOwnersScene(): PptxSceneDocument {
+  const textBody = (key: string, value: string) => ({
+    body: {},
+    paragraphs: [
+      {
+        children: [{ key: `${key}-run`, text: value, type: 'run' as const }],
+        key: `${key}-paragraph`,
+      },
+    ],
+  });
+  return {
+    layouts: [],
+    masters: [],
+    media: [],
+    schemaVersion: 2,
+    size: { height: 540, width: 960 },
+    slides: [
+      {
+        elements: [
+          {
+            authored: {
+              transform: { height: 80, width: 240, x: 20, y: 30 },
+            },
+            columns: [120, 120],
+            key: 'source-table',
+            resolved: { hidden: false },
+            rows: [
+              {
+                cells: [
+                  { text: textBody('cell-a', 'Alpha') },
+                  { text: textBody('cell-b', 'Beta') },
+                ],
+                height: 80,
+              },
+            ],
+            type: 'table',
+          },
+          {
+            authored: {
+              transform: {
+                childSpace: { height: 100, width: 200, x: 0, y: 0 },
+                height: 100,
+                width: 200,
+                x: 300,
+                y: 30,
+              },
+            },
+            elements: [
+              {
+                authored: {
+                  transform: { height: 50, width: 100, x: 0, y: 0 },
+                },
+                key: 'nested-text',
+                resolved: { hidden: false },
+                text: textBody('nested-text', 'Nested'),
+                type: 'text',
+              },
+            ],
+            key: 'source-group',
+            resolved: { hidden: false },
+            type: 'group',
+          },
+        ],
+        key: 'source-slide',
+      },
+    ],
+    themes: [],
+  };
+}
+
+async function nativeTextOwnersSnapshot() {
+  const created = await createPptx(nativeTextOwnersScene());
+  return readPptxRoundTrip(created.data);
+}
+
 describe('PowerPoint round-trip text edit binding', () => {
   it('binds an exact preview precondition without mutating source state', async () => {
     const source = await snapshot();
@@ -103,6 +178,28 @@ describe('PowerPoint round-trip text edit binding', () => {
     ]);
 
     expect(second).toEqual(first);
+  });
+
+  it.each([
+    ['table cell', 'slide-1-element-1-row-1-cell-2-run-1', 'Updated cell'],
+    ['nested group text', 'slide-1-element-2-element-1-run-1', 'Updated group'],
+  ])('binds and previews native %s edits', async (_name, targetKey, value) => {
+    const source = await nativeTextOwnersSnapshot();
+    const edited = await replacePptxRoundTripText(source, {
+      targetKey,
+      value,
+    });
+
+    expect(edited.supportProfile).toMatchObject({
+      effectiveLevel: 'R2',
+      id: 'pptx-roundtrip-native-v1',
+    });
+    expect(edited.operations).toMatchObject([
+      { kind: 'replace-text', targetKey, value },
+    ]);
+    expect(
+      JSON.stringify(applyPptxRoundTripOperationsToPreview(edited)),
+    ).toContain(value);
   });
 
   it.each([

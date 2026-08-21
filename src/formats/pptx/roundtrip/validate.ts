@@ -212,16 +212,30 @@ function editableRuns(
   value: PptxRoundTripSnapshot['document'],
 ): Map<string, string> {
   const runs = new Map<string, string>();
-  for (const slide of value.slides) {
-    for (const element of slide.elements) {
-      if (element.type !== 'text') continue;
-      for (const paragraph of element.text.paragraphs) {
-        for (const child of paragraph.children) {
-          if (child.type !== 'run') continue;
-          runs.set(child.key, child.text);
-        }
+  const collectText = (
+    text: Extract<PptxSceneElement, { type: 'text' }>['text'],
+  ): void => {
+    for (const paragraph of text.paragraphs) {
+      for (const child of paragraph.children) {
+        if (child.type === 'run') runs.set(child.key, child.text);
       }
     }
+  };
+  const collect = (elements: readonly PptxSceneElement[]): void => {
+    for (const element of elements) {
+      if (element.type === 'text') {
+        collectText(element.text);
+      } else if (element.type === 'table') {
+        for (const row of element.rows) {
+          for (const cell of row.cells) collectText(cell.text);
+        }
+      } else if (element.type === 'group') {
+        collect(element.elements);
+      }
+    }
+  };
+  for (const slide of value.slides) {
+    collect(slide.elements);
   }
   return runs;
 }
@@ -461,7 +475,19 @@ function expectedSupportProfileId(
 ): PptxRoundTripSupportProfileId {
   if (operations.length === 0) return 'pptx-roundtrip-r0';
   const nativeKeys = new Set<string>();
-  const collectNativeKeys = (elements: readonly PptxSceneElement[]): void => {
+  const collectTextRunKeys = (
+    text: Extract<PptxSceneElement, { type: 'text' }>['text'],
+  ): void => {
+    for (const paragraph of text.paragraphs) {
+      for (const child of paragraph.children) {
+        if (child.type === 'run') nativeKeys.add(child.key);
+      }
+    }
+  };
+  const collectNativeKeys = (
+    elements: readonly PptxSceneElement[],
+    nestedInGroup = false,
+  ): void => {
     for (const element of elements) {
       if (
         element.type === 'chart' ||
@@ -472,7 +498,14 @@ function expectedSupportProfileId(
       ) {
         nativeKeys.add(element.key);
       }
-      if (element.type === 'group') collectNativeKeys(element.elements);
+      if (element.type === 'text' && nestedInGroup) {
+        collectTextRunKeys(element.text);
+      } else if (element.type === 'table') {
+        for (const row of element.rows) {
+          for (const cell of row.cells) collectTextRunKeys(cell.text);
+        }
+      }
+      if (element.type === 'group') collectNativeKeys(element.elements, true);
     }
   };
   for (const slide of document.slides) {
