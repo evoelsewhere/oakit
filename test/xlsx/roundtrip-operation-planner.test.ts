@@ -1656,6 +1656,26 @@ describe('XLSX cell operation planner', () => {
               selectionRelation: 'full-sheet',
             },
           ],
+          print: {
+            columnBreaks: [
+              {
+                end: 2,
+                manual: false,
+                pivot: true,
+                position: 3,
+                start: 0,
+              },
+            ],
+            rowBreaks: [
+              {
+                end: 2,
+                manual: true,
+                pivot: false,
+                position: 3,
+                start: 0,
+              },
+            ],
+          },
         },
       ],
     };
@@ -1720,6 +1740,16 @@ describe('XLSX cell operation planner', () => {
         (range) => range.reference,
       ),
     ).toEqual(['F1:F5', 'G4:G5']);
+    expect(transformedLayout.print?.rowBreaks?.[0]).toMatchObject({
+      end: 2,
+      position: 5,
+      start: 0,
+    });
+    expect(transformedLayout.print?.columnBreaks?.[0]).toMatchObject({
+      end: 4,
+      position: 3,
+      start: 0,
+    });
     const deletedSortDocument = structuredClone(referencedDocument);
     const deletedSortSheet = worksheet(deletedSortDocument);
     deletedSortSheet.autoFilter!.sort!.range = {
@@ -1840,10 +1870,31 @@ describe('XLSX cell operation planner', () => {
       readerLimits,
     );
     expect(worksheet(deletedProtected.document).protectedRanges).toEqual([]);
+    const deletedBreakDocument = structuredClone(referencedDocument);
+    const deletedBreakSheet = worksheet(deletedBreakDocument);
+    deletedBreakSheet.print!.rowBreaks![0]!.position = 2;
+    deletedBreakSheet.print!.columnBreaks![0]!.start = 1;
+    deletedBreakSheet.print!.columnBreaks![0]!.end = 1;
+    const deletedBreaks = await replayXlsxCellOperations(
+      deletedBreakDocument,
+      [
+        {
+          count: 1,
+          index: 2,
+          kind: 'delete-rows',
+          operationId: 'delete-page-breaks',
+          sheetKey: source.key,
+        },
+      ],
+      writeLimits,
+      readerLimits,
+    );
+    expect(worksheet(deletedBreaks.document).print).toEqual({});
     const emptyValidationDocument = structuredClone(snapshot.document);
     worksheet(emptyValidationDocument).dataValidationSettings = {
       disablePrompts: true,
     };
+    worksheet(emptyValidationDocument).print = { rowBreaks: [] };
     expect(
       worksheet(
         (
@@ -1860,6 +1911,18 @@ describe('XLSX cell operation planner', () => {
       worksheet(
         (
           await replayXlsxCellOperations(
+            emptyValidationDocument,
+            [layoutOperation],
+            writeLimits,
+            readerLimits,
+          )
+        ).document,
+      ).print,
+    ).toEqual({ rowBreaks: [] });
+    expect(
+      worksheet(
+        (
+          await replayXlsxCellOperations(
             referencedDocument,
             [layoutOperation],
             writeLimits,
@@ -1872,7 +1935,7 @@ describe('XLSX cell operation planner', () => {
       replayXlsxCellOperations(
         referencedDocument,
         [layoutOperation],
-        { ...writeLimits, maxReferenceUpdates: 14 },
+        { ...writeLimits, maxReferenceUpdates: 18 },
         readerLimits,
       ),
     ).resolves.toBeDefined();
@@ -1882,14 +1945,14 @@ describe('XLSX cell operation planner', () => {
           replayXlsxCellOperations(
             referencedDocument,
             [layoutOperation],
-            { ...writeLimits, maxReferenceUpdates: 13 },
+            { ...writeLimits, maxReferenceUpdates: 17 },
             readerLimits,
           ),
         )
       ).diagnostic,
     ).toMatchObject({
-      actual: 14,
-      limit: 13,
+      actual: 18,
+      limit: 17,
       limitName: 'maxReferenceUpdates',
     });
     expect(
@@ -2339,10 +2402,6 @@ describe('XLSX cell operation planner', () => {
       [
         'drawing-reference',
         (document) => void setSheetField(document, 'drawings', [{}]),
-      ],
-      [
-        'print-reference',
-        (document) => void setSheetField(document, 'print', {}),
       ],
       [
         'protection-reference',

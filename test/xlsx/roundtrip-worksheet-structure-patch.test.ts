@@ -399,6 +399,172 @@ describe('XLSX worksheet structural patching', () => {
     expect(empty.patchCount).toBe(0);
   });
 
+  it('transforms row and column page breaks with exact counts', () => {
+    const xml = `<worksheet xmlns="${XLSX_SPREADSHEET_NS}"><sheetData/><rowBreaks count="2" manualBreakCount="1"><brk id="2" min="0" max="2" man="1"/><brk id="3" min="0" max="2"/></rowBreaks><colBreaks count="2" manualBreakCount="1"><brk id="2" min="0" max="2" man="true"/><brk id="3" min="1" max="1"/></colBreaks></worksheet>`;
+    const result = patchXlsxWorksheetStructure(
+      bytes(xml),
+      [
+        {
+          count: 1,
+          index: 2,
+          kind: 'delete-rows',
+          operationId: 'page-breaks',
+        },
+      ],
+      defaultXlsxWriteLimits(),
+      PART,
+    );
+    expect(new TextDecoder().decode(result.data)).toBe(
+      `<worksheet xmlns="${XLSX_SPREADSHEET_NS}"><sheetData/><rowBreaks count="1" manualBreakCount="0"><brk id="2" min="0" max="2"/></rowBreaks><colBreaks count="1" manualBreakCount="1"><brk id="2" min="0" max="1" man="true"/></colBreaks></worksheet>`,
+    );
+    const removed = patchXlsxWorksheetStructure(
+      bytes(
+        `<worksheet xmlns="${XLSX_SPREADSHEET_NS}"><sheetData/><rowBreaks><brk id="2"/></rowBreaks><colBreaks><brk id="2" min="1" max="1"/></colBreaks></worksheet>`,
+      ),
+      [
+        {
+          count: 1,
+          index: 2,
+          kind: 'delete-rows',
+          operationId: 'remove-page-breaks',
+        },
+      ],
+      defaultXlsxWriteLimits(),
+      PART,
+    );
+    expect(new TextDecoder().decode(removed.data)).toBe(
+      `<worksheet xmlns="${XLSX_SPREADSHEET_NS}"><sheetData/></worksheet>`,
+    );
+  });
+
+  it('patches authored page-break bounds and preserves full-grid defaults', () => {
+    const xml = `<worksheet xmlns="${XLSX_SPREADSHEET_NS}"><sheetData/><rowBreaks><brk id="1" min="1"/></rowBreaks><colBreaks><brk id="1" max="2"/></colBreaks></worksheet>`;
+    const result = patchXlsxWorksheetStructure(
+      bytes(xml),
+      [
+        {
+          count: 1,
+          index: 1,
+          kind: 'insert-columns',
+          operationId: 'page-break-columns',
+        },
+        {
+          count: 1,
+          index: 2,
+          kind: 'insert-rows',
+          operationId: 'page-break-rows',
+        },
+      ],
+      defaultXlsxWriteLimits(),
+      PART,
+    );
+    expect(new TextDecoder().decode(result.data)).toBe(
+      `<worksheet xmlns="${XLSX_SPREADSHEET_NS}"><sheetData/><rowBreaks><brk id="1" min="2"/></rowBreaks><colBreaks><brk id="2" max="3"/></colBreaks></worksheet>`,
+    );
+    const missingBound = patchXlsxWorksheetStructure(
+      bytes(
+        `<worksheet xmlns="${XLSX_SPREADSHEET_NS}"><sheetData/><rowBreaks><brk id="1" max="2"/></rowBreaks></worksheet>`,
+      ),
+      [
+        {
+          count: 1,
+          index: 1,
+          kind: 'insert-columns',
+          operationId: 'missing-break-bound',
+        },
+      ],
+      defaultXlsxWriteLimits(),
+      PART,
+    );
+    expect(new TextDecoder().decode(missingBound.data)).toBe(
+      `<worksheet xmlns="${XLSX_SPREADSHEET_NS}"><sheetData/><rowBreaks><brk min="1" id="1" max="3"/></rowBreaks></worksheet>`,
+    );
+    const fullXml = `<worksheet xmlns="${XLSX_SPREADSHEET_NS}"><sheetData/><rowBreaks count="1" manualBreakCount="0"><brk id="1048576"/></rowBreaks><colBreaks count="1" manualBreakCount="0"><brk id="16384"/></colBreaks></worksheet>`;
+    const full = patchXlsxWorksheetStructure(
+      bytes(fullXml),
+      [
+        {
+          count: 1,
+          index: 1,
+          kind: 'insert-rows',
+          operationId: 'full-row-break',
+        },
+        {
+          count: 1,
+          index: 1,
+          kind: 'insert-columns',
+          operationId: 'full-column-break',
+        },
+      ],
+      defaultXlsxWriteLimits(),
+      PART,
+    );
+    expect(new TextDecoder().decode(full.data)).toBe(fullXml);
+    expect(full.patchCount).toBe(0);
+    const emptyXml = `<worksheet xmlns="${XLSX_SPREADSHEET_NS}"><sheetData/><rowBreaks count="0" manualBreakCount="0"/><colBreaks/></worksheet>`;
+    const empty = patchXlsxWorksheetStructure(
+      bytes(emptyXml),
+      [
+        {
+          count: 1,
+          index: 1,
+          kind: 'insert-rows',
+          operationId: 'empty-breaks',
+        },
+      ],
+      defaultXlsxWriteLimits(),
+      PART,
+    );
+    expect(new TextDecoder().decode(empty.data)).toBe(emptyXml);
+    expect(empty.patchCount).toBe(0);
+  });
+
+  it('selects only owned page breaks and rejects malformed values', () => {
+    const xml = `<s:worksheet xmlns:s="${XLSX_SPREADSHEET_NS}" xmlns:x="urn:foreign"><s:sheetData/><wrapper><s:rowBreaks><s:brk id="9"/></s:rowBreaks></wrapper><x:rowBreaks><x:brk id="9"/></x:rowBreaks><s:rowBreaks count="2" manualBreakCount="0"><wrapper><s:brk id="8"/></wrapper><x:brk id="9"/><s:brk id="1" min="0" max="1" man="0"/><s:brk id="4" min="0" max="1" pt="false"/></s:rowBreaks><wrapper><s:brk id="7"/></wrapper></s:worksheet>`;
+    const unchanged = patchXlsxWorksheetStructure(
+      bytes(xml),
+      [
+        {
+          count: 1,
+          index: 5,
+          kind: 'insert-rows',
+          operationId: 'break-no-op',
+        },
+      ],
+      defaultXlsxWriteLimits(),
+      PART,
+    );
+    expect(new TextDecoder().decode(unchanged.data)).toBe(xml);
+    expect(unchanged.patchCount).toBe(0);
+    for (const source of [
+      '<brk/>',
+      '<brk id="01"/>',
+      '<brk id="1" min="bad"/>',
+      '<brk id="1" man="bad"/>',
+      '<brk id="1" pt="bad"/>',
+    ]) {
+      expect(
+        capture(() =>
+          patchXlsxWorksheetStructure(
+            bytes(
+              `<worksheet xmlns="${XLSX_SPREADSHEET_NS}"><sheetData/><rowBreaks>${source}</rowBreaks></worksheet>`,
+            ),
+            [
+              {
+                count: 1,
+                index: 1,
+                kind: 'insert-rows',
+                operationId: 'bad-break',
+              },
+            ],
+            defaultXlsxWriteLimits(),
+            PART,
+          ),
+        ).diagnostic.message,
+      ).toMatch(/^XLSX structural page-break (?:flag|value) is invalid$/u);
+    }
+  });
+
   it('selects only owned protected ranges and rejects malformed ranges', () => {
     const xml = `<s:worksheet xmlns:s="${XLSX_SPREADSHEET_NS}" xmlns:x="urn:foreign"><s:sheetData/><wrapper><s:protectedRanges><s:protectedRange name="Nested" sqref="Z9"/></s:protectedRanges><s:protectedRange name="Before" sqref="Z8"/></wrapper><x:protectedRanges><x:protectedRange sqref="Z9"/></x:protectedRanges><s:protectedRanges><wrapper><s:protectedRange name="NestedEntry" sqref="Z7"/></wrapper><x:protectedRange name="Foreign" sqref="Z9"/><s:protectedRange name="Input" sqref=" A1  B2 "/></s:protectedRanges><wrapper><s:protectedRange name="After" sqref="Z6"/></wrapper></s:worksheet>`;
     const unchanged = patchXlsxWorksheetStructure(

@@ -1,5 +1,6 @@
 import { xlsxColumnName } from '../internal/cell-reference';
-import type { XlsxRange } from '../types';
+import { XLSX_MAX_COLUMNS, XLSX_MAX_ROWS } from '../internal/resource-limits';
+import type { XlsxPageBreak, XlsxRange } from '../types';
 
 export interface XlsxStructuralReferenceOperation {
   count: number;
@@ -91,4 +92,41 @@ export function transformXlsxStructuralRange(
         : `${startAddress}:${endAddress}`,
     start: { column: columns[0], row: rows[0] },
   };
+}
+
+export function transformXlsxStructuralPageBreak(
+  pageBreak: XlsxPageBreak,
+  axis: 'column' | 'row',
+  operation: XlsxStructuralReferenceOperation,
+): XlsxPageBreak | null {
+  const positionOperation =
+    axis === 'row'
+      ? operation.kind.endsWith('-rows')
+      : operation.kind.endsWith('-columns');
+  const positionLimit = axis === 'row' ? XLSX_MAX_ROWS : XLSX_MAX_COLUMNS;
+  let position = pageBreak.position;
+  if (positionOperation) {
+    const transformed = transformCoordinate(position, operation);
+    if (transformed === null) return null;
+    position = Math.min(transformed, positionLimit);
+  }
+
+  const extentOperation =
+    axis === 'row'
+      ? operation.kind.endsWith('-columns')
+      : operation.kind.endsWith('-rows');
+  const extentLimit = axis === 'row' ? XLSX_MAX_COLUMNS : XLSX_MAX_ROWS;
+  let start = pageBreak.start;
+  let end = pageBreak.end;
+  const fullExtent = start === 0 && end === extentLimit - 1;
+  if (extentOperation && !fullExtent) {
+    const transformed = transformInterval(start, end, {
+      ...operation,
+      index: operation.index - 1,
+    });
+    if (transformed === null || transformed[0] >= extentLimit) return null;
+    start = transformed[0];
+    end = Math.min(transformed[1], extentLimit - 1);
+  }
+  return { ...pageBreak, end, position, start };
 }

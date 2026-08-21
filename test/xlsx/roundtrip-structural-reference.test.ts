@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   transformXlsxStructuralCell,
+  transformXlsxStructuralPageBreak,
   transformXlsxStructuralRange,
   type XlsxStructuralReferenceOperation,
 } from '../../src/formats/xlsx/roundtrip/structural-reference';
@@ -136,6 +137,96 @@ describe('XLSX structural reference transforms', () => {
         index: 2,
         kind: 'delete-columns',
       }),
+    ).toBeNull();
+  });
+
+  it('transforms page-break positions and zero-based extents by axis', () => {
+    const source = {
+      end: 2,
+      manual: true,
+      pivot: false,
+      position: 3,
+      start: 0,
+    };
+    expect(
+      transformXlsxStructuralPageBreak(source, 'row', {
+        count: 2,
+        index: 2,
+        kind: 'insert-rows',
+      }),
+    ).toEqual({ ...source, position: 5 });
+    expect(
+      transformXlsxStructuralPageBreak(source, 'row', {
+        count: 1,
+        index: 3,
+        kind: 'delete-rows',
+      }),
+    ).toBeNull();
+    expect(
+      transformXlsxStructuralPageBreak(source, 'row', {
+        count: 2,
+        index: 2,
+        kind: 'insert-columns',
+      }),
+    ).toEqual({ ...source, end: 4 });
+    expect(
+      transformXlsxStructuralPageBreak(source, 'row', {
+        count: 2,
+        index: 2,
+        kind: 'delete-columns',
+      }),
+    ).toEqual({ ...source, end: 0 });
+    expect(
+      transformXlsxStructuralPageBreak({ ...source, end: 2, start: 2 }, 'row', {
+        count: 1,
+        index: 3,
+        kind: 'delete-columns',
+      }),
+    ).toBeNull();
+    expect(
+      transformXlsxStructuralPageBreak(source, 'column', {
+        count: 1,
+        index: 2,
+        kind: 'insert-columns',
+      }),
+    ).toEqual({ ...source, position: 4 });
+  });
+
+  it('keeps full-grid page-break extents and terminal positions bounded', () => {
+    const fullRowBreak = {
+      end: 16_383,
+      manual: false,
+      pivot: true,
+      position: 1_048_576,
+      start: 0,
+    };
+    expect(
+      transformXlsxStructuralPageBreak(fullRowBreak, 'row', {
+        count: 1,
+        index: 1,
+        kind: 'insert-columns',
+      }),
+    ).toEqual(fullRowBreak);
+    expect(
+      transformXlsxStructuralPageBreak(fullRowBreak, 'row', {
+        count: 1,
+        index: 1,
+        kind: 'insert-rows',
+      }),
+    ).toEqual(fullRowBreak);
+    expect(
+      transformXlsxStructuralPageBreak(
+        { ...fullRowBreak, end: 16_382, start: 16_381 },
+        'row',
+        { count: 2, index: 16_383, kind: 'insert-columns' },
+      ),
+    ).toEqual({ ...fullRowBreak, end: 16_383, start: 16_381 });
+    expect(
+      transformXlsxStructuralPageBreak(
+        { ...fullRowBreak, end: 16_383, start: 16_383 },
+        'row',
+        { count: 1, index: 16_384, kind: 'insert-columns' },
+      ),
     ).toBeNull();
   });
 });

@@ -3,9 +3,13 @@ import {
   parseXlsxRangeReference,
   xlsxColumnName,
 } from '../internal/cell-reference';
+import { XLSX_MAX_COLUMNS, XLSX_MAX_ROWS } from '../internal/resource-limits';
 import { XlsxWriteError } from './errors';
 import { xlsxMatchingCloseToken } from './hyperlink-patch';
-import { transformXlsxStructuralRange } from './structural-reference';
+import {
+  transformXlsxStructuralPageBreak,
+  transformXlsxStructuralRange,
+} from './structural-reference';
 import type { ResolvedXlsxWriteLimits } from './types';
 import {
   decodeXlsxXml,
@@ -112,6 +116,126 @@ function shiftedIndex(
   return value - request.count;
 }
 
+function pageBreakPatches(
+  tokens: readonly XlsxXmlTagToken[],
+  root: XlsxXmlTagToken,
+  prefix: string,
+  request: XlsxWorksheetStructurePatch,
+  part: string,
+  axis: 'column' | 'row',
+): TextPatch[] {
+  const name = axis === 'row' ? 'rowBreaks' : 'colBreaks';
+  const container = tokens.find(
+    (token) =>
+      !token.closing &&
+      token.depth === root.depth + 1 &&
+      token.name === `${prefix}${name}`,
+  );
+  if (!container) return [];
+  const containerIndex = tokens.indexOf(container);
+  const close = xlsxMatchingCloseToken(tokens, containerIndex);
+  const entries = tokens
+    .slice(containerIndex, tokens.indexOf(close))
+    .filter(
+      (token) =>
+        !token.closing &&
+        token.depth === container.depth + 1 &&
+        token.name === `${prefix}brk`,
+    );
+  const unsigned = (
+    entry: XlsxXmlTagToken,
+    attributeName: string,
+    fallback?: number,
+  ): number => {
+    const source = attribute(entry, attributeName)?.value;
+    if (source === undefined) {
+      if (fallback !== undefined) return fallback;
+      failure('XLSX structural page-break value is invalid', part, request);
+    }
+    if (!/^(?:0|[1-9]\d*)$/u.test(source)) {
+      failure('XLSX structural page-break value is invalid', part, request);
+    }
+    return Number(source);
+  };
+  const transformedEntries = entries.map((entry) => {
+    const manualSource = attribute(entry, 'man')?.value;
+    const pivotSource = attribute(entry, 'pt')?.value;
+    const flag = (source: string | undefined): boolean => {
+      if (source === undefined || source === '0' || source === 'false') {
+        return false;
+      }
+      if (source === '1' || source === 'true') return true;
+      failure('XLSX structural page-break flag is invalid', part, request);
+    };
+    const extentLimit = axis === 'row' ? XLSX_MAX_COLUMNS : XLSX_MAX_ROWS;
+    const pageBreak = {
+      end: unsigned(entry, 'max', extentLimit - 1),
+      manual: flag(manualSource),
+      pivot: flag(pivotSource),
+      position: unsigned(entry, 'id'),
+      start: unsigned(entry, 'min', 0),
+    };
+    return {
+      entry,
+      pageBreak,
+      transformed: transformXlsxStructuralPageBreak(pageBreak, axis, request),
+    };
+  });
+  const remaining = transformedEntries.filter(
+    (entry) => entry.transformed !== null,
+  );
+  if (entries.length !== 0 && remaining.length === 0) {
+    return [{ end: close.end, replacement: '', start: container.start }];
+  }
+  const patches: TextPatch[] = [];
+  for (const item of transformedEntries) {
+    if (item.transformed === null) {
+      const itemClose = xlsxMatchingCloseToken(
+        tokens,
+        tokens.indexOf(item.entry),
+      );
+      patches.push({
+        end: itemClose.end,
+        replacement: '',
+        start: item.entry.start,
+      });
+      continue;
+    }
+    let missing: string | undefined;
+    for (const [attributeName, previous, next] of [
+      ['id', item.pageBreak.position, item.transformed.position],
+      ['min', item.pageBreak.start, item.transformed.start],
+      ['max', item.pageBreak.end, item.transformed.end],
+    ] as const) {
+      if (previous === next) continue;
+      const source = attribute(item.entry, attributeName);
+      if (source) patches.push(attributePatch(source, String(next)));
+      else missing = `${attributeName}="${next}"`;
+    }
+    if (missing !== undefined) {
+      const insertion = item.entry.start + 1 + item.entry.name.length;
+      patches.push({
+        end: insertion,
+        replacement: ` ${missing}`,
+        start: insertion,
+      });
+    }
+  }
+  for (const [attributeName, value] of [
+    ['count', remaining.length],
+    [
+      'manualBreakCount',
+      remaining.filter((entry) => entry.transformed!.manual).length,
+    ],
+  ] as const) {
+    const source = attribute(container, attributeName);
+    if (source && source.value !== String(value)) {
+      patches.push(attributePatch(source, String(value)));
+    }
+  }
+  return patches;
+}
+
 function layoutPatches(
   tokens: readonly XlsxXmlTagToken[],
   root: XlsxXmlTagToken,
@@ -119,7 +243,10 @@ function layoutPatches(
   request: XlsxWorksheetStructurePatch,
   part: string,
 ): TextPatch[] {
-  const patches: TextPatch[] = [];
+  const patches: TextPatch[] = [
+    ...pageBreakPatches(tokens, root, prefix, request, part, 'row'),
+    ...pageBreakPatches(tokens, root, prefix, request, part, 'column'),
+  ];
   const dimension = tokens.find(
     (token) =>
       !token.closing &&

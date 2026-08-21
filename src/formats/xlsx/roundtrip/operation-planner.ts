@@ -13,7 +13,10 @@ import type {
 import { canonicalXlsxJson } from './canonical-json';
 import { canonicalXlsxSha256 } from './digest';
 import { XlsxWriteError } from './errors';
-import { transformXlsxStructuralRange } from './structural-reference';
+import {
+  transformXlsxStructuralPageBreak,
+  transformXlsxStructuralRange,
+} from './structural-reference';
 import {
   type XlsxCellEditOperation,
   validateXlsxCellOperations,
@@ -296,7 +299,6 @@ function assertStructuralClosure(
   const featureBlockers: Array<readonly [string, boolean]> = [
     ['comment-reference', sheet.comments.length !== 0],
     ['drawing-reference', sheet.drawings.length !== 0],
-    ['print-reference', sheet.print !== undefined],
     ['protection-reference', sheet.protection !== undefined],
     ['pivot-reference', sheet.pivotTables !== undefined],
     ['query-table-reference', sheet.queryTables !== undefined],
@@ -434,6 +436,28 @@ function transformStructuralLayoutReferences(
     });
     return ranges.length === 0 ? [] : [{ ...protectedRange, ranges }];
   });
+  if (sheet.print !== undefined) {
+    for (const [field, axis] of [
+      ['columnBreaks', 'column'],
+      ['rowBreaks', 'row'],
+    ] as const) {
+      const breaks = sheet.print[field];
+      if (breaks === undefined) continue;
+      const transformed = breaks.flatMap((pageBreak) => {
+        const result = transformXlsxStructuralPageBreak(
+          pageBreak,
+          axis,
+          operation,
+        );
+        return result === null ? [] : [result];
+      });
+      if (breaks.length !== 0 && transformed.length === 0) {
+        delete sheet.print[field];
+      } else {
+        sheet.print[field] = transformed;
+      }
+    }
+  }
 }
 
 function structuralRange(operation: XlsxStructuralOperation): string {
@@ -697,7 +721,10 @@ export async function replayXlsxCellOperations(
         sheet.protectedRanges.reduce(
           (total, protectedRange) => total + protectedRange.ranges.length,
           0,
-        );
+        ) +
+        ((sheet.print?.rowBreaks?.length ?? 0) +
+          (sheet.print?.columnBreaks?.length ?? 0)) *
+          2;
       transformStructuralLayoutReferences(sheet, operation);
       referenceUpdates += operation.kind.endsWith('-rows')
         ? transformRows(sheet, operation, readerLimits)
