@@ -7,6 +7,7 @@ import {
   parsePptxWithDiagnostics,
   readPptxRoundTrip,
   renderPptxToSvg,
+  replacePptxRoundTripText,
   serializePptxRoundTripJson,
   setPptxRoundTripImageTransform,
   setPptxRoundTripChartTransform,
@@ -491,7 +492,11 @@ describe('PPTX public API in browsers', () => {
       x: 100,
       y: 120,
     };
-    const edited = await setPptxRoundTripTableTransform(snapshot, {
+    const textEdited = await replacePptxRoundTripText(snapshot, {
+      targetKey: 'slide-1-element-1-row-1-cell-2-run-1',
+      value: 'Native browser edit',
+    });
+    const edited = await setPptxRoundTripTableTransform(textEdited, {
       targetKey: 'slide-1-element-1',
       value: changed,
     });
@@ -502,6 +507,10 @@ describe('PPTX public API in browsers', () => {
     ]);
 
     expect(output.report.supportProfile.id).toBe('pptx-roundtrip-native-v1');
+    expect(output.report.operations).toMatchObject([
+      { kind: 'replace-text', status: 'verified' },
+      { kind: 'set-transform', status: 'verified' },
+    ]);
     expect(parsed.slides[0]?.elements[0]).toMatchObject({
       colWidths: [140, 280],
       height: 140,
@@ -513,6 +522,7 @@ describe('PPTX public API in browsers', () => {
     });
     const svg = new TextDecoder().decode(rendered.slides[0]?.data);
     expect(svg).toContain('Browser\u00a0table');
+    expect(svg).toContain('Native\u00a0browser\u00a0edit');
     expect(svg).toContain('#E0F2FE');
   });
 

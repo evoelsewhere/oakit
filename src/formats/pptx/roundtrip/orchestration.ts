@@ -17,7 +17,7 @@ import {
 } from './package-preservation';
 import { unsupportedPptxEdit } from './patch-error';
 import { resolvePptxSlideParts } from './relationships';
-import { patchPptxShapeTextXml } from './text-xml';
+import { patchPptxShapeTextXml, patchPptxTableCellTextXml } from './text-xml';
 import {
   patchPptxGraphicFrameTransformXml,
   patchPptxChartFrameTransformXml,
@@ -32,14 +32,18 @@ import type {
 } from './types';
 import JSZip from 'jszip';
 
-const TARGET_KEY_PATTERN = /^slide-([1-9]\d*)-element-([1-9]\d*)-run-1$/;
+const TEXT_TARGET_KEY_PATTERN =
+  /^slide-([1-9]\d*)((?:-element-[1-9]\d*)+)-run-1$/;
+const TABLE_TEXT_TARGET_KEY_PATTERN =
+  /^slide-([1-9]\d*)((?:-element-[1-9]\d*)+)-row-([1-9]\d*)-cell-([1-9]\d*)-run-1$/;
 const TRANSFORM_TARGET_KEY_PATTERN =
   /^slide-([1-9]\d*)((?:-element-[1-9]\d*)+)$/;
 const ELEMENT_INDEX_PATTERN = /-element-([1-9]\d*)/g;
 
 interface TextTarget {
+  columnIndex?: number;
   elementType: 'chart' | 'group' | 'image' | 'shape' | 'table' | 'text';
-  elementIndex: number;
+  rowIndex?: number;
   shapeId: string;
   slideIndex: number;
   transformOperation?: PptxRoundTripSetTransformOperation;
@@ -116,28 +120,60 @@ function textTarget(
   operation: PptxRoundTripReplaceTextOperation,
   document: PptxDocument,
 ): TextTarget {
-  const match = TARGET_KEY_PATTERN.exec(operation.targetKey);
+  const tableMatch = TABLE_TEXT_TARGET_KEY_PATTERN.exec(operation.targetKey);
+  const match = tableMatch ?? TEXT_TARGET_KEY_PATTERN.exec(operation.targetKey);
   if (match === null) {
     unsupportedPptxEdit(
-      'PowerPoint text edit target is not a supported slide text run key',
+      'PowerPoint text edit target is not a supported native text run key',
     );
   }
   const slideIndex = Number(match[1]) - 1;
-  const elementIndex = Number(match[2]) - 1;
+  const elementIndexes = [
+    ...(match[2] as string).matchAll(ELEMENT_INDEX_PATTERN),
+  ].map((indexMatch) => Number(indexMatch[1]) - 1);
+  const rowIndex = tableMatch === null ? undefined : Number(match[3]) - 1;
+  const columnIndex = tableMatch === null ? undefined : Number(match[4]) - 1;
   if (
     !Number.isSafeInteger(slideIndex) ||
-    !Number.isSafeInteger(elementIndex)
+    elementIndexes.length === 0 ||
+    elementIndexes.some((index) => !Number.isSafeInteger(index)) ||
+    (rowIndex !== undefined && !Number.isSafeInteger(rowIndex)) ||
+    (columnIndex !== undefined && !Number.isSafeInteger(columnIndex))
   ) {
     unsupportedPptxEdit('PowerPoint text edit target index is unsafe');
   }
-  const element = document.slides[slideIndex]?.elements[elementIndex];
+  let elements = document.slides[slideIndex]?.elements;
+  let element: Element | undefined;
+  for (const [depth, elementIndex] of elementIndexes.entries()) {
+    element = elements?.[elementIndex];
+    if (depth === elementIndexes.length - 1) break;
+    if (element?.type !== 'group') {
+      unsupportedPptxEdit(
+        'PowerPoint text edit target path crosses a non-group element',
+      );
+    }
+    elements = element.elements;
+  }
+  if (tableMatch !== null) {
+    if (element?.type !== 'table') {
+      unsupportedPptxEdit(
+        'PowerPoint table text edit target is not a native table element',
+      );
+    }
+    return {
+      columnIndex: columnIndex as number,
+      elementType: 'table',
+      rowIndex: rowIndex as number,
+      shapeId: element.id,
+      slideIndex,
+    };
+  }
   if (element?.type !== 'text') {
     unsupportedPptxEdit(
-      'PowerPoint text edit target is not a slide-owned text element',
+      'PowerPoint text edit target is not a native text element',
     );
   }
   return {
-    elementIndex,
     elementType: 'text',
     shapeId: element.id,
     slideIndex,
@@ -196,7 +232,6 @@ function transformTarget(
     );
   }
   return {
-    elementIndex: elementIndexes[elementIndexes.length - 1] as number,
     elementType: element.type,
     shapeId: element.id,
     slideIndex,
@@ -236,7 +271,15 @@ export async function patchPptxOperations(
       editedXml.get(slidePart) ?? decodeEditablePptxXml(sourceBytes, limits);
     const patched =
       operation.kind === 'replace-text'
-        ? patchPptxShapeTextXml(current, target.shapeId, operation)
+        ? target.elementType === 'table'
+          ? patchPptxTableCellTextXml(
+              current,
+              target.shapeId,
+              target.rowIndex as number,
+              target.columnIndex as number,
+              operation,
+            )
+          : patchPptxShapeTextXml(current, target.shapeId, operation)
         : target.elementType === 'chart'
           ? patchPptxChartFrameTransformXml(
               current,

@@ -61,7 +61,7 @@ describe('PowerPoint patch orchestration', () => {
         resolvePptxResourceLimits(),
       ),
     ).rejects.toThrow(
-      'PowerPoint text edit target is not a slide-owned text element',
+      'PowerPoint text edit target is not a native text element',
     );
     (document.slides[0]?.elements[0] as unknown as { type: string }).type =
       'audio';
@@ -131,7 +131,7 @@ describe('PowerPoint patch orchestration', () => {
           [malformed],
           resolvePptxResourceLimits(),
         ),
-      ).rejects.toThrow(/target is not a supported slide text/);
+      ).rejects.toThrow(/target is not a supported (?:native|slide) text/);
     }
 
     for (const targetKey of [

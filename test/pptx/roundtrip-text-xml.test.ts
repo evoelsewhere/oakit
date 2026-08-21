@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import { patchPptxShapeTextXml } from '../../src/formats/pptx/roundtrip/text-xml';
+import {
+  patchPptxShapeTextXml,
+  patchPptxTableCellTextXml,
+} from '../../src/formats/pptx/roundtrip/text-xml';
 import type { PptxRoundTripReplaceTextOperation } from '../../src/formats/pptx/roundtrip/types';
 
 const PRESENTATION_NAMESPACE =
@@ -30,6 +33,29 @@ function operation(expectedText = 'Before'): PptxRoundTripReplaceTextOperation {
     targetKey: 'slide-1-element-1-run-1',
     value: ' After <& ',
   };
+}
+
+function tableSlideXml(
+  firstRow = ['Alpha', 'Beta'],
+  secondRow = ['Gamma', 'Delta'],
+  frameExtra = '',
+): string {
+  const row = (values: string[]) =>
+    `<a:tr h="508000">${values
+      .map(
+        (value) =>
+          `<a:tc><a:txBody><a:bodyPr/><a:lstStyle/><a:p><a:r><a:t>${value}</a:t></a:r></a:p></a:txBody><a:tcPr/></a:tc>`,
+      )
+      .join('')}</a:tr>`;
+  return (
+    `<p:sld xmlns:p="${PRESENTATION_NAMESPACE}" xmlns:a="${DRAWING_NAMESPACE}" xmlns:mc="${MARKUP_NAMESPACE}">` +
+    '<p:cSld><p:spTree><p:graphicFrame><p:nvGraphicFramePr>' +
+    '<p:cNvPr id="5"/><p:cNvGraphicFramePr/><p:nvPr/>' +
+    '</p:nvGraphicFramePr><a:graphic><a:graphicData>' +
+    `<a:tbl><a:tblPr/><a:tblGrid><a:gridCol w="100"/><a:gridCol w="100"/></a:tblGrid>${row(firstRow)}${row(secondRow)}</a:tbl>` +
+    `</a:graphicData></a:graphic>${frameExtra}</p:graphicFrame>` +
+    '</p:spTree></p:cSld></p:sld>'
+  );
 }
 
 describe('PowerPoint literal text node patching', () => {
@@ -251,4 +277,117 @@ describe('PowerPoint literal text node patching', () => {
       patchPptxShapeTextXml(slideXml('<a:t>Before</a:t>'), '7', operation()),
     ).toThrow('PowerPoint text edit requires one unique text shape for id 7');
   });
+});
+
+describe('PowerPoint native table cell text patching', () => {
+  it('patches one exact cell and preserves every other cell', () => {
+    const input = tableSlideXml();
+    const output = patchPptxTableCellTextXml(
+      input,
+      '5',
+      1,
+      0,
+      operation('Gamma'),
+    );
+
+    expect(output).toContain(
+      '<a:t xml:space="preserve"> After &lt;&amp; </a:t>',
+    );
+    for (const value of ['Alpha', 'Beta', 'Delta']) {
+      expect(output).toContain(`<a:t>${value}</a:t>`);
+    }
+    expect(output).not.toContain('<a:t>Gamma</a:t>');
+  });
+
+  it('supports namespace aliases and cell attributes', () => {
+    const input = tableSlideXml()
+      .replace(
+        `xmlns:a="${DRAWING_NAMESPACE}"`,
+        `xmlns:drawing="${DRAWING_NAMESPACE}"`,
+      )
+      .replaceAll('<a:', '<drawing:')
+      .replaceAll('</a:', '</drawing:')
+      .replace(
+        '<drawing:tc><drawing:txBody>',
+        '<drawing:tc id="first"><drawing:txBody>',
+      );
+
+    expect(
+      patchPptxTableCellTextXml(input, '5', 0, 1, operation('Beta')),
+    ).toContain(
+      '<drawing:t xml:space="preserve"> After &lt;&amp; </drawing:t>',
+    );
+  });
+
+  it.each([
+    [-1, 0, 'target index is unsafe'],
+    [0, -1, 'target index is unsafe'],
+    [2, 0, 'no table row 3'],
+    [0, 2, 'no table cell 3'],
+  ])(
+    'rejects unsafe or missing cell [%s, %s]',
+    (rowIndex, columnIndex, message) => {
+      expect(() =>
+        patchPptxTableCellTextXml(
+          tableSlideXml(),
+          '5',
+          rowIndex,
+          columnIndex,
+          operation('Alpha'),
+        ),
+      ).toThrow(message);
+    },
+  );
+
+  it('rejects non-table frames and ambiguous native tables', () => {
+    const input = tableSlideXml();
+    expect(() =>
+      patchPptxTableCellTextXml(
+        input
+          .replace('<a:tbl>', '<a:notTable>')
+          .replace('</a:tbl>', '</a:notTable>'),
+        '5',
+        0,
+        0,
+        operation('Alpha'),
+      ),
+    ).toThrow('requires exactly one native table');
+    expect(() =>
+      patchPptxTableCellTextXml(
+        input.replace('</a:graphicData>', '<a:tbl></a:tbl></a:graphicData>'),
+        '5',
+        0,
+        0,
+        operation('Alpha'),
+      ),
+    ).toThrow('requires exactly one native table');
+  });
+
+  it.each([
+    ['line break', '<a:t>Alpha</a:t><a:br/>'],
+    ['field', '<a:t>Alpha</a:t><a:fld type="slidenum"/>'],
+    ['second text node', '<a:t>Alpha</a:t><a:t>Again</a:t>'],
+  ])('rejects unsupported %s in the target cell', (_name, content) => {
+    const input = tableSlideXml().replace('<a:t>Alpha</a:t>', content);
+    expect(() =>
+      patchPptxTableCellTextXml(input, '5', 0, 0, operation('Alpha')),
+    ).toThrow(/one plain text run|exactly one text node/);
+  });
+
+  it.each(['<p:extLst/>', '<a:extLst/>', '<mc:AlternateContent/>'])(
+    'rejects compatibility markup %s',
+    (markup) => {
+      expect(() =>
+        patchPptxTableCellTextXml(
+          tableSlideXml(undefined, undefined, markup),
+          '5',
+          0,
+          0,
+          operation('Alpha'),
+        ),
+      ).toThrow(
+        'PowerPoint text edit target contains unsupported compatibility markup',
+      );
+    },
+  );
 });
