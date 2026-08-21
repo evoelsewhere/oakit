@@ -16,6 +16,8 @@ import { XlsxWriteError } from './errors';
 import {
   transformXlsxStructuralPageBreak,
   transformXlsxStructuralRange,
+  transformXlsxStructuralViewSelection,
+  transformXlsxStructuralVisualCell,
 } from './structural-reference';
 import {
   type XlsxCellEditOperation,
@@ -306,7 +308,6 @@ function assertStructuralClosure(
     ['sparkline-reference', sheet.sparklineGroups !== undefined],
     ['table-reference', sheet.tables.length !== 0],
     ['timeline-reference', sheet.timelines !== undefined],
-    ['view-reference', sheet.views.length !== 0],
   ];
   for (const [featureClass, blocked] of featureBlockers) {
     blockStructuralFeature(operation, featureClass, blocked);
@@ -318,6 +319,11 @@ function assertStructuralClosure(
       (validation) =>
         validation.formula1 !== undefined || validation.formula2 !== undefined,
     ),
+  );
+  blockStructuralFeature(
+    operation,
+    'view-pane-reference',
+    sheet.views.some((view) => view.pane !== undefined),
   );
   blockStructuralFeature(
     operation,
@@ -457,6 +463,21 @@ function transformStructuralLayoutReferences(
         sheet.print[field] = transformed;
       }
     }
+  }
+  for (const view of sheet.views) {
+    if (view.topLeftCell !== undefined) {
+      view.topLeftCell = transformXlsxStructuralVisualCell(
+        view.topLeftCell,
+        operation,
+      );
+    }
+    view.selections = view.selections.flatMap((selection) => {
+      const transformed = transformXlsxStructuralViewSelection(
+        selection,
+        operation,
+      );
+      return transformed === null ? [] : [transformed];
+    });
   }
 }
 
@@ -724,7 +745,20 @@ export async function replayXlsxCellOperations(
         ) +
         ((sheet.print?.rowBreaks?.length ?? 0) +
           (sheet.print?.columnBreaks?.length ?? 0)) *
-          2;
+          2 +
+        sheet.views.reduce(
+          (total, view) =>
+            total +
+            (view.topLeftCell === undefined ? 0 : 1) +
+            view.selections.reduce(
+              (selectionTotal, selection) =>
+                selectionTotal +
+                selection.ranges.length +
+                (selection.activeCell === undefined ? 0 : 1),
+              0,
+            ),
+          0,
+        );
       transformStructuralLayoutReferences(sheet, operation);
       referenceUpdates += operation.kind.endsWith('-rows')
         ? transformRows(sheet, operation, readerLimits)

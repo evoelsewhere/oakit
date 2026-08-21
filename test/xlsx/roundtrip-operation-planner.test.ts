@@ -1676,6 +1676,37 @@ describe('XLSX cell operation planner', () => {
               },
             ],
           },
+          views: [
+            {
+              kind: 'normal',
+              rightToLeft: false,
+              selections: [
+                {
+                  activeCell: 'I2',
+                  activeCellId: 1,
+                  pane: 'top-left',
+                  ranges: [
+                    {
+                      end: { column: 8, row: 3 },
+                      reference: 'H1:H3',
+                      start: { column: 8, row: 1 },
+                    },
+                    {
+                      end: { column: 9, row: 3 },
+                      reference: 'I2:I3',
+                      start: { column: 9, row: 2 },
+                    },
+                  ],
+                },
+              ],
+              showGridLines: true,
+              showRowColumnHeaders: true,
+              tabSelected: false,
+              topLeftCell: 'A2',
+              workbookViewId: 0,
+              zoomScale: 100,
+            },
+          ],
         },
       ],
     };
@@ -1749,6 +1780,12 @@ describe('XLSX cell operation planner', () => {
       end: 4,
       position: 3,
       start: 0,
+    });
+    expect(transformedLayout.views[0]?.topLeftCell).toBe('A4');
+    expect(transformedLayout.views[0]?.selections[0]).toMatchObject({
+      activeCell: 'I4',
+      activeCellId: 1,
+      ranges: [{ reference: 'H1:H5' }, { reference: 'I4:I5' }],
     });
     const deletedSortDocument = structuredClone(referencedDocument);
     const deletedSortSheet = worksheet(deletedSortDocument);
@@ -1935,7 +1972,7 @@ describe('XLSX cell operation planner', () => {
       replayXlsxCellOperations(
         referencedDocument,
         [layoutOperation],
-        { ...writeLimits, maxReferenceUpdates: 18 },
+        { ...writeLimits, maxReferenceUpdates: 22 },
         readerLimits,
       ),
     ).resolves.toBeDefined();
@@ -1945,14 +1982,69 @@ describe('XLSX cell operation planner', () => {
           replayXlsxCellOperations(
             referencedDocument,
             [layoutOperation],
-            { ...writeLimits, maxReferenceUpdates: 17 },
+            { ...writeLimits, maxReferenceUpdates: 21 },
             readerLimits,
           ),
         )
       ).diagnostic,
     ).toMatchObject({
-      actual: 18,
-      limit: 17,
+      actual: 22,
+      limit: 21,
+      limitName: 'maxReferenceUpdates',
+    });
+    const viewOnlyDocument = structuredClone(snapshot.document);
+    worksheet(viewOnlyDocument).views = [
+      {
+        kind: 'normal',
+        rightToLeft: false,
+        selections: [
+          {
+            pane: 'top-left',
+            ranges: [
+              {
+                end: { column: 1, row: 1 },
+                reference: 'A1',
+                start: { column: 1, row: 1 },
+              },
+            ],
+          },
+        ],
+        showGridLines: true,
+        showRowColumnHeaders: true,
+        tabSelected: false,
+        workbookViewId: 0,
+        zoomScale: 100,
+      },
+    ];
+    const viewOnlyOperation: XlsxEditOperation = {
+      count: 1,
+      index: 4,
+      kind: 'insert-rows',
+      operationId: 'view-reference-limit',
+      sheetKey: source.key,
+    };
+    await expect(
+      replayXlsxCellOperations(
+        viewOnlyDocument,
+        [viewOnlyOperation],
+        { ...writeLimits, maxReferenceUpdates: 1 },
+        readerLimits,
+      ),
+    ).resolves.toBeDefined();
+    expect(
+      (
+        await captureAsync(() =>
+          replayXlsxCellOperations(
+            viewOnlyDocument,
+            [viewOnlyOperation],
+            { ...writeLimits, maxReferenceUpdates: 0 },
+            readerLimits,
+          ),
+        )
+      ).diagnostic,
+    ).toMatchObject({
+      actual: 1,
+      limit: 0,
       limitName: 'maxReferenceUpdates',
     });
     expect(
@@ -2432,8 +2524,8 @@ describe('XLSX cell operation planner', () => {
         (document) => void setSheetField(document, 'timelines', []),
       ],
       [
-        'view-reference',
-        (document) => void setSheetField(document, 'views', [{}]),
+        'view-pane-reference',
+        (document) => void setSheetField(document, 'views', [{ pane: {} }]),
       ],
       [
         'cell-metadata-reference',

@@ -399,6 +399,196 @@ describe('XLSX worksheet structural patching', () => {
     expect(empty.patchCount).toBe(0);
   });
 
+  it('transforms simple worksheet views and selection identities', () => {
+    const xml = `<worksheet xmlns="${XLSX_SPREADSHEET_NS}"><sheetViews><sheetView workbookViewId="0" topLeftCell="A2"><selection pane="topRight" activeCell="B2" activeCellId="1" sqref="A1:A2 B2"/></sheetView></sheetViews><sheetData/></worksheet>`;
+    const inserted = patchXlsxWorksheetStructure(
+      bytes(xml),
+      [
+        {
+          count: 1,
+          index: 1,
+          kind: 'insert-rows',
+          operationId: 'view-insert',
+        },
+      ],
+      defaultXlsxWriteLimits(),
+      PART,
+    );
+    expect(new TextDecoder().decode(inserted.data)).toBe(
+      `<worksheet xmlns="${XLSX_SPREADSHEET_NS}"><sheetViews><sheetView workbookViewId="0" topLeftCell="A3"><selection pane="topRight" activeCell="B3" activeCellId="1" sqref="A2:A3 B3"/></sheetView></sheetViews><sheetData/></worksheet>`,
+    );
+    const deleted = patchXlsxWorksheetStructure(
+      bytes(
+        `<worksheet xmlns="${XLSX_SPREADSHEET_NS}"><sheetViews><sheetView workbookViewId="0" topLeftCell="A2"><selection activeCell="B3" activeCellId="1" sqref="A2 B3:B4"/></sheetView></sheetViews><sheetData/></worksheet>`,
+      ),
+      [
+        {
+          count: 1,
+          index: 2,
+          kind: 'delete-rows',
+          operationId: 'view-delete',
+        },
+      ],
+      defaultXlsxWriteLimits(),
+      PART,
+    );
+    expect(new TextDecoder().decode(deleted.data)).toBe(
+      `<worksheet xmlns="${XLSX_SPREADSHEET_NS}"><sheetViews><sheetView workbookViewId="0" topLeftCell="A2"><selection activeCell="B2" activeCellId="0" sqref="B2:B3"/></sheetView></sheetViews><sheetData/></worksheet>`,
+    );
+    const removed = patchXlsxWorksheetStructure(
+      bytes(
+        `<worksheet xmlns="${XLSX_SPREADSHEET_NS}"><sheetViews><sheetView workbookViewId="0"><selection sqref="A2"/></sheetView></sheetViews><sheetData/></worksheet>`,
+      ),
+      [
+        {
+          count: 1,
+          index: 2,
+          kind: 'delete-rows',
+          operationId: 'view-remove-selection',
+        },
+      ],
+      defaultXlsxWriteLimits(),
+      PART,
+    );
+    expect(new TextDecoder().decode(removed.data)).toBe(
+      `<worksheet xmlns="${XLSX_SPREADSHEET_NS}"><sheetViews><sheetView workbookViewId="0"></sheetView></sheetViews><sheetData/></worksheet>`,
+    );
+    const mixed = patchXlsxWorksheetStructure(
+      bytes(
+        `<worksheet xmlns="${XLSX_SPREADSHEET_NS}"><sheetViews><sheetView><selection sqref="A1 C2"/></sheetView></sheetViews><sheetData/></worksheet>`,
+      ),
+      [
+        {
+          count: 1,
+          index: 2,
+          kind: 'insert-rows',
+          operationId: 'view-mixed-ranges',
+        },
+      ],
+      defaultXlsxWriteLimits(),
+      PART,
+    );
+    expect(new TextDecoder().decode(mixed.data)).toContain(
+      '<selection sqref="A1 C3"/>',
+    );
+    const removedRange = patchXlsxWorksheetStructure(
+      bytes(
+        `<worksheet xmlns="${XLSX_SPREADSHEET_NS}"><sheetViews><sheetView><selection sqref="A1 C2:C3"/></sheetView></sheetViews><sheetData/></worksheet>`,
+      ),
+      [
+        {
+          count: 2,
+          index: 2,
+          kind: 'delete-rows',
+          operationId: 'view-removed-range',
+        },
+      ],
+      defaultXlsxWriteLimits(),
+      PART,
+    );
+    expect(new TextDecoder().decode(removedRange.data)).toContain(
+      '<selection sqref="A1"/>',
+    );
+  });
+
+  it('selects only owned view nodes and rejects panes and malformed references', () => {
+    const xml = `<s:worksheet xmlns:s="${XLSX_SPREADSHEET_NS}" xmlns:x="urn:foreign"><wrapper><s:sheetViews><s:sheetView topLeftCell="Z9"><s:selection sqref="Z9"/></s:sheetView></s:sheetViews><s:sheetView topLeftCell="Z6"><s:pane/><s:selection sqref="Z6"/></s:sheetView></wrapper><x:sheetViews><x:sheetView topLeftCell="Z9"/></x:sheetViews><s:sheetViews><wrapper><s:sheetView topLeftCell="Z8"/></wrapper><x:sheetView topLeftCell="Z9"/><s:sheetView workbookViewId="0" topLeftCell="A1"><wrapper><s:pane/></wrapper><x:pane/><other/><wrapper><s:selection sqref="Z7"/></wrapper><x:selection sqref="Z9"/><s:selection pane="bottomLeft" activeCell="A1" activeCellId="0" sqref=" A1  B2 "/></s:sheetView></s:sheetViews><wrapper><s:sheetView topLeftCell="Z5"><s:pane/><s:selection sqref="Z5"/></s:sheetView></wrapper><s:sheetData/></s:worksheet>`;
+    const unchanged = patchXlsxWorksheetStructure(
+      bytes(xml),
+      [
+        {
+          count: 1,
+          index: 5,
+          kind: 'insert-rows',
+          operationId: 'view-no-op',
+        },
+      ],
+      defaultXlsxWriteLimits(),
+      PART,
+    );
+    expect(new TextDecoder().decode(unchanged.data)).toBe(xml);
+    expect(unchanged.patchCount).toBe(0);
+    const pane = capture(() =>
+      patchXlsxWorksheetStructure(
+        bytes(
+          `<worksheet xmlns="${XLSX_SPREADSHEET_NS}"><sheetViews><sheetView workbookViewId="0"><pane xSplit="1"/></sheetView></sheetViews><sheetData/></worksheet>`,
+        ),
+        [
+          {
+            count: 1,
+            index: 1,
+            kind: 'insert-rows',
+            operationId: 'view-pane',
+          },
+        ],
+        defaultXlsxWriteLimits(),
+        PART,
+      ),
+    );
+    expect(pane.diagnostic).toMatchObject({
+      featureClass: 'view-pane-reference',
+      message: 'XLSX structural worksheet pane cannot be preserved',
+    });
+    for (const [view, message] of [
+      [
+        '<sheetView topLeftCell="bad"/>',
+        'XLSX structural view cell is invalid',
+      ],
+      [
+        '<sheetView><selection/></sheetView>',
+        'XLSX structural view selection is invalid',
+      ],
+      [
+        '<sheetView><selection sqref="bad"/></sheetView>',
+        'XLSX structural view selection is invalid',
+      ],
+      [
+        '<sheetView><selection activeCell="bad" sqref="A1"/></sheetView>',
+        'XLSX structural view active cell is invalid',
+      ],
+      [
+        '<sheetView><selection activeCellId="1" sqref="A1"/></sheetView>',
+        'XLSX structural view active cell ID is invalid',
+      ],
+      [
+        '<sheetView><selection activeCellId="x1" sqref="A1"/></sheetView>',
+        'XLSX structural view active cell ID is invalid',
+      ],
+      [
+        '<sheetView><selection activeCellId="1x" sqref="A1 A2"/></sheetView>',
+        'XLSX structural view active cell ID is invalid',
+      ],
+      [
+        '<sheetView><selection activeCellId="1.0" sqref="A1 A2"/></sheetView>',
+        'XLSX structural view active cell ID is invalid',
+      ],
+      [
+        '<sheetView><selection pane="bad" sqref="A1"/></sheetView>',
+        'XLSX structural view pane is invalid',
+      ],
+    ] as const) {
+      expect(
+        capture(() =>
+          patchXlsxWorksheetStructure(
+            bytes(
+              `<worksheet xmlns="${XLSX_SPREADSHEET_NS}"><sheetViews>${view}</sheetViews><sheetData/></worksheet>`,
+            ),
+            [
+              {
+                count: 1,
+                index: 1,
+                kind: 'insert-rows',
+                operationId: 'bad-view',
+              },
+            ],
+            defaultXlsxWriteLimits(),
+            PART,
+          ),
+        ).diagnostic.message,
+      ).toBe(message);
+    }
+  });
+
   it('transforms row and column page breaks with exact counts', () => {
     const xml = `<worksheet xmlns="${XLSX_SPREADSHEET_NS}"><sheetData/><rowBreaks count="2" manualBreakCount="1"><brk id="2" min="0" max="2" man="1"/><brk id="3" min="0" max="2"/></rowBreaks><colBreaks count="2" manualBreakCount="1"><brk id="2" min="0" max="2" man="true"/><brk id="3" min="1" max="1"/></colBreaks></worksheet>`;
     const result = patchXlsxWorksheetStructure(

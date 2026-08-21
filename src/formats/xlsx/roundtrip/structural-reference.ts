@@ -1,6 +1,13 @@
-import { xlsxColumnName } from '../internal/cell-reference';
+import {
+  parseXlsxCellReference,
+  xlsxColumnName,
+} from '../internal/cell-reference';
 import { XLSX_MAX_COLUMNS, XLSX_MAX_ROWS } from '../internal/resource-limits';
-import type { XlsxPageBreak, XlsxRange } from '../types';
+import type {
+  XlsxPageBreak,
+  XlsxRange,
+  XlsxWorksheetViewSelection,
+} from '../types';
 
 export interface XlsxStructuralReferenceOperation {
   count: number;
@@ -129,4 +136,64 @@ export function transformXlsxStructuralPageBreak(
     end = Math.min(transformed[1], extentLimit - 1);
   }
   return { ...pageBreak, end, position, start };
+}
+
+function rangeStartAddress(range: XlsxRange): string {
+  return `${xlsxColumnName(range.start.column)!}${range.start.row}`;
+}
+
+export function transformXlsxStructuralVisualCell(
+  address: string,
+  operation: XlsxStructuralReferenceOperation,
+): string {
+  const parsed = parseXlsxCellReference(address)!;
+  const transformed = transformXlsxStructuralCell(
+    parsed.row,
+    parsed.column,
+    operation,
+  );
+  if (transformed !== null) return transformed.address;
+  const row = operation.kind.endsWith('-rows') ? operation.index : parsed.row;
+  const column = operation.kind.endsWith('-columns')
+    ? operation.index
+    : parsed.column;
+  return `${xlsxColumnName(column)!}${row}`;
+}
+
+export function transformXlsxStructuralViewSelection(
+  selection: XlsxWorksheetViewSelection,
+  operation: XlsxStructuralReferenceOperation,
+): XlsxWorksheetViewSelection | null {
+  const transformedRanges = selection.ranges.flatMap((range, sourceIndex) => {
+    const transformed = transformXlsxStructuralRange(range, operation);
+    return transformed === null ? [] : [{ range: transformed, sourceIndex }];
+  });
+  if (transformedRanges.length === 0) return null;
+  const sourceActiveIndex = selection.activeCellId ?? 0;
+  const activeIndex = Math.max(
+    0,
+    transformedRanges.findIndex(
+      (entry) => entry.sourceIndex === sourceActiveIndex,
+    ),
+  );
+  let activeCell: string | undefined;
+  if (selection.activeCell !== undefined) {
+    const parsedActiveCell = parseXlsxCellReference(selection.activeCell)!;
+    activeCell = transformXlsxStructuralCell(
+      parsedActiveCell.row,
+      parsedActiveCell.column,
+      operation,
+    )?.address;
+  }
+  if (selection.activeCell !== undefined && activeCell === undefined) {
+    activeCell = rangeStartAddress(transformedRanges[activeIndex]!.range);
+  }
+  return {
+    ...(activeCell === undefined ? {} : { activeCell }),
+    ...(selection.activeCellId === undefined
+      ? {}
+      : { activeCellId: activeIndex }),
+    pane: selection.pane,
+    ranges: transformedRanges.map((entry) => entry.range),
+  };
 }

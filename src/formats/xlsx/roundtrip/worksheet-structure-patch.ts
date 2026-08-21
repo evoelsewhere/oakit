@@ -4,11 +4,14 @@ import {
   xlsxColumnName,
 } from '../internal/cell-reference';
 import { XLSX_MAX_COLUMNS, XLSX_MAX_ROWS } from '../internal/resource-limits';
+import type { XlsxPanePosition } from '../types';
 import { XlsxWriteError } from './errors';
 import { xlsxMatchingCloseToken } from './hyperlink-patch';
 import {
   transformXlsxStructuralPageBreak,
   transformXlsxStructuralRange,
+  transformXlsxStructuralViewSelection,
+  transformXlsxStructuralVisualCell,
 } from './structural-reference';
 import type { ResolvedXlsxWriteLimits } from './types';
 import {
@@ -236,6 +239,170 @@ function pageBreakPatches(
   return patches;
 }
 
+function worksheetViewPatches(
+  tokens: readonly XlsxXmlTagToken[],
+  root: XlsxXmlTagToken,
+  prefix: string,
+  request: XlsxWorksheetStructurePatch,
+  part: string,
+): TextPatch[] {
+  const container = tokens.find(
+    (token) =>
+      !token.closing &&
+      token.depth === root.depth + 1 &&
+      token.name === `${prefix}sheetViews`,
+  );
+  if (!container) return [];
+  const containerIndex = tokens.indexOf(container);
+  const close = xlsxMatchingCloseToken(tokens, containerIndex);
+  const views = tokens
+    .slice(containerIndex, tokens.indexOf(close))
+    .filter(
+      (token) =>
+        !token.closing &&
+        token.depth === container.depth + 1 &&
+        token.name === `${prefix}sheetView`,
+    );
+  const patches: TextPatch[] = [];
+  for (const view of views) {
+    const viewIndex = tokens.indexOf(view);
+    const viewClose = xlsxMatchingCloseToken(tokens, viewIndex);
+    const children = tokens.slice(viewIndex, tokens.indexOf(viewClose));
+    if (
+      children.some(
+        (token) =>
+          !token.closing &&
+          token.depth === view.depth + 1 &&
+          token.name === `${prefix}pane`,
+      )
+    ) {
+      failure(
+        'XLSX structural worksheet pane cannot be preserved',
+        part,
+        request,
+        'view-pane-reference',
+      );
+    }
+    const topLeft = attribute(view, 'topLeftCell');
+    if (topLeft) {
+      if (!parseXlsxCellReference(topLeft.value)) {
+        failure('XLSX structural view cell is invalid', part, request);
+      }
+      const transformed = transformXlsxStructuralVisualCell(
+        topLeft.value,
+        request,
+      );
+      if (transformed !== topLeft.value) {
+        patches.push(attributePatch(topLeft, transformed));
+      }
+    }
+    const selections = children.filter(
+      (token) =>
+        !token.closing &&
+        token.depth === view.depth + 1 &&
+        token.name === `${prefix}selection`,
+    );
+    for (const selection of selections) {
+      const reference = attribute(selection, 'sqref');
+      if (!reference) {
+        failure('XLSX structural view selection is invalid', part, request);
+      }
+      const ranges = reference.value
+        .trim()
+        .split(/\s+/u)
+        .map((value) => {
+          const range = parseXlsxRangeReference(value);
+          if (!range) {
+            failure('XLSX structural view selection is invalid', part, request);
+          }
+          return range;
+        });
+      const activeCellSource = attribute(selection, 'activeCell');
+      if (
+        activeCellSource !== undefined &&
+        !parseXlsxCellReference(activeCellSource.value)
+      ) {
+        failure('XLSX structural view active cell is invalid', part, request);
+      }
+      const activeCellIdSource = attribute(selection, 'activeCellId');
+      const activeCellId =
+        activeCellIdSource === undefined
+          ? undefined
+          : /^(?:0|[1-9]\d*)$/u.test(activeCellIdSource.value)
+            ? Number(activeCellIdSource.value)
+            : undefined;
+      if (
+        activeCellIdSource !== undefined &&
+        (activeCellId === undefined || activeCellId >= ranges.length)
+      ) {
+        failure(
+          'XLSX structural view active cell ID is invalid',
+          part,
+          request,
+        );
+      }
+      const paneSource = attribute(selection, 'pane')?.value ?? 'topLeft';
+      const pane = (
+        {
+          bottomLeft: 'bottom-left',
+          bottomRight: 'bottom-right',
+          topLeft: 'top-left',
+          topRight: 'top-right',
+        } satisfies Record<string, XlsxPanePosition>
+      )[paneSource];
+      if (!pane) {
+        failure('XLSX structural view pane is invalid', part, request);
+      }
+      const transformed = transformXlsxStructuralViewSelection(
+        {
+          ...(activeCellSource === undefined
+            ? {}
+            : { activeCell: activeCellSource.value }),
+          ...(activeCellId === undefined ? {} : { activeCellId }),
+          pane,
+          ranges,
+        },
+        request,
+      );
+      if (transformed === null) {
+        const selectionClose = xlsxMatchingCloseToken(
+          tokens,
+          tokens.indexOf(selection),
+        );
+        patches.push({
+          end: selectionClose.end,
+          replacement: '',
+          start: selection.start,
+        });
+        continue;
+      }
+      const transformedReference = transformed.ranges
+        .map((range) => range.reference)
+        .join(' ');
+      if (
+        transformed.ranges.length !== ranges.length ||
+        transformed.ranges.some(
+          (range, index) => range.reference !== ranges[index]!.reference,
+        )
+      ) {
+        patches.push(attributePatch(reference, transformedReference));
+      }
+      if (
+        activeCellSource &&
+        transformed.activeCell !== activeCellSource.value
+      ) {
+        patches.push(attributePatch(activeCellSource, transformed.activeCell!));
+      }
+      if (activeCellIdSource && transformed.activeCellId !== activeCellId) {
+        patches.push(
+          attributePatch(activeCellIdSource, String(transformed.activeCellId)),
+        );
+      }
+    }
+  }
+  return patches;
+}
+
 function layoutPatches(
   tokens: readonly XlsxXmlTagToken[],
   root: XlsxXmlTagToken,
@@ -244,6 +411,7 @@ function layoutPatches(
   part: string,
 ): TextPatch[] {
   const patches: TextPatch[] = [
+    ...worksheetViewPatches(tokens, root, prefix, request, part),
     ...pageBreakPatches(tokens, root, prefix, request, part, 'row'),
     ...pageBreakPatches(tokens, root, prefix, request, part, 'column'),
   ];

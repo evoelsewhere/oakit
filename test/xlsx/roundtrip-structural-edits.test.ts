@@ -123,7 +123,7 @@ describe('XLSX verified structural row and column edits', () => {
 
   it('keeps declared dimensions and merged ranges aligned', async () => {
     const source = await createIndependentXlsx({
-      'xl/worksheets/sheet1.xml': `<worksheet xmlns="${XLSX_SPREADSHEET_NS}"><dimension ref="A1:B2"/><sheetData><row r="1"><c r="A1"><v>1</v></c><c r="B1"><v>2</v></c></row><row r="2"><c r="A2"><v>3</v></c></row></sheetData><protectedRanges><protectedRange name="Input" sqref="A1:B2"/></protectedRanges><autoFilter ref="A1:B2"><sortState ref="A1:B2"><sortCondition ref="A1:A2"/></sortState></autoFilter><mergeCells count="1"><mergeCell ref="A1:B1"/></mergeCells><conditionalFormatting sqref="A1:B2"><cfRule type="top10" priority="1" rank="1"/></conditionalFormatting><dataValidations count="1" disablePrompts="1"><dataValidation sqref="A1:B2"/></dataValidations><hyperlinks><hyperlink ref="A1:B1" location="Sheet1!A1"/></hyperlinks><rowBreaks count="1" manualBreakCount="1"><brk id="2" min="0" max="1" man="1"/></rowBreaks><colBreaks count="1" manualBreakCount="0"><brk id="2" min="0" max="1" pt="1"/></colBreaks></worksheet>`,
+      'xl/worksheets/sheet1.xml': `<worksheet xmlns="${XLSX_SPREADSHEET_NS}"><dimension ref="A1:B2"/><sheetViews><sheetView workbookViewId="0" topLeftCell="A2"><selection activeCell="B2" activeCellId="1" sqref="A1:A2 B2"/></sheetView></sheetViews><sheetData><row r="1"><c r="A1"><v>1</v></c><c r="B1"><v>2</v></c></row><row r="2"><c r="A2"><v>3</v></c></row></sheetData><protectedRanges><protectedRange name="Input" sqref="A1:B2"/></protectedRanges><autoFilter ref="A1:B2"><sortState ref="A1:B2"><sortCondition ref="A1:A2"/></sortState></autoFilter><mergeCells count="1"><mergeCell ref="A1:B1"/></mergeCells><conditionalFormatting sqref="A1:B2"><cfRule type="top10" priority="1" rank="1"/></conditionalFormatting><dataValidations count="1" disablePrompts="1"><dataValidation sqref="A1:B2"/></dataValidations><hyperlinks><hyperlink ref="A1:B1" location="Sheet1!A1"/></hyperlinks><rowBreaks count="1" manualBreakCount="1"><brk id="2" min="0" max="1" man="1"/></rowBreaks><colBreaks count="1" manualBreakCount="0"><brk id="2" min="0" max="1" pt="1"/></colBreaks></worksheet>`,
     });
     const snapshot = await readXlsxRoundTrip(source);
     const edited = await applyXlsxEdits(snapshot, [
@@ -165,6 +165,12 @@ describe('XLSX verified structural row and column edits', () => {
       end: 2,
       position: 2,
       start: 1,
+    });
+    expect(sheet.views[0]?.topLeftCell).toBe('A3');
+    expect(sheet.views[0]?.selections[0]).toMatchObject({
+      activeCell: 'B3',
+      activeCellId: 1,
+      ranges: [{ reference: 'A2:A3' }, { reference: 'B3' }],
     });
     expect(result.report.level).toBe('R2');
   });

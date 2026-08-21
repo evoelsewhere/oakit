@@ -4,6 +4,8 @@ import {
   transformXlsxStructuralCell,
   transformXlsxStructuralPageBreak,
   transformXlsxStructuralRange,
+  transformXlsxStructuralViewSelection,
+  transformXlsxStructuralVisualCell,
   type XlsxStructuralReferenceOperation,
 } from '../../src/formats/xlsx/roundtrip/structural-reference';
 import type { XlsxRange } from '../../src/formats/xlsx/types';
@@ -228,5 +230,103 @@ describe('XLSX structural reference transforms', () => {
         { count: 1, index: 16_384, kind: 'insert-columns' },
       ),
     ).toBeNull();
+  });
+
+  it('transforms visual anchors and remaps worksheet selections', () => {
+    expect(
+      transformXlsxStructuralVisualCell('B2', {
+        count: 1,
+        index: 2,
+        kind: 'insert-rows',
+      }),
+    ).toBe('B3');
+    expect(
+      transformXlsxStructuralVisualCell('B2', {
+        count: 1,
+        index: 2,
+        kind: 'delete-rows',
+      }),
+    ).toBe('B2');
+    expect(
+      transformXlsxStructuralVisualCell('B3', {
+        count: 2,
+        index: 2,
+        kind: 'delete-rows',
+      }),
+    ).toBe('B2');
+    expect(
+      transformXlsxStructuralVisualCell('C5', {
+        count: 2,
+        index: 2,
+        kind: 'delete-columns',
+      }),
+    ).toBe('B5');
+    const selection = {
+      activeCell: 'B3',
+      activeCellId: 1,
+      pane: 'top-left' as const,
+      ranges: [
+        range('A1', 1, 1),
+        {
+          end: { column: 2, row: 4 },
+          reference: 'B2:B4',
+          start: { column: 2, row: 2 },
+        },
+      ],
+    };
+    expect(
+      transformXlsxStructuralViewSelection(selection, {
+        count: 1,
+        index: 1,
+        kind: 'delete-rows',
+      }),
+    ).toEqual({
+      activeCell: 'B2',
+      activeCellId: 0,
+      pane: 'top-left',
+      ranges: [
+        {
+          end: { column: 2, row: 3 },
+          reference: 'B1:B3',
+          start: { column: 2, row: 1 },
+        },
+      ],
+    });
+    expect(
+      transformXlsxStructuralViewSelection(
+        { ...selection, activeCell: 'B2', ranges: [selection.ranges[1]!] },
+        { count: 1, index: 2, kind: 'delete-rows' },
+      ),
+    ).toMatchObject({ activeCell: 'B2', activeCellId: 0 });
+    expect(
+      transformXlsxStructuralViewSelection(
+        { ...selection, ranges: [selection.ranges[0]!] },
+        { count: 1, index: 1, kind: 'delete-rows' },
+      ),
+    ).toBeNull();
+    expect(
+      transformXlsxStructuralViewSelection(
+        {
+          pane: 'top-left',
+          ranges: [
+            {
+              end: { column: 1, row: 2 },
+              reference: 'A1:A2',
+              start: { column: 1, row: 1 },
+            },
+          ],
+        },
+        { count: 1, index: 3, kind: 'insert-rows' },
+      ),
+    ).toEqual({
+      pane: 'top-left',
+      ranges: [
+        {
+          end: { column: 1, row: 2 },
+          reference: 'A1:A2',
+          start: { column: 1, row: 1 },
+        },
+      ],
+    });
   });
 });
