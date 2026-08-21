@@ -297,7 +297,6 @@ function assertStructuralClosure(
     ['comment-reference', sheet.comments.length !== 0],
     ['drawing-reference', sheet.drawings.length !== 0],
     ['print-reference', sheet.print !== undefined],
-    ['protected-range-reference', sheet.protectedRanges.length !== 0],
     ['protection-reference', sheet.protection !== undefined],
     ['pivot-reference', sheet.pivotTables !== undefined],
     ['query-table-reference', sheet.queryTables !== undefined],
@@ -428,6 +427,13 @@ function transformStructuralLayoutReferences(
       return ranges.length === 0 ? [] : [{ ...format, ranges }];
     },
   );
+  sheet.protectedRanges = sheet.protectedRanges.flatMap((protectedRange) => {
+    const ranges = protectedRange.ranges.flatMap((range) => {
+      const transformed = transformXlsxStructuralRange(range, operation);
+      return transformed === null ? [] : [transformed];
+    });
+    return ranges.length === 0 ? [] : [{ ...protectedRange, ranges }];
+  });
 }
 
 function structuralRange(operation: XlsxStructuralOperation): string {
@@ -686,6 +692,10 @@ export async function replayXlsxCellOperations(
         ) +
         sheet.conditionalFormattings.reduce(
           (total, format) => total + format.ranges.length,
+          0,
+        ) +
+        sheet.protectedRanges.reduce(
+          (total, protectedRange) => total + protectedRange.ranges.length,
           0,
         );
       transformStructuralLayoutReferences(sheet, operation);

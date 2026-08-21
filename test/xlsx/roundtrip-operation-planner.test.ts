@@ -1638,6 +1638,24 @@ describe('XLSX cell operation planner', () => {
               selectionRelation: 'full-sheet',
             },
           ],
+          protectedRanges: [
+            {
+              name: 'Input',
+              ranges: [
+                {
+                  end: { column: 6, row: 3 },
+                  reference: 'F1:F3',
+                  start: { column: 6, row: 1 },
+                },
+                {
+                  end: { column: 7, row: 3 },
+                  reference: 'G2:G3',
+                  start: { column: 7, row: 2 },
+                },
+              ],
+              selectionRelation: 'full-sheet',
+            },
+          ],
         },
       ],
     };
@@ -1697,6 +1715,11 @@ describe('XLSX cell operation planner', () => {
         (range) => range.reference,
       ),
     ).toEqual(['D1:D5', 'E4:E5']);
+    expect(
+      transformedLayout.protectedRanges[0]?.ranges.map(
+        (range) => range.reference,
+      ),
+    ).toEqual(['F1:F5', 'G4:G5']);
     const deletedSortDocument = structuredClone(referencedDocument);
     const deletedSortSheet = worksheet(deletedSortDocument);
     deletedSortSheet.autoFilter!.sort!.range = {
@@ -1794,6 +1817,29 @@ describe('XLSX cell operation planner', () => {
     expect(worksheet(deletedFormat.document).conditionalFormattings).toEqual(
       [],
     );
+    const deletedProtectedDocument = structuredClone(referencedDocument);
+    worksheet(deletedProtectedDocument).protectedRanges[0]!.ranges = [
+      {
+        end: { column: 6, row: 3 },
+        reference: 'F2:F3',
+        start: { column: 6, row: 2 },
+      },
+    ];
+    const deletedProtected = await replayXlsxCellOperations(
+      deletedProtectedDocument,
+      [
+        {
+          count: 2,
+          index: 2,
+          kind: 'delete-rows',
+          operationId: 'delete-protected-range',
+          sheetKey: source.key,
+        },
+      ],
+      writeLimits,
+      readerLimits,
+    );
+    expect(worksheet(deletedProtected.document).protectedRanges).toEqual([]);
     const emptyValidationDocument = structuredClone(snapshot.document);
     worksheet(emptyValidationDocument).dataValidationSettings = {
       disablePrompts: true,
@@ -1826,7 +1872,7 @@ describe('XLSX cell operation planner', () => {
       replayXlsxCellOperations(
         referencedDocument,
         [layoutOperation],
-        { ...writeLimits, maxReferenceUpdates: 12 },
+        { ...writeLimits, maxReferenceUpdates: 14 },
         readerLimits,
       ),
     ).resolves.toBeDefined();
@@ -1836,14 +1882,14 @@ describe('XLSX cell operation planner', () => {
           replayXlsxCellOperations(
             referencedDocument,
             [layoutOperation],
-            { ...writeLimits, maxReferenceUpdates: 11 },
+            { ...writeLimits, maxReferenceUpdates: 13 },
             readerLimits,
           ),
         )
       ).diagnostic,
     ).toMatchObject({
-      actual: 12,
-      limit: 11,
+      actual: 14,
+      limit: 13,
       limitName: 'maxReferenceUpdates',
     });
     expect(
@@ -2297,10 +2343,6 @@ describe('XLSX cell operation planner', () => {
       [
         'print-reference',
         (document) => void setSheetField(document, 'print', {}),
-      ],
-      [
-        'protected-range-reference',
-        (document) => void setSheetField(document, 'protectedRanges', [{}]),
       ],
       [
         'protection-reference',

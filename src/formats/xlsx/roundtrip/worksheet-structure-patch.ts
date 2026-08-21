@@ -247,6 +247,85 @@ function layoutPatches(
       }
     }
   }
+  const protectedRanges = tokens.find(
+    (token) =>
+      !token.closing &&
+      token.depth === root.depth + 1 &&
+      token.name === `${prefix}protectedRanges`,
+  );
+  if (protectedRanges) {
+    const containerIndex = tokens.indexOf(protectedRanges);
+    const close = xlsxMatchingCloseToken(tokens, containerIndex);
+    const entries = tokens
+      .slice(containerIndex, tokens.indexOf(close))
+      .filter(
+        (token) =>
+          !token.closing &&
+          token.depth === protectedRanges.depth + 1 &&
+          token.name === `${prefix}protectedRange`,
+      );
+    const transformedEntries = entries.map((entry) => {
+      const reference = attribute(entry, 'sqref');
+      if (!reference) {
+        failure('XLSX structural protected range is invalid', part, request);
+      }
+      const ranges = reference.value
+        .trim()
+        .split(/\s+/u)
+        .map((value) => {
+          const range = parseXlsxRangeReference(value);
+          if (!range) {
+            failure(
+              'XLSX structural protected range is invalid',
+              part,
+              request,
+            );
+          }
+          return range;
+        });
+      const transformed = ranges.flatMap((range) => {
+        const result = transformXlsxStructuralRange(range, request);
+        return result === null ? [] : [result];
+      });
+      return { entry, ranges, reference, transformed };
+    });
+    const remaining = transformedEntries.filter(
+      (entry) => entry.transformed.length !== 0,
+    );
+    if (entries.length !== 0 && remaining.length === 0) {
+      patches.push({
+        end: close.end,
+        replacement: '',
+        start: protectedRanges.start,
+      });
+    } else {
+      for (const item of transformedEntries) {
+        if (item.transformed.length === 0) {
+          const itemClose = xlsxMatchingCloseToken(
+            tokens,
+            tokens.indexOf(item.entry),
+          );
+          patches.push({
+            end: itemClose.end,
+            replacement: '',
+            start: item.entry.start,
+          });
+        } else if (
+          item.transformed.length !== item.ranges.length ||
+          item.transformed.some(
+            (range, index) => range.reference !== item.ranges[index]!.reference,
+          )
+        ) {
+          patches.push(
+            attributePatch(
+              item.reference,
+              item.transformed.map((range) => range.reference).join(' '),
+            ),
+          );
+        }
+      }
+    }
+  }
   const conditionalFormats = tokens.filter(
     (token) =>
       !token.closing &&

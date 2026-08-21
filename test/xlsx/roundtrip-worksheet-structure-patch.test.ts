@@ -309,6 +309,165 @@ describe('XLSX worksheet structural patching', () => {
     expect(empty.patchCount).toBe(0);
   });
 
+  it('transforms named protected ranges and removes empty collections', () => {
+    const xml = `<worksheet xmlns="${XLSX_SPREADSHEET_NS}"><sheetData/><protectedRanges><protectedRange name="One" sqref="A1:A5 C2:C3"/><protectedRange name="Two" sqref="B2:B3"/></protectedRanges></worksheet>`;
+    const result = patchXlsxWorksheetStructure(
+      bytes(xml),
+      [
+        {
+          count: 2,
+          index: 2,
+          kind: 'delete-rows',
+          operationId: 'protected-ranges',
+        },
+      ],
+      defaultXlsxWriteLimits(),
+      PART,
+    );
+    expect(new TextDecoder().decode(result.data)).toBe(
+      `<worksheet xmlns="${XLSX_SPREADSHEET_NS}"><sheetData/><protectedRanges><protectedRange name="One" sqref="A1:A3"/></protectedRanges></worksheet>`,
+    );
+    const removed = patchXlsxWorksheetStructure(
+      bytes(
+        `<worksheet xmlns="${XLSX_SPREADSHEET_NS}"><sheetData/><protectedRanges><protectedRange name="Input" sqref="A2:B3"/></protectedRanges></worksheet>`,
+      ),
+      [
+        {
+          count: 2,
+          index: 2,
+          kind: 'delete-rows',
+          operationId: 'remove-protected-ranges',
+        },
+      ],
+      defaultXlsxWriteLimits(),
+      PART,
+    );
+    expect(new TextDecoder().decode(removed.data)).toBe(
+      `<worksheet xmlns="${XLSX_SPREADSHEET_NS}"><sheetData/></worksheet>`,
+    );
+    const mixed = patchXlsxWorksheetStructure(
+      bytes(
+        `<worksheet xmlns="${XLSX_SPREADSHEET_NS}"><sheetData/><protectedRanges><protectedRange name="Input" sqref="A1 C2"/></protectedRanges></worksheet>`,
+      ),
+      [
+        {
+          count: 1,
+          index: 2,
+          kind: 'insert-rows',
+          operationId: 'mixed-protected-range',
+        },
+      ],
+      defaultXlsxWriteLimits(),
+      PART,
+    );
+    expect(new TextDecoder().decode(mixed.data)).toContain(
+      '<protectedRange name="Input" sqref="A1 C3"/>',
+    );
+    const removedRange = patchXlsxWorksheetStructure(
+      bytes(
+        `<worksheet xmlns="${XLSX_SPREADSHEET_NS}"><sheetData/><protectedRanges><protectedRange name="Input" sqref="A1 C2:C3"/></protectedRanges></worksheet>`,
+      ),
+      [
+        {
+          count: 2,
+          index: 2,
+          kind: 'delete-rows',
+          operationId: 'remove-protected-range-segment',
+        },
+      ],
+      defaultXlsxWriteLimits(),
+      PART,
+    );
+    expect(new TextDecoder().decode(removedRange.data)).toContain(
+      '<protectedRange name="Input" sqref="A1"/>',
+    );
+    const emptyXml = `<worksheet xmlns="${XLSX_SPREADSHEET_NS}"><sheetData/><protectedRanges/></worksheet>`;
+    const empty = patchXlsxWorksheetStructure(
+      bytes(emptyXml),
+      [
+        {
+          count: 1,
+          index: 1,
+          kind: 'insert-rows',
+          operationId: 'empty-protected-ranges',
+        },
+      ],
+      defaultXlsxWriteLimits(),
+      PART,
+    );
+    expect(new TextDecoder().decode(empty.data)).toBe(emptyXml);
+    expect(empty.patchCount).toBe(0);
+  });
+
+  it('selects only owned protected ranges and rejects malformed ranges', () => {
+    const xml = `<s:worksheet xmlns:s="${XLSX_SPREADSHEET_NS}" xmlns:x="urn:foreign"><s:sheetData/><wrapper><s:protectedRanges><s:protectedRange name="Nested" sqref="Z9"/></s:protectedRanges><s:protectedRange name="Before" sqref="Z8"/></wrapper><x:protectedRanges><x:protectedRange sqref="Z9"/></x:protectedRanges><s:protectedRanges><wrapper><s:protectedRange name="NestedEntry" sqref="Z7"/></wrapper><x:protectedRange name="Foreign" sqref="Z9"/><s:protectedRange name="Input" sqref=" A1  B2 "/></s:protectedRanges><wrapper><s:protectedRange name="After" sqref="Z6"/></wrapper></s:worksheet>`;
+    const unchanged = patchXlsxWorksheetStructure(
+      bytes(xml),
+      [
+        {
+          count: 1,
+          index: 5,
+          kind: 'insert-rows',
+          operationId: 'protected-no-op',
+        },
+      ],
+      defaultXlsxWriteLimits(),
+      PART,
+    );
+    expect(new TextDecoder().decode(unchanged.data)).toBe(xml);
+    expect(unchanged.patchCount).toBe(0);
+    const changed = patchXlsxWorksheetStructure(
+      bytes(xml),
+      [
+        {
+          count: 1,
+          index: 1,
+          kind: 'insert-rows',
+          operationId: 'protected-owned',
+        },
+      ],
+      defaultXlsxWriteLimits(),
+      PART,
+    );
+    const output = new TextDecoder().decode(changed.data);
+    expect(output).toContain('<s:protectedRange name="Input" sqref="A2 B3"/>');
+    expect(output).toContain(
+      '<wrapper><s:protectedRanges><s:protectedRange name="Nested" sqref="Z9"/></s:protectedRanges>',
+    );
+    expect(output).toContain('<x:protectedRange sqref="Z9"/>');
+    expect(output).toContain(
+      '<wrapper><s:protectedRange name="NestedEntry" sqref="Z7"/></wrapper>',
+    );
+    expect(output).toContain(
+      '<wrapper><s:protectedRange name="After" sqref="Z6"/></wrapper>',
+    );
+    for (const source of [
+      '<protectedRange name="Input"/>',
+      '<protectedRange name="Input" sqref=""/>',
+      '<protectedRange name="Input" sqref="bad"/>',
+    ]) {
+      expect(
+        capture(() =>
+          patchXlsxWorksheetStructure(
+            bytes(
+              `<worksheet xmlns="${XLSX_SPREADSHEET_NS}"><sheetData/><protectedRanges>${source}</protectedRanges></worksheet>`,
+            ),
+            [
+              {
+                count: 1,
+                index: 1,
+                kind: 'insert-rows',
+                operationId: 'bad-protected-range',
+              },
+            ],
+            defaultXlsxWriteLimits(),
+            PART,
+          ),
+        ).diagnostic.message,
+      ).toBe('XLSX structural protected range is invalid');
+    }
+  });
+
   it('transforms formula-free conditional-format ranges', () => {
     const xml = `<worksheet xmlns="${XLSX_SPREADSHEET_NS}"><sheetData/><conditionalFormatting sqref="A1:A5 C2:C3"><cfRule type="top10" priority="1" rank="1"/></conditionalFormatting><conditionalFormatting sqref="D2:D3"><cfRule type="uniqueValues" priority="2"/></conditionalFormatting></worksheet>`;
     const result = patchXlsxWorksheetStructure(
