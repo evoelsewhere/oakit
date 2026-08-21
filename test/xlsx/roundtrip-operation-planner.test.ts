@@ -1694,6 +1694,25 @@ describe('XLSX cell operation planner', () => {
               selectionRelation: 'full-sheet',
             },
           ],
+          comments: [
+            {
+              author: 'Author',
+              kind: 'note',
+              reference: 'J10',
+              selectionRelation: 'full-sheet',
+              text: 'Note',
+              visible: false,
+            },
+            {
+              id: 'thread',
+              kind: 'threaded',
+              personId: 'person',
+              reference: 'K11',
+              selectionRelation: 'full-sheet',
+              text: 'Thread',
+              timestamp: '2024-01-01T00:00:00Z',
+            },
+          ],
           protectedRanges: [
             {
               name: 'Input',
@@ -1852,6 +1871,9 @@ describe('XLSX cell operation planner', () => {
       transformedLayout.tables[0]?.autoFilter?.sort?.conditions[0]?.range
         .reference,
     ).toBe('A4:A5');
+    expect(
+      transformedLayout.comments.map((comment) => comment.reference),
+    ).toEqual(['J12', 'K13']);
     const deletedSortDocument = structuredClone(referencedDocument);
     const deletedSortSheet = worksheet(deletedSortDocument);
     deletedSortSheet.autoFilter!.sort!.range = {
@@ -2037,7 +2059,7 @@ describe('XLSX cell operation planner', () => {
       replayXlsxCellOperations(
         referencedDocument,
         [layoutOperation],
-        { ...writeLimits, maxReferenceUpdates: 26 },
+        { ...writeLimits, maxReferenceUpdates: 28 },
         readerLimits,
       ),
     ).resolves.toBeDefined();
@@ -2047,14 +2069,14 @@ describe('XLSX cell operation planner', () => {
           replayXlsxCellOperations(
             referencedDocument,
             [layoutOperation],
-            { ...writeLimits, maxReferenceUpdates: 25 },
+            { ...writeLimits, maxReferenceUpdates: 27 },
             readerLimits,
           ),
         )
       ).diagnostic,
     ).toMatchObject({
-      actual: 26,
-      limit: 25,
+      actual: 28,
+      limit: 27,
       limitName: 'maxReferenceUpdates',
     });
     const viewOnlyDocument = structuredClone(snapshot.document);
@@ -2573,10 +2595,6 @@ describe('XLSX cell operation planner', () => {
         },
       ],
       [
-        'comment-reference',
-        (document) => void setSheetField(document, 'comments', [{}]),
-      ],
-      [
         'conditional-format-formula-reference',
         (document) =>
           void setSheetField(document, 'conditionalFormattings', [
@@ -2763,6 +2781,40 @@ describe('XLSX cell operation planner', () => {
           'XLSX structural edit requires a reference-free worksheet closure',
       });
     }
+    const commentDocument = structuredClone(snapshot.document);
+    worksheet(commentDocument).comments = [
+      {
+        author: 'Author',
+        kind: 'note',
+        reference: 'A1',
+        selectionRelation: 'full-sheet',
+        text: 'Note',
+        visible: false,
+      },
+    ];
+    expect(
+      (
+        await captureAsync(() =>
+          replayXlsxCellOperations(
+            commentDocument,
+            [
+              {
+                count: 1,
+                index: 1,
+                kind: 'delete-rows',
+                operationId: 'delete-comment-anchor',
+                sheetKey,
+              },
+            ],
+            writeLimits,
+            readerLimits,
+          ),
+        )
+      ).diagnostic,
+    ).toMatchObject({
+      code: 'unsupported-edit-operation',
+      featureClass: 'comment-anchor-deletion',
+    });
     const rowWithColumns = structuredClone(snapshot.document);
     worksheet(rowWithColumns).columns.push({ end: 1, start: 1 });
     await expect(

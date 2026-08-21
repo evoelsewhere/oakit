@@ -237,7 +237,7 @@ describe('XLSX verified hyperlink edits', () => {
     expect(externalResult.report.level).toBe('R2');
     await expect(
       writeXlsxRoundTrip(external, {
-        limits: { maxDependencyEdges: 2 },
+        limits: { maxDependencyEdges: 2, maxDirtyParts: 2 },
       }),
     ).resolves.toMatchObject({ report: { level: 'R2' } });
     expect(
@@ -252,6 +252,19 @@ describe('XLSX verified hyperlink edits', () => {
       actual: 2,
       limit: 1,
       limitName: 'maxDependencyEdges',
+    });
+    expect(
+      (
+        await capture(() =>
+          writeXlsxRoundTrip(external, {
+            limits: { maxDirtyParts: 1 },
+          }),
+        )
+      ).diagnostic,
+    ).toMatchObject({
+      actual: 2,
+      limit: 1,
+      limitName: 'maxDirtyParts',
     });
     expect(
       externalResult.report.parts.find(

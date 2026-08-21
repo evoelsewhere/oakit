@@ -353,6 +353,123 @@ describe('XLSX cell-edit package verification', () => {
     ).toMatchObject({ featureClass: 'unsupported-relationship' });
   });
 
+  it('allows comment dependencies only for a proven structural closure', () => {
+    const contentTypes = [
+      'application/vnd.ms-excel.person+xml',
+      'application/vnd.ms-excel.threadedcomments+xml',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.comments+xml',
+      'application/vnd.openxmlformats-officedocument.vmlDrawing',
+    ];
+    const relationshipKinds = [
+      'comments',
+      'person',
+      'threadedComment',
+      'vmlDrawing',
+    ];
+    for (const [index, contentType] of contentTypes.entries()) {
+      const part = {
+        byteLength: 1,
+        contentType,
+        name: `xl/comment-part-${index}.xml`,
+        relationshipPart: false,
+        sha256: String(index + 1).repeat(64),
+      };
+      const source = graph({
+        containsOpaqueContent: index === 3,
+        parts: [part],
+        relationships: [
+          {
+            id: `comment-${index}`,
+            mode: 'internal',
+            owner: null,
+            target: part.name,
+            type: `http://example.invalid/relationships/${relationshipKinds[index]}`,
+          },
+        ],
+      });
+      expect(
+        capture(() => assertXlsxSafeCellEditSource(source, {})).diagnostic,
+      ).toMatchObject({
+        featureClass: index === 3 ? 'opaque-content' : 'unsupported-part',
+      });
+      expect(() =>
+        assertXlsxSafeCellEditSource(source, {}, false, true),
+      ).not.toThrow();
+    }
+    const worksheetPart = {
+      byteLength: 1,
+      contentType:
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml',
+      name: 'xl/worksheets/sheet1.xml',
+      relationshipPart: false,
+      sha256: 'a'.repeat(64),
+    };
+    const vmlPart = {
+      byteLength: 1,
+      contentType: 'application/vnd.openxmlformats-officedocument.vmlDrawing',
+      name: 'xl/drawings/comments.vml',
+      relationshipPart: false,
+      sha256: 'b'.repeat(64),
+    };
+    const vmlGraph = graph({
+      containsOpaqueContent: true,
+      parts: [worksheetPart, vmlPart],
+      relationships: [],
+    });
+    expect(() =>
+      assertXlsxSafeCellEditSource(vmlGraph, {}, false, true),
+    ).not.toThrow();
+    expect(
+      capture(() =>
+        assertXlsxSafeCellEditSource(
+          {
+            ...vmlGraph,
+            parts: [worksheetPart],
+          },
+          {},
+          false,
+          true,
+        ),
+      ).diagnostic,
+    ).toMatchObject({ featureClass: 'opaque-content' });
+    const customPart = {
+      ...worksheetPart,
+      contentType: 'application/example',
+      name: 'xl/opaque.bin',
+    };
+    expect(
+      capture(() =>
+        assertXlsxSafeCellEditSource(
+          { ...vmlGraph, parts: [vmlPart, customPart] },
+          {},
+          false,
+          true,
+        ),
+      ).diagnostic,
+    ).toMatchObject({ featureClass: 'opaque-content' });
+    expect(
+      capture(() =>
+        assertXlsxSafeCellEditSource(
+          {
+            ...vmlGraph,
+            relationships: [
+              {
+                id: 'custom',
+                mode: 'internal',
+                owner: worksheetPart.name,
+                target: vmlPart.name,
+                type: 'http://example.invalid/relationships/customXml',
+              },
+            ],
+          },
+          {},
+          false,
+          true,
+        ),
+      ).diagnostic,
+    ).toMatchObject({ featureClass: 'unsupported-relationship' });
+  });
+
   it.each([
     '[Book.xlsx]Sheet1!A1',
     'call(A1)',

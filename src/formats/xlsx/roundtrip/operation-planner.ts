@@ -17,6 +17,7 @@ import { XlsxWriteError } from './errors';
 import {
   transformXlsxStructuralPageBreak,
   transformXlsxStructuralRange,
+  transformXlsxStructuralCell,
   transformXlsxStructuralViewSelection,
   transformXlsxStructuralVisualCell,
 } from './structural-reference';
@@ -300,7 +301,6 @@ function assertStructuralClosure(
     }
   }
   const featureBlockers: Array<readonly [string, boolean]> = [
-    ['comment-reference', sheet.comments.length !== 0],
     ['drawing-reference', sheet.drawings.length !== 0],
     ['protection-reference', sheet.protection !== undefined],
     ['pivot-reference', sheet.pivotTables !== undefined],
@@ -390,6 +390,18 @@ function assertStructuralClosure(
           table.range.end.row <= deletedEnd,
       );
     }
+  }
+  for (const comment of sheet.comments) {
+    const reference = parseXlsxCellReference(comment.reference)!;
+    blockStructuralFeature(
+      operation,
+      'comment-anchor-deletion',
+      transformXlsxStructuralCell(
+        reference.row,
+        reference.column,
+        operation,
+      ) === null,
+    );
   }
   for (const row of sheet.rows) {
     for (const cell of row.cells) {
@@ -481,6 +493,17 @@ function transformStructuralLayoutReferences(
       else table.autoFilter = autoFilter;
     }
   }
+  sheet.comments = sheet.comments.map((comment) => {
+    const reference = parseXlsxCellReference(comment.reference)!;
+    return {
+      ...comment,
+      reference: transformXlsxStructuralCell(
+        reference.row,
+        reference.column,
+        operation,
+      )!.address,
+    };
+  });
   const hadDataValidations = sheet.dataValidations.length !== 0;
   sheet.dataValidations = sheet.dataValidations.flatMap((validation) => {
     const ranges = validation.ranges.flatMap((range) => {
@@ -836,7 +859,8 @@ export async function replayXlsxCellOperations(
                   ? 0
                   : 1 + table.autoFilter.sort.conditions.length)),
           0,
-        );
+        ) +
+        sheet.comments.length;
       transformStructuralLayoutReferences(sheet, operation);
       referenceUpdates += operation.kind.endsWith('-rows')
         ? transformRows(sheet, operation, readerLimits)

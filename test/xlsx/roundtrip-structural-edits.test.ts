@@ -8,6 +8,10 @@ import {
   writeXlsxRoundTrip,
 } from '../../src/formats/xlsx';
 import { patchXlsxTableStructure } from '../../src/formats/xlsx/roundtrip/table-structure-patch';
+import {
+  patchXlsxCommentAnchors,
+  patchXlsxCommentVmlAnchors,
+} from '../../src/formats/xlsx/roundtrip/comment-structure-patch';
 import { patchXlsxWorksheetStructure } from '../../src/formats/xlsx/roundtrip/worksheet-structure-patch';
 import { defaultXlsxWriteLimits } from '../../src/formats/xlsx/roundtrip/write-limits';
 import {
@@ -337,5 +341,203 @@ describe('XLSX verified structural row and column edits', () => {
         report: { level: 'R2' },
       });
     }
+  });
+
+  it('keeps legacy, threaded, and VML comment anchors aligned', async () => {
+    const threadedRelationship =
+      'http://schemas.microsoft.com/office/2017/10/relationships/threadedComment';
+    const personRelationship =
+      'http://schemas.microsoft.com/office/2017/10/relationships/person';
+    const threadedNamespace =
+      'http://schemas.microsoft.com/office/spreadsheetml/2018/threadedcomments';
+    const contentTypes = `<Types xmlns="${XLSX_CONTENT_TYPES_NS}"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Default Extension="vml" ContentType="application/vnd.openxmlformats-officedocument.vmlDrawing"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/><Override PartName="/xl/sharedStrings.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sharedStrings+xml"/><Override PartName="/xl/comments1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.comments+xml"/><Override PartName="/xl/comments-unused.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.comments+xml"/><Override PartName="/xl/threadedComments/threadedComment1.xml" ContentType="application/vnd.ms-excel.threadedcomments+xml"/><Override PartName="/xl/threadedComments/threadedUnused.xml" ContentType="application/vnd.ms-excel.threadedcomments+xml"/><Override PartName="/xl/persons/person.xml" ContentType="application/vnd.ms-excel.person+xml"/></Types>`;
+    const generatedCommentSource = await createIndependentXlsx({
+      '[Content_Types].xml': contentTypes,
+      '_rels/.rels': `<Relationships xmlns="${XLSX_PACKAGE_REL_NS}"><Relationship Id="root" Type="${XLSX_OFFICE_REL_TYPE}officeDocument" Target="xl/workbook.xml"/><Relationship Id="unused-comments" Type="${XLSX_OFFICE_REL_TYPE}comments" Target="xl/comments-unused.xml"/></Relationships>`,
+      'xl/_rels/workbook.xml.rels': `<Relationships xmlns="${XLSX_PACKAGE_REL_NS}"><Relationship Id="rIdSheet1" Type="${XLSX_OFFICE_REL_TYPE}worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="styles" Type="${XLSX_OFFICE_REL_TYPE}styles" Target="styles.xml"/><Relationship Id="strings" Type="${XLSX_OFFICE_REL_TYPE}sharedStrings" Target="sharedStrings.xml"/><Relationship Id="persons" Type="${personRelationship}" Target="persons/person.xml"/></Relationships>`,
+      'xl/comments1.xml': `<comments xmlns="${XLSX_SPREADSHEET_NS}"><authors><author>A</author></authors><commentList><comment ref="A1" authorId="0"><text><t>One</t></text></comment><comment ref="B2" authorId="0"><text><t>Two</t></text></comment></commentList></comments>`,
+      'xl/comments-unused.xml': `<comments xmlns="${XLSX_SPREADSHEET_NS}"><authors><author>U</author></authors><commentList><comment ref="Z9" authorId="0"><text><t>Unused</t></text></comment></commentList></comments>`,
+      'xl/drawings/vmlDrawing1.vml':
+        '<xml xmlns:v="urn:schemas-microsoft-com:vml" xmlns:x="urn:schemas-microsoft-com:office:excel"><v:shape><x:ClientData ObjectType="Note"><x:Row>0</x:Row><x:Column>0</x:Column></x:ClientData></v:shape><v:shape><x:ClientData ObjectType="Note"><x:Row>1</x:Row><x:Column>1</x:Column></x:ClientData></v:shape></xml>',
+      'xl/persons/person.xml': `<personList xmlns="${threadedNamespace}"><person displayName="P" id="person"/></personList>`,
+      'xl/threadedComments/threadedComment1.xml': `<ThreadedComments xmlns="${threadedNamespace}"><threadedComment ref="C3" dT="2024-01-01T00:00:00Z" personId="person" id="root"><text>Root</text></threadedComment><threadedComment ref="C3" dT="2024-01-01T00:01:00Z" personId="person" id="reply" parentId="root"><text>Reply</text></threadedComment></ThreadedComments>`,
+      'xl/threadedComments/threadedUnused.xml': `<ThreadedComments xmlns="${threadedNamespace}"><threadedComment ref="Z9" dT="2024-01-01T00:00:00Z" personId="person" id="unused"><text>Unused</text></threadedComment></ThreadedComments>`,
+      'xl/worksheets/_rels/sheet1.xml.rels': `<Relationships xmlns="${XLSX_PACKAGE_REL_NS}"><Relationship Id="comments" Type="${XLSX_OFFICE_REL_TYPE}comments" Target="../comments1.xml"/><Relationship Id="vml" Type="${XLSX_OFFICE_REL_TYPE}vmlDrawing" Target="../drawings/vmlDrawing1.vml"/><Relationship Id="threaded" Type="${threadedRelationship}" Target="../threadedComments/threadedComment1.xml"/><Relationship Id="internal-link" Type="${XLSX_OFFICE_REL_TYPE}hyperlink" Target="../threadedComments/threadedUnused.xml"/></Relationships>`,
+      'xl/worksheets/sheet1.xml': `<worksheet xmlns="${XLSX_SPREADSHEET_NS}" xmlns:r="${XLSX_OFFICE_REL_NS}"><sheetData><row r="1"><c r="A1"><v>1</v></c></row><row r="2"><c r="B2"><v>2</v></c></row><row r="3"><c r="C3"><v>3</v></c></row></sheetData><legacyDrawing r:id="vml"/></worksheet>`,
+    });
+    const commentSourceZip = await JSZip.loadAsync(generatedCommentSource);
+    for (const [index, part] of [
+      'xl/comments1.xml',
+      'xl/drawings/vmlDrawing1.vml',
+      'xl/threadedComments/threadedComment1.xml',
+    ].entries()) {
+      const data = await commentSourceZip.file(part)!.async('uint8array');
+      commentSourceZip.file(part, data, {
+        date: new Date(
+          `2002-03-04T05:06:${String(index * 2).padStart(2, '0')}.000Z`,
+        ),
+      });
+    }
+    const source = await commentSourceZip.generateAsync({ type: 'uint8array' });
+    const snapshot = await readXlsxRoundTrip(source);
+    const edited = await applyXlsxEdits(snapshot, [
+      {
+        count: 1,
+        index: 2,
+        kind: 'insert-rows',
+        operationId: 'comment-rows',
+        sheetKey: snapshot.document.sheets[0]!.key,
+      },
+      {
+        count: 1,
+        index: 2,
+        kind: 'insert-columns',
+        operationId: 'comment-columns',
+        sheetKey: snapshot.document.sheets[0]!.key,
+      },
+    ]);
+    const result = await writeXlsxRoundTrip(edited);
+    expect(result.report.level).toBe('R2');
+    expect(
+      result.report.parts
+        .filter((part) => part.disposition === 'patch')
+        .map((part) => part.name),
+    ).toEqual([
+      'xl/comments1.xml',
+      'xl/drawings/vmlDrawing1.vml',
+      'xl/threadedComments/threadedComment1.xml',
+      'xl/worksheets/sheet1.xml',
+    ]);
+    const parsed = await parseXlsx(result.data, { errorMode: 'strict' });
+    const sheet = parsed.sheets[0]!;
+    expect(sheet.kind).toBe('worksheet');
+    if (sheet.kind !== 'worksheet') throw new Error('Expected worksheet');
+    expect(sheet.comments.map((comment) => comment.reference)).toEqual([
+      'A1',
+      'C3',
+      'D4',
+      'D4',
+    ]);
+    expect(
+      result.report.parts.find((part) => part.name === 'xl/persons/person.xml')
+        ?.disposition,
+    ).toBe('copy');
+    const sourceZip = await JSZip.loadAsync(source);
+    const outputZip = await JSZip.loadAsync(result.data);
+    const commentParts = [
+      'xl/comments1.xml',
+      'xl/drawings/vmlDrawing1.vml',
+      'xl/threadedComments/threadedComment1.xml',
+    ];
+    for (const part of commentParts) {
+      expect(outputZip.file(part)!.date).toEqual(sourceZip.file(part)!.date);
+    }
+    const requests = [
+      {
+        count: 1,
+        index: 2,
+        kind: 'insert-rows' as const,
+        operationId: 'comment-rows',
+      },
+      {
+        count: 1,
+        index: 2,
+        kind: 'insert-columns' as const,
+        operationId: 'comment-columns',
+      },
+    ];
+    const worksheetPatch = patchXlsxWorksheetStructure(
+      await sourceZip.file('xl/worksheets/sheet1.xml')!.async('uint8array'),
+      requests,
+      defaultXlsxWriteLimits(),
+      'xl/worksheets/sheet1.xml',
+    );
+    const legacyPatch = patchXlsxCommentAnchors(
+      await sourceZip.file('xl/comments1.xml')!.async('uint8array'),
+      requests,
+      defaultXlsxWriteLimits(),
+      'xl/comments1.xml',
+    );
+    const threadedPatch = patchXlsxCommentAnchors(
+      await sourceZip
+        .file('xl/threadedComments/threadedComment1.xml')!
+        .async('uint8array'),
+      requests,
+      defaultXlsxWriteLimits(),
+      'xl/threadedComments/threadedComment1.xml',
+    );
+    const vmlPatch = patchXlsxCommentVmlAnchors(
+      await sourceZip.file('xl/drawings/vmlDrawing1.vml')!.async('uint8array'),
+      requests,
+      defaultXlsxWriteLimits(),
+      'xl/drawings/vmlDrawing1.vml',
+    );
+    const patchBytes =
+      worksheetPatch.patchBytes +
+      legacyPatch.patchBytes +
+      threadedPatch.patchBytes +
+      vmlPatch.patchBytes;
+    const patchCount =
+      worksheetPatch.patchCount +
+      legacyPatch.patchCount +
+      threadedPatch.patchCount +
+      vmlPatch.patchCount;
+    const generatedXmlBytes = result.report.parts
+      .filter((part) => part.disposition === 'patch')
+      .reduce((total, part) => total + part.byteLength, 0);
+    await expect(
+      writeXlsxRoundTrip(edited, {
+        limits: {
+          maxDependencyEdges: 5,
+          maxDirtyParts: 4,
+          maxGeneratedXmlBytes: generatedXmlBytes,
+          maxPatchBytes: patchBytes,
+          maxPatchCount: patchCount,
+          maxPatchedParts: 4,
+        },
+      }),
+    ).resolves.toMatchObject({ report: { level: 'R2' } });
+    for (const [limitName, limit] of [
+      ['maxDependencyEdges', 4],
+      ['maxDirtyParts', 3],
+      ['maxGeneratedXmlBytes', generatedXmlBytes - 1],
+      ['maxPatchBytes', patchBytes - 1],
+      ['maxPatchCount', patchCount - 1],
+      ['maxPatchedParts', 3],
+    ] as const) {
+      await expect(
+        writeXlsxRoundTrip(edited, { limits: { [limitName]: limit } }),
+      ).rejects.toMatchObject({
+        diagnostic: { code: 'resource-limit-exceeded', limitName },
+      });
+    }
+    const outside = await applyXlsxEdits(snapshot, [
+      {
+        count: 1,
+        index: 10,
+        kind: 'insert-rows',
+        operationId: 'outside-comments',
+        sheetKey: snapshot.document.sheets[0]!.key,
+      },
+    ]);
+    const outsideResult = await writeXlsxRoundTrip(outside);
+    for (const part of commentParts) {
+      expect(
+        outsideResult.report.parts.find((candidate) => candidate.name === part)
+          ?.disposition,
+      ).toBe('copy');
+    }
+    const rowEdit = await applyXlsxEdits(snapshot, [
+      {
+        hidden: true,
+        kind: 'set-row',
+        operationId: 'comment-row-property',
+        row: 1,
+        sheetKey: snapshot.document.sheets[0]!.key,
+      },
+    ]);
+    await expect(writeXlsxRoundTrip(rowEdit)).rejects.toMatchObject({
+      diagnostic: { featureClass: 'opaque-content' },
+    });
   });
 });

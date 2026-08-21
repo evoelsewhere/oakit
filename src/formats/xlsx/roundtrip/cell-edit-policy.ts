@@ -32,6 +32,18 @@ const UNSAFE_FORMULA_PATTERN =
   /(?:\[|(?:CALL|DDE|EXEC|FILTERXML|HYPERLINK|REGISTER\.ID|RTD|WEBSERVICE)\s*\()/iu;
 const TABLE_CONTENT_TYPE =
   'application/vnd.openxmlformats-officedocument.spreadsheetml.table+xml';
+const COMMENT_CONTENT_TYPES = new Set([
+  'application/vnd.ms-excel.person+xml',
+  'application/vnd.ms-excel.threadedcomments+xml',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.comments+xml',
+  'application/vnd.openxmlformats-officedocument.vmlDrawing',
+]);
+const COMMENT_RELATIONSHIP_KINDS = new Set([
+  'comments',
+  'person',
+  'threadedComment',
+  'vmlDrawing',
+]);
 
 function editFailure(
   code:
@@ -71,7 +83,19 @@ export function assertXlsxSafeCellEditSource(
   graph: XlsxPackageGraph,
   options: XlsxWriteOptions,
   allowTables = false,
+  allowCommentAnchors = false,
 ): void {
+  const partAllowed = (contentType: string): boolean =>
+    xlsxCellEditPartIsSafe(contentType) ||
+    (allowTables && contentType === TABLE_CONTENT_TYPE) ||
+    (allowCommentAnchors && COMMENT_CONTENT_TYPES.has(contentType));
+  const containsVml = graph.parts.some(
+    (part) =>
+      part.contentType ===
+      'application/vnd.openxmlformats-officedocument.vmlDrawing',
+  );
+  const commentVmlClosure =
+    containsVml && graph.parts.every((part) => partAllowed(part.contentType));
   if (graph.containsDigitalSignatures) {
     editFailure(
       'signed-package-conflict',
@@ -86,7 +110,7 @@ export function assertXlsxSafeCellEditSource(
       { featureClass: 'active-content' },
     );
   }
-  if (graph.containsOpaqueContent) {
+  if (graph.containsOpaqueContent && !commentVmlClosure) {
     editFailure(
       'opaque-content-conflict',
       options.acknowledgeOpaqueContent
@@ -96,9 +120,7 @@ export function assertXlsxSafeCellEditSource(
     );
   }
   const unknownPart = graph.parts.find(
-    (part) =>
-      !xlsxCellEditPartIsSafe(part.contentType) &&
-      !(allowTables && part.contentType === TABLE_CONTENT_TYPE),
+    (part) => !partAllowed(part.contentType),
   );
   if (unknownPart) {
     editFailure(
@@ -113,6 +135,12 @@ export function assertXlsxSafeCellEditSource(
       !(
         allowTables &&
         xlsxCellEditRelationshipKind(relationship.type) === 'table'
+      ) &&
+      !(
+        allowCommentAnchors &&
+        COMMENT_RELATIONSHIP_KINDS.has(
+          xlsxCellEditRelationshipKind(relationship.type),
+        )
       ),
   );
   if (unknownRelationship) {

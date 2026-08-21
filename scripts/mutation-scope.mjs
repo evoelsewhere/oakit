@@ -126,6 +126,7 @@ export const mutatedFiles = [
   'src/formats/xlsx/parser.ts',
   'src/formats/xlsx/roundtrip/apply-edits.ts',
   'src/formats/xlsx/roundtrip/canonical-json.ts',
+  'src/formats/xlsx/roundtrip/comment-structure-patch.ts',
   'src/formats/xlsx/roundtrip/cell-edit-package.ts',
   'src/formats/xlsx/roundtrip/cell-edit-policy.ts',
   'src/formats/xlsx/roundtrip/cell-edit-verification.ts',

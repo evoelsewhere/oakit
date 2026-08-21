@@ -56,6 +56,10 @@ import {
   type XlsxWorksheetStructurePatch,
 } from './worksheet-structure-patch';
 import { patchXlsxTableStructure } from './table-structure-patch';
+import {
+  patchXlsxCommentAnchors,
+  patchXlsxCommentVmlAnchors,
+} from './comment-structure-patch';
 
 export interface XlsxCellEditPackage {
   data: Uint8Array;
@@ -248,10 +252,14 @@ export async function writeXlsxCellEditPackage(
   writeLimits: ResolvedXlsxWriteLimits,
   readerLimits: ResolvedXlsxResourceLimits,
 ): Promise<XlsxCellEditPackage> {
+  const structuralClosure = TABLE_STRUCTURAL_OPERATION_KINDS.has(
+    plan.operations[0]!.kind,
+  );
   assertXlsxSafeCellEditSource(
     sourceGraph,
     options,
-    TABLE_STRUCTURAL_OPERATION_KINDS.has(plan.operations[0]!.kind),
+    structuralClosure,
+    structuralClosure,
   );
   assertXlsxCellEditFormulaClosure(baseDocument, plan);
   assertXlsxCellEditStyleClosure(baseDocument, plan);
@@ -286,6 +294,7 @@ export async function writeXlsxCellEditPackage(
   let patchBytes = 0;
   let patchCount = 0;
   let tableDependencyEdges = 0;
+  let commentDependencyEdges = 0;
   if (appendedStyles.length !== 0) {
     const part = context.styles.part!;
     const entry = archive.file(part)!;
@@ -460,6 +469,50 @@ export async function writeXlsxCellEditPackage(
       archive.file(tablePart, tablePatched.data, { date: tableEntry.date });
       dirtyParts.add(tablePart);
     }
+    const commentRelationshipKinds = new Map<string, 'comments' | 'vml'>([
+      [`${officeRelationshipNamespace}/comments`, 'comments'],
+      [`${officeRelationshipNamespace}/vmlDrawing`, 'vml'],
+      [
+        'http://schemas.microsoft.com/office/2017/10/relationships/threadedComment',
+        'comments',
+      ],
+    ] as const);
+    const commentParts = sourceGraph.relationships.filter(
+      (relationship) =>
+        relationship.owner === part &&
+        commentRelationshipKinds.has(relationship.type),
+    );
+    for (const relationship of commentParts) {
+      const commentPart = relationship.target;
+      const commentEntry = archive.file(commentPart)!;
+      const commentSource = await readZipEntryBytes(
+        commentEntry,
+        readerLimits.maxPartBytes,
+      );
+      const commentPatched =
+        commentRelationshipKinds.get(relationship.type) === 'vml'
+          ? patchXlsxCommentVmlAnchors(
+              commentSource,
+              requestedStructure,
+              writeLimits,
+              commentPart,
+            )
+          : patchXlsxCommentAnchors(
+              commentSource,
+              requestedStructure,
+              writeLimits,
+              commentPart,
+            );
+      if (commentPatched.patchCount === 0) continue;
+      generatedXmlBytes += commentPatched.data.byteLength;
+      patchBytes += commentPatched.patchBytes;
+      patchCount += commentPatched.patchCount;
+      commentDependencyEdges += 1;
+      archive.file(commentPart, commentPatched.data, {
+        date: commentEntry.date,
+      });
+      dirtyParts.add(commentPart);
+    }
   }
   const dirtyPartCount = dirtyParts.size + addedParts.size;
   if (dirtyPartCount > writeLimits.maxDirtyParts) {
@@ -481,6 +534,7 @@ export async function writeXlsxCellEditPackage(
     appendedStyles.length +
     changedRelationshipOwners.size;
   dependencyEdges += tableDependencyEdges;
+  dependencyEdges += commentDependencyEdges;
   if (dependencyEdges > writeLimits.maxDependencyEdges) {
     writeLimitFailure(
       'maxDependencyEdges',
