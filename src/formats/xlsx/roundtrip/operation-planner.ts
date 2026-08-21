@@ -6,6 +6,7 @@ import type { ResolvedXlsxResourceLimits } from '../internal/resource-limits';
 import type {
   XlsxCell,
   XlsxColumnRange,
+  XlsxAutoFilter,
   XlsxHyperlink,
   XlsxRow,
   XlsxWorksheet,
@@ -306,7 +307,6 @@ function assertStructuralClosure(
     ['query-table-reference', sheet.queryTables !== undefined],
     ['slicer-reference', sheet.slicers !== undefined],
     ['sparkline-reference', sheet.sparklineGroups !== undefined],
-    ['table-reference', sheet.tables.length !== 0],
     ['timeline-reference', sheet.timelines !== undefined],
   ];
   for (const [featureClass, blocked] of featureBlockers) {
@@ -344,6 +344,53 @@ function assertStructuralClosure(
       ),
     ),
   );
+  for (const table of sheet.tables) {
+    blockStructuralFeature(
+      operation,
+      'table-formula-reference',
+      table.columns.some(
+        (column) =>
+          column.calculatedFormula !== undefined ||
+          column.totalsFormula !== undefined,
+      ),
+    );
+    const transformed = transformXlsxStructuralRange(table.range, operation);
+    blockStructuralFeature(
+      operation,
+      'table-range-deletion',
+      transformed === null,
+    );
+    if (transformed === null) continue;
+    blockStructuralFeature(
+      operation,
+      'table-column-structure',
+      transformed.end.column - transformed.start.column !==
+        table.range.end.column - table.range.start.column,
+    );
+    blockStructuralFeature(
+      operation,
+      'table-row-structure',
+      transformed.end.row - transformed.start.row + 1 <
+        Number(table.headerRow) + Number(table.totalsRow),
+    );
+    if (operation.kind === 'delete-rows') {
+      const deletedEnd = operation.index + operation.count - 1;
+      blockStructuralFeature(
+        operation,
+        'table-header-row',
+        table.headerRow &&
+          table.range.start.row >= operation.index &&
+          table.range.start.row <= deletedEnd,
+      );
+      blockStructuralFeature(
+        operation,
+        'table-totals-row',
+        table.totalsRow &&
+          table.range.end.row >= operation.index &&
+          table.range.end.row <= deletedEnd,
+      );
+    }
+  }
   for (const row of sheet.rows) {
     for (const cell of row.cells) {
       blockStructuralFeature(
@@ -360,6 +407,36 @@ function assertStructuralClosure(
     'column-definition',
     columnOperation && sheet.columns.length !== 0,
   );
+}
+
+function transformStructuralAutoFilter(
+  autoFilter: XlsxAutoFilter,
+  operation: XlsxStructuralOperation,
+): XlsxAutoFilter | undefined {
+  const filterRange = transformXlsxStructuralRange(autoFilter.range, operation);
+  if (filterRange === null) return undefined;
+  autoFilter.range = filterRange;
+  if (autoFilter.sort !== undefined) {
+    const sortRange = transformXlsxStructuralRange(
+      autoFilter.sort.range,
+      operation,
+    );
+    if (sortRange === null) {
+      delete autoFilter.sort;
+    } else {
+      autoFilter.sort.range = sortRange;
+      autoFilter.sort.conditions = autoFilter.sort.conditions.flatMap(
+        (condition) => {
+          const range = transformXlsxStructuralRange(
+            condition.range,
+            operation,
+          );
+          return range === null ? [] : [{ ...condition, range }];
+        },
+      );
+    }
+  }
+  return autoFilter;
 }
 
 function transformStructuralLayoutReferences(
@@ -386,33 +463,22 @@ function transformStructuralLayoutReferences(
     return transformed === null ? [] : [{ ...hyperlink, range: transformed }];
   });
   if (sheet.autoFilter !== undefined) {
-    const filterRange = transformXlsxStructuralRange(
-      sheet.autoFilter.range,
+    const autoFilter = transformStructuralAutoFilter(
+      sheet.autoFilter,
       operation,
     );
-    if (filterRange === null) {
-      delete sheet.autoFilter;
-    } else {
-      sheet.autoFilter.range = filterRange;
-      if (sheet.autoFilter.sort !== undefined) {
-        const sortRange = transformXlsxStructuralRange(
-          sheet.autoFilter.sort.range,
-          operation,
-        );
-        if (sortRange === null) {
-          delete sheet.autoFilter.sort;
-        } else {
-          sheet.autoFilter.sort.range = sortRange;
-          sheet.autoFilter.sort.conditions =
-            sheet.autoFilter.sort.conditions.flatMap((condition) => {
-              const range = transformXlsxStructuralRange(
-                condition.range,
-                operation,
-              );
-              return range === null ? [] : [{ ...condition, range }];
-            });
-        }
-      }
+    if (autoFilter === undefined) delete sheet.autoFilter;
+    else sheet.autoFilter = autoFilter;
+  }
+  for (const table of sheet.tables) {
+    table.range = transformXlsxStructuralRange(table.range, operation)!;
+    if (table.autoFilter !== undefined) {
+      const autoFilter = transformStructuralAutoFilter(
+        table.autoFilter,
+        operation,
+      );
+      if (autoFilter === undefined) delete table.autoFilter;
+      else table.autoFilter = autoFilter;
     }
   }
   const hadDataValidations = sheet.dataValidations.length !== 0;
@@ -757,6 +823,18 @@ export async function replayXlsxCellOperations(
                 (selection.activeCell === undefined ? 0 : 1),
               0,
             ),
+          0,
+        ) +
+        sheet.tables.reduce(
+          (total, table) =>
+            total +
+            1 +
+            (table.autoFilter === undefined
+              ? 0
+              : 1 +
+                (table.autoFilter.sort === undefined
+                  ? 0
+                  : 1 + table.autoFilter.sort.conditions.length)),
           0,
         );
       transformStructuralLayoutReferences(sheet, operation);

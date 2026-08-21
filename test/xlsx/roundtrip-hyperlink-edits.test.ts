@@ -235,6 +235,24 @@ describe('XLSX verified hyperlink edits', () => {
     ]);
     const externalResult = await writeXlsxRoundTrip(external);
     expect(externalResult.report.level).toBe('R2');
+    await expect(
+      writeXlsxRoundTrip(external, {
+        limits: { maxDependencyEdges: 2 },
+      }),
+    ).resolves.toMatchObject({ report: { level: 'R2' } });
+    expect(
+      (
+        await capture(() =>
+          writeXlsxRoundTrip(external, {
+            limits: { maxDependencyEdges: 1 },
+          }),
+        )
+      ).diagnostic,
+    ).toMatchObject({
+      actual: 2,
+      limit: 1,
+      limitName: 'maxDependencyEdges',
+    });
     expect(
       externalResult.report.parts.find(
         (part) => part.name === 'xl/worksheets/_rels/sheet1.xml.rels',

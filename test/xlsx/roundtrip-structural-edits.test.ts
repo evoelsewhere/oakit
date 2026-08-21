@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import JSZip from 'jszip';
 
 import {
   applyXlsxEdits,
@@ -6,9 +7,14 @@ import {
   readXlsxRoundTrip,
   writeXlsxRoundTrip,
 } from '../../src/formats/xlsx';
+import { patchXlsxTableStructure } from '../../src/formats/xlsx/roundtrip/table-structure-patch';
+import { patchXlsxWorksheetStructure } from '../../src/formats/xlsx/roundtrip/worksheet-structure-patch';
+import { defaultXlsxWriteLimits } from '../../src/formats/xlsx/roundtrip/write-limits';
 import {
   createIndependentXlsx,
   XLSX_CONTENT_TYPES_NS,
+  XLSX_OFFICE_REL_NS,
+  XLSX_OFFICE_REL_TYPE,
   XLSX_PACKAGE_REL_NS,
   XLSX_SPREADSHEET_NS,
 } from '../black-box/xlsx-package';
@@ -173,5 +179,163 @@ describe('XLSX verified structural row and column edits', () => {
       ranges: [{ reference: 'A2:A3' }, { reference: 'B3' }],
     });
     expect(result.report.level).toBe('R2');
+  });
+
+  it('keeps worksheet tables and their owned parts aligned', async () => {
+    const tablePart = 'xl/tables/table1.xml';
+    const contentTypes = `<Types xmlns="${XLSX_CONTENT_TYPES_NS}"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/><Override PartName="/xl/sharedStrings.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sharedStrings+xml"/><Override PartName="/${tablePart}" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.table+xml"/><Override PartName="/xl/tables/table2.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.table+xml"/></Types>`;
+    const generatedSource = await createIndependentXlsx({
+      '[Content_Types].xml': contentTypes,
+      '_rels/.rels': `<Relationships xmlns="${XLSX_PACKAGE_REL_NS}"><Relationship Id="root" Type="${XLSX_OFFICE_REL_TYPE}officeDocument" Target="xl/workbook.xml"/><Relationship Id="unowned-table" Type="${XLSX_OFFICE_REL_TYPE}table" Target="xl/tables/table2.xml"/></Relationships>`,
+      'xl/worksheets/_rels/sheet1.xml.rels': `<Relationships xmlns="${XLSX_PACKAGE_REL_NS}"><Relationship Id="table" Type="${XLSX_OFFICE_REL_TYPE}table" Target="../tables/table1.xml"/><Relationship Id="external-table" Type="${XLSX_OFFICE_REL_TYPE}table" Target="https://example.invalid/table.xml" TargetMode="External"/><Relationship Id="internal-link" Type="${XLSX_OFFICE_REL_TYPE}hyperlink" Target="../tables/table2.xml"/></Relationships>`,
+      'xl/worksheets/sheet1.xml': `<worksheet xmlns="${XLSX_SPREADSHEET_NS}" xmlns:r="${XLSX_OFFICE_REL_NS}"><sheetData><row r="1"><c r="A1" t="str"><v>A</v></c><c r="B1" t="str"><v>B</v></c></row><row r="2"><c r="A2"><v>1</v></c><c r="B2"><v>2</v></c></row><row r="3"><c r="A3"><v>3</v></c><c r="B3"><v>4</v></c></row></sheetData><tableParts count="1"><tablePart r:id="table"/></tableParts></worksheet>`,
+      [tablePart]: `<table xmlns="${XLSX_SPREADSHEET_NS}" id="1" name="Table1" displayName="Table1" ref="A1:B3"><autoFilter ref="A1:B3"><sortState ref="A1:B3"><sortCondition ref="A2:A3"/></sortState></autoFilter><tableColumns count="2"><tableColumn id="1" name="A"/><tableColumn id="2" name="B"/></tableColumns></table>`,
+      'xl/tables/table2.xml': `<table xmlns="${XLSX_SPREADSHEET_NS}" id="2" name="Unused" displayName="Unused" ref="D10:E12"><tableColumns count="2"><tableColumn id="1" name="D"/><tableColumn id="2" name="E"/></tableColumns></table>`,
+    });
+    const datedSource = await JSZip.loadAsync(generatedSource);
+    const tableBytes = await datedSource.file(tablePart)!.async('uint8array');
+    datedSource.file(tablePart, tableBytes, {
+      date: new Date('2001-02-03T04:05:06.000Z'),
+    });
+    const source = await datedSource.generateAsync({ type: 'uint8array' });
+    const snapshot = await readXlsxRoundTrip(source);
+    const structuralOperation = {
+      count: 1,
+      index: 2,
+      kind: 'insert-rows' as const,
+      operationId: 'insert-table-row',
+      sheetKey: snapshot.document.sheets[0]!.key,
+    };
+    const edited = await applyXlsxEdits(snapshot, [structuralOperation]);
+    const first = await writeXlsxRoundTrip(edited);
+    const second = await writeXlsxRoundTrip(portable(edited));
+    expect(second.data).toEqual(first.data);
+    expect(
+      first.report.parts
+        .filter((part) => part.disposition === 'patch')
+        .map((part) => part.name),
+    ).toEqual(['xl/tables/table1.xml', 'xl/worksheets/sheet1.xml']);
+    const parsed = await parseXlsx(first.data, { errorMode: 'strict' });
+    const sheet = parsed.sheets[0]!;
+    expect(sheet.kind).toBe('worksheet');
+    if (sheet.kind !== 'worksheet') throw new Error('Expected worksheet');
+    expect(sheet.tables[0]?.range.reference).toBe('A1:B4');
+    expect(sheet.tables[0]?.autoFilter?.range.reference).toBe('A1:B4');
+    expect(
+      sheet.tables[0]?.autoFilter?.sort?.conditions[0]?.range.reference,
+    ).toBe('A3:A4');
+    expect(first.report.level).toBe('R2');
+
+    const sourceZip = await JSZip.loadAsync(source);
+    const outputZip = await JSZip.loadAsync(first.data);
+    expect(outputZip.file(tablePart)!.date).toEqual(
+      sourceZip.file(tablePart)!.date,
+    );
+    const request = {
+      count: structuralOperation.count,
+      index: structuralOperation.index,
+      kind: structuralOperation.kind,
+      operationId: structuralOperation.operationId,
+    };
+    const worksheetPatch = patchXlsxWorksheetStructure(
+      await sourceZip.file('xl/worksheets/sheet1.xml')!.async('uint8array'),
+      [request],
+      defaultXlsxWriteLimits(),
+      'xl/worksheets/sheet1.xml',
+    );
+    const tablePatch = patchXlsxTableStructure(
+      await sourceZip.file(tablePart)!.async('uint8array'),
+      [request],
+      defaultXlsxWriteLimits(),
+      tablePart,
+    );
+    const patchBytes = worksheetPatch.patchBytes + tablePatch.patchBytes;
+    const patchCount = worksheetPatch.patchCount + tablePatch.patchCount;
+    const generatedXmlBytes = first.report.parts
+      .filter((part) => part.disposition === 'patch')
+      .reduce((total, part) => total + part.byteLength, 0);
+    await expect(
+      writeXlsxRoundTrip(edited, {
+        limits: {
+          maxDependencyEdges: 2,
+          maxDirtyParts: 2,
+          maxGeneratedXmlBytes: generatedXmlBytes,
+          maxPatchBytes: patchBytes,
+          maxPatchCount: patchCount,
+          maxPatchedParts: 2,
+        },
+      }),
+    ).resolves.toMatchObject({ report: { level: 'R2' } });
+    for (const [limitName, limit] of [
+      ['maxDependencyEdges', 1],
+      ['maxDirtyParts', 1],
+      ['maxGeneratedXmlBytes', generatedXmlBytes - 1],
+      ['maxPatchBytes', patchBytes - 1],
+      ['maxPatchCount', patchCount - 1],
+      ['maxPatchedParts', 1],
+    ] as const) {
+      await expect(
+        writeXlsxRoundTrip(edited, { limits: { [limitName]: limit } }),
+      ).rejects.toMatchObject({
+        diagnostic: { code: 'resource-limit-exceeded', limitName },
+      });
+    }
+
+    const rowEdit = await applyXlsxEdits(snapshot, [
+      {
+        hidden: true,
+        kind: 'set-row',
+        operationId: 'table-row-property',
+        row: 1,
+        sheetKey: snapshot.document.sheets[0]!.key,
+      },
+    ]);
+    await expect(writeXlsxRoundTrip(rowEdit)).rejects.toMatchObject({
+      diagnostic: { featureClass: 'unsupported-part', part: tablePart },
+    });
+    const outside = await applyXlsxEdits(snapshot, [
+      {
+        count: 1,
+        index: 5,
+        kind: 'insert-rows',
+        operationId: 'outside-table',
+        sheetKey: snapshot.document.sheets[0]!.key,
+      },
+    ]);
+    const outsideResult = await writeXlsxRoundTrip(outside);
+    expect(
+      outsideResult.report.parts.find((part) => part.name === tablePart)
+        ?.disposition,
+    ).toBe('copy');
+    for (const operation of [
+      {
+        count: 1,
+        index: 2,
+        kind: 'delete-rows' as const,
+        operationId: 'delete-table-data-row',
+      },
+      {
+        count: 1,
+        index: 3,
+        kind: 'insert-columns' as const,
+        operationId: 'insert-outside-table-column',
+      },
+      {
+        count: 1,
+        index: 3,
+        kind: 'delete-columns' as const,
+        operationId: 'delete-outside-table-column',
+      },
+    ]) {
+      const candidate = await applyXlsxEdits(snapshot, [
+        {
+          ...operation,
+          sheetKey: snapshot.document.sheets[0]!.key,
+        },
+      ]);
+      await expect(writeXlsxRoundTrip(candidate)).resolves.toMatchObject({
+        report: { level: 'R2' },
+      });
+    }
   });
 });

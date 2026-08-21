@@ -55,12 +55,20 @@ import {
   patchXlsxWorksheetStructure,
   type XlsxWorksheetStructurePatch,
 } from './worksheet-structure-patch';
+import { patchXlsxTableStructure } from './table-structure-patch';
 
 export interface XlsxCellEditPackage {
   data: Uint8Array;
   graph: XlsxPackageGraph;
   parts: XlsxPartFidelity[];
 }
+
+const TABLE_STRUCTURAL_OPERATION_KINDS = new Set([
+  'delete-columns',
+  'delete-rows',
+  'insert-columns',
+  'insert-rows',
+]);
 
 async function packageContext(
   bytes: Uint8Array,
@@ -240,7 +248,11 @@ export async function writeXlsxCellEditPackage(
   writeLimits: ResolvedXlsxWriteLimits,
   readerLimits: ResolvedXlsxResourceLimits,
 ): Promise<XlsxCellEditPackage> {
-  assertXlsxSafeCellEditSource(sourceGraph, options);
+  assertXlsxSafeCellEditSource(
+    sourceGraph,
+    options,
+    TABLE_STRUCTURAL_OPERATION_KINDS.has(plan.operations[0]!.kind),
+  );
   assertXlsxCellEditFormulaClosure(baseDocument, plan);
   assertXlsxCellEditStyleClosure(baseDocument, plan);
   const context = await packageContext(sourceBytes, readerLimits);
@@ -273,6 +285,7 @@ export async function writeXlsxCellEditPackage(
   let generatedXmlBytes = 0;
   let patchBytes = 0;
   let patchCount = 0;
+  let tableDependencyEdges = 0;
   if (appendedStyles.length !== 0) {
     const part = context.styles.part!;
     const entry = archive.file(part)!;
@@ -417,6 +430,36 @@ export async function writeXlsxCellEditPackage(
       else addedParts.add(relationshipPart);
       changedRelationshipOwners.add(part);
     }
+    const requestedStructure = structuralPatches.get(sheetKey) ?? [];
+    const tableRelationshipType = `${officeRelationshipNamespace}/table`;
+    const tableParts = sourceGraph.relationships
+      .filter(
+        (relationship) =>
+          relationship.owner === part &&
+          relationship.mode === 'internal' &&
+          relationship.type === tableRelationshipType,
+      )
+      .map((relationship) => relationship.target);
+    for (const tablePart of tableParts) {
+      const tableEntry = archive.file(tablePart)!;
+      const tableSource = await readZipEntryBytes(
+        tableEntry,
+        readerLimits.maxPartBytes,
+      );
+      const tablePatched = patchXlsxTableStructure(
+        tableSource,
+        requestedStructure,
+        writeLimits,
+        tablePart,
+      );
+      if (tablePatched.patchCount === 0) continue;
+      generatedXmlBytes += tablePatched.data.byteLength;
+      patchBytes += tablePatched.patchBytes;
+      patchCount += tablePatched.patchCount;
+      tableDependencyEdges += 1;
+      archive.file(tablePart, tablePatched.data, { date: tableEntry.date });
+      dirtyParts.add(tablePart);
+    }
   }
   const dirtyPartCount = dirtyParts.size + addedParts.size;
   if (dirtyPartCount > writeLimits.maxDirtyParts) {
@@ -433,10 +476,11 @@ export async function writeXlsxCellEditPackage(
       writeLimits.maxPatchedParts,
     );
   }
-  const dependencyEdges =
+  let dependencyEdges =
     plan.impacts.length +
     appendedStyles.length +
     changedRelationshipOwners.size;
+  dependencyEdges += tableDependencyEdges;
   if (dependencyEdges > writeLimits.maxDependencyEdges) {
     writeLimitFailure(
       'maxDependencyEdges',

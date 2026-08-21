@@ -30,6 +30,8 @@ const SAFE_RELATIONSHIP_KINDS = new Set([
 ]);
 const UNSAFE_FORMULA_PATTERN =
   /(?:\[|(?:CALL|DDE|EXEC|FILTERXML|HYPERLINK|REGISTER\.ID|RTD|WEBSERVICE)\s*\()/iu;
+const TABLE_CONTENT_TYPE =
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.table+xml';
 
 function editFailure(
   code:
@@ -68,6 +70,7 @@ export function xlsxCellEditFormulaIsUnsafe(expression: string): boolean {
 export function assertXlsxSafeCellEditSource(
   graph: XlsxPackageGraph,
   options: XlsxWriteOptions,
+  allowTables = false,
 ): void {
   if (graph.containsDigitalSignatures) {
     editFailure(
@@ -93,7 +96,9 @@ export function assertXlsxSafeCellEditSource(
     );
   }
   const unknownPart = graph.parts.find(
-    (part) => !xlsxCellEditPartIsSafe(part.contentType),
+    (part) =>
+      !xlsxCellEditPartIsSafe(part.contentType) &&
+      !(allowTables && part.contentType === TABLE_CONTENT_TYPE),
   );
   if (unknownPart) {
     editFailure(
@@ -103,7 +108,12 @@ export function assertXlsxSafeCellEditSource(
     );
   }
   const unknownRelationship = graph.relationships.find(
-    (relationship) => !xlsxCellEditRelationshipIsSafe(relationship.type),
+    (relationship) =>
+      !xlsxCellEditRelationshipIsSafe(relationship.type) &&
+      !(
+        allowTables &&
+        xlsxCellEditRelationshipKind(relationship.type) === 'table'
+      ),
   );
   if (unknownRelationship) {
     editFailure(

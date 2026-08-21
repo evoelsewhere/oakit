@@ -279,6 +279,80 @@ describe('XLSX cell-edit package verification', () => {
     }
   });
 
+  it('allows table dependencies only for a proven structural closure', () => {
+    const worksheetPart = {
+      byteLength: 1,
+      contentType:
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml',
+      name: 'xl/worksheets/sheet1.xml',
+      relationshipPart: false,
+      sha256: '1'.repeat(64),
+    };
+    const tablePart = {
+      byteLength: 1,
+      contentType:
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.table+xml',
+      name: 'xl/tables/table1.xml',
+      relationshipPart: false,
+      sha256: '2'.repeat(64),
+    };
+    const source = graph({
+      parts: [worksheetPart, tablePart],
+      relationships: [
+        {
+          id: 'table',
+          mode: 'internal',
+          owner: worksheetPart.name,
+          target: tablePart.name,
+          type: 'http://example.invalid/relationships/table',
+        },
+      ],
+    });
+    expect(
+      capture(() => assertXlsxSafeCellEditSource(source, {})).diagnostic,
+    ).toMatchObject({
+      featureClass: 'unsupported-part',
+      part: tablePart.name,
+    });
+    expect(() => assertXlsxSafeCellEditSource(source, {}, true)).not.toThrow();
+    const customPart = {
+      ...tablePart,
+      contentType: 'application/example+xml',
+      name: 'xl/custom/example.xml',
+    };
+    expect(
+      capture(() =>
+        assertXlsxSafeCellEditSource(
+          { ...source, parts: [worksheetPart, customPart] },
+          {},
+          true,
+        ),
+      ).diagnostic,
+    ).toMatchObject({
+      featureClass: 'unsupported-part',
+      part: customPart.name,
+    });
+    expect(
+      capture(() =>
+        assertXlsxSafeCellEditSource(
+          {
+            ...source,
+            parts: [worksheetPart],
+            relationships: [
+              {
+                ...source.relationships[0]!,
+                target: worksheetPart.name,
+                type: 'http://example.invalid/relationships/customXml',
+              },
+            ],
+          },
+          {},
+          true,
+        ),
+      ).diagnostic,
+    ).toMatchObject({ featureClass: 'unsupported-relationship' });
+  });
+
   it.each([
     '[Book.xlsx]Sheet1!A1',
     'call(A1)',

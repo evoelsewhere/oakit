@@ -21,7 +21,7 @@ import {
   defaultXlsxWriteLimits,
   resolveXlsxWriteLimits,
 } from '../../src/formats/xlsx/roundtrip/write-limits';
-import type { XlsxWorksheet } from '../../src/formats/xlsx/types';
+import type { XlsxTable, XlsxWorksheet } from '../../src/formats/xlsx/types';
 import {
   createIndependentXlsx,
   XLSX_SPREADSHEET_NS,
@@ -80,6 +80,62 @@ function worksheet(document: XlsxRoundTripDocument): XlsxWorksheet & {
   const sheet = document.sheets[0]!;
   expect(sheet.kind).toBe('worksheet');
   return sheet as XlsxWorksheet & { key: string };
+}
+
+function structuralTable(overrides: Partial<XlsxTable> = {}): XlsxTable {
+  return {
+    autoFilter: {
+      columns: [],
+      range: {
+        end: { column: 2, row: 3 },
+        reference: 'A1:B3',
+        start: { column: 1, row: 1 },
+      },
+      selectionRelation: 'full-sheet',
+      sort: {
+        caseSensitive: false,
+        columnSort: false,
+        conditions: [
+          {
+            descending: false,
+            range: {
+              end: { column: 1, row: 3 },
+              reference: 'A2:A3',
+              start: { column: 1, row: 2 },
+            },
+            sortBy: 'value',
+          },
+        ],
+        range: {
+          end: { column: 2, row: 3 },
+          reference: 'A1:B3',
+          start: { column: 1, row: 1 },
+        },
+        sortMethod: 'none',
+      },
+    },
+    columns: [
+      { id: 1, name: 'A', totalsFunction: 'none' },
+      { id: 2, name: 'B', totalsFunction: 'none' },
+    ],
+    displayName: 'Table1',
+    headerRow: true,
+    id: 1,
+    insertRow: false,
+    insertRowShift: false,
+    name: 'Table1',
+    published: false,
+    range: {
+      end: { column: 2, row: 3 },
+      reference: 'A1:B3',
+      start: { column: 1, row: 1 },
+    },
+    selectionRelation: 'full-sheet',
+    tableType: 'worksheet',
+    totalsRow: false,
+    totalsRowShown: true,
+    ...overrides,
+  };
 }
 
 function cellOperation(
@@ -1676,6 +1732,7 @@ describe('XLSX cell operation planner', () => {
               },
             ],
           },
+          tables: [structuralTable()],
           views: [
             {
               kind: 'normal',
@@ -1787,6 +1844,14 @@ describe('XLSX cell operation planner', () => {
       activeCellId: 1,
       ranges: [{ reference: 'H1:H5' }, { reference: 'I4:I5' }],
     });
+    expect(transformedLayout.tables[0]?.range.reference).toBe('A1:B5');
+    expect(transformedLayout.tables[0]?.autoFilter?.range.reference).toBe(
+      'A1:B5',
+    );
+    expect(
+      transformedLayout.tables[0]?.autoFilter?.sort?.conditions[0]?.range
+        .reference,
+    ).toBe('A4:A5');
     const deletedSortDocument = structuredClone(referencedDocument);
     const deletedSortSheet = worksheet(deletedSortDocument);
     deletedSortSheet.autoFilter!.sort!.range = {
@@ -1972,7 +2037,7 @@ describe('XLSX cell operation planner', () => {
       replayXlsxCellOperations(
         referencedDocument,
         [layoutOperation],
-        { ...writeLimits, maxReferenceUpdates: 22 },
+        { ...writeLimits, maxReferenceUpdates: 26 },
         readerLimits,
       ),
     ).resolves.toBeDefined();
@@ -1982,14 +2047,14 @@ describe('XLSX cell operation planner', () => {
           replayXlsxCellOperations(
             referencedDocument,
             [layoutOperation],
-            { ...writeLimits, maxReferenceUpdates: 21 },
+            { ...writeLimits, maxReferenceUpdates: 25 },
             readerLimits,
           ),
         )
       ).diagnostic,
     ).toMatchObject({
-      actual: 22,
-      limit: 21,
+      actual: 26,
+      limit: 25,
       limitName: 'maxReferenceUpdates',
     });
     const viewOnlyDocument = structuredClone(snapshot.document);
@@ -2385,6 +2450,94 @@ describe('XLSX cell operation planner', () => {
         readerLimits,
       ),
     ).resolves.toBeDefined();
+    for (const [table, operation] of [
+      [
+        structuralTable(),
+        {
+          count: 1,
+          index: 1,
+          kind: 'insert-rows',
+          operationId: 'table-shift',
+          sheetKey,
+        },
+      ],
+      [
+        structuralTable({ totalsRow: true }),
+        {
+          count: 1,
+          index: 2,
+          kind: 'delete-rows',
+          operationId: 'table-data-row',
+          sheetKey,
+        },
+      ],
+      [
+        structuralTable({ headerRow: false }),
+        {
+          count: 1,
+          index: 1,
+          kind: 'delete-rows',
+          operationId: 'table-no-header',
+          sheetKey,
+        },
+      ],
+      [
+        structuralTable(),
+        {
+          count: 1,
+          index: 3,
+          kind: 'delete-rows',
+          operationId: 'table-no-totals',
+          sheetKey,
+        },
+      ],
+      [
+        structuralTable({
+          autoFilter: {
+            columns: [],
+            range: {
+              end: { column: 2, row: 5 },
+              reference: 'A3:B5',
+              start: { column: 1, row: 3 },
+            },
+            selectionRelation: 'full-sheet',
+          },
+          range: {
+            end: { column: 2, row: 5 },
+            reference: 'A3:B5',
+            start: { column: 1, row: 3 },
+          },
+        }),
+        {
+          count: 1,
+          index: 1,
+          kind: 'delete-rows',
+          operationId: 'table-header-after-delete',
+          sheetKey,
+        },
+      ],
+      [
+        structuralTable({ totalsRow: true }),
+        {
+          count: 1,
+          index: 5,
+          kind: 'delete-rows',
+          operationId: 'table-totals-before-delete',
+          sheetKey,
+        },
+      ],
+    ] as const) {
+      const document = structuredClone(snapshot.document);
+      worksheet(document).tables = [table];
+      await expect(
+        replayXlsxCellOperations(
+          document,
+          [operation],
+          writeLimits,
+          readerLimits,
+        ),
+      ).resolves.toBeDefined();
+    }
   });
 
   it('blocks every reference-bearing structural closure domain', async () => {
@@ -2516,8 +2669,38 @@ describe('XLSX cell operation planner', () => {
         (document) => void setSheetField(document, 'sparklineGroups', []),
       ],
       [
-        'table-reference',
-        (document) => void setSheetField(document, 'tables', [{}]),
+        'table-formula-reference',
+        (document) =>
+          void setSheetField(document, 'tables', [
+            structuralTable({
+              columns: [
+                {
+                  calculatedFormula: { array: false, expression: 'A1' },
+                  id: 1,
+                  name: 'A',
+                  totalsFunction: 'none',
+                },
+                { id: 2, name: 'B', totalsFunction: 'none' },
+              ],
+            }),
+          ]),
+      ],
+      [
+        'table-formula-reference',
+        (document) =>
+          void setSheetField(document, 'tables', [
+            structuralTable({
+              columns: [
+                {
+                  id: 1,
+                  name: 'A',
+                  totalsFormula: { array: false, expression: 'A1' },
+                  totalsFunction: 'custom',
+                },
+                { id: 2, name: 'B', totalsFunction: 'none' },
+              ],
+            }),
+          ]),
       ],
       [
         'timeline-reference',
@@ -2600,6 +2783,127 @@ describe('XLSX cell operation planner', () => {
     ).resolves.toMatchObject({
       impacts: [expect.objectContaining({ kind: 'insert-rows' })],
     });
+  });
+
+  it('blocks table structural edits that cannot preserve table shape', async () => {
+    const snapshot = await readXlsxRoundTrip(await createIndependentXlsx());
+    const sheetKey = snapshot.document.sheets[0]!.key;
+    const cases: Array<
+      readonly [
+        string,
+        XlsxTable,
+        Extract<
+          XlsxEditOperation,
+          {
+            kind:
+              | 'delete-columns'
+              | 'delete-rows'
+              | 'insert-columns'
+              | 'insert-rows';
+          }
+        >,
+      ]
+    > = [
+      [
+        'table-column-structure',
+        structuralTable(),
+        {
+          count: 1,
+          index: 2,
+          kind: 'insert-columns',
+          operationId: 'table-column',
+          sheetKey,
+        },
+      ],
+      [
+        'table-range-deletion',
+        structuralTable(),
+        {
+          count: 3,
+          index: 1,
+          kind: 'delete-rows',
+          operationId: 'table-delete',
+          sheetKey,
+        },
+      ],
+      [
+        'table-row-structure',
+        structuralTable({
+          range: {
+            end: { column: 2, row: 2 },
+            reference: 'A1:B2',
+            start: { column: 1, row: 1 },
+          },
+          totalsRow: true,
+        }),
+        {
+          count: 1,
+          index: 1,
+          kind: 'delete-rows',
+          operationId: 'table-short',
+          sheetKey,
+        },
+      ],
+      [
+        'table-header-row',
+        structuralTable(),
+        {
+          count: 1,
+          index: 1,
+          kind: 'delete-rows',
+          operationId: 'table-header',
+          sheetKey,
+        },
+      ],
+      [
+        'table-totals-row',
+        structuralTable({ totalsRow: true }),
+        {
+          count: 1,
+          index: 3,
+          kind: 'delete-rows',
+          operationId: 'table-totals',
+          sheetKey,
+        },
+      ],
+    ];
+    for (const [featureClass, table, operation] of cases) {
+      const document = structuredClone(snapshot.document);
+      worksheet(document).tables = [table];
+      expect(
+        (
+          await captureAsync(() =>
+            replayXlsxCellOperations(
+              document,
+              [operation],
+              writeLimits,
+              readerLimits,
+            ),
+          )
+        ).diagnostic,
+      ).toMatchObject({
+        code: 'unsupported-edit-operation',
+        featureClass,
+      });
+    }
+    const outside = structuredClone(snapshot.document);
+    worksheet(outside).tables = [structuralTable()];
+    await expect(
+      replayXlsxCellOperations(
+        outside,
+        [
+          {
+            count: 1,
+            index: 3,
+            kind: 'insert-columns',
+            operationId: 'table-outside',
+            sheetKey,
+          },
+        ],
+        writeLimits,
+        readerLimits,
+      ),
+    ).resolves.toBeDefined();
   });
 
   it('applies existing styles, appends deterministically, and bounds style growth', async () => {
