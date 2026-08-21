@@ -254,6 +254,197 @@ describe('XLSX worksheet structural patching', () => {
     expect(new TextDecoder().decode(removed.data)).toBe(
       `<worksheet xmlns="${XLSX_SPREADSHEET_NS}"><sheetData/></worksheet>`,
     );
+
+    const removedRange = patchXlsxWorksheetStructure(
+      bytes(
+        `<worksheet xmlns="${XLSX_SPREADSHEET_NS}"><sheetData/><dataValidations><dataValidation sqref="A1 C2:C3"/></dataValidations></worksheet>`,
+      ),
+      [
+        {
+          count: 2,
+          index: 2,
+          kind: 'delete-rows',
+          operationId: 'remove-one-validation-range',
+        },
+      ],
+      defaultXlsxWriteLimits(),
+      PART,
+    );
+    expect(new TextDecoder().decode(removedRange.data)).toContain(
+      '<dataValidation sqref="A1"/>',
+    );
+    const mixedShift = patchXlsxWorksheetStructure(
+      bytes(
+        `<worksheet xmlns="${XLSX_SPREADSHEET_NS}"><sheetData/><dataValidations><dataValidation sqref="A1 C2"/></dataValidations></worksheet>`,
+      ),
+      [
+        {
+          count: 1,
+          index: 2,
+          kind: 'insert-rows',
+          operationId: 'shift-one-validation-range',
+        },
+      ],
+      defaultXlsxWriteLimits(),
+      PART,
+    );
+    expect(new TextDecoder().decode(mixedShift.data)).toContain(
+      '<dataValidation sqref="A1 C3"/>',
+    );
+    const emptyXml = `<worksheet xmlns="${XLSX_SPREADSHEET_NS}"><sheetData/><dataValidations count="0" disablePrompts="1"/></worksheet>`;
+    const empty = patchXlsxWorksheetStructure(
+      bytes(emptyXml),
+      [
+        {
+          count: 1,
+          index: 1,
+          kind: 'insert-rows',
+          operationId: 'empty-validations',
+        },
+      ],
+      defaultXlsxWriteLimits(),
+      PART,
+    );
+    expect(new TextDecoder().decode(empty.data)).toBe(emptyXml);
+    expect(empty.patchCount).toBe(0);
+  });
+
+  it('transforms formula-free data-validation ranges and exact counts', () => {
+    const xml = `<worksheet xmlns="${XLSX_SPREADSHEET_NS}"><sheetData/><dataValidations count="2" disablePrompts="1"><dataValidation sqref="A1:A5 C2:C3"/><dataValidation sqref="B2:B3"/></dataValidations></worksheet>`;
+    const result = patchXlsxWorksheetStructure(
+      bytes(xml),
+      [
+        {
+          count: 2,
+          index: 2,
+          kind: 'delete-rows',
+          operationId: 'validations',
+        },
+      ],
+      defaultXlsxWriteLimits(),
+      PART,
+    );
+    expect(new TextDecoder().decode(result.data)).toBe(
+      `<worksheet xmlns="${XLSX_SPREADSHEET_NS}"><sheetData/><dataValidations count="1" disablePrompts="1"><dataValidation sqref="A1:A3"/></dataValidations></worksheet>`,
+    );
+
+    const removed = patchXlsxWorksheetStructure(
+      bytes(
+        `<worksheet xmlns="${XLSX_SPREADSHEET_NS}"><sheetData/><dataValidations count="1" disablePrompts="1"><dataValidation sqref="A2:B3"/></dataValidations></worksheet>`,
+      ),
+      [
+        {
+          count: 2,
+          index: 2,
+          kind: 'delete-rows',
+          operationId: 'remove-validations',
+        },
+      ],
+      defaultXlsxWriteLimits(),
+      PART,
+    );
+    expect(new TextDecoder().decode(removed.data)).toBe(
+      `<worksheet xmlns="${XLSX_SPREADSHEET_NS}"><sheetData/></worksheet>`,
+    );
+  });
+
+  it('selects only owned data-validation nodes and preserves lexical no-ops', () => {
+    const xml = `<s:worksheet xmlns:s="${XLSX_SPREADSHEET_NS}" xmlns:x="urn:foreign"><s:sheetData/><wrapper><s:dataValidations count="1"><s:dataValidation sqref="Z9"/></s:dataValidations><s:dataValidation sqref="Z6"/></wrapper><x:dataValidations><x:dataValidation sqref="Z9"/></x:dataValidations><s:dataValidations count="1"><wrapper><s:formula1/></wrapper><wrapper><s:dataValidation sqref="Z8"/></wrapper><x:dataValidation sqref="Z9"/><s:dataValidation sqref=" A1  B2 "><other></other><wrapper><s:formula1/></wrapper><x:formula1/></s:dataValidation><wrapper><s:formula2/></wrapper></s:dataValidations><wrapper><s:dataValidation sqref="Z7"/></wrapper></s:worksheet>`;
+    const unchanged = patchXlsxWorksheetStructure(
+      bytes(xml),
+      [
+        {
+          count: 1,
+          index: 5,
+          kind: 'insert-rows',
+          operationId: 'validation-no-op',
+        },
+      ],
+      defaultXlsxWriteLimits(),
+      PART,
+    );
+    expect(new TextDecoder().decode(unchanged.data)).toBe(xml);
+    expect(unchanged.patchCount).toBe(0);
+    const changed = patchXlsxWorksheetStructure(
+      bytes(xml),
+      [
+        {
+          count: 1,
+          index: 1,
+          kind: 'insert-rows',
+          operationId: 'validation-owned',
+        },
+      ],
+      defaultXlsxWriteLimits(),
+      PART,
+    );
+    const output = new TextDecoder().decode(changed.data);
+    expect(output).toContain('<s:dataValidation sqref="A2 B3">');
+    expect(output).toContain(
+      '<wrapper><s:dataValidations count="1"><s:dataValidation sqref="Z9"/></s:dataValidations><s:dataValidation sqref="Z6"/></wrapper>',
+    );
+    expect(output).toContain('<x:dataValidation sqref="Z9"/>');
+    expect(output).toContain(
+      '<wrapper><s:dataValidation sqref="Z8"/></wrapper>',
+    );
+    expect(output).toContain(
+      '<wrapper><s:dataValidation sqref="Z7"/></wrapper>',
+    );
+    expect(output).toContain('<wrapper><s:formula1/></wrapper>');
+    expect(output).toContain('<x:formula1/>');
+    expect(output).toContain('<wrapper><s:formula2/></wrapper>');
+  });
+
+  it('rejects formula-bearing and malformed structural data validations', () => {
+    for (const formulaName of ['formula1', 'formula2']) {
+      const formula = capture(() =>
+        patchXlsxWorksheetStructure(
+          bytes(
+            `<worksheet xmlns="${XLSX_SPREADSHEET_NS}"><sheetData/><dataValidations><dataValidation sqref="A1"><${formulaName}/></dataValidation></dataValidations></worksheet>`,
+          ),
+          [
+            {
+              count: 1,
+              index: 1,
+              kind: 'insert-rows',
+              operationId: 'formula-validation',
+            },
+          ],
+          defaultXlsxWriteLimits(),
+          PART,
+        ),
+      );
+      expect(formula.diagnostic).toMatchObject({
+        featureClass: 'data-validation-formula-reference',
+        message: 'XLSX structural data-validation formula cannot be preserved',
+        operationId: 'formula-validation',
+      });
+    }
+    for (const source of [
+      '<dataValidation/>',
+      '<dataValidation sqref=""/>',
+      '<dataValidation sqref="bad"/>',
+    ]) {
+      expect(
+        capture(() =>
+          patchXlsxWorksheetStructure(
+            bytes(
+              `<worksheet xmlns="${XLSX_SPREADSHEET_NS}"><sheetData/><dataValidations>${source}</dataValidations></worksheet>`,
+            ),
+            [
+              {
+                count: 1,
+                index: 1,
+                kind: 'insert-rows',
+                operationId: 'bad-validation',
+              },
+            ],
+            defaultXlsxWriteLimits(),
+            PART,
+          ),
+        ).diagnostic.message,
+      ).toBe('XLSX structural data-validation range is invalid');
+    }
   });
 
   it('selects only direct layout nodes and avoids no-op patches', () => {

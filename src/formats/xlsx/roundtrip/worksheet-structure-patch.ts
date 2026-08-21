@@ -247,6 +247,109 @@ function layoutPatches(
       }
     }
   }
+  const dataValidations = tokens.find(
+    (token) =>
+      !token.closing &&
+      token.depth === root.depth + 1 &&
+      token.name === `${prefix}dataValidations`,
+  );
+  if (dataValidations) {
+    const close = xlsxMatchingCloseToken(
+      tokens,
+      tokens.indexOf(dataValidations),
+    );
+    const entries = tokens.filter(
+      (token) =>
+        !token.closing &&
+        token.depth === dataValidations.depth + 1 &&
+        token.name === `${prefix}dataValidation` &&
+        token.start >= dataValidations.end &&
+        token.end <= close.start,
+    );
+    const transformedEntries = entries.map((entry) => {
+      const entryClose = xlsxMatchingCloseToken(tokens, tokens.indexOf(entry));
+      const hasFormula = tokens.some(
+        (token) =>
+          !token.closing &&
+          token.depth === entry.depth + 1 &&
+          (token.name === `${prefix}formula1` ||
+            token.name === `${prefix}formula2`) &&
+          token.start >= entry.end &&
+          token.end <= entryClose.start,
+      );
+      if (hasFormula) {
+        failure(
+          'XLSX structural data-validation formula cannot be preserved',
+          part,
+          request,
+          'data-validation-formula-reference',
+        );
+      }
+      const reference = attribute(entry, 'sqref');
+      if (!reference) {
+        failure(
+          'XLSX structural data-validation range is invalid',
+          part,
+          request,
+        );
+      }
+      const ranges = reference.value
+        .trim()
+        .split(/\s+/u)
+        .map((value) => {
+          const range = parseXlsxRangeReference(value);
+          if (!range) {
+            failure(
+              'XLSX structural data-validation range is invalid',
+              part,
+              request,
+            );
+          }
+          return range;
+        });
+      const transformed = ranges.flatMap((range) => {
+        const result = transformXlsxStructuralRange(range, request);
+        return result === null ? [] : [result];
+      });
+      return { entry, entryClose, ranges, reference, transformed };
+    });
+    const remaining = transformedEntries.filter(
+      (entry) => entry.transformed.length !== 0,
+    );
+    if (entries.length !== 0 && remaining.length === 0) {
+      patches.push({
+        end: close.end,
+        replacement: '',
+        start: dataValidations.start,
+      });
+    } else {
+      for (const item of transformedEntries) {
+        if (item.transformed.length === 0) {
+          patches.push({
+            end: item.entryClose.end,
+            replacement: '',
+            start: item.entry.start,
+          });
+        } else if (
+          item.transformed.length !== item.ranges.length ||
+          item.transformed.some(
+            (range, index) => range.reference !== item.ranges[index]!.reference,
+          )
+        ) {
+          patches.push(
+            attributePatch(
+              item.reference,
+              item.transformed.map((range) => range.reference).join(' '),
+            ),
+          );
+        }
+      }
+      const count = attribute(dataValidations, 'count');
+      if (count && count.value !== String(remaining.length)) {
+        patches.push(attributePatch(count, String(remaining.length)));
+      }
+    }
+  }
   const hyperlinks = tokens.find(
     (token) =>
       !token.closing &&

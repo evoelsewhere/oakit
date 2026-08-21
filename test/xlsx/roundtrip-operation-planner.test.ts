@@ -1534,6 +1534,32 @@ describe('XLSX cell operation planner', () => {
               sortMethod: 'none',
             },
           },
+          dataValidationSettings: { disablePrompts: true },
+          dataValidations: [
+            {
+              allowBlank: false,
+              errorStyle: 'stop',
+              imeMode: 'no-control',
+              operator: 'between',
+              ranges: [
+                {
+                  end: { column: 1, row: 3 },
+                  reference: 'A1:A3',
+                  start: { column: 1, row: 1 },
+                },
+                {
+                  end: { column: 3, row: 3 },
+                  reference: 'C2:C3',
+                  start: { column: 3, row: 2 },
+                },
+              ],
+              selectionRelation: 'full-sheet',
+              showDropDown: false,
+              showErrorMessage: false,
+              showInputMessage: false,
+              type: 'none',
+            },
+          ],
         },
       ],
     };
@@ -1583,6 +1609,11 @@ describe('XLSX cell operation planner', () => {
     expect(
       transformedLayout.autoFilter?.sort?.conditions[0]?.range.reference,
     ).toBe('B4:B5');
+    expect(
+      transformedLayout.dataValidations[0]?.ranges.map(
+        (range) => range.reference,
+      ),
+    ).toEqual(['A1:A5', 'C4:C5']);
     const deletedSortDocument = structuredClone(referencedDocument);
     const deletedSortSheet = worksheet(deletedSortDocument);
     deletedSortSheet.autoFilter!.sort!.range = {
@@ -1628,6 +1659,49 @@ describe('XLSX cell operation planner', () => {
       readerLimits,
     );
     expect(worksheet(deletedFilter.document)).not.toHaveProperty('autoFilter');
+    const deletedValidationDocument = structuredClone(referencedDocument);
+    const deletedValidationSheet = worksheet(deletedValidationDocument);
+    deletedValidationSheet.dataValidations[0]!.ranges = [
+      {
+        end: { column: 1, row: 3 },
+        reference: 'A2:A3',
+        start: { column: 1, row: 2 },
+      },
+    ];
+    const deletedValidation = await replayXlsxCellOperations(
+      deletedValidationDocument,
+      [
+        {
+          count: 2,
+          index: 2,
+          kind: 'delete-rows',
+          operationId: 'delete-validation-range',
+          sheetKey: source.key,
+        },
+      ],
+      writeLimits,
+      readerLimits,
+    );
+    expect(worksheet(deletedValidation.document).dataValidations).toEqual([]);
+    expect(worksheet(deletedValidation.document)).not.toHaveProperty(
+      'dataValidationSettings',
+    );
+    const emptyValidationDocument = structuredClone(snapshot.document);
+    worksheet(emptyValidationDocument).dataValidationSettings = {
+      disablePrompts: true,
+    };
+    expect(
+      worksheet(
+        (
+          await replayXlsxCellOperations(
+            emptyValidationDocument,
+            [layoutOperation],
+            writeLimits,
+            readerLimits,
+          )
+        ).document,
+      ).dataValidationSettings,
+    ).toEqual({ disablePrompts: true });
     expect(
       worksheet(
         (
@@ -1644,7 +1718,7 @@ describe('XLSX cell operation planner', () => {
       replayXlsxCellOperations(
         referencedDocument,
         [layoutOperation],
-        { ...writeLimits, maxReferenceUpdates: 8 },
+        { ...writeLimits, maxReferenceUpdates: 10 },
         readerLimits,
       ),
     ).resolves.toBeDefined();
@@ -1654,12 +1728,12 @@ describe('XLSX cell operation planner', () => {
           replayXlsxCellOperations(
             referencedDocument,
             [layoutOperation],
-            { ...writeLimits, maxReferenceUpdates: 7 },
+            { ...writeLimits, maxReferenceUpdates: 9 },
             readerLimits,
           ),
         )
       ).diagnostic,
-    ).toMatchObject({ actual: 8, limit: 7, limitName: 'maxReferenceUpdates' });
+    ).toMatchObject({ actual: 10, limit: 9, limitName: 'maxReferenceUpdates' });
     expect(
       (
         await captureAsync(() =>
@@ -2042,8 +2116,14 @@ describe('XLSX cell operation planner', () => {
           void setSheetField(document, 'conditionalFormattings', [{}]),
       ],
       [
-        'data-validation-reference',
-        (document) => void setSheetField(document, 'dataValidations', [{}]),
+        'data-validation-formula-reference',
+        (document) =>
+          void setSheetField(document, 'dataValidations', [{ formula1: 'A1' }]),
+      ],
+      [
+        'data-validation-formula-reference',
+        (document) =>
+          void setSheetField(document, 'dataValidations', [{ formula2: 'A1' }]),
       ],
       [
         'drawing-reference',

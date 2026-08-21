@@ -123,7 +123,7 @@ describe('XLSX verified structural row and column edits', () => {
 
   it('keeps declared dimensions and merged ranges aligned', async () => {
     const source = await createIndependentXlsx({
-      'xl/worksheets/sheet1.xml': `<worksheet xmlns="${XLSX_SPREADSHEET_NS}"><dimension ref="A1:B2"/><sheetData><row r="1"><c r="A1"><v>1</v></c><c r="B1"><v>2</v></c></row><row r="2"><c r="A2"><v>3</v></c></row></sheetData><autoFilter ref="A1:B2"><sortState ref="A1:B2"><sortCondition ref="A1:A2"/></sortState></autoFilter><mergeCells count="1"><mergeCell ref="A1:B1"/></mergeCells><hyperlinks><hyperlink ref="A1:B1" location="Sheet1!A1"/></hyperlinks></worksheet>`,
+      'xl/worksheets/sheet1.xml': `<worksheet xmlns="${XLSX_SPREADSHEET_NS}"><dimension ref="A1:B2"/><sheetData><row r="1"><c r="A1"><v>1</v></c><c r="B1"><v>2</v></c></row><row r="2"><c r="A2"><v>3</v></c></row></sheetData><autoFilter ref="A1:B2"><sortState ref="A1:B2"><sortCondition ref="A1:A2"/></sortState></autoFilter><mergeCells count="1"><mergeCell ref="A1:B1"/></mergeCells><dataValidations count="1" disablePrompts="1"><dataValidation sqref="A1:B2"/></dataValidations><hyperlinks><hyperlink ref="A1:B1" location="Sheet1!A1"/></hyperlinks></worksheet>`,
     });
     const snapshot = await readXlsxRoundTrip(source);
     const edited = await applyXlsxEdits(snapshot, [
@@ -152,6 +152,8 @@ describe('XLSX verified structural row and column edits', () => {
     expect(sheet.autoFilter?.sort?.conditions[0]?.range.reference).toBe(
       'A2:A3',
     );
+    expect(sheet.dataValidations[0]?.ranges[0]?.reference).toBe('A2:B3');
+    expect(sheet.dataValidationSettings).toEqual({ disablePrompts: true });
     expect(result.report.level).toBe('R2');
   });
 });

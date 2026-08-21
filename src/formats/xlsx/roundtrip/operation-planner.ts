@@ -296,7 +296,6 @@ function assertStructuralClosure(
   const featureBlockers: Array<readonly [string, boolean]> = [
     ['comment-reference', sheet.comments.length !== 0],
     ['conditional-format-reference', sheet.conditionalFormattings.length !== 0],
-    ['data-validation-reference', sheet.dataValidations.length !== 0],
     ['drawing-reference', sheet.drawings.length !== 0],
     ['print-reference', sheet.print !== undefined],
     ['protected-range-reference', sheet.protectedRanges.length !== 0],
@@ -312,6 +311,14 @@ function assertStructuralClosure(
   for (const [featureClass, blocked] of featureBlockers) {
     blockStructuralFeature(operation, featureClass, blocked);
   }
+  blockStructuralFeature(
+    operation,
+    'data-validation-formula-reference',
+    sheet.dataValidations.some(
+      (validation) =>
+        validation.formula1 !== undefined || validation.formula2 !== undefined,
+    ),
+  );
   for (const row of sheet.rows) {
     for (const cell of row.cells) {
       blockStructuralFeature(
@@ -382,6 +389,17 @@ function transformStructuralLayoutReferences(
         }
       }
     }
+  }
+  const hadDataValidations = sheet.dataValidations.length !== 0;
+  sheet.dataValidations = sheet.dataValidations.flatMap((validation) => {
+    const ranges = validation.ranges.flatMap((range) => {
+      const transformed = transformXlsxStructuralRange(range, operation);
+      return transformed === null ? [] : [transformed];
+    });
+    return ranges.length === 0 ? [] : [{ ...validation, ranges }];
+  });
+  if (hadDataValidations && sheet.dataValidations.length === 0) {
+    delete sheet.dataValidationSettings;
   }
 }
 
@@ -634,7 +652,11 @@ export async function replayXlsxCellOperations(
           : 1 +
             (sheet.autoFilter.sort === undefined
               ? 0
-              : 1 + sheet.autoFilter.sort.conditions.length));
+              : 1 + sheet.autoFilter.sort.conditions.length)) +
+        sheet.dataValidations.reduce(
+          (total, validation) => total + validation.ranges.length,
+          0,
+        );
       transformStructuralLayoutReferences(sheet, operation);
       referenceUpdates += operation.kind.endsWith('-rows')
         ? transformRows(sheet, operation, readerLimits)
