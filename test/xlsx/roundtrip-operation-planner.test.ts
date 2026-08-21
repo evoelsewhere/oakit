@@ -1560,6 +1560,84 @@ describe('XLSX cell operation planner', () => {
               type: 'none',
             },
           ],
+          conditionalFormattings: [
+            {
+              pivot: false,
+              ranges: [
+                {
+                  end: { column: 4, row: 3 },
+                  reference: 'D1:D3',
+                  start: { column: 4, row: 1 },
+                },
+                {
+                  end: { column: 5, row: 3 },
+                  reference: 'E2:E3',
+                  start: { column: 5, row: 2 },
+                },
+              ],
+              rules: [
+                {
+                  formulas: [],
+                  priority: 1,
+                  stopIfTrue: false,
+                  type: 'top',
+                },
+                {
+                  colorScale: {
+                    stops: [
+                      {
+                        color: {} as never,
+                        threshold: {
+                          greaterThanOrEqual: true,
+                          kind: 'minimum',
+                        },
+                      },
+                    ],
+                  },
+                  formulas: [],
+                  priority: 2,
+                  stopIfTrue: false,
+                  type: 'color-scale',
+                },
+                {
+                  dataBar: {
+                    color: {} as never,
+                    maximumLength: 100,
+                    minimumLength: 0,
+                    showValue: true,
+                    thresholds: [
+                      { greaterThanOrEqual: true, kind: 'minimum' },
+                      { greaterThanOrEqual: true, kind: 'maximum' },
+                    ],
+                  },
+                  formulas: [],
+                  priority: 3,
+                  stopIfTrue: false,
+                  type: 'data-bar',
+                },
+                {
+                  formulas: [],
+                  iconSet: {
+                    iconSet: '3Arrows',
+                    percent: false,
+                    reverse: false,
+                    showValue: true,
+                    thresholds: [
+                      {
+                        greaterThanOrEqual: true,
+                        kind: 'number',
+                        value: 0,
+                      },
+                    ],
+                  },
+                  priority: 4,
+                  stopIfTrue: false,
+                  type: 'icon-set',
+                },
+              ],
+              selectionRelation: 'full-sheet',
+            },
+          ],
         },
       ],
     };
@@ -1614,6 +1692,11 @@ describe('XLSX cell operation planner', () => {
         (range) => range.reference,
       ),
     ).toEqual(['A1:A5', 'C4:C5']);
+    expect(
+      transformedLayout.conditionalFormattings[0]?.ranges.map(
+        (range) => range.reference,
+      ),
+    ).toEqual(['D1:D5', 'E4:E5']);
     const deletedSortDocument = structuredClone(referencedDocument);
     const deletedSortSheet = worksheet(deletedSortDocument);
     deletedSortSheet.autoFilter!.sort!.range = {
@@ -1686,6 +1769,31 @@ describe('XLSX cell operation planner', () => {
     expect(worksheet(deletedValidation.document)).not.toHaveProperty(
       'dataValidationSettings',
     );
+    const deletedFormatDocument = structuredClone(referencedDocument);
+    worksheet(deletedFormatDocument).conditionalFormattings[0]!.ranges = [
+      {
+        end: { column: 4, row: 3 },
+        reference: 'D2:D3',
+        start: { column: 4, row: 2 },
+      },
+    ];
+    const deletedFormat = await replayXlsxCellOperations(
+      deletedFormatDocument,
+      [
+        {
+          count: 2,
+          index: 2,
+          kind: 'delete-rows',
+          operationId: 'delete-format-range',
+          sheetKey: source.key,
+        },
+      ],
+      writeLimits,
+      readerLimits,
+    );
+    expect(worksheet(deletedFormat.document).conditionalFormattings).toEqual(
+      [],
+    );
     const emptyValidationDocument = structuredClone(snapshot.document);
     worksheet(emptyValidationDocument).dataValidationSettings = {
       disablePrompts: true,
@@ -1718,7 +1826,7 @@ describe('XLSX cell operation planner', () => {
       replayXlsxCellOperations(
         referencedDocument,
         [layoutOperation],
-        { ...writeLimits, maxReferenceUpdates: 10 },
+        { ...writeLimits, maxReferenceUpdates: 12 },
         readerLimits,
       ),
     ).resolves.toBeDefined();
@@ -1728,12 +1836,16 @@ describe('XLSX cell operation planner', () => {
           replayXlsxCellOperations(
             referencedDocument,
             [layoutOperation],
-            { ...writeLimits, maxReferenceUpdates: 9 },
+            { ...writeLimits, maxReferenceUpdates: 11 },
             readerLimits,
           ),
         )
       ).diagnostic,
-    ).toMatchObject({ actual: 10, limit: 9, limitName: 'maxReferenceUpdates' });
+    ).toMatchObject({
+      actual: 12,
+      limit: 11,
+      limitName: 'maxReferenceUpdates',
+    });
     expect(
       (
         await captureAsync(() =>
@@ -2111,9 +2223,62 @@ describe('XLSX cell operation planner', () => {
         (document) => void setSheetField(document, 'comments', [{}]),
       ],
       [
-        'conditional-format-reference',
+        'conditional-format-formula-reference',
         (document) =>
-          void setSheetField(document, 'conditionalFormattings', [{}]),
+          void setSheetField(document, 'conditionalFormattings', [
+            { rules: [{ formulas: ['A1'] }, { formulas: [] }] },
+          ]),
+      ],
+      [
+        'conditional-format-formula-reference',
+        (document) =>
+          void setSheetField(document, 'conditionalFormattings', [
+            {
+              rules: [
+                {
+                  colorScale: {
+                    stops: [
+                      { threshold: { kind: 'formula' } },
+                      { threshold: { kind: 'minimum' } },
+                    ],
+                  },
+                  formulas: [],
+                },
+              ],
+            },
+          ]),
+      ],
+      [
+        'conditional-format-formula-reference',
+        (document) =>
+          void setSheetField(document, 'conditionalFormattings', [
+            {
+              rules: [
+                {
+                  dataBar: {
+                    thresholds: [{ kind: 'formula' }, { kind: 'minimum' }],
+                  },
+                  formulas: [],
+                },
+              ],
+            },
+          ]),
+      ],
+      [
+        'conditional-format-formula-reference',
+        (document) =>
+          void setSheetField(document, 'conditionalFormattings', [
+            {
+              rules: [
+                {
+                  formulas: [],
+                  iconSet: {
+                    thresholds: [{ kind: 'formula' }, { kind: 'minimum' }],
+                  },
+                },
+              ],
+            },
+          ]),
       ],
       [
         'data-validation-formula-reference',

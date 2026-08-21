@@ -247,6 +247,88 @@ function layoutPatches(
       }
     }
   }
+  const conditionalFormats = tokens.filter(
+    (token) =>
+      !token.closing &&
+      token.depth === root.depth + 1 &&
+      token.name === `${prefix}conditionalFormatting`,
+  );
+  for (const format of conditionalFormats) {
+    const formatIndex = tokens.indexOf(format);
+    const close = xlsxMatchingCloseToken(tokens, formatIndex);
+    const closeIndex = tokens.indexOf(close);
+    const rules = tokens
+      .slice(formatIndex, closeIndex)
+      .filter(
+        (token) =>
+          !token.closing &&
+          token.depth === format.depth + 1 &&
+          token.name === `${prefix}cfRule`,
+      );
+    const hasFormula = rules.some((rule) => {
+      const ruleIndex = tokens.indexOf(rule);
+      const ruleClose = xlsxMatchingCloseToken(tokens, ruleIndex);
+      return tokens
+        .slice(ruleIndex, tokens.indexOf(ruleClose))
+        .some(
+          (token) =>
+            !token.closing &&
+            ((token.depth === rule.depth + 1 &&
+              token.name === `${prefix}formula`) ||
+              (token.name === `${prefix}cfvo` &&
+                attribute(token, 'type')?.value === 'formula')),
+        );
+    });
+    if (hasFormula) {
+      failure(
+        'XLSX structural conditional-format formula cannot be preserved',
+        part,
+        request,
+        'conditional-format-formula-reference',
+      );
+    }
+    const reference = attribute(format, 'sqref');
+    if (!reference) {
+      failure(
+        'XLSX structural conditional-format range is invalid',
+        part,
+        request,
+      );
+    }
+    const ranges = reference.value
+      .trim()
+      .split(/\s+/u)
+      .map((value) => {
+        const range = parseXlsxRangeReference(value);
+        if (!range) {
+          failure(
+            'XLSX structural conditional-format range is invalid',
+            part,
+            request,
+          );
+        }
+        return range;
+      });
+    const transformed = ranges.flatMap((range) => {
+      const result = transformXlsxStructuralRange(range, request);
+      return result === null ? [] : [result];
+    });
+    if (transformed.length === 0) {
+      patches.push({ end: close.end, replacement: '', start: format.start });
+    } else if (
+      transformed.length !== ranges.length ||
+      transformed.some(
+        (range, index) => range.reference !== ranges[index]!.reference,
+      )
+    ) {
+      patches.push(
+        attributePatch(
+          reference,
+          transformed.map((range) => range.reference).join(' '),
+        ),
+      );
+    }
+  }
   const dataValidations = tokens.find(
     (token) =>
       !token.closing &&

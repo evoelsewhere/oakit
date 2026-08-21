@@ -309,6 +309,167 @@ describe('XLSX worksheet structural patching', () => {
     expect(empty.patchCount).toBe(0);
   });
 
+  it('transforms formula-free conditional-format ranges', () => {
+    const xml = `<worksheet xmlns="${XLSX_SPREADSHEET_NS}"><sheetData/><conditionalFormatting sqref="A1:A5 C2:C3"><cfRule type="top10" priority="1" rank="1"/></conditionalFormatting><conditionalFormatting sqref="D2:D3"><cfRule type="uniqueValues" priority="2"/></conditionalFormatting></worksheet>`;
+    const result = patchXlsxWorksheetStructure(
+      bytes(xml),
+      [
+        {
+          count: 2,
+          index: 2,
+          kind: 'delete-rows',
+          operationId: 'formats',
+        },
+      ],
+      defaultXlsxWriteLimits(),
+      PART,
+    );
+    expect(new TextDecoder().decode(result.data)).toBe(
+      `<worksheet xmlns="${XLSX_SPREADSHEET_NS}"><sheetData/><conditionalFormatting sqref="A1:A3"><cfRule type="top10" priority="1" rank="1"/></conditionalFormatting></worksheet>`,
+    );
+    const mixed = patchXlsxWorksheetStructure(
+      bytes(
+        `<worksheet xmlns="${XLSX_SPREADSHEET_NS}"><sheetData/><conditionalFormatting sqref="A1 C2"><cfRule type="uniqueValues" priority="1"/></conditionalFormatting></worksheet>`,
+      ),
+      [
+        {
+          count: 1,
+          index: 2,
+          kind: 'insert-rows',
+          operationId: 'mixed-format',
+        },
+      ],
+      defaultXlsxWriteLimits(),
+      PART,
+    );
+    expect(new TextDecoder().decode(mixed.data)).toContain(
+      '<conditionalFormatting sqref="A1 C3">',
+    );
+    const removedRange = patchXlsxWorksheetStructure(
+      bytes(
+        `<worksheet xmlns="${XLSX_SPREADSHEET_NS}"><sheetData/><conditionalFormatting sqref="A1 C2:C3"><cfRule type="uniqueValues" priority="1"/></conditionalFormatting></worksheet>`,
+      ),
+      [
+        {
+          count: 2,
+          index: 2,
+          kind: 'delete-rows',
+          operationId: 'remove-format-range',
+        },
+      ],
+      defaultXlsxWriteLimits(),
+      PART,
+    );
+    expect(new TextDecoder().decode(removedRange.data)).toContain(
+      '<conditionalFormatting sqref="A1">',
+    );
+  });
+
+  it('selects only owned conditional formats and preserves lexical no-ops', () => {
+    const xml = `<s:worksheet xmlns:s="${XLSX_SPREADSHEET_NS}" xmlns:x="urn:foreign"><s:sheetData/><wrapper><s:conditionalFormatting sqref="Z9"><s:cfRule type="uniqueValues" priority="1"/></s:conditionalFormatting><s:cfRule type="expression" priority="9"><s:formula/></s:cfRule></wrapper><x:conditionalFormatting sqref="Z9"/><s:conditionalFormatting sqref=" A1  B2 "><wrapper><s:formula/></wrapper><wrapper><s:cfRule type="expression" priority="8"><s:formula/></s:cfRule></wrapper><x:cfRule><s:formula/></x:cfRule><s:cfRule type="uniqueValues" priority="1"><other></other><wrapper><s:formula/></wrapper><x:formula/><s:cfvo type="num"/><x:cfvo type="formula"/></s:cfRule><wrapper><s:formula/></wrapper></s:conditionalFormatting><wrapper><s:conditionalFormatting sqref="Z8"/><s:cfRule type="expression" priority="7"><s:formula/></s:cfRule></wrapper></s:worksheet>`;
+    const unchanged = patchXlsxWorksheetStructure(
+      bytes(xml),
+      [
+        {
+          count: 1,
+          index: 5,
+          kind: 'insert-rows',
+          operationId: 'format-no-op',
+        },
+      ],
+      defaultXlsxWriteLimits(),
+      PART,
+    );
+    expect(new TextDecoder().decode(unchanged.data)).toBe(xml);
+    expect(unchanged.patchCount).toBe(0);
+    const changed = patchXlsxWorksheetStructure(
+      bytes(xml),
+      [
+        {
+          count: 1,
+          index: 1,
+          kind: 'insert-rows',
+          operationId: 'format-owned',
+        },
+      ],
+      defaultXlsxWriteLimits(),
+      PART,
+    );
+    const output = new TextDecoder().decode(changed.data);
+    expect(output).toContain('<s:conditionalFormatting sqref="A2 B3">');
+    expect(output).toContain(
+      '<wrapper><s:conditionalFormatting sqref="Z9"><s:cfRule type="uniqueValues" priority="1"/></s:conditionalFormatting>',
+    );
+    expect(output).toContain('<x:conditionalFormatting sqref="Z9"/>');
+    expect(output).toContain('<wrapper><s:conditionalFormatting sqref="Z8"/>');
+    expect(output).toContain('<wrapper><s:formula/></wrapper>');
+    expect(output).toContain('<x:formula/>');
+    expect(output).toContain('<s:cfvo type="num"/>');
+    expect(output).toContain('<x:cfvo type="formula"/>');
+    expect(output).toContain(
+      '<s:cfRule type="expression" priority="9"><s:formula/></s:cfRule>',
+    );
+    expect(output).toContain(
+      '<s:cfRule type="expression" priority="7"><s:formula/></s:cfRule>',
+    );
+  });
+
+  it('rejects formula-bearing and malformed structural conditional formats', () => {
+    for (const rule of [
+      '<cfRule type="expression" priority="1"><formula/></cfRule>',
+      '<cfRule type="colorScale" priority="1"><colorScale><cfvo type="formula"/></colorScale></cfRule>',
+    ]) {
+      const error = capture(() =>
+        patchXlsxWorksheetStructure(
+          bytes(
+            `<worksheet xmlns="${XLSX_SPREADSHEET_NS}"><sheetData/><conditionalFormatting sqref="A1">${rule}</conditionalFormatting></worksheet>`,
+          ),
+          [
+            {
+              count: 1,
+              index: 1,
+              kind: 'insert-rows',
+              operationId: 'formula-format',
+            },
+          ],
+          defaultXlsxWriteLimits(),
+          PART,
+        ),
+      );
+      expect(error.diagnostic).toMatchObject({
+        featureClass: 'conditional-format-formula-reference',
+        message:
+          'XLSX structural conditional-format formula cannot be preserved',
+        operationId: 'formula-format',
+      });
+    }
+    for (const source of [
+      '<conditionalFormatting/>',
+      '<conditionalFormatting sqref=""/>',
+      '<conditionalFormatting sqref="bad"/>',
+    ]) {
+      expect(
+        capture(() =>
+          patchXlsxWorksheetStructure(
+            bytes(
+              `<worksheet xmlns="${XLSX_SPREADSHEET_NS}"><sheetData/>${source}</worksheet>`,
+            ),
+            [
+              {
+                count: 1,
+                index: 1,
+                kind: 'insert-rows',
+                operationId: 'bad-format',
+              },
+            ],
+            defaultXlsxWriteLimits(),
+            PART,
+          ),
+        ).diagnostic.message,
+      ).toBe('XLSX structural conditional-format range is invalid');
+    }
+  });
+
   it('transforms formula-free data-validation ranges and exact counts', () => {
     const xml = `<worksheet xmlns="${XLSX_SPREADSHEET_NS}"><sheetData/><dataValidations count="2" disablePrompts="1"><dataValidation sqref="A1:A5 C2:C3"/><dataValidation sqref="B2:B3"/></dataValidations></worksheet>`;
     const result = patchXlsxWorksheetStructure(

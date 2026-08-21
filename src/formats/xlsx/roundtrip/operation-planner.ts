@@ -295,7 +295,6 @@ function assertStructuralClosure(
   }
   const featureBlockers: Array<readonly [string, boolean]> = [
     ['comment-reference', sheet.comments.length !== 0],
-    ['conditional-format-reference', sheet.conditionalFormattings.length !== 0],
     ['drawing-reference', sheet.drawings.length !== 0],
     ['print-reference', sheet.print !== undefined],
     ['protected-range-reference', sheet.protectedRanges.length !== 0],
@@ -317,6 +316,25 @@ function assertStructuralClosure(
     sheet.dataValidations.some(
       (validation) =>
         validation.formula1 !== undefined || validation.formula2 !== undefined,
+    ),
+  );
+  blockStructuralFeature(
+    operation,
+    'conditional-format-formula-reference',
+    sheet.conditionalFormattings.some((format) =>
+      format.rules.some(
+        (rule) =>
+          rule.formulas.length !== 0 ||
+          rule.colorScale?.stops.some(
+            (stop) => stop.threshold.kind === 'formula',
+          ) === true ||
+          rule.dataBar?.thresholds.some(
+            (threshold) => threshold.kind === 'formula',
+          ) === true ||
+          rule.iconSet?.thresholds.some(
+            (threshold) => threshold.kind === 'formula',
+          ) === true,
+      ),
     ),
   );
   for (const row of sheet.rows) {
@@ -401,6 +419,15 @@ function transformStructuralLayoutReferences(
   if (hadDataValidations && sheet.dataValidations.length === 0) {
     delete sheet.dataValidationSettings;
   }
+  sheet.conditionalFormattings = sheet.conditionalFormattings.flatMap(
+    (format) => {
+      const ranges = format.ranges.flatMap((range) => {
+        const transformed = transformXlsxStructuralRange(range, operation);
+        return transformed === null ? [] : [transformed];
+      });
+      return ranges.length === 0 ? [] : [{ ...format, ranges }];
+    },
+  );
 }
 
 function structuralRange(operation: XlsxStructuralOperation): string {
@@ -655,6 +682,10 @@ export async function replayXlsxCellOperations(
               : 1 + sheet.autoFilter.sort.conditions.length)) +
         sheet.dataValidations.reduce(
           (total, validation) => total + validation.ranges.length,
+          0,
+        ) +
+        sheet.conditionalFormattings.reduce(
+          (total, format) => total + format.ranges.length,
           0,
         );
       transformStructuralLayoutReferences(sheet, operation);
