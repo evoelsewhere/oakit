@@ -44,6 +44,9 @@ const COMMENT_RELATIONSHIP_KINDS = new Set([
   'threadedComment',
   'vmlDrawing',
 ]);
+const DRAWING_CONTENT_TYPE =
+  'application/vnd.openxmlformats-officedocument.drawing+xml';
+const DRAWING_RELATIONSHIP_KINDS = new Set(['drawing', 'image']);
 
 function editFailure(
   code:
@@ -84,11 +87,15 @@ export function assertXlsxSafeCellEditSource(
   options: XlsxWriteOptions,
   allowTables = false,
   allowCommentAnchors = false,
+  allowDrawingAnchors = false,
 ): void {
   const partAllowed = (contentType: string): boolean =>
     xlsxCellEditPartIsSafe(contentType) ||
     (allowTables && contentType === TABLE_CONTENT_TYPE) ||
-    (allowCommentAnchors && COMMENT_CONTENT_TYPES.has(contentType));
+    (allowCommentAnchors && COMMENT_CONTENT_TYPES.has(contentType)) ||
+    (allowDrawingAnchors &&
+      (contentType === DRAWING_CONTENT_TYPE ||
+        contentType.startsWith('image/')));
   const containsVml = graph.parts.some(
     (part) =>
       part.contentType ===
@@ -139,6 +146,12 @@ export function assertXlsxSafeCellEditSource(
       !(
         allowCommentAnchors &&
         COMMENT_RELATIONSHIP_KINDS.has(
+          xlsxCellEditRelationshipKind(relationship.type),
+        )
+      ) &&
+      !(
+        allowDrawingAnchors &&
+        DRAWING_RELATIONSHIP_KINDS.has(
           xlsxCellEditRelationshipKind(relationship.type),
         )
       ),

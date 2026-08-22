@@ -12,6 +12,7 @@ import {
   patchXlsxCommentAnchors,
   patchXlsxCommentVmlAnchors,
 } from '../../src/formats/xlsx/roundtrip/comment-structure-patch';
+import { patchXlsxDrawingStructure } from '../../src/formats/xlsx/roundtrip/drawing-structure-patch';
 import { patchXlsxWorksheetStructure } from '../../src/formats/xlsx/roundtrip/worksheet-structure-patch';
 import { defaultXlsxWriteLimits } from '../../src/formats/xlsx/roundtrip/write-limits';
 import {
@@ -538,6 +539,143 @@ describe('XLSX verified structural row and column edits', () => {
     ]);
     await expect(writeXlsxRoundTrip(rowEdit)).rejects.toMatchObject({
       diagnostic: { featureClass: 'opaque-content' },
+    });
+  });
+
+  it('keeps drawing anchors and shape placements aligned', async () => {
+    const drawingNamespace =
+      'http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing';
+    const drawingMainNamespace =
+      'http://schemas.openxmlformats.org/drawingml/2006/main';
+    const contentTypes = `<Types xmlns="${XLSX_CONTENT_TYPES_NS}"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/><Override PartName="/xl/sharedStrings.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sharedStrings+xml"/><Override PartName="/xl/drawings/drawing1.xml" ContentType="application/vnd.openxmlformats-officedocument.drawing+xml"/></Types>`;
+    const marker = (name: 'from' | 'to', column: number, row: number) =>
+      `<xdr:${name}><xdr:col>${column}</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>${row}</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:${name}>`;
+    const shape = `<xdr:sp><xdr:nvSpPr><xdr:cNvPr id="1" name="Shape 1"/><xdr:cNvSpPr/></xdr:nvSpPr><xdr:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="12700" cy="12700"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></xdr:spPr></xdr:sp>`;
+    const generatedSource = await createIndependentXlsx({
+      '[Content_Types].xml': contentTypes,
+      'xl/drawings/drawing1.xml': `<xdr:wsDr xmlns:xdr="${drawingNamespace}" xmlns:a="${drawingMainNamespace}"><xdr:oneCellAnchor>${marker('from', 1, 1)}<xdr:ext cx="12700" cy="12700"/>${shape}<xdr:clientData/></xdr:oneCellAnchor><xdr:twoCellAnchor>${marker('from', 0, 0)}${marker('to', 2, 2)}${shape.replace('id="1"', 'id="2"').replace('Shape 1', 'Shape 2')}<xdr:clientData/></xdr:twoCellAnchor></xdr:wsDr>`,
+      'xl/worksheets/_rels/sheet1.xml.rels': `<Relationships xmlns="${XLSX_PACKAGE_REL_NS}"><Relationship Id="drawing" Type="${XLSX_OFFICE_REL_TYPE}drawing" Target="../drawings/drawing1.xml"/></Relationships>`,
+      'xl/worksheets/sheet1.xml': `<worksheet xmlns="${XLSX_SPREADSHEET_NS}" xmlns:r="${XLSX_OFFICE_REL_NS}"><sheetData><row r="1"><c r="A1"><v>1</v></c></row><row r="2"><c r="B2"><v>2</v></c></row></sheetData><drawing r:id="drawing"/></worksheet>`,
+    });
+    const sourceZip = await JSZip.loadAsync(generatedSource);
+    const drawingPart = 'xl/drawings/drawing1.xml';
+    const drawingBytes = await sourceZip.file(drawingPart)!.async('uint8array');
+    sourceZip.file(drawingPart, drawingBytes, {
+      date: new Date('2003-04-05T06:07:08.000Z'),
+    });
+    const source = await sourceZip.generateAsync({ type: 'uint8array' });
+    const snapshot = await readXlsxRoundTrip(source);
+    const operations = [
+      {
+        count: 1,
+        index: 2,
+        kind: 'insert-rows' as const,
+        operationId: 'drawing-rows',
+        sheetKey: snapshot.document.sheets[0]!.key,
+      },
+      {
+        count: 1,
+        index: 2,
+        kind: 'insert-columns' as const,
+        operationId: 'drawing-columns',
+        sheetKey: snapshot.document.sheets[0]!.key,
+      },
+    ];
+    const edited = await applyXlsxEdits(snapshot, operations);
+    const result = await writeXlsxRoundTrip(edited);
+    expect(result.report.level).toBe('R2');
+    expect(
+      result.report.parts
+        .filter((part) => part.disposition === 'patch')
+        .map((part) => part.name),
+    ).toEqual([drawingPart, 'xl/worksheets/sheet1.xml']);
+    const parsed = await parseXlsx(result.data, { errorMode: 'strict' });
+    const sheet = parsed.sheets[0]!;
+    expect(sheet.kind).toBe('worksheet');
+    if (sheet.kind !== 'worksheet') throw new Error('Expected worksheet');
+    expect(sheet.drawings[0]?.from).toMatchObject({ column: 3, row: 3 });
+    expect(sheet.drawings[1]).toMatchObject({
+      from: { column: 1, row: 1 },
+      to: { column: 4, row: 4 },
+    });
+    expect(
+      (await JSZip.loadAsync(result.data)).file(drawingPart)!.date,
+    ).toEqual((await JSZip.loadAsync(source)).file(drawingPart)!.date);
+    const requests = operations.map(({ count, index, kind, operationId }) => ({
+      count,
+      index,
+      kind,
+      operationId,
+    }));
+    const originalZip = await JSZip.loadAsync(source);
+    const worksheetPatch = patchXlsxWorksheetStructure(
+      await originalZip.file('xl/worksheets/sheet1.xml')!.async('uint8array'),
+      requests,
+      defaultXlsxWriteLimits(),
+      'xl/worksheets/sheet1.xml',
+    );
+    const drawingPatch = patchXlsxDrawingStructure(
+      await originalZip.file(drawingPart)!.async('uint8array'),
+      requests,
+      defaultXlsxWriteLimits(),
+      drawingPart,
+    );
+    const patchBytes = worksheetPatch.patchBytes + drawingPatch.patchBytes;
+    const patchCount = worksheetPatch.patchCount + drawingPatch.patchCount;
+    const generatedXmlBytes = result.report.parts
+      .filter((part) => part.disposition === 'patch')
+      .reduce((total, part) => total + part.byteLength, 0);
+    await expect(
+      writeXlsxRoundTrip(edited, {
+        limits: {
+          maxDependencyEdges: 3,
+          maxDirtyParts: 2,
+          maxGeneratedXmlBytes: generatedXmlBytes,
+          maxPatchBytes: patchBytes,
+          maxPatchCount: patchCount,
+          maxPatchedParts: 2,
+        },
+      }),
+    ).resolves.toMatchObject({ report: { level: 'R2' } });
+    for (const [limitName, limit] of [
+      ['maxDependencyEdges', 2],
+      ['maxDirtyParts', 1],
+      ['maxGeneratedXmlBytes', generatedXmlBytes - 1],
+      ['maxPatchBytes', patchBytes - 1],
+      ['maxPatchCount', patchCount - 1],
+      ['maxPatchedParts', 1],
+    ] as const) {
+      await expect(
+        writeXlsxRoundTrip(edited, { limits: { [limitName]: limit } }),
+      ).rejects.toMatchObject({
+        diagnostic: { code: 'resource-limit-exceeded', limitName },
+      });
+    }
+    const outside = await applyXlsxEdits(snapshot, [
+      {
+        count: 1,
+        index: 10,
+        kind: 'insert-rows',
+        operationId: 'outside-drawing',
+        sheetKey: snapshot.document.sheets[0]!.key,
+      },
+    ]);
+    expect(
+      (await writeXlsxRoundTrip(outside)).report.parts.find(
+        (part) => part.name === drawingPart,
+      )?.disposition,
+    ).toBe('copy');
+    const rowEdit = await applyXlsxEdits(snapshot, [
+      {
+        hidden: true,
+        kind: 'set-row',
+        operationId: 'drawing-row-property',
+        row: 1,
+        sheetKey: snapshot.document.sheets[0]!.key,
+      },
+    ]);
+    await expect(writeXlsxRoundTrip(rowEdit)).rejects.toMatchObject({
+      diagnostic: { featureClass: 'unsupported-part', part: drawingPart },
     });
   });
 });

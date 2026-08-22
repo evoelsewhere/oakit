@@ -7,6 +7,7 @@ import type {
   XlsxCell,
   XlsxColumnRange,
   XlsxAutoFilter,
+  XlsxDrawingObject,
   XlsxHyperlink,
   XlsxRow,
   XlsxWorksheet,
@@ -18,6 +19,7 @@ import {
   transformXlsxStructuralPageBreak,
   transformXlsxStructuralRange,
   transformXlsxStructuralCell,
+  transformXlsxStructuralDrawingAnchor,
   transformXlsxStructuralViewSelection,
   transformXlsxStructuralVisualCell,
 } from './structural-reference';
@@ -301,7 +303,6 @@ function assertStructuralClosure(
     }
   }
   const featureBlockers: Array<readonly [string, boolean]> = [
-    ['drawing-reference', sheet.drawings.length !== 0],
     ['protection-reference', sheet.protection !== undefined],
     ['pivot-reference', sheet.pivotTables !== undefined],
     ['query-table-reference', sheet.queryTables !== undefined],
@@ -401,6 +402,21 @@ function assertStructuralClosure(
         reference.column,
         operation,
       ) === null,
+    );
+  }
+  const drawingHasChart = (object: XlsxDrawingObject): boolean =>
+    object.kind === 'chart' ||
+    (object.kind === 'group' && object.children.some(drawingHasChart));
+  for (const drawing of sheet.drawings) {
+    blockStructuralFeature(
+      operation,
+      'drawing-chart-reference',
+      drawingHasChart(drawing.object),
+    );
+    blockStructuralFeature(
+      operation,
+      'drawing-anchor-deletion',
+      transformXlsxStructuralDrawingAnchor(drawing, operation) === null,
     );
   }
   for (const row of sheet.rows) {
@@ -504,6 +520,10 @@ function transformStructuralLayoutReferences(
       )!.address,
     };
   });
+  sheet.drawings = sheet.drawings.map((drawing) => ({
+    ...drawing,
+    ...transformXlsxStructuralDrawingAnchor(drawing, operation)!,
+  }));
   const hadDataValidations = sheet.dataValidations.length !== 0;
   sheet.dataValidations = sheet.dataValidations.flatMap((validation) => {
     const ranges = validation.ranges.flatMap((range) => {
@@ -860,7 +880,14 @@ export async function replayXlsxCellOperations(
                   : 1 + table.autoFilter.sort.conditions.length)),
           0,
         ) +
-        sheet.comments.length;
+        sheet.comments.length +
+        sheet.drawings.reduce(
+          (total, drawing) =>
+            total +
+            (drawing.from === undefined ? 0 : 1) +
+            (drawing.to === undefined ? 0 : 1),
+          0,
+        );
       transformStructuralLayoutReferences(sheet, operation);
       referenceUpdates += operation.kind.endsWith('-rows')
         ? transformRows(sheet, operation, readerLimits)

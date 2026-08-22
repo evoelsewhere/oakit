@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   transformXlsxStructuralCell,
+  transformXlsxStructuralDrawingAnchor,
   transformXlsxStructuralPageBreak,
   transformXlsxStructuralRange,
   transformXlsxStructuralViewSelection,
@@ -328,5 +329,208 @@ describe('XLSX structural reference transforms', () => {
         },
       ],
     });
+  });
+
+  it('transforms drawing anchors according to their edit mode', () => {
+    const marker = {
+      column: 2,
+      columnOffset: 10,
+      row: 2,
+      rowOffset: 20,
+    };
+    expect(
+      transformXlsxStructuralDrawingAnchor(
+        { from: marker, kind: 'one-cell' },
+        { count: 1, index: 2, kind: 'insert-rows' },
+      ),
+    ).toEqual({ from: { ...marker, row: 3 }, kind: 'one-cell' });
+    expect(
+      transformXlsxStructuralDrawingAnchor(
+        { from: marker, kind: 'one-cell' },
+        { count: 1, index: 2, kind: 'delete-columns' },
+      ),
+    ).toEqual({ from: marker, kind: 'one-cell' });
+    expect(
+      transformXlsxStructuralDrawingAnchor(
+        { from: { ...marker, column: 5, row: 3 }, kind: 'one-cell' },
+        { count: 2, index: 2, kind: 'delete-rows' },
+      ),
+    ).toMatchObject({ from: { column: 5, row: 2 } });
+    expect(
+      transformXlsxStructuralDrawingAnchor(
+        { from: { ...marker, column: 3, row: 5 }, kind: 'one-cell' },
+        { count: 2, index: 2, kind: 'delete-columns' },
+      ),
+    ).toMatchObject({ from: { column: 2, row: 5 } });
+    const twoCell = {
+      from: marker,
+      kind: 'two-cell' as const,
+      to: { ...marker, column: 4, row: 4 },
+    };
+    expect(
+      transformXlsxStructuralDrawingAnchor(twoCell, {
+        count: 1,
+        index: 3,
+        kind: 'insert-rows',
+      }),
+    ).toMatchObject({ from: marker, to: { column: 4, row: 5 } });
+    expect(
+      transformXlsxStructuralDrawingAnchor(twoCell, {
+        count: 2,
+        index: 2,
+        kind: 'delete-rows',
+      }),
+    ).toMatchObject({ from: { row: 2 }, to: { row: 2 } });
+    expect(
+      transformXlsxStructuralDrawingAnchor(
+        { ...twoCell, editAs: 'one-cell' },
+        { count: 1, index: 3, kind: 'insert-rows' },
+      ),
+    ).toEqual({ ...twoCell, editAs: 'one-cell' });
+    expect(
+      transformXlsxStructuralDrawingAnchor(
+        { ...twoCell, editAs: 'one-cell' },
+        { count: 1, index: 2, kind: 'insert-columns' },
+      ),
+    ).toMatchObject({
+      from: { column: 3 },
+      to: { column: 5 },
+    });
+    const absolute = { ...twoCell, editAs: 'absolute' as const };
+    expect(
+      transformXlsxStructuralDrawingAnchor(absolute, {
+        count: 1,
+        index: 1,
+        kind: 'insert-rows',
+      }),
+    ).toBe(absolute);
+    const absoluteAnchor = { kind: 'absolute' as const };
+    expect(
+      transformXlsxStructuralDrawingAnchor(absoluteAnchor, {
+        count: 1,
+        index: 1,
+        kind: 'insert-rows',
+      }),
+    ).toBe(absoluteAnchor);
+    expect(
+      transformXlsxStructuralDrawingAnchor(
+        {
+          ...twoCell,
+          editAs: 'one-cell',
+          from: { ...marker, column: 16_384 },
+          to: { ...marker, column: 16_384 },
+        },
+        { count: 1, index: 16_384, kind: 'insert-columns' },
+      ),
+    ).toBeNull();
+    expect(
+      transformXlsxStructuralDrawingAnchor(
+        {
+          from: { ...marker, column: 16_384 },
+          kind: 'one-cell',
+        },
+        { count: 1, index: 16_384, kind: 'insert-columns' },
+      ),
+    ).toBeNull();
+    expect(
+      transformXlsxStructuralDrawingAnchor(
+        {
+          from: { ...marker, row: 1_048_576 },
+          kind: 'one-cell',
+        },
+        { count: 1, index: 1_048_576, kind: 'insert-rows' },
+      ),
+    ).toBeNull();
+    expect(
+      transformXlsxStructuralDrawingAnchor(
+        {
+          from: { ...marker, row: 1_048_576 },
+          kind: 'one-cell',
+        },
+        { count: 1, index: 1, kind: 'insert-columns' },
+      ),
+    ).toMatchObject({ from: { row: 1_048_576 } });
+    expect(
+      transformXlsxStructuralDrawingAnchor(
+        {
+          from: { ...marker, column: 16_384 },
+          kind: 'one-cell',
+        },
+        { count: 1, index: 1, kind: 'insert-rows' },
+      ),
+    ).toMatchObject({ from: { column: 16_384 } });
+    expect(
+      transformXlsxStructuralDrawingAnchor(
+        {
+          ...twoCell,
+          editAs: 'one-cell',
+          from: { ...marker, column: 16_383 },
+          to: { ...marker, column: 16_384 },
+        },
+        { count: 1, index: 16_383, kind: 'insert-columns' },
+      ),
+    ).toBeNull();
+    expect(
+      transformXlsxStructuralDrawingAnchor(
+        {
+          ...twoCell,
+          from: { ...marker, row: 1_048_575 },
+          to: { ...marker, row: 1_048_576 },
+        },
+        { count: 1, index: 1_048_575, kind: 'insert-rows' },
+      ),
+    ).toBeNull();
+    expect(
+      transformXlsxStructuralDrawingAnchor(
+        {
+          ...twoCell,
+          from: { ...marker, column: 16_383 },
+          to: { ...marker, column: 16_384 },
+        },
+        { count: 1, index: 16_383, kind: 'insert-columns' },
+      ),
+    ).toBeNull();
+    expect(
+      transformXlsxStructuralDrawingAnchor(
+        {
+          ...twoCell,
+          from: { ...marker, row: 1_048_575 },
+          to: { ...marker, row: 1_048_575 },
+        },
+        { count: 1, index: 1_048_575, kind: 'insert-rows' },
+      ),
+    ).toMatchObject({ to: { row: 1_048_576 } });
+    expect(
+      transformXlsxStructuralDrawingAnchor(
+        {
+          ...twoCell,
+          from: { ...marker, column: 16_383 },
+          to: { ...marker, column: 16_383 },
+        },
+        { count: 1, index: 16_383, kind: 'insert-columns' },
+      ),
+    ).toMatchObject({ to: { column: 16_384 } });
+    expect(
+      transformXlsxStructuralDrawingAnchor(
+        {
+          ...twoCell,
+          editAs: 'one-cell',
+          from: { ...marker, row: 1_048_575 },
+          to: { ...marker, row: 1_048_576 },
+        },
+        { count: 1, index: 1_048_575, kind: 'insert-rows' },
+      ),
+    ).toBeNull();
+    expect(
+      transformXlsxStructuralDrawingAnchor(
+        {
+          ...twoCell,
+          editAs: 'one-cell',
+          from: { ...marker, column: 16_383, row: 1_048_576 },
+          to: { ...marker, column: 16_383, row: 1_048_576 },
+        },
+        { count: 1, index: 16_383, kind: 'insert-columns' },
+      ),
+    ).toMatchObject({ to: { column: 16_384, row: 1_048_576 } });
   });
 });

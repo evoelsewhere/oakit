@@ -6,6 +6,7 @@ import { XLSX_MAX_COLUMNS, XLSX_MAX_ROWS } from '../internal/resource-limits';
 import type {
   XlsxPageBreak,
   XlsxRange,
+  XlsxDrawingMarker,
   XlsxWorksheetViewSelection,
 } from '../types';
 
@@ -13,6 +14,13 @@ export interface XlsxStructuralReferenceOperation {
   count: number;
   index: number;
   kind: 'delete-columns' | 'delete-rows' | 'insert-columns' | 'insert-rows';
+}
+
+export interface XlsxStructuralDrawingAnchor {
+  editAs?: 'absolute' | 'one-cell' | 'two-cell';
+  from?: XlsxDrawingMarker;
+  kind: 'absolute' | 'one-cell' | 'two-cell';
+  to?: XlsxDrawingMarker;
 }
 
 function transformCoordinate(
@@ -195,5 +203,84 @@ export function transformXlsxStructuralViewSelection(
       : { activeCellId: activeIndex }),
     pane: selection.pane,
     ranges: transformedRanges.map((entry) => entry.range),
+  };
+}
+
+function visualMarker(
+  marker: XlsxDrawingMarker,
+  operation: XlsxStructuralReferenceOperation,
+): XlsxDrawingMarker | null {
+  const transformed = transformXlsxStructuralCell(
+    marker.row,
+    marker.column,
+    operation,
+  );
+  const row =
+    transformed?.row ??
+    (operation.kind.endsWith('-rows') ? operation.index : marker.row);
+  const column =
+    transformed?.column ??
+    (operation.kind.endsWith('-columns') ? operation.index : marker.column);
+  if (row > XLSX_MAX_ROWS || column > XLSX_MAX_COLUMNS) {
+    return null;
+  }
+  return { ...marker, column, row };
+}
+
+export function transformXlsxStructuralDrawingAnchor(
+  anchor: XlsxStructuralDrawingAnchor,
+  operation: XlsxStructuralReferenceOperation,
+): XlsxStructuralDrawingAnchor | null {
+  if (anchor.kind === 'absolute' || anchor.editAs === 'absolute') return anchor;
+  const from = anchor.from!;
+  if (anchor.kind === 'one-cell') {
+    const transformedFrom = visualMarker(from, operation);
+    return transformedFrom === null
+      ? null
+      : { ...anchor, from: transformedFrom };
+  }
+  const to = anchor.to!;
+  if (anchor.editAs === 'one-cell') {
+    const transformedFrom = visualMarker(from, operation);
+    if (transformedFrom === null) return null;
+    const rowDelta = transformedFrom.row - from.row;
+    const columnDelta = transformedFrom.column - from.column;
+    const transformedTo = {
+      ...to,
+      column: to.column + columnDelta,
+      row: to.row + rowDelta,
+    };
+    if (
+      transformedTo.column > XLSX_MAX_COLUMNS ||
+      transformedTo.row > XLSX_MAX_ROWS
+    ) {
+      return null;
+    }
+    return { ...anchor, from: transformedFrom, to: transformedTo };
+  }
+  const rowOperation = operation.kind.endsWith('-rows');
+  const columnOperation = operation.kind.endsWith('-columns');
+  const rows = rowOperation
+    ? transformInterval(from.row, to.row, operation)
+    : ([from.row, to.row] as const);
+  const columns = columnOperation
+    ? transformInterval(from.column, to.column, operation)
+    : ([from.column, to.column] as const);
+  if (
+    rows === null ||
+    columns === null ||
+    rows[1] > XLSX_MAX_ROWS ||
+    columns[1] > XLSX_MAX_COLUMNS
+  ) {
+    return null;
+  }
+  return {
+    ...anchor,
+    from: {
+      ...from,
+      column: columns[0],
+      row: rows[0],
+    },
+    to: { ...to, column: columns[1], row: rows[1] },
   };
 }

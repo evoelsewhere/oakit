@@ -470,6 +470,89 @@ describe('XLSX cell-edit package verification', () => {
     ).toMatchObject({ featureClass: 'unsupported-relationship' });
   });
 
+  it('allows drawing and image dependencies only for structural closure', () => {
+    for (const [index, contentType, relationshipKind] of [
+      [
+        0,
+        'application/vnd.openxmlformats-officedocument.drawing+xml',
+        'drawing',
+      ],
+      [1, 'image/png', 'image'],
+    ] as const) {
+      const part = {
+        byteLength: 1,
+        contentType,
+        name: index === 0 ? 'xl/drawings/drawing1.xml' : 'xl/media/image1.png',
+        relationshipPart: false,
+        sha256: String(index + 1).repeat(64),
+      };
+      const source = graph({
+        parts: [part],
+        relationships: [
+          {
+            id: `drawing-${index}`,
+            mode: 'internal',
+            owner: null,
+            target: part.name,
+            type: `http://example.invalid/relationships/${relationshipKind}`,
+          },
+        ],
+      });
+      expect(
+        capture(() => assertXlsxSafeCellEditSource(source, {})).diagnostic,
+      ).toMatchObject({ featureClass: 'unsupported-part' });
+      expect(() =>
+        assertXlsxSafeCellEditSource(source, {}, false, false, true),
+      ).not.toThrow();
+    }
+    const drawingPart = {
+      byteLength: 1,
+      contentType: 'application/vnd.openxmlformats-officedocument.drawing+xml',
+      name: 'xl/drawings/drawing1.xml',
+      relationshipPart: false,
+      sha256: 'd'.repeat(64),
+    };
+    const customPart = {
+      ...drawingPart,
+      contentType: 'application/example',
+      name: 'xl/custom.bin',
+    };
+    expect(
+      capture(() =>
+        assertXlsxSafeCellEditSource(
+          { ...graph(), parts: [customPart] },
+          {},
+          false,
+          false,
+          true,
+        ),
+      ).diagnostic,
+    ).toMatchObject({ featureClass: 'unsupported-part' });
+    expect(
+      capture(() =>
+        assertXlsxSafeCellEditSource(
+          {
+            ...graph(),
+            parts: [drawingPart],
+            relationships: [
+              {
+                id: 'custom',
+                mode: 'internal',
+                owner: null,
+                target: drawingPart.name,
+                type: 'http://example.invalid/relationships/customXml',
+              },
+            ],
+          },
+          {},
+          false,
+          false,
+          true,
+        ),
+      ).diagnostic,
+    ).toMatchObject({ featureClass: 'unsupported-relationship' });
+  });
+
   it.each([
     '[Book.xlsx]Sheet1!A1',
     'call(A1)',

@@ -21,7 +21,11 @@ import {
   defaultXlsxWriteLimits,
   resolveXlsxWriteLimits,
 } from '../../src/formats/xlsx/roundtrip/write-limits';
-import type { XlsxTable, XlsxWorksheet } from '../../src/formats/xlsx/types';
+import type {
+  XlsxDrawing,
+  XlsxTable,
+  XlsxWorksheet,
+} from '../../src/formats/xlsx/types';
 import {
   createIndependentXlsx,
   XLSX_SPREADSHEET_NS,
@@ -134,6 +138,32 @@ function structuralTable(overrides: Partial<XlsxTable> = {}): XlsxTable {
     tableType: 'worksheet',
     totalsRow: false,
     totalsRowShown: true,
+    ...overrides,
+  };
+}
+
+function structuralDrawing(overrides: Partial<XlsxDrawing> = {}): XlsxDrawing {
+  return {
+    extent: { height: 10, width: 10 },
+    from: { column: 12, columnOffset: 0, row: 2, rowOffset: 0 },
+    kind: 'one-cell',
+    object: {
+      geometry: { kind: 'preset', preset: 'rect' },
+      hidden: false,
+      id: 1,
+      kind: 'shape',
+      name: 'Shape 1',
+      transform: {
+        flipHorizontal: false,
+        flipVertical: false,
+        height: 10,
+        rotation: 0,
+        width: 10,
+        x: 0,
+        y: 0,
+      },
+    },
+    selectionRelation: 'full-sheet',
     ...overrides,
   };
 }
@@ -1713,6 +1743,31 @@ describe('XLSX cell operation planner', () => {
               timestamp: '2024-01-01T00:00:00Z',
             },
           ],
+          drawings: [
+            structuralDrawing({
+              from: {
+                column: 12,
+                columnOffset: 0,
+                row: 20,
+                rowOffset: 0,
+              },
+            }),
+            structuralDrawing({
+              from: {
+                column: 13,
+                columnOffset: 0,
+                row: 1,
+                rowOffset: 0,
+              },
+              kind: 'two-cell',
+              to: {
+                column: 14,
+                columnOffset: 0,
+                row: 20,
+                rowOffset: 0,
+              },
+            }),
+          ],
           protectedRanges: [
             {
               name: 'Input',
@@ -1874,6 +1929,11 @@ describe('XLSX cell operation planner', () => {
     expect(
       transformedLayout.comments.map((comment) => comment.reference),
     ).toEqual(['J12', 'K13']);
+    expect(transformedLayout.drawings[0]?.from).toMatchObject({ row: 22 });
+    expect(transformedLayout.drawings[1]).toMatchObject({
+      from: { column: 13, row: 1 },
+      to: { column: 14, row: 22 },
+    });
     const deletedSortDocument = structuredClone(referencedDocument);
     const deletedSortSheet = worksheet(deletedSortDocument);
     deletedSortSheet.autoFilter!.sort!.range = {
@@ -2059,7 +2119,7 @@ describe('XLSX cell operation planner', () => {
       replayXlsxCellOperations(
         referencedDocument,
         [layoutOperation],
-        { ...writeLimits, maxReferenceUpdates: 28 },
+        { ...writeLimits, maxReferenceUpdates: 31 },
         readerLimits,
       ),
     ).resolves.toBeDefined();
@@ -2069,14 +2129,14 @@ describe('XLSX cell operation planner', () => {
           replayXlsxCellOperations(
             referencedDocument,
             [layoutOperation],
-            { ...writeLimits, maxReferenceUpdates: 27 },
+            { ...writeLimits, maxReferenceUpdates: 30 },
             readerLimits,
           ),
         )
       ).diagnostic,
     ).toMatchObject({
-      actual: 28,
-      limit: 27,
+      actual: 31,
+      limit: 30,
       limitName: 'maxReferenceUpdates',
     });
     const viewOnlyDocument = structuredClone(snapshot.document);
@@ -2663,8 +2723,23 @@ describe('XLSX cell operation planner', () => {
           void setSheetField(document, 'dataValidations', [{ formula2: 'A1' }]),
       ],
       [
-        'drawing-reference',
-        (document) => void setSheetField(document, 'drawings', [{}]),
+        'drawing-chart-reference',
+        (document) =>
+          void setSheetField(document, 'drawings', [
+            structuralDrawing({ object: { kind: 'chart' } as never }),
+          ]),
+      ],
+      [
+        'drawing-chart-reference',
+        (document) =>
+          void setSheetField(document, 'drawings', [
+            structuralDrawing({
+              object: {
+                children: [{ kind: 'chart' }, structuralDrawing().object],
+                kind: 'group',
+              } as never,
+            }),
+          ]),
       ],
       [
         'protection-reference',
@@ -2814,6 +2889,37 @@ describe('XLSX cell operation planner', () => {
     ).toMatchObject({
       code: 'unsupported-edit-operation',
       featureClass: 'comment-anchor-deletion',
+    });
+    const drawingDocument = structuredClone(snapshot.document);
+    worksheet(drawingDocument).drawings = [
+      structuralDrawing({
+        from: { column: 1, columnOffset: 0, row: 1, rowOffset: 0 },
+        kind: 'two-cell',
+        to: { column: 1, columnOffset: 0, row: 1, rowOffset: 0 },
+      }),
+    ];
+    expect(
+      (
+        await captureAsync(() =>
+          replayXlsxCellOperations(
+            drawingDocument,
+            [
+              {
+                count: 1,
+                index: 1,
+                kind: 'delete-rows',
+                operationId: 'delete-drawing-anchor',
+                sheetKey,
+              },
+            ],
+            writeLimits,
+            readerLimits,
+          ),
+        )
+      ).diagnostic,
+    ).toMatchObject({
+      code: 'unsupported-edit-operation',
+      featureClass: 'drawing-anchor-deletion',
     });
     const rowWithColumns = structuredClone(snapshot.document);
     worksheet(rowWithColumns).columns.push({ end: 1, start: 1 });

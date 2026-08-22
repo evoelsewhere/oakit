@@ -60,6 +60,7 @@ import {
   patchXlsxCommentAnchors,
   patchXlsxCommentVmlAnchors,
 } from './comment-structure-patch';
+import { patchXlsxDrawingStructure } from './drawing-structure-patch';
 
 export interface XlsxCellEditPackage {
   data: Uint8Array;
@@ -260,6 +261,7 @@ export async function writeXlsxCellEditPackage(
     options,
     structuralClosure,
     structuralClosure,
+    structuralClosure,
   );
   assertXlsxCellEditFormulaClosure(baseDocument, plan);
   assertXlsxCellEditStyleClosure(baseDocument, plan);
@@ -295,6 +297,7 @@ export async function writeXlsxCellEditPackage(
   let patchCount = 0;
   let tableDependencyEdges = 0;
   let commentDependencyEdges = 0;
+  let drawingDependencyEdges = 0;
   if (appendedStyles.length !== 0) {
     const part = context.styles.part!;
     const entry = archive.file(part)!;
@@ -513,6 +516,37 @@ export async function writeXlsxCellEditPackage(
       });
       dirtyParts.add(commentPart);
     }
+    const drawingRelationshipType = `${officeRelationshipNamespace}/drawing`;
+    const drawingParts = sourceGraph.relationships
+      .filter(
+        (relationship) =>
+          relationship.owner === part &&
+          relationship.mode === 'internal' &&
+          relationship.type === drawingRelationshipType,
+      )
+      .map((relationship) => relationship.target);
+    for (const drawingPart of drawingParts) {
+      const drawingEntry = archive.file(drawingPart)!;
+      const drawingSource = await readZipEntryBytes(
+        drawingEntry,
+        readerLimits.maxPartBytes,
+      );
+      const drawingPatched = patchXlsxDrawingStructure(
+        drawingSource,
+        requestedStructure,
+        writeLimits,
+        drawingPart,
+      );
+      if (drawingPatched.patchCount === 0) continue;
+      generatedXmlBytes += drawingPatched.data.byteLength;
+      patchBytes += drawingPatched.patchBytes;
+      patchCount += drawingPatched.patchCount;
+      drawingDependencyEdges += 1;
+      archive.file(drawingPart, drawingPatched.data, {
+        date: drawingEntry.date,
+      });
+      dirtyParts.add(drawingPart);
+    }
   }
   const dirtyPartCount = dirtyParts.size + addedParts.size;
   if (dirtyPartCount > writeLimits.maxDirtyParts) {
@@ -535,6 +569,7 @@ export async function writeXlsxCellEditPackage(
     changedRelationshipOwners.size;
   dependencyEdges += tableDependencyEdges;
   dependencyEdges += commentDependencyEdges;
+  dependencyEdges += drawingDependencyEdges;
   if (dependencyEdges > writeLimits.maxDependencyEdges) {
     writeLimitFailure(
       'maxDependencyEdges',
